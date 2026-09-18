@@ -53,6 +53,9 @@ const env = {
   ...process.env,
   DSH_PET_CONFIG_URL: defaultConfigUrl,
   DSH_PET_SCALE: process.env.DSH_PET_SCALE || '1',
+  // 开发流也跟随：本脚本退出（含被强杀）后桌宠自己走，不留一个没人管的 helper
+  // （helper 侧 host-liveness.js 每 2s kill(pid, 0) 一次，ESRCH 即自行退出；见 issue #56）
+  DSH_PET_HOST_PID: String(process.pid),
 };
 
 console.log(`[start-desktop] electron:   ${electron}`);

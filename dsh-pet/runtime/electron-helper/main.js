@@ -18,6 +18,10 @@
  * 经 stdin/stdout JSON 行协议转发宿主（helper-process.ts 的 BridgeHandler），
  * 宿主用与 HTTP 路由同一份 handlePetRoute 应答；素材应答带文件绝对路径，本进程读盘返回。
  * 无 DSH_PET_BRIDGE（手动 start-desktop / 开发流）时保持旧路径：渲染端直接 HTTP 访问宿主。
+ *
+ * 进程存亡（issue #56）：本进程的 stdout/stderr 是宿主给的管道，宿主一退出读端就消失（下一次写
+ * 就是 EPIPE，而 Electron 默认处理器只会弹框且不退出）。故有「宿主存活」一节：管道守卫 +
+ * 宿主 PID 探测，宿主没了就自己退——见那里的注释。
  */
 const { app, BrowserWindow, ipcMain, screen, shell, protocol } = require('electron');
 const path = require('node:path');
@@ -26,6 +30,8 @@ const { readFileSync, writeFileSync } = require('node:fs');
 const fsPromises = require('node:fs/promises');
 // 点击穿透兜底通道的纯判定（不依赖 Electron 的 forward 鼠标钩子；见文件头注释）
 const { decideWindowIgnore } = require('./pointer-target.js');
+// 宿主存活判定（issue #56：宿主退出 → 管道断开 → 自己退，绝不弹框、绝不留僵尸）
+const { HOST_POLL_MS, hostIsGone, isBrokenPipeError, parseHostPid } = require('./host-liveness.js');
 
 // 允许无用户手势直接播放（余额动画等）
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
@@ -39,6 +45,46 @@ app.setName('dsh-pet-electron-helper');
 const DPI_PROBE = process.env.DSH_PET_DPI_PROBE === '1';
 /** 探测进程的输出标记（父进程按它抓值） */
 const DPI_MARK = 'dsh-pet-primary-scale:';
+
+// ---------- 宿主存活（issue #56）：管道断开 / 父进程消失 → 自己退出 ----------
+//
+// 【为什么必须自己退】宿主退出后，它在 helper 的 stdout/stderr 上握着的管道读端一起关闭；helper
+// 下一次写（bridge 协议行 —— 渲染端每秒至少一条 /broadcast 轮询）拿到 EPIPE。未处理的 'error'
+// 事件 = 未捕获异常，而 Electron 主进程自带的处理器只弹一个模态框、**且不退出**
+// （lib/browser/init.ts 原文注释："Don't quit on fatal error"）—— 桌宠就此卡死、进程赖着不走。
+// 真机实测（宿主存活、只切断 stdout 管道）：那次写之后主线程彻底停住，14 秒里一次心跳都没有，
+// 进程也一直没有退出。
+//
+// 两条路都要有，缺一不可：
+//   ① 管道守卫：任何一次写失败都不许变成异常；管道断开本身就是"宿主已死"的铁证 → 立刻退。
+//      它只在**上层真的写**的时候才触发；
+//   ② 宿主探测：每 HOST_POLL_MS 用 kill(pid, 0) 问一次宿主还在不在，ESRCH 即退。
+//      渲染端崩了/根本没起来时一次写都不会发生，只有 ② 能收敛。
+// 两条路都只经 exitForDeadHost()，且只退一次。
+let hostGone = false;
+/** 宿主没了 → 立刻退出。这里**不能**再打日志：管道已经断了，写只会再踩一次同一个错误 */
+function exitForDeadHost() {
+  if (hostGone) return;
+  hostGone = true;
+  app.exit(0); // 宿主消失是"环境要求我退"，不是自身崩溃，退出码 0
+}
+
+// ① 管道守卫：必须赶在**任何一次写**之前装上（probePrimaryScale 失败就会往 stderr 写）
+for (const stream of [process.stdout, process.stderr]) {
+  stream.on('error', (error) => {
+    if (isBrokenPipeError(error)) exitForDeadHost();
+    // 其余流错误同样吞掉：Electron 的默认处理是弹模态框，任何流错误都不值得拿桌宠去换一个框
+  });
+}
+
+// ② 宿主探测：DSH_PET_HOST_PID 由宿主 spawn 时注入；未注入/非法 → parseHostPid 给 0 → 不探测（不误退）。
+// DPI 探测实例是一次性短命进程（它的父进程是 helper 而不是宿主），不参与这套机制。
+const HOST_PID = parseHostPid(process.env.DSH_PET_HOST_PID);
+if (!DPI_PROBE && HOST_PID > 0) {
+  setInterval(() => {
+    if (hostIsGone(HOST_PID)) exitForDeadHost();
+  }, HOST_POLL_MS).unref?.();
+}
 
 // Windows 透明分层窗口（WS_EX_LAYERED）在 DWM 硬件加速合成下存在多处缺陷：
 //   - 拖拽移动时窗口四周出现黑色边框（#37）

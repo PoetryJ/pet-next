@@ -287,7 +287,14 @@ export class HelperProcess {
 
     const child = spawn(command, args, {
       cwd: this.options.cwd || packageRoot,
-      env: { ...process.env, ...this.options.env },
+      // DSH_PET_HOST_PID：把**宿主自己的** pid 交给 helper，让它能判断"宿主还在不在"
+      // （helper 侧 host-liveness.js 每 2s kill(pid, 0) 一次；ESRCH 就自行退出，见 issue #56）。
+      // 放在唯一的 spawn 点，所有调用方（含自定义 command）自动获得。
+      // 为什么 macOS/Linux 非有不可：Windows 上 Node/libuv 会把子进程放进带
+      // JOB_OBJECT_LIMIT_KILL_ON_JOB_CLOSE 的 job 对象，宿主一退出内核就顺手杀掉它——实测
+      // helper 的心跳正好停在宿主退出的那一刻、连 process.on('exit') 都不触发；POSIX 没有这层
+      // 兜底，宿主非正常退出后 helper 会一直留着（issue #56 报告的就是这个）。
+      env: { ...process.env, DSH_PET_HOST_PID: String(process.pid), ...this.options.env },
       stdio: ['pipe', 'pipe', 'pipe'], // stdin 也要：bridge 协议响应回写（main.js 请求经 stdout 上来）
       windowsHide: true,
     });
