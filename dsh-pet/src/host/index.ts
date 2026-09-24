@@ -72,8 +72,7 @@ import {
   reduceWorkStatus,
   currentTaskFromTodo,
   goalUpdateAction,
-  type HostWorkStatusState,
-  type WorkStatusSnapshot,
+  WorkStatusStore,
   type WorkStatusTurnContext,
 } from './work-status';
 import { agentErrorFrame, reduceNotifyFrame, type HostNotifyFrame } from './notify-events';
@@ -211,12 +210,10 @@ export function apply(ctx: any): void {
   // 工作状态联动快照（/work-status 端点响应，浏览器 1s 轮询）：state=当前活动状态（null=空闲）、
   // task=当前任务详情、ts=最近变化时间（轮询侧检测变化用）。气泡文案不在此：浏览器读配置
   // events.workStatusTexts（host 不内置文案）。
+  // 聚合与展示选择都在 WorkStatusStore（host/work-status.ts，纯逻辑可单测）：**state 与 task 都按
+  // 会话存**——task 曾是全局单值，写过一次就跟着此后所有会话活动一直显示（issue #59）。
   // 进程内内存态：重启回空闲；每次会话事件有实际状态变化才更新（签名比对防刷屏）。
-  const workStatus = {
-    state: null as HostWorkStatusState | null,
-    task: null as string | null,
-    ts: 0,
-  } satisfies WorkStatusSnapshot;
+  const workStatus = new WorkStatusStore();
   // 系统通知帧队列（/notify 端点增量拉取）：host 监听 DSH 宿主事件生成通知帧
   // （帧契约与 shared/notify.ts 一致），浏览器 1s 轮询 /notify?since=<seq> 拉增量弹 toast。
   // 背景：DSH 0.1.5 删除浏览器侧 api.events.mux/host 事件流，改为 host 转发通道——
@@ -229,53 +226,30 @@ export function apply(ctx: any): void {
     notifyFrames.push({ seq: notifySeq, frame });
     if (notifyFrames.length > NOTIFY_QUEUE_MAX) notifyFrames.shift();
   };
-  /** 每会话最近状态（会话 id → 状态），多会话时取优先级最高的作展示（与 better-dsh-pet 同思路） */
-  const workStatusBySession = new Map<string, { state: HostWorkStatusState; seq: number }>();
   /** 每会话 turn 级标志（goal 续跑轮判定；不参与展示，仅修正 turn/end 终局语义） */
   const turnFlags = new Map<string, WorkStatusTurnContext>();
   /** 终态（success/error）展示窗口定时器：约 60s 后清掉该会话条目，陈旧完成态不再浮上来（Bug 2/3） */
   const terminalTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const TERMINAL_KEEP_MS = 60 * 1000;
+  /** 取消某会话待执行的终态清理：会话已回到非终态，那次清理到点后既不清理也不重排，留着只会误导 */
+  const cancelTerminalCleanup = (sessionId: string): void => {
+    const t = terminalTimers.get(sessionId);
+    if (t === undefined) return;
+    clearTimeout(t);
+    terminalTimers.delete(sessionId);
+  };
   /** 排一个终态清理定时器（每会话一个，已排则跳过） */
   const scheduleTerminalCleanup = (sessionId: string): void => {
     if (terminalTimers.has(sessionId)) return;
     const t = setTimeout(() => {
       terminalTimers.delete(sessionId);
-      const entry = workStatusBySession.get(sessionId);
-      if (entry && (entry.state === 'success' || entry.state === 'error')) {
-        workStatusBySession.delete(sessionId);
+      const state = workStatus.stateOf(sessionId);
+      if (state === 'success' || state === 'error') {
+        workStatus.clear(sessionId); // 条目连同它的任务详情文案一起消失，不残留到后续活动
         turnFlags.delete(sessionId);
-        refreshWorkStatus();
       }
     }, TERMINAL_KEEP_MS);
     terminalTimers.set(sessionId, t);
-  };
-  /** 展示优先级：waiting > error > working > thinking > result > success
-   *  （result 高于 success：任何会话的进行中过渡态都不被别处已完成态压过，防中途庆祝；同档按最近更新优先） */
-  const WORK_STATUS_PRIORITY: Record<HostWorkStatusState, number> = {
-    waiting: 60,
-    error: 50,
-    working: 40,
-    thinking: 30,
-    result: 25,
-    success: 20,
-  };
-  /** 重算当前展示状态：所有会话里优先级最高者（同优先级取最近 seq），无活动会话 → 空闲 */
-  const refreshWorkStatus = (): void => {
-    let best: { state: HostWorkStatusState; seq: number } | undefined;
-    for (const entry of workStatusBySession.values()) {
-      if (
-        !best ||
-        WORK_STATUS_PRIORITY[entry.state] > WORK_STATUS_PRIORITY[best.state] ||
-        (WORK_STATUS_PRIORITY[entry.state] === WORK_STATUS_PRIORITY[best.state] && entry.seq > best.seq)
-      ) {
-        best = entry;
-      }
-    }
-    const next = best?.state ?? null;
-    if (next === workStatus.state) return; // 无变化：不更新 ts（轮询侧不触发）
-    workStatus.state = next;
-    workStatus.ts = Date.now();
   };
   // 命令「当前桌宠」（/pet 选择、/chat 使用）：全局单值不分会话；进程内内存，重启回默认第一只
   let activePetId = '';
@@ -826,15 +800,15 @@ export function apply(ctx: any): void {
     }
 
     // 工作状态联动：/dsh-pet-7340/work-status（GET，no-cache）
-    // host 监听 DSH session/event 聚合出"当前活动状态"（workStatusBySession → 优先级最高的会话状态）；
-    // 浏览器 1s 轻量轮询拉取，ts 变化即按 events.workStatus 档位播动画 + 弹气泡（与 broadcast 同语义）。
-    // 空闲（无会话活动）state=null、text=空串；不调用任何模型。
+    // host 监听 DSH session/event 聚合出"当前活动状态"（WorkStatusStore：state 与 task 同取优先级
+    // 最高的会话）；浏览器 1s 轻量轮询拉取，ts 变化即按 events.workStatus 档位播动画 + 弹气泡。
+    // 空闲（无会话活动）state=null、task=null；不调用任何模型。
     if (rest === 'work-status') {
       if (method !== 'GET') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
       return {
         kind: 'json',
         status: 200,
-        obj: workStatus,
+        obj: workStatus.snapshot(),
         headers: { 'cache-control': 'no-cache, no-store' },
       };
     }
@@ -942,7 +916,7 @@ export function apply(ctx: any): void {
     'dsh-pet: /dsh-pet-7340 asset route',
   );
 
-  // 工作状态联动：监听 DSH 会话事件 → 聚合"当前活动状态"（workStatusBySession → 展示快照）。
+  // 工作状态联动：监听 DSH 会话事件 → 聚合"当前活动状态"（WorkStatusStore → 展示快照）。
   // 消费的事件：turn/start、user/message（goal 续跑轮判定）、tool/call（update_goal 收尾判定）、
   // tool/result、approval/asked、turn/end、todo/write（只更新任务详情文案，不切档位）。
   // 纯监听不调用模型；有宠物启用 workStatusEnabled 时才被浏览器侧消费（host 侧恒轻量监听）。
@@ -956,15 +930,15 @@ export function apply(ctx: any): void {
           'unknown',
       );
       if (type === 'todo/write') {
-        // 任务文案：仅当会话正是当前展示会话时更新任务详情（否则不打断当前展示）
-        if (workStatusBySession.has(sessionId)) {
-          const task = currentTaskFromTodo(
-            event as { data?: { todos?: Array<{ status?: string; content?: string }> } },
+        // 任务详情文案：只写**该会话**的条目（state/task 同源，不再有全局字段，也就不可能串会话）。
+        // 会话没有活动条目（已空闲/已清理）→ 不动：它不会被展示，写进去只会成为一条"幽灵文案"。
+        // 清单里再无 in_progress/pending 时 currentTaskFromTodo 返回 null，等于把旧文案清掉、
+        // 气泡回落到档位文案（issue #59 缺陷 3：档位文案不该被一条历史记录永久屏蔽）。
+        if (workStatus.has(sessionId)) {
+          workStatus.setTask(
+            sessionId,
+            currentTaskFromTodo(event as { data?: { todos?: Array<{ status?: string; content?: string }> } }),
           );
-          if (task !== workStatus.task) {
-            workStatus.task = task;
-            workStatus.ts = Date.now();
-          }
         }
         return;
       }
@@ -981,6 +955,10 @@ export function apply(ctx: any): void {
       }
       if (type === 'turn/start') {
         turnFlags.set(sessionId, { goalRound: false, closing: null }); // 新一轮：清 turn 级标志
+        // 新一轮也开始新的任务上下文：清掉上一轮留下的任务详情文案（issue #59），否则它会一直挂着。
+        // 代价：goal 续跑这类多轮任务，每轮开头会回落一瞬档位文案，直到本轮（通常在开头几步内）
+        // 再写一次 todo 清单。
+        workStatus.setTask(sessionId, null);
       }
       if (
         type === 'tool/call' &&
@@ -1003,18 +981,19 @@ export function apply(ctx: any): void {
         // 落到其他活跃会话，防止回合被打断后永久卡在上一档；其他事件的 null 是"不关心"，忽略。
         if (type === 'turn/end') {
           turnFlags.delete(sessionId);
-          if (workStatusBySession.delete(sessionId)) refreshWorkStatus();
+          cancelTerminalCleanup(sessionId); // 条目都要清了，别留一个到点后无事可做的定时器
+          workStatus.clear(sessionId); // 条目连同任务详情文案一起消失（clear 内部会重算展示）
         }
         return;
       }
       const seq = Number((event as { seq?: unknown }).seq ?? 0);
-      const prev = workStatusBySession.get(sessionId);
       // 同会话同状态不重复更新（防刷屏）；不同状态才改写并重算展示
-      if (prev?.state === next && (prev?.seq ?? -1) >= seq) return;
-      workStatusBySession.set(sessionId, { state: next, seq });
-      refreshWorkStatus();
-      // 终态只展示短暂窗口后自动清理：陈旧完成态不再浮上来（Bug 3 的一环，顺带缓解 Bug 2 残留）
+      if (!workStatus.setState(sessionId, next, seq)) return;
+      // 终态只展示短暂窗口后自动清理：陈旧完成态不再浮上来（Bug 3 的一环，顺带缓解 Bug 2 残留）。
+      // 回到非终态则取消那次待执行的清理——否则它到点时会话已非终态，既不清也不重排，
+      // 条目（连同旧任务文案）就永久留下了。
       if (next === 'success' || next === 'error') scheduleTerminalCleanup(sessionId);
+      else cancelTerminalCleanup(sessionId);
     });
     return () => {
       dispose();
