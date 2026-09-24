@@ -47,8 +47,8 @@
  * TODO(类型)：peer 依赖类型包本地暂不可解析，ctx/req/res 暂用 any；
  *             依赖可解析后替换为 DSH 官方类型。
  */
-import { createReadStream, existsSync } from 'node:fs';
-import { readFile, mkdir, rm, stat, writeFile } from 'node:fs/promises';
+import { createReadStream, existsSync, fstatSync } from 'node:fs';
+import { readFile, mkdir, rm, writeFile } from 'node:fs/promises';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { homedir } from 'node:os';
 import { join, normalize, resolve, sep } from 'node:path';
@@ -131,17 +131,38 @@ function resolveExisting(root: string, rel: string): string | undefined {
   return candidate && existsSync(candidate) ? candidate : undefined;
 }
 
-/** 流式返回一个文件（带 Content-Type / 长度 / 缓存头）。 */
-async function sendFile(res: ServerResponse, file: string, contentType: string): Promise<void> {
-  const { size } = await stat(file);
-  res.writeHead(200, {
-    'content-type': contentType,
-    'content-length': size,
-    'cache-control': 'public, max-age=3600',
-  });
+/**
+ * 流式返回一个文件（带 Content-Type / 长度 / 缓存头）。
+ *
+ * Content-Length 必须取自**正在读的那个 fd**（open 事件里 fstat），不能先 stat 再另开流：用户往
+ * $DSH_HOME/dsh-pet/main-animation/webm/ 复制或同名覆盖素材时，stat 与真正开始读之间文件会被截断/
+ * 改写，一旦实际字节数少于声明的长度，这个响应就**永远不结束、也不报错**（浏览器表现为 stalled、
+ * 视频 loadeddata 永不触发且无 error）——正是 issue #62 现场"数据断供"的一种成因。同一个 fd 的
+ * fstat 拿到的大小与随后读出的字节天然一致。
+ */
+function sendFile(res: ServerResponse, file: string, contentType: string): void {
   const stream = createReadStream(file);
+  stream.once('open', (fd) => {
+    if (res.destroyed || res.writableEnded) {
+      stream.destroy(); // 客户端在开流前就放弃了
+      return;
+    }
+    try {
+      res.writeHead(200, {
+        'content-type': contentType,
+        'content-length': fstatSync(fd).size,
+        'cache-control': 'public, max-age=3600',
+      });
+    } catch {
+      // 极端情况下 fstat 拿不到：不发长度头，交给 Node 用 chunked 收尾（长度天然一致，只是没声明）
+      res.writeHead(200, { 'content-type': contentType, 'cache-control': 'public, max-age=3600' });
+    }
+    stream.pipe(res);
+  });
+  // 读失败（文件被删/权限/被占用）：直接断连，让客户端立刻看到失败，而不是无限等待
   stream.on('error', () => res.destroy());
-  stream.pipe(res);
+  // 客户端提前断开（快速切动画时高频发生）→ 停读，别把整个文件读完
+  res.on('close', () => stream.destroy());
 }
 
 // 配置的读取/校验/合并/保存全部收敛在 ./config（readAllConfig / saveUserConfig，host 自包含实现，
@@ -907,7 +928,7 @@ export function apply(ctx: any): void {
             const result = await handlePetRoute(req.url ?? '/', req.method ?? 'GET', body);
             if (result.kind === 'json') sendJson(res, result.status, result.obj, result.headers);
             else if (result.kind === 'text') sendText(res, result.status, result.body);
-            else await sendFile(res, result.file, result.contentType);
+            else sendFile(res, result.file, result.contentType); // 非 async：流在 open 后自己 pipe，错误内部收口
           } catch (e) {
             sendJson(res, 500, { error: e instanceof Error ? e.message : String(e) });
           }
