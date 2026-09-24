@@ -220,6 +220,12 @@ export function makePetUI(rt: {
     // workStatus 最新值同步：handleEnded 的 onended 闭包注册时可能早于状态更新，护栏用 ref 读当前值
     const workStatusRef = useRef(workStatus);
     workStatusRef.current = workStatus;
+    // fetch+blob 素材加载：两个视频槽各自的 blob URL（换新前 revoke 旧 URL，卸载时全部 revoke）
+    const blobUrlRef = useRef<{ a: string | null; b: string | null }>({ a: null, b: null });
+    // 卸载竞态防护：mountedRef 由 effect 维护（兼容 StrictMode 双挂载）；inflightRef 记录在途 fetch，
+    // 卸载时统一 abort——否则卸载后完成的 fetch 会再创建 blob URL 且无人 revoke（泄漏到页面销毁）。
+    const mountedRef = useRef(false);
+    const inflightRef = useRef<AbortController[]>([]);
 
     const switchTo = (next: string, nextOnce: boolean) => {
       if (!next) return;
@@ -253,7 +259,7 @@ export function makePetUI(rt: {
             nextOnce,
         );
       }
-      el.src =
+      const assetUrl =
         '/dsh-pet-7340/thumb/' +
         encodeURIComponent(cfg.assetRoot ?? cfg.id) +
         '/' +
@@ -264,7 +270,49 @@ export function makePetUI(rt: {
       el.autoplay = true;
       el.playsInline = true;
       el.onended = nextOnce ? handleEnded : null;
-      el.load();
+      // 素材加载走 fetch+blob：一次拿全整文件，绕开 video 流式加载在 DSH WebServer 上偶发的
+      // stalled/连接竞争（用户环境实测：慢点 5 次全部 stall、动画永不切换）。10s 超时兜底；
+      // 命中 HTTP 缓存（cache-control 3600）后不再走网络，后续切换从磁盘缓存直接解出。
+      const targetIsB = frontRef.current === 0;
+      const ac = new AbortController();
+      inflightRef.current.push(ac);
+      const fetchTimer = window.setTimeout(() => ac.abort(), 10000);
+      fetch(assetUrl, { cache: 'force-cache', signal: ac.signal })
+        .then((r) => {
+          if (!r.ok) throw new Error('asset HTTP ' + r.status);
+          return r.blob();
+        })
+        .then((blob) => {
+          window.clearTimeout(fetchTimer);
+          const ix = inflightRef.current.indexOf(ac);
+          if (ix !== -1) inflightRef.current.splice(ix, 1);
+          if (!mountedRef.current) return; // 已卸载：不再创建 blob URL / 不操作已 detach 的 video
+          if (pendingRef.current?.gen !== gen) return; // 已被更新的切换覆盖：丢弃本次加载
+          const slot = targetIsB ? 'b' : 'a';
+          const oldUrl = blobUrlRef.current[slot];
+          if (oldUrl) URL.revokeObjectURL(oldUrl);
+          const obj = URL.createObjectURL(blob);
+          blobUrlRef.current[slot] = obj;
+          el.src = obj;
+          el.load();
+        })
+        .catch((err) => {
+          window.clearTimeout(fetchTimer);
+          const ix = inflightRef.current.indexOf(ac);
+          if (ix !== -1) inflightRef.current.splice(ix, 1);
+          if (!mountedRef.current) return; // 卸载后的 abort：静默
+          if (pendingRef.current?.gen !== gen) return; // 已被更新的切换覆盖
+          pendingRef.current = null; // 释放挂起的 pending：后续点击不再被困在防重/覆盖循环里
+          console.warn(
+            '[dsh-pet] 素材加载失败 pet=' +
+              cfg.id +
+              ' anim=' +
+              next +
+              '：' +
+              (err instanceof Error ? err.message : String(err)) +
+              '（已释放本次切换）',
+          );
+        });
       const onReady = () => {
         el.removeEventListener('loadeddata', onReady);
         if (pendingRef.current?.gen !== gen) return;
@@ -289,7 +337,6 @@ export function makePetUI(rt: {
         if (pendingMoveRef.current) startMoveDrive(el);
       };
       el.addEventListener('loadeddata', onReady);
-      if (el.readyState >= 2) onReady();
     };
 
     // ---- 状态驱动播放 ----
@@ -297,15 +344,22 @@ export function makePetUI(rt: {
       switchTo(anim, once);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [anim, once, seq]);
-    useEffect(
-      () => () => {
+    useEffect(() => {
+      mountedRef.current = true;
+      const bu = blobUrlRef.current;
+      const inflight = inflightRef.current;
+      return () => {
+        mountedRef.current = false;
+        for (const c of inflight) c.abort();
+        inflight.length = 0;
         stopMove();
         stopDragFollow();
         stopThrow();
         stopSquash();
-      },
-      [],
-    );
+        if (bu.a) URL.revokeObjectURL(bu.a);
+        if (bu.b) URL.revokeObjectURL(bu.b);
+      };
+    }, []);
     useEffect(
       () => () => {
         if (bubbleTimerRef.current !== null) window.clearTimeout(bubbleTimerRef.current);
