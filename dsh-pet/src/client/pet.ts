@@ -271,13 +271,15 @@ export function makePetUI(rt: {
       el.playsInline = true;
       el.onended = nextOnce ? handleEnded : null;
       // 素材加载走 fetch+blob：一次拿全整文件，绕开 video 流式加载在 DSH WebServer 上偶发的
-      // stalled/连接竞争（用户环境实测：慢点 5 次全部 stall、动画永不切换）。10s 超时兜底；
-      // 命中 HTTP 缓存（cache-control 3600）后不再走网络，后续切换从磁盘缓存直接解出。
+      // stalled/连接竞争（用户环境实测：慢点 5 次全部 stall、动画永不切换）。10s 超时兜底。
+      // cache 用默认策略：服务端 cache-control 是 max-age=3600（src/host/index.ts:140），有效期内
+      // 本来就不走网络；**不能用 force-cache**——它会连过期条目也照用，用户把
+      // $DSH_HOME/dsh-pet/main-animation/webm/ 里的自定义动画换成同名文件后会一直看到旧动画。
       const targetIsB = frontRef.current === 0;
       const ac = new AbortController();
       inflightRef.current.push(ac);
       const fetchTimer = window.setTimeout(() => ac.abort(), 10000);
-      fetch(assetUrl, { cache: 'force-cache', signal: ac.signal })
+      fetch(assetUrl, { cache: 'default', signal: ac.signal })
         .then((r) => {
           if (!r.ok) throw new Error('asset HTTP ' + r.status);
           return r.blob();
@@ -455,7 +457,7 @@ export function makePetUI(rt: {
       if (workStatusTick === 0 || workStatusTick === prevWorkTickRef.current) return;
       prevWorkTickRef.current = workStatusTick;
       if (!workStatus || workStatus.state === null) {
-        // 调试：状态回空闲（仅打印切换日志；动画不处理，由常规动画链回待机）
+        // 调试：状态回空闲（仅打印切换日志；动画改成"播完即停"，见下）
         console.log(
           '[dsh-pet] ' +
             new Date().toTimeString().slice(0, 8) +
@@ -463,10 +465,23 @@ export function makePetUI(rt: {
             cfg.id +
             ' ' +
             (prevWorkStateRef.current ?? 'null') +
-            '->null    无动画（回待机，收起气泡）',
+            '->null    播完即停（回待机，收起气泡）',
         );
         prevWorkStateRef.current = null;
-        // 空闲：收起常驻气泡（动画不处理，由常规动画链回待机）
+        // 回空闲：把正在**循环播**的进行中档位动画改成"播完即停"。
+        // 进行中档位走 setOnce(false)（el.loop=true、el.onended=null），ended 永不触发；而这里不切
+        // 动画（原设计"由常规动画链回待机"），链因此拿不到推进信号 —— 宠物会一直卡在那段工作动画上，
+        // 不交互就回不去（issue #61 报告的症状）。这里只把当前段改成播完即停：它结束后自然走
+        // handleEnded → resumeWorkStatusAnim() 返回 false → 回 idle；工作期间的原生 loop 不受影响。
+        // 与桌面端 runtime/electron-helper/events.js 的空闲分支同一处修复，两端语义保持一致。
+        if (poolIncludes(petAnims.events?.workStatus ?? [], animRef.current)) {
+          const front = frontRef.current === 0 ? videoARef.current : videoBRef.current;
+          if (front) {
+            front.loop = false;
+            front.onended = handleEnded;
+          }
+        }
+        // 空闲：收起常驻气泡
         if (workBubbleTimerRef.current !== null) window.clearTimeout(workBubbleTimerRef.current);
         workBubbleTimerRef.current = null;
         setWorkText(null);

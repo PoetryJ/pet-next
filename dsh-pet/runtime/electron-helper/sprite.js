@@ -352,9 +352,24 @@ class PetSprite {
     el.autoplay = true;
     el.playsInline = true;
     el.onended = nextOnce ? () => this.handleEnded() : null;
+    // 加载兜底（与浏览器 web 端 fetch+blob 的 10s 超时同义）：素材加载失败或卡住时必须释放
+    // pending，否则它永久挂起——之后相同目标会被防重分支吞掉、不同目标靠 gen 覆盖，
+    // 表现就是"点了没反应"（#62 报告的就是 web 端同一类问题，桌面端此前完全没有兜底）。
+    const loadGuard = (why) => {
+      if (!this.pending || this.pending.gen !== gen) return;
+      this.pending = null;
+      console.warn('[dsh-pet] 素材加载失败 pet=' + this.pet.id + ' anim=' + next + '：' + why + '（已释放本次切换）');
+    };
+    const loadTimer = window.setTimeout(() => loadGuard('10s 超时'), 10000);
+    el.onerror = () => {
+      window.clearTimeout(loadTimer);
+      loadGuard('video error');
+    };
     el.load();
     const onReady = () => {
       el.removeEventListener('loadeddata', onReady);
+      window.clearTimeout(loadTimer);
+      el.onerror = null;
       if (this.pending && this.pending.gen !== gen) return;
       const old = this.front === 0 ? this.videoA : this.videoB;
       el.classList.add('is-front');
