@@ -37,6 +37,7 @@
 | [tangcaolizhi/DeepSeek](https://github.com/tangcaolizhi/DeepSeek) | 基于 dsh-dafeiyu 的帧动画版本，含会话状态机与余额气泡 |
 | [C0p1er/dsh-whale-pet](https://github.com/C0p1er/dsh-whale-pet) | 把 dsh-dafeiyu 的桌宠移植到 DSH Web 右下角 |
 | [hairyf/dsh-pet-component](https://github.com/hairyf/dsh-pet-component) | React 组件，在同一处消费 dsh-pet 与 Codex Pet 两套桌宠协议 |
+| [wobenshiwomu/dsh-johnny](https://github.com/wobenshiwomu/dsh-johnny) | 付费问答整活：/johnny 后消息被「扣下」（零 token 装傻），三通道敲钱、拖给肥鱼换真话；走 /dsh-pet-7340 的 broadcast/anim 接口联动 |
 
 ## 其它平台与配套工具
 
