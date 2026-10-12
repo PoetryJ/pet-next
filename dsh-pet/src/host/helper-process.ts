@@ -17,7 +17,6 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 import { downloadArtifact } from '@electron/get';
-import extract from '@electron-internal/extract-zip';
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -226,6 +225,14 @@ export async function ensureElectronDownload(options: EnsureElectronOptions = {}
       // 官方 @electron-internal/extract-zip 解压（electron 43 官方安装同款）：
       // 纯 Node + native binding，跨平台一致，正确处理 symlink 与文件权限，
       // 不需要系统 unzip/tar/powershell，也没有我们手写的平台适配链。
+      //
+      // 为什么用**动态 import**而不是顶层静态 import：该包是 N-API 原生模块，预编译产物只覆盖
+      // 官方列出的 11 个 target，**没有 Android**（Termux 是 aarch64-linux-android / Bionic，
+      // 与列表里的 linux-gnu / linux-musl 都不是一回事）。静态 import 会在模块求值期就执行
+      // binding.js 顶层的 `if (!nativeBinding) throw`，于是**只想用 Web 模式**的用户也会因为
+      // 「插件入口加载失败」而整个 entry 激活失败（同类故障见 issue #80）。改成按需加载后，
+      // 这条路径只在真要解压时才走，失败也落进本函数的 catch → 降级到浏览器宠物。
+      const { default: extract } = await import('@electron-internal/extract-zip');
       await extract(zipPath, { dir: targetDir });
       if (!existsSync(exe)) {
         throw new Error(`Electron zip extracted, but ${ELECTRON_REL} not found`);
