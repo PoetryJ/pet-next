@@ -99,7 +99,9 @@ const css = [
   '.dsh-pet-stage{position:relative;width:var(--dsh-pet-size,462px);height:calc(var(--dsh-pet-size,462px)*9/16);pointer-events:none}',
   '.dsh-pet-video{position:absolute;inset:0;width:100%;height:100%;object-fit:contain;pointer-events:none;opacity:0;transition:opacity .18s ease;transform-origin:center}',
   '.dsh-pet-video.is-front{opacity:1}',
-  '.dsh-pet-hit{position:absolute;pointer-events:auto;cursor:url("/dsh-pet-7340/pic/cursor-grab.png") 16 16, grab;z-index:1}',
+  // 触屏拖拽必需：缺 touch-action:none 时浏览器把手势判成页面滚动并发 pointercancel，
+  // 宠物就不跟手指走；两条 -webkit-* 抑制长按选中与 iOS 长按呼出系统菜单
+  '.dsh-pet-hit{position:absolute;pointer-events:auto;cursor:url("/dsh-pet-7340/pic/cursor-grab.png") 16 16, grab;z-index:1;touch-action:none;-webkit-user-select:none;-webkit-touch-callout:none}',
   '.dsh-pet-hit.dragging{cursor:url("/dsh-pet-7340/pic/cursor-grabbing.png") 16 16, grabbing}',
   '@media (prefers-reduced-motion: reduce){.dsh-pet-video{transition:none}}',
   // 统一右键菜单样式（与桌面注入同一份 MENU_CSS）
@@ -224,7 +226,16 @@ export function makePetUI(rt: {
     const frontRef = useRef(0);
     const pendingRef = useRef<null | { anim: string; once: boolean; gen: number }>(null);
     const genRef = useRef(0);
-    const dragRef = useRef({ active: false, dragging: false, sx: 0, sy: 0, offX: 0, offY: 0 });
+    const dragRef = useRef({
+      active: false,
+      dragging: false,
+      sx: 0,
+      sy: 0,
+      offX: 0,
+      offY: 0,
+      // 触屏长按定时器（只有触摸/笔走这条路径，见 handlePointerDown）；null = 当前没有待触发的长按
+      lpTimer: null as ReturnType<typeof setTimeout> | null,
+    });
     const justDraggedRef = useRef(false);
     // 拖拽抛掷物理状态：轨迹样本 / 包围盒左上角实时 px / 弹簧目标与速度 / 弹簧跟随 rAF / 抛掷 rAF
     const dragTrailRef = useRef<DragSample[]>([]);
@@ -1196,7 +1207,36 @@ export function makePetUI(rt: {
         offY = e.clientY - (rr.top + rr.height / 2);
         boxPxRef.current = { x: rr.left, y: rr.top };
       }
-      dragRef.current = { active: true, dragging: false, sx: e.clientX, sy: e.clientY, offX, offY };
+      dragRef.current = { active: true, dragging: false, sx: e.clientX, sy: e.clientY, offX, offY, lpTimer: null };
+      // 触屏长按 500ms 打开右键菜单：复用同一套按下判定。手指移动超过 8px 即取消；
+      // 鼠标与笔不走这条分支（它们本来就有右键，无需长按替代）。
+      if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') {
+        const lpEl = e.currentTarget;
+        const lpId = e.pointerId;
+        const lpX = e.clientX;
+        const lpY = e.clientY;
+        dragRef.current.lpTimer = setTimeout(() => {
+          dragRef.current.lpTimer = null;
+          const dl = dragRef.current;
+          if (!dl.active || dl.dragging) return;
+          // 结束本次按压：松手时既不抛掷也不播点击动画（pressScoreFiredRef 标记为已处理）
+          dl.active = false;
+          pressScoreFiredRef.current = true;
+          if (lpEl.hasPointerCapture(lpId)) lpEl.releasePointerCapture(lpId);
+          console.log('[dsh-pet] ' + new Date().toTimeString().slice(0, 8) + ' pet=' + cfg.id + ' -> [TOUCH-MENU]');
+          // 与鼠标右键同一个入口：派发 contextmenu 交给 handleContextMenu
+          lpEl.dispatchEvent(
+            new MouseEvent('contextmenu', {
+              bubbles: true,
+              cancelable: true,
+              view: window,
+              clientX: lpX,
+              clientY: lpY,
+              button: 2,
+            }),
+          );
+        }, 500);
+      }
     };
     const handlePointerMove = (e: ReactNS.PointerEvent<HTMLDivElement>) => {
       // 提示跟随光标：必须在拖拽早退之前——拖拽期间提示本来就收起了，但非拖拽的每次移动都要跟上
@@ -1205,6 +1245,11 @@ export function makePetUI(rt: {
       if (!d.active) return;
       const dx = e.clientX - d.sx;
       const dy = e.clientY - d.sy;
+      // 长按窗口内手指移动超过 8px 即取消（拖拽阈值 DRAG_THRESHOLD 不动）
+      if (d.lpTimer && Math.hypot(dx, dy) > 8) {
+        clearTimeout(d.lpTimer);
+        d.lpTimer = null;
+      }
       if (!d.dragging) {
         if (Math.hypot(dx, dy) < DRAG_THRESHOLD) return;
         d.dragging = true;
@@ -1228,6 +1273,11 @@ export function makePetUI(rt: {
     };
     const handlePointerUp = (e: ReactNS.PointerEvent<HTMLDivElement>) => {
       const d = dragRef.current;
+      // pointercancel 也走这个处理器（见 JSX onPointerCancel），所以长按定时器在这里一并清掉
+      if (d.lpTimer) {
+        clearTimeout(d.lpTimer);
+        d.lpTimer = null;
+      }
       const wasDragging = d.dragging;
       d.active = false;
       d.dragging = false;
