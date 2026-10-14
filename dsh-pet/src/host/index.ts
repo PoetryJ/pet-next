@@ -80,7 +80,9 @@ import {
   flattenPetList,
   ID_FORBIDDEN,
   migrateUserConfig,
+  PET_DISPLAY_SET,
   readAllConfig,
+  readPetConfigEntry,
   readUserConfig,
   saveUserConfig,
   sliceMemoryRounds,
@@ -866,6 +868,76 @@ export function apply(ctx: any): void {
         return { kind: 'json', status: 200, obj: readAllConfig(configPaths) };
       }
       return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    }
+
+    // 单只宠物的显示位置（桌面端右键「关闭桌面显示」→ POST /pet-display）。
+    // 高频操作，故只收 id + display 两个参数，不要求调用方回传整段 pets（那是 PUT /config 的形态：
+    // 客户端做读-改-写既容易误伤同层其它宠物，也拿不准该写哪一层）。
+    // 层归属由服务端反查：id 在合并后被 mergePet 保证**全局唯一**（重复实例会被跳过、不进聚合），
+    // 所以 findPetInstance 的结果没有歧义；反过来让客户端传 entry 只会多出"参数与真实归属不符"的
+    // 新失败面（还平白把 entry 暴露成拼文件路径的输入）。
+    // 写入语义与 PUT /config 完全一致：saveUserConfig 白名单重建 + existing 透传——用户手改的
+    // whisperPrompt / memes 等非白名单字段不许被抹掉（见 ./config 里那段老 bug 的注释）。
+    if (rest === 'pet-display') {
+      if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      let payload: { id?: unknown; display?: unknown };
+      try {
+        payload = JSON.parse(body ?? '') as { id?: unknown; display?: unknown };
+      } catch {
+        return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      }
+      const petId = typeof payload.id === 'string' ? payload.id.trim() : '';
+      const nextDisplay = String(payload.display ?? '');
+      if (!petId) return { kind: 'json', status: 400, obj: { error: 'missing pet id' } };
+      if (!PET_DISPLAY_SET.has(nextDisplay)) {
+        return { kind: 'json', status: 400, obj: { error: `invalid display: ${nextDisplay}` } };
+      }
+      let merged: Record<string, Record<string, unknown>>;
+      try {
+        merged = readAllConfig(configPaths);
+      } catch (e) {
+        return { kind: 'json', status: 500, obj: { error: e instanceof Error ? e.message : String(e) } };
+      }
+      // 命中不到有两种可能：id 根本不存在，或该实例在合并时**因 id 与其它条目重复被跳过**（于是不在
+      // 聚合里）。两种都只能回 404——绝不能凭 id 去猜它"应该"属于哪个文件。
+      const hit = findPetInstance(merged, petId);
+      if (!hit) return { kind: 'json', status: 404, obj: { error: `pet not found: ${petId}` } };
+      // 目标层：main → 用户主配置；其余 → 文件宠物自己的配置（.json 或 .jsonc，定位统一走 ./config）
+      let layerPath: string;
+      let layerDir: string;
+      let existing: Record<string, unknown> | undefined;
+      if (hit.entry === 'main') {
+        layerPath = userConfigPath;
+        layerDir = userRoot;
+        existing = readUserConfig(configPaths);
+      } else {
+        const file = readPetConfigEntry(configPaths, hit.entry);
+        if (!file) {
+          return { kind: 'json', status: 404, obj: { error: `pet config file not found: ${hit.entry}` } };
+        }
+        layerPath = file.path;
+        layerDir = petConfigDir;
+        existing = file.raw;
+      }
+      // 整段替换语义：saveUserConfig 重建的是整个 pets 数组，必须带上**该层全部**宠物，只把目标
+      // 那只的 display 换掉（漏掉别的 = 把它们从配置里删掉）。
+      const layerPets = Array.isArray(hit.conf.pets) ? (hit.conf.pets as Record<string, unknown>[]) : [];
+      const pets = layerPets.map((p) => (String(p.id) === petId ? { ...p, display: nextDisplay } : p));
+      const clean = saveUserConfig({ pets }, existing);
+      if (!clean) return { kind: 'json', status: 400, obj: { error: 'invalid pet config' } };
+      try {
+        await mkdir(layerDir, { recursive: true });
+        await writeFile(layerPath, JSON.stringify(clean, null, 2), 'utf8');
+      } catch (e) {
+        return { kind: 'json', status: 500, obj: { error: e instanceof Error ? e.message : String(e) } };
+      }
+      // 不 await：发起者很可能就是**即将被这次重载换掉的**桌面 Helper（与 /reload 同一处境）。
+      // 写盘已经落定，重启结果不需要回给调用方。
+      void syncDesktop();
+      // 响应体 = 改动后的**成品聚合**（与 PUT / POST /config 同形）：调用方（浏览器端右键菜单）
+      // 直接把它交给 petBridge.reload，不必再发一次 GET /config —— 与设置页保存走的是同一条路，
+      // 也就不会拿到可能陈旧的配置（现场表现：不返回聚合时浏览器端要刷新才生效）。
+      return { kind: 'json', status: 200, obj: readAllConfig(configPaths) };
     }
 
     // 桌面端「重载配置」（右键菜单 → POST /reload）：重启桌面 Helper，全部桌面宠物窗口按最新配置重建。

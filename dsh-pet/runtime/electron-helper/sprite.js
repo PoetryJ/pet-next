@@ -1183,6 +1183,11 @@ class PetSprite {
       { label: '碎碎念', action: 'whisper' },
       { label: '对话', action: 'chat' },
       { label: '回到初始位置', action: 'home' },
+      // 显示位置（仅网页/仅桌面/两者/都不）：改这只宠物的 display 配置 + 宿主重载生效。
+      // 与浏览器端注入的是**同一份**子菜单（shared 的 displayMenuBranch），两端文案/取值不会漂移。
+      // 为什么不就地关窗/开窗：桌面宠物共用一个 Electron 进程，窗口是进程启动时按 DSH_PET_PETS
+      // 一次性建的——就地增删窗口既改不了磁盘配置（下次启动又回来）也改不了窗口数量。
+      S.displayMenuBranch(),
       // 改配置文件后免去回设置页点保存：请宿主重启桌面 Helper（全部桌面宠物窗口按最新配置重建）。
       // 放在最后：它是"重新加载"这类维护动作，与上面几个宠物互动项语义不同。
       { label: '重载配置', action: 'reload' },
@@ -1233,6 +1238,10 @@ class PetSprite {
     }
     if (leaf.action === 'home') {
       this.goHome(); // 停漫游/移动，清会话位置，回配置角落
+      return;
+    }
+    if (leaf.action === 'set-display') {
+      this.setPetDisplay(leaf.display); // 改这只宠物的显示位置：写 display 配置，由宿主重载生效
       return;
     }
     if (leaf.action === 'reload') {
@@ -1350,6 +1359,24 @@ class PetSprite {
   reloadDesktop() {
     fetch(BASE + '/reload', { method: 'POST' }).catch((e) => {
       console.warn('[dsh-pet] 重载配置请求失败（宿主不可达？）', e);
+    });
+  }
+
+  // 「显示位置」菜单：改**这一只**宠物的 display（仅网页/仅桌面/两者/都不）—— 写它自己的配置，
+  // 再由宿主重载生效。取值直接来自菜单项（shared 的 displayMenuBranch），渲染端不做任何推导：
+  // 当前状态以配置为准，推导只会多一处可能与真相不符的猜测（旧实现的 both→web 就是这种猜测）。
+  // 为什么不在渲染端就地关窗/开窗：桌面宠物共用一个 Electron 进程，窗口是进程启动时按 DSH_PET_PETS
+  // 一次性建的——就地增删窗口既改不了磁盘配置（宿主下次重载它又回来），也改不了窗口数量。
+  // 与 reloadDesktop 同一处境：选"仅网页/都不"时本进程就会在重载中被换掉，响应可能永远不回
+  // （宿主杀进程时回调地址已失效），故不 await、不重试，失败只记日志。
+  setPetDisplay(display) {
+    if (!display) return;
+    fetch(BASE + '/pet-display', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ id: this.pet.id, display }),
+    }).catch((e) => {
+      console.warn('[dsh-pet] 显示位置请求失败（宿主不可达？）', e);
     });
   }
 

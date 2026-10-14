@@ -22,7 +22,7 @@
 //   - 点击项 / 点击菜单外 / Esc 关闭。
 //   不再使用"逐项 mouseleave 延迟关闭定时器"——旧实现里鼠标从分类项移向三级面板时，
 //   会同时给父项（动作）排下无人取消的关闭定时器，导致二级+三级一起消失。
-import type { Animations, Category } from './types';
+import type { Animations, Category, PetDisplay } from './types';
 
 /** 叶子：可点击的菜单项 */
 export interface MenuLeaf {
@@ -31,9 +31,13 @@ export interface MenuLeaf {
   anim?: string;
   /** 自定义动作：open-site=打开网站 / show-balance=查看余额；whisper=立即碎碎念一句；
    * chat=打开对话弹窗；home=回到初始位置；reload=重载配置（桌面端专属：重启桌面 Helper，
-   * 全部桌面宠物窗口按最新配置重建——浏览器端刷新页面即可，不注入此项）。
+   * 全部桌面宠物窗口按最新配置重建——浏览器端刷新页面即可，不注入此项）；
+   * set-display=改这只宠物的显示位置（目标值见 display 字段；**两端都注入**——桌面端拿它把
+   * 宠物送走、浏览器端拿它把宠物送到桌面，菜单项统一由 displayMenuBranch() 提供）。
    * 手动触发均不受 whisperEnabled 影响（该字段只关自动周期轮询） */
-  action?: 'open-site' | 'show-balance' | 'whisper' | 'chat' | 'home' | 'reload';
+  action?: 'open-site' | 'show-balance' | 'whisper' | 'chat' | 'home' | 'reload' | 'set-display';
+  /** set-display 的目标显示位置（与设置页「显示位置」下拉框同一套取值） */
+  display?: PetDisplay;
 }
 
 /** 分支：带子菜单的项 */
@@ -43,6 +47,26 @@ export interface MenuBranch {
 }
 
 export type MenuNode = MenuLeaf | MenuBranch;
+
+/**
+ * 「显示位置」子菜单 —— 桌面端与浏览器端注入**同一份**（文案与设置页「显示位置」下拉框一致）。
+ *
+ * 为什么必须放 shared：两端各写一份必然漂移（改了一端的文案或取值，另一端没跟上），而这一项在
+ * 两端语义完全对称——桌面端用它把宠物"送走"（仅网页），浏览器端用它把宠物"送到桌面"（仅桌面）。
+ *
+ * 只有「都不」是单向门（两端都不显示，恢复入口是设置页的下拉框）；其余三个值都能从某一端改回来
+ * （仅网页→浏览器里还在，仅桌面→桌面上还在，两者→两端都在）。设置页那条路在本菜单出现之前就是
+ * 唯一入口，本菜单只是多加了一条更近的路，没有削弱任何既有能力。
+ */
+export const displayMenuBranch = (): MenuBranch => ({
+  label: '显示位置',
+  children: [
+    { label: '仅网页', action: 'set-display', display: 'web' },
+    { label: '仅桌面', action: 'set-display', display: 'desktop' },
+    { label: '两者', action: 'set-display', display: 'both' },
+    { label: '都不', action: 'set-display', display: 'none' },
+  ],
+});
 
 /** 事件名 → 分类标签（无映射时用事件名本身） */
 const EVENT_LABELS: Record<string, string> = {

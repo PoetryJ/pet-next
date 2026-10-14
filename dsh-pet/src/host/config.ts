@@ -41,9 +41,10 @@ import { dirname, join } from 'node:path';
 const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const;
 const CORNER_SET: ReadonlySet<string> = new Set(CORNERS);
 
-/** display 白名单 */
+/** display 白名单（导出：宿主路由 POST /pet-display 写单只宠物的显示位置时复用同一份枚举，
+ *  读写两侧必须同一份规则，不在路由里另写一个 Set） */
 const PET_DISPLAYS = ['web', 'desktop', 'both', 'none'] as const;
-const PET_DISPLAY_SET: ReadonlySet<string> = new Set(PET_DISPLAYS);
+export const PET_DISPLAY_SET: ReadonlySet<string> = new Set(PET_DISPLAYS);
 
 /** id 禁用的字符（Windows 文件名保留符 + 控制字符，防配置值逃逸文件路径）。
  *  同时被 thumb 路由的 petId 校验复用：那里同样是"标识符不得当路径片段"。 */
@@ -201,6 +202,25 @@ function scanPetFiles(petDir: string): PetFileEntry[] {
     .filter((name) => /^.+?-config\.(json|jsonc)$/.test(name))
     .sort()
     .map((name) => ({ prefix: name.replace(/-config\.(json|jsonc)$/, ''), path: join(petDir, name) }));
+}
+
+/**
+ * 按条目 key（= 文件名前缀 = 素材根）定位**文件宠物**的实际文件与磁盘原对象。
+ *
+ * 用途：写路径（POST /pet-display）改某只文件宠物的 display 时，既要写回**它自己的**配置文件，
+ * 也要拿该文件的 existing 去做「透传保留」——否则文件里用户手改的 whisperPrompt / animations /
+ * memes 等非白名单字段会被 saveUserConfig 的白名单重建整份抹掉（与 main 层 readUserConfig
+ * 同一套语义，见其注释里的老 bug 说明）。
+ *
+ * 文件名可能是 `<前缀>-config.json` 或 `.jsonc`（与 scanPetFiles 同一套规则，不在这里重复写死
+ * 扩展名——写错扩展名就会新建一个空配置，用户那只宠物反而"没被改到"）。前缀不存在 → undefined。
+ */
+export function readPetConfigEntry(
+  paths: ConfigPaths,
+  entry: string,
+): { path: string; raw: Record<string, unknown> | undefined } | undefined {
+  const hit = scanPetFiles(paths.petDir).find((f) => f.prefix === entry);
+  return hit ? { path: hit.path, raw: readJsonc(hit.path) } : undefined;
 }
 
 /** animations 段完整性校验（与旧 assertAnimationsHost 同一套规则；不 throw，非法返回 false） */

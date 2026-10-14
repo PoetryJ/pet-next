@@ -34,6 +34,7 @@ import { CANVAS_H, FEET_Y, HIT_BOX, DRAG_THRESHOLD, PET_REF_WIDTH, ANIMATION_EXT
 // 统一右键菜单：与桌面共用同一份组件（树 + 渲染 + 样式，src/shared/menu.ts）
 import {
   buildMenuTree,
+  displayMenuBranch,
   mountContextMenu,
   isNoMirrorAnimation,
   MENU_CSS,
@@ -1404,6 +1405,27 @@ export function makePetUI(rt: {
         });
         return;
       }
+      if (leaf.action === 'set-display') {
+        // 显示位置：POST 到宿主写配置，成功后再用**权威成品**重拉配置。
+        // 改成不含 web 的值（仅桌面/都不）时 visiblePets 会把它过滤掉——宠物即从页面消失。
+        const display = leaf.display;
+        if (!display) return;
+        console.info('[dsh-pet] 菜单切换显示位置 pet=' + cfg.id + ' display=' + display);
+        void fetch('/dsh-pet-7340/pet-display', {
+          method: 'POST',
+          headers: { 'content-type': 'application/json' },
+          body: JSON.stringify({ id: cfg.id, display }),
+        })
+          .then(async (r) => {
+            if (!r.ok) throw new Error('pet-display HTTP ' + r.status);
+            // 响应体就是改动后的成品聚合（与设置页保存同路），直接交给 reload。
+            // **必须传它**：不传参时 reload 会再拉一次 GET /config，那次请求可能拿回陈旧配置，
+            // 现场表现就是"浏览器端要刷新才生效"。
+            petBridge.reload((await r.json()) as Record<string, Record<string, unknown>>);
+          })
+          .catch((e: unknown) => console.warn('[dsh-pet] 显示位置切换失败', e));
+        return;
+      }
       if (leaf.action === 'home') {
         // 回到初始位置：停漫游/移动/抛掷，清掉拖拽/漫游留下的会话位置，回配置角落
         stopThrow();
@@ -1437,6 +1459,9 @@ export function makePetUI(rt: {
         { label: '碎碎念', action: 'whisper' },
         { label: '对话', action: 'chat' },
         { label: '回到初始位置', action: 'home' },
+        // 显示位置（仅网页/仅桌面/两者/都不）：与桌面端注入**同一份**子菜单。
+        // 改成不含 web 的值（仅桌面/都不）后，本宠物会随即从 visiblePets 里消失——字面意义上的"自己走掉"。
+        displayMenuBranch(),
         ...buildMenuTree(petAnims),
       ];
       if (!tree.length) return;
