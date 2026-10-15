@@ -76,6 +76,7 @@ import { limitPool, pickMeme, readMemePool } from './memes';
 import { decideBroadcast, normalizeBroadcastText } from './broadcast';
 import { decideAnim } from './anim';
 import {
+  configVersion,
   findPetInstance,
   flattenPetList,
   ID_FORBIDDEN,
@@ -808,7 +809,14 @@ export function apply(ctx: any): void {
         // 唯一配置入口：readAllConfig 返回绝对正确的完成品聚合（{ main:{...}, test1:{...} }），
         // 浏览器/桌面/设置页直接消费，无需任何校验/兜底
         try {
-          return { kind: 'json', status: 200, obj: readAllConfig(configPaths) };
+          // 动态配置必须杀缓存（与 /state 同口径）：消费端会「发现配置版本变化 → 重拉 /config」，
+          // 这一次 GET 若命中缓存就会拿回旧配置，那套机制直接失效。
+          return {
+            kind: 'json',
+            status: 200,
+            obj: readAllConfig(configPaths),
+            headers: { 'cache-control': 'no-cache, no-store' },
+          };
         } catch (e) {
           return { kind: 'json', status: 500, obj: { error: e instanceof Error ? e.message : String(e) } };
         }
@@ -1027,7 +1035,9 @@ export function apply(ctx: any): void {
       return {
         kind: 'json',
         status: 200,
-        obj: state.read(),
+        // 顺带下发配置版本：浏览器端靠它发现「配置被别处改过」（桌面端右键改 display / 另一个标签页
+        // 保存 / 用户手改配置文件）后重拉 /config。没有它，桌面端的改动要刷新页面才可见。
+        obj: { ...state.read(), configVersion: configVersion(configPaths) },
         headers: { 'cache-control': 'no-cache, no-store' },
       };
     }

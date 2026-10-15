@@ -2,7 +2,7 @@ openapi: 3.1.0
 
 info:
   title: dsh-pet HTTP API
-  version: 0.3.6
+  version: 0.3.7
   summary: DSH 桌宠插件的宿主 HTTP 接口
   description: |
     dsh-pet 的宿主（host）半侧通过 DSH 的 `webServer` 服务注册**一条前缀路由** `/dsh-pet-7340`，
@@ -92,6 +92,7 @@ paths:
 
         ```jsonc
         {
+          "configVersion": "1755000000000",
           "sections": {
             "balance":    { "counter": 1755000000000, "data": { /* BalanceState */ } },
             "workStatus": { "counter": 1755000000001, "data": { /* WorkStatusSnapshot */ } },
@@ -106,6 +107,10 @@ paths:
         **约定与注意事项**：
 
         - `sections` 是**全局**段，所有端共享一份；`pets.<id>` 是**每只宠物**各自一份。
+        - **`configVersion` 不是叶子**（没有 `counter`/`data`，不参与 counter 比对）：它是配置文件的
+          版本指纹，与上一拍不同就说明配置被改过——桌面端右键改了显示位置、另一个页面保存了配置、
+          或用户手工编辑了 `main-config.jsonc` / `pet/*.json`。消费端此时应重拉 `GET /config`。
+          老版本宿主不带该字段（`undefined`），按"无从判断"处理即可，不要误触发重拉。
         - 叶子 `data` 为 `null` 表示"从未写过"（此时 `counter` 为 `0`）；消费端应跳过它。
         - **`counter` 只在内容被写入时更新**，不是每次请求都变。所以"数据没变"和"接口挂了"
           要区分开：后者表现为 HTTP 非 2xx 或连接失败。
@@ -612,6 +617,81 @@ paths:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
 
+  /dsh-pet-7340/pet-display:
+    post:
+      tags: [Config]
+      operationId: setPetDisplay
+      summary: 改单只宠物的显示位置
+      description: |
+        按宠物 id 改它的 `display`，并返回改动后的成品聚合（与 `GET /config` 同一份）。
+
+        这是 `PUT /config` 的**单只快捷形式**：调用方不必回传整段 `pets[]`（那既容易误伤同层
+        其它宠物，也要自己判断该写哪一层）。桌面端与浏览器端的右键菜单「显示位置」都走它。
+
+        **层归属由宿主反查，调用方不要传**：`id` 在合并后是**全局唯一**的（`mergePet` 会跳过
+        重复实例），宿主用 `findPetInstance` 定位后按条目归属决定写哪个文件——`main` 条目写
+        `$DSH_HOME/dsh-pet/main-config.jsonc`，文件宠物写 `pet/<前缀>-config.json`（`.jsonc` 同样支持）。
+
+        写入语义与 `PUT /config` 一致：白名单重建 + 磁盘原值透传（不抹掉手写的精调字段）。
+        写盘后同样**异步**重启桌面 Helper、不阻塞响应——响应可能来不及送达（发起者往往就是
+        即将被换掉的那个桌面 Helper 进程），调用方按 fire-and-forget 处理即可。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [id, display]
+              properties:
+                id:
+                  type: string
+                  description: 宠物实例 id（合并后全局唯一）
+                display:
+                  type: string
+                  enum: [web, desktop, both, none]
+                  description: |
+                    目标显示位置：`web` 仅网页 / `desktop` 仅桌面 / `both` 两者 / `none` 都不显示。
+                    选 `none` 后这只宠物两端都不可见，恢复入口是设置页的「显示位置」下拉框。
+            examples:
+              toWeb:
+                summary: 从桌面撤下，保留在网页
+                value:
+                  id: main
+                  display: web
+      responses:
+        "200":
+          description: 改动成功，返回改动后的成品聚合
+          content:
+            application/json:
+              schema:
+                type: object
+                additionalProperties:
+                  $ref: "#/components/schemas/PetConfigEntry"
+        "400":
+          description: |
+            请求体非法：JSON 解析失败（`invalid JSON body`）、缺 `id`（`missing pet id`）、
+            或 `display` 不在枚举内（`invalid display: xxx`）。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: |
+            找不到该宠物（`pet not found: xxx`）。该实例因 `id` 与其它条目重复而在合并时被跳过时
+            也走这里——那种情况下它在成品聚合里根本不存在，宿主不会去猜它属于哪个文件。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+        "500":
+          description: 配置读取失败（安装损坏）或写盘失败
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+
   /dsh-pet-7340/config/meta:
     get:
       tags: [Config]
@@ -927,7 +1007,15 @@ components:
       required: [sections, pets]
       description: |
         统一状态 S。每个叶子都是 `{ counter, data }`；`counter` 变化即表示该叶子更新了。
+        `configVersion` 是顶层附带字段，**不是叶子**（没有 counter/data，不参与比对）。
       properties:
+        configVersion:
+          type: string
+          description: |
+            配置版本指纹（参与合并的全部配置文件 mtime 的最大值，毫秒时间戳的字符串形式；
+            文件都不存在时为 `"0"`）。与上一拍不同即表示配置被改过——桌面端右键改显示位置、
+            另一个页面保存、或用户手工编辑 `main-config.jsonc` / `pet/*.json`——
+            消费端应重拉 `GET /config`。老版本宿主不带该字段，消费端按"无从判断"处理。
         sections:
           type: object
           description: 全局段（所有端共享一份）

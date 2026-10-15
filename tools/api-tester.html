@@ -789,6 +789,41 @@
           </div>
         </div>
 
+        <!-- 显示位置：第三方改单只宠物的 display（两端右键菜单走的就是这个接口） -->
+        <div class="card">
+          <div class="card-head">
+            <h2>显示位置</h2>
+            <span class="hint">以"外部插件"身份改某只宠物的显示位置</span>
+          </div>
+          <div class="card-body">
+            <div class="card-desc">
+              模拟第三方调用 <span class="mono">POST /pet-display</span>：只传宠物 id 与目标
+              <span class="mono">display</span>，<b>不用回传整段 pets</b>——层归属（写
+              <span class="mono">main-config.jsonc</span> 还是
+              <span class="mono">pet/&lt;前缀&gt;-config.json</span>）由宿主按 id 反查。
+              桌面端与浏览器端的右键菜单「显示位置」走的就是它。
+            </div>
+            <div class="field" style="margin-top:10px">
+              <label for="disp-value">显示位置</label>
+              <select id="disp-value" style="flex:1;min-width:180px">
+                <option value="web">仅网页</option>
+                <option value="desktop">仅桌面</option>
+                <option value="both">两者</option>
+                <option value="none">都不</option>
+              </select>
+              <select id="disp-pet" style="width:auto"></select>
+            </div>
+            <div class="field">
+              <button type="button" class="btn primary" id="disp-send">应用</button>
+              <span class="hint" id="disp-result"></span>
+            </div>
+            <div class="note" style="margin-top:8px">
+              这是<b>持久配置写入</b>，不是临时隐藏：选「都不」后这只宠物两端都不可见，
+              恢复入口是设置页的「显示位置」下拉框。返回体是改动后的成品聚合，本页据此刷新宠物清单。
+            </div>
+          </div>
+        </div>
+
         <!-- 原始状态 -->
         <div class="card">
           <div class="card-head">
@@ -1500,7 +1535,7 @@
     }
 
     function fillPetSelects() {
-      for (const id of ["pet-select", "chat-pet-select", "bc-pet", "anim-pet"]) {
+      for (const id of ["pet-select", "chat-pet-select", "bc-pet", "anim-pet", "disp-pet"]) {
         const sel = $(id);
         sel.innerHTML = "";
         for (const p of S.pets) {
@@ -2434,6 +2469,25 @@
         }
       } else {
         const why = (r.body && r.body.message) || (r.body && r.body.reason) || r.error || "HTTP " + r.status;
+        res.textContent = "被拒：" + why;
+      }
+    });
+
+    // 显示位置：第三方改单只宠物的 display（POST /pet-display —— 与两端右键菜单同一个接口）
+    $("disp-send").addEventListener("click", async () => {
+      const petId = $("disp-pet").value || S.petId;
+      const display = $("disp-value").value;
+      const res = $("disp-result");
+      res.textContent = "应用中…";
+      // 只需 id + display：写哪一层（主配置 / 文件宠物）由宿主按 id 反查，
+      // 不像保存配置那样需要回传整段 pets。
+      const r = await POST("/pet-display", { body: { id: petId, display } });
+      if (r.status === 200) {
+        res.textContent = "已应用 · " + r.ms + "ms（桌面端会按新配置重建窗口）";
+        S.cfg = r.body; // 响应体就是改动后的成品聚合，直接采用（与保存配置同一条路）
+        await loadPets();
+      } else {
+        const why = (r.body && r.body.error) || r.error || "HTTP " + r.status;
         res.textContent = "被拒：" + why;
       }
     });

@@ -20,6 +20,10 @@ export interface StateLeaf {
 export interface PollState {
   sections: Record<string, StateLeaf>;
   pets: Record<string, Record<string, StateLeaf>>;
+  /** 配置版本（host 顺带下发）：变了说明配置被别处改过（桌面端右键改 display / 另一个页面保存 /
+   *  用户手工编辑配置文件），消费端据此重拉 /config。老版本 host 不带此字段 → undefined，
+   *  消费端按「无从判断」处理，不会误触发重拉。 */
+  configVersion?: string;
 }
 
 /** 一次变化的叶子（path 用于日志/调试，leaf 用于渲染） */
@@ -44,7 +48,11 @@ export async function fetchState(baseUrl = '/dsh-pet-7340/state'): Promise<PollS
   try {
     const res = await fetch(baseUrl, { cache: 'no-store' });
     if (!res.ok) return null;
-    const raw = (await res.json().catch(() => null)) as { sections?: unknown; pets?: unknown } | null;
+    const raw = (await res.json().catch(() => null)) as {
+      sections?: unknown;
+      pets?: unknown;
+      configVersion?: unknown;
+    } | null;
     if (!raw || typeof raw !== 'object') return null;
     const sections: Record<string, StateLeaf> = {};
     const rawSections =
@@ -64,7 +72,13 @@ export async function fetchState(baseUrl = '/dsh-pet-7340/state'): Promise<PollS
       }
       pets[petId] = leaves;
     }
-    return { sections, pets };
+    // configVersion 是**顶层附带字段**（不属于叶子，walkLeaves 不会遍历它）：
+    // 这里必须显式带上——本函数是"重建对象"，不带上就等于把它丢了（host 挂了也白挂）。
+    return {
+      sections,
+      pets,
+      configVersion: typeof raw.configVersion === 'string' ? raw.configVersion : undefined,
+    };
   } catch {
     return null;
   }

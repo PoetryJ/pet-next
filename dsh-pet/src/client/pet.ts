@@ -1651,7 +1651,9 @@ export function makePetUI(rt: {
       };
       /** 拉成品聚合：host readAllConfig 的输出（字段填满、绝对正确），客户端零校验零兜底 */
       const loadMerged = async (): Promise<Record<string, Record<string, unknown>>> => {
-        const r = await fetch('/dsh-pet-7340/config');
+        // cache:'no-store' 与 fetchState 同口径：配置是动态的，任何形式的缓存命中都会让
+        // 「发现版本变化 → 重拉」拿到旧值（响应端也已带 no-cache，请求端与响应端一起防）
+        const r = await fetch('/dsh-pet-7340/config', { cache: 'no-store' });
         if (!r.ok) throw new Error('config HTTP ' + r.status);
         return (await r.json()) as Record<string, Record<string, unknown>>;
       };
@@ -1700,10 +1702,20 @@ export function makePetUI(rt: {
       if (!ready) return;
       let alive = true;
       let baseline: Record<string, number> | null = null;
+      // 配置版本基线：与叶子同一套约定——首拉只记基线，之后与上一拍不同才动作
+      let configBaseline: string | undefined;
       const poll = async () => {
         try {
           const s = await fetchState();
           if (!alive || !s) return;
+          // 配置被别处改过（桌面端右键改 display / 另一个标签页保存 / 用户手改配置文件）→ 重拉配置重拍平。
+          // 这是「桌面端改了、浏览器端要刷新才可见」的解药：宿主把配置 mtime 挂在 /state 上，1s 内自动跟随。
+          if (configBaseline === undefined) {
+            configBaseline = s.configVersion;
+          } else if (s.configVersion !== undefined && s.configVersion !== configBaseline) {
+            configBaseline = s.configVersion;
+            petBridge.reload(); // 内部 GET /config（该响应已带 no-cache）→ applyMerged → visiblePets 重算
+          }
           if (baseline === null) {
             baseline = flattenCounters(s); // 首拉：只记基线，不渲染
             return;
