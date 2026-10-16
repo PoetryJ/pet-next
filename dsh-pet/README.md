@@ -18,9 +18,12 @@
 
 ## 🚀 快速开始（安装插件）
 
+**桌面应用（Electron 版）**：在应用内「插件管理」页的安装框里填 `dsh-pet`，不用开终端；需要在终端里操作时，用桌面应用自带的那份 CLI。
+
+**`dsh web`**：
+
 ```sh
-# --profile 填你实际在用的那个：桌面应用（Electron 版）→ desktop；dsh web → web
-dsh plugin --profile desktop add dsh-pet
+dsh plugin --profile web add dsh-pet
 ```
 
 装完**重开桌面应用**（`dsh web` 用户则重启 `dsh web`）才生效。宠物出现在界面右上角（默认配置角落，可在设置页修改）——全部透明动画开箱即用，无需任何生成流程。
@@ -77,6 +80,7 @@ macOS 的 Safari/WKWebView 下透明动画需用 `.mov` 素材，三步：
 
 ### 桌面模式怎么装 / 关
 
+- **插件安装**：桌面版在应用内「插件管理」页装 `dsh-pet`（见上方「快速开始（安装插件）」）
 - **依赖 Electron**：首次拉起时自动探测（`DSH_PET_ELECTRON_PATH` 环境变量 → 本机 electron 包 → `~/.dsh/electron/` 落地路径），找不到会通过官方 @electron/get 自动下载到 `~/.dsh/electron/`（`npm run ensure:electron` 可手动触发）；Electron 不可用时仅日志告警，**不影响浏览器形态**
 - **开关 = 每只宠物的 `display` 字段（pets 必填，四个值）**：
   - `web` = 仅浏览器 overlay / `desktop` = 仅桌面模式 / `both` = 两者都显示 / `none` = 都不显示
@@ -224,9 +228,11 @@ $DSH_HOME/dsh-pet/pet/
 ## 🗑️ 卸载
 
 ```sh
-# --profile 填你安装时用的那个：桌面应用 desktop、dsh web → web
-dsh plugin --profile desktop remove dsh-pet
+# dsh web：--profile 填 web
+dsh plugin --profile web remove dsh-pet
 ```
+
+桌面应用（Electron 版）在应用内「插件管理」页卸载。
 
 插件在本机落下的全部位置（设置页「卸载与存储」区块也列出这些，且路径按你的机器实时解析）：
 
