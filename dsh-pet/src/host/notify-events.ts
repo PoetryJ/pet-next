@@ -17,6 +17,9 @@
  *
  * 会话门（issue #82）：`session/event` 的四类事件先过 shouldNotifySession——
  * 子代理 / 委派会话（origin=subagent、delegationDepth>0）不发，否则每路子代理跑完都弹一条。
+ * 活动门（issue #114）：`turn/end completed`（「对话完成」）在**推帧前**还要确认这条会话确实没有
+ * 在跑的活——在跑的下属 / 团队成员、后台任务、活跃提醒任一非空则丢弃这一帧（见 hasBlockingActivity）。
+ * 判据由调用方延迟后经 `workspace/session-activity` 取得，拿不到就放行。
  * 注意 `agent/error` **过不了这道门**：它的载荷只有 { turn, step, error }，不带任何会话标识，
  * 宿主的 throwError 也没有传会话进来（dsh-agent-loop）。子代理的生成失败若走这条路径仍会弹，
  * 要根治得让宿主把会话带进载荷。
@@ -57,6 +60,50 @@ export function shouldNotifySession(session: unknown): boolean {
   const depth = header.delegationDepth;
   if (typeof depth === 'number' && Number.isFinite(depth) && depth > 0) return false;
   return true;
+}
+
+/** 会话 id（活动门的定时器以它为键）：`header.id` 优先，回落顶层 `id`，都取不到用 'unknown'
+ *  （与 index.ts work-status 侧的取法一致）。 */
+export function sessionIdOf(session: unknown): string {
+  const s = session as { id?: unknown; header?: { id?: unknown } | null } | null;
+  return String(s?.header?.id ?? s?.id ?? 'unknown');
+}
+
+/**
+ * 这一条事件是不是「对话完成」——活动门（issue #114）只拦它。
+ *
+ * 只认 `turn/end` + `reason.kind === 'completed'`：生成失败 / 输出截断（error / max-tokens）是
+ * "真出事了"的信息，权限申请与用户选择是等人操作的提醒——都不该因为还有活在跑而静默。
+ */
+export function isCompletionTurnEnd(event: unknown): boolean {
+  const e = event as { type?: unknown; data?: { reason?: { kind?: unknown } } } | null;
+  return e?.type === 'turn/end' && e.data?.reason?.kind === 'completed';
+}
+
+/**
+ * 活动门（issue #114）：这条会话还有没有在跑的活——入参是宿主 `workspace/session-activity`
+ * waterfall 的答案（各族条目的数组）。
+ *
+ * 只看三族：
+ *   - `job`      该会话名下运行中 / 停止中的后台任务
+ *   - `subagent` 在跑的下属子代理，**以及 Agent Teams 的团队成员**（成员走子代理通道创建，
+ *                按血缘记在这一族里——团队会话的误报正是它）
+ *   - `schedule` 活跃的定时提醒
+ *
+ * **故意不看 `turn`**：触发这一帧的就是该会话回合的结束，而 `turn` 族读的是活 Agent 的 `status`
+ * ——`turn/end` 在回合体的 finally 里追加时它自己仍是 running，算进来会把每一条「对话完成」都
+ * 自己挡掉（调用方为此必须**延迟**再查）。语义上也不吃亏：同一会话不会有第二个回合。
+ *
+ * 形状不对 / 空 / 非数组 / 未知族 → false＝放行：与「判据不可用时放行」同一策略，宁可多弹一条，
+ * 也不能因为宿主加了一族或改了字段就让通知整体失效。
+ */
+export function hasBlockingActivity(activity: unknown): boolean {
+  if (!Array.isArray(activity)) return false;
+  for (const item of activity) {
+    const kind = (item as { kind?: unknown } | null)?.kind;
+    if (kind === 'job' || kind === 'subagent' || kind === 'schedule') return true;
+  }
+  return false;
 }
 
 /** turn/end reason.kind → 通知类别；不弹的分支返回 null（与 shared/notify.ts 过滤一致） */

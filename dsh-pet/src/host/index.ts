@@ -99,7 +99,15 @@ import {
   WorkStatusStore,
   type WorkStatusTurnContext,
 } from './work-status';
-import { agentErrorFrame, reduceNotifyFrame, shouldNotifySession, type HostNotifyFrame } from './notify-events';
+import {
+  agentErrorFrame,
+  hasBlockingActivity,
+  isCompletionTurnEnd,
+  reduceNotifyFrame,
+  sessionIdOf,
+  shouldNotifySession,
+  type HostNotifyFrame,
+} from './notify-events';
 import { profileNameFrom, storageEntries } from './storage-paths';
 import { PollStateStore } from './state';
 import { timeContextOf } from './time-context';
@@ -346,6 +354,51 @@ export function apply(ctx: any): void {
       }
     }, TERMINAL_KEEP_MS);
     terminalTimers.set(sessionId, t);
+  };
+  // 通知活动门（issue #114）：「对话完成」不立刻弹，先挂起，到点确认这条会话确实没活了再弹
+  // （在跑的下属子代理 / 团队成员、后台任务、活跃提醒任一非空 → 丢弃这一帧）。
+  //
+  // 为什么必须延迟而不是同步查：`workspace/session-activity` 的 turn 族读的是**活 Agent 的
+  // status**，而 turn/end 是在回合体的 finally 里追加的——同步那一刻它自己还是 running，判据必然
+  // 非空，照「任一非空就不弹」写会把每一条通知都吞掉（详见 notify-events.ts 的 hasBlockingActivity）。
+  // 延迟同时让「成员刚变 idle、Lead 下一秒 send_message 又把它唤醒」的窗口过去（队友邮箱是入队后
+  // 立刻投递、空闲目标会起一轮）。
+  //
+  // 判据不可用（宿主没组合 workspace、standalone 伪 ctx 没有 waterfall、调用抛错、返回值形状不对）
+  // → 一律放行：宁可多弹一条，也不能让通知被一次宿主变更整体打哑。
+  const NOTIFY_ACTIVITY_DELAY_MS = 1500;
+  /** 每会话一个待查定时器（同会话连续收尾只保留最后一次：后到覆盖先到，与单槽帧同语义） */
+  const notifyActivityTimers = new Map<string, ReturnType<typeof setTimeout>>();
+  /** waterfall 只用到签名本身：DSH 未导出该事件的请求/响应类型，这里宽松声明（与 ctx 同为 any 的现状一致） */
+  type Waterfall = (name: string, request: unknown, next: () => Promise<unknown[]>) => Promise<unknown>;
+  /** 这条会话是否还有在跑的活；判据不可用一律 false＝放行 */
+  const sessionHasRunningWork = async (sessionId: string): Promise<boolean> => {
+    const waterfall = (ctx as { waterfall?: Waterfall }).waterfall;
+    if (typeof waterfall !== 'function') return false;
+    try {
+      const activity = await waterfall.call(ctx, 'workspace/session-activity', { sessionId }, () =>
+        Promise.resolve([]),
+      );
+      return hasBlockingActivity(activity);
+    } catch {
+      return false; // 查询失败不阻塞通知（与「判据不可用时放行」同一策略）
+    }
+  };
+  /** 排一个活动门定时器：到点确认空闲才推这一帧 */
+  const scheduleCompletionNotify = (sessionId: string, event: unknown): void => {
+    const prev = notifyActivityTimers.get(sessionId);
+    if (prev !== undefined) clearTimeout(prev);
+    notifyActivityTimers.set(
+      sessionId,
+      setTimeout(() => {
+        notifyActivityTimers.delete(sessionId);
+        void (async () => {
+          if (await sessionHasRunningWork(sessionId)) return; // 还有活：等真正的收尾轮再弹
+          const frame = reduceNotifyFrame(event as Parameters<typeof reduceNotifyFrame>[0]);
+          if (frame) pushNotifyFrame(frame);
+        })();
+      }, NOTIFY_ACTIVITY_DELAY_MS),
+    );
   };
   // 命令「当前桌宠」（/pet 选择、/chat 使用）：全局单值不分会话；进程内内存，重启回默认第一只
   let activePetId = '';
@@ -1398,11 +1451,13 @@ export function apply(ctx: any): void {
     };
   }, 'dsh-pet: work-status session events');
 
-  // 系统通知：监听 DSH 宿主事件 → 生成通知帧入队（浏览器轮询 /notify 拉取弹 toast）。
+  // 系统通知：监听 DSH 宿主事件 → 生成通知帧入队（浏览器轮询 /state 读到后弹 toast）。
   // 与 work-status 同一 session/event 源，但职责各自独立（通知帧 = 事件 → toast 的一对一映射，
   // 不做状态聚合）。帧契约与 shared/notify.ts 完全一致，浏览器侧映射零改动。
   //   事件源：turn/end（完成/失败/截断）、approval/asked（权限申请）、
   //          tool/call（ask_user_question：用户选择）、agent/error（无回合位置失败，0.1.5 新增）。
+  //   两道门：会话门 #82（shouldNotifySession：子代理/委派不发）+ 活动门 #114（只拦「对话完成」，
+  //          延迟确认这条会话确实没活了再弹，见上方 scheduleCompletionNotify）。
   // 纯监听不调用模型；通知是浏览器网页端能力，桌面模式不消费本队列（不影响任何宠物行为）。
   ctx.effect(() => {
     const sessionDispose = ctx.on(
@@ -1413,13 +1468,20 @@ export function apply(ctx: any): void {
         // 判据用 header.origin（不是 parentSession，那会把普通 fork 的主对话一起静音），
         // 判据不可用时放行，绝不把通知整体打哑。详见 notify-events.ts 的 shouldNotifySession。
         if (!shouldNotifySession(session)) return;
+        // 活动门（issue #114）：「对话完成」延迟确认这条会话确实没活了再弹——团队会话里 Lead 的
+        // 这一轮结束 ≠ 团队收工，成员还在跑时弹「对话完成」是误报。生成失败/输出截断、权限申请、
+        // 用户选择不过这道门，直接放行（理由见 notify-events.ts 的 isCompletionTurnEnd）。
+        if (isCompletionTurnEnd(event)) {
+          scheduleCompletionNotify(sessionIdOf(session), event);
+          return;
+        }
         const frame = reduceNotifyFrame(event as Parameters<typeof reduceNotifyFrame>[0]);
         if (frame) pushNotifyFrame(frame);
       },
     );
     // agent/error（agent-loop dispatch.emit）：无回合位置的生成失败；0.1.5 新增，
     // 旧版无此事件 = 少一条通知（turn/end error 分支已覆盖大部分失败场景），不报错。
-    // **这道门管不到它**：载荷只有 { turn, step, error }，不带会话标识，无从判定来源。
+    // **两道门都管不到它**：载荷只有 { turn, step, error }，不带会话标识，无从判定来源。
     const errorDispose = ctx.on(
       'agent/error',
       // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -1428,6 +1490,9 @@ export function apply(ctx: any): void {
       },
     );
     return () => {
+      // 卸载时清掉待查的定时器：否则插件已卸载，到点还去写一次 S
+      for (const t of notifyActivityTimers.values()) clearTimeout(t);
+      notifyActivityTimers.clear();
       sessionDispose();
       errorDispose();
     };

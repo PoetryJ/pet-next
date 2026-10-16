@@ -2,7 +2,8 @@
  * host 通知帧生成纯逻辑单元测试 —— 钉住「DSH 宿主事件 → shared/notify.ts 同契约帧」：
  *   turn/end（completed/error/max-tokens 弹，aborted 等不弹）、approval/asked、
  *   tool/call（ask_user_question 解析 questions）、agent/error（message 提取），
- *   以及会话门 shouldNotifySession（子代理不发、普通 fork 照发）。
+ *   以及会话门 shouldNotifySession（子代理不发、普通 fork 照发）
+ *   与活动门（issue #114：只拦「对话完成」+ 判据 hasBlockingActivity 的取舍）。
  *
  * 跑法：node --experimental-strip-types --test src/host/notify-events.test.ts
  */
@@ -11,8 +12,11 @@ import assert from 'node:assert/strict';
 
 import {
   agentErrorFrame,
+  hasBlockingActivity,
+  isCompletionTurnEnd,
   parseToolQuestions,
   reduceNotifyFrame,
+  sessionIdOf,
   shouldNotifySession,
   turnEndNotifyKind,
 } from './notify-events.ts';
@@ -194,5 +198,68 @@ describe('shouldNotifySession —— 会话门（issue #82）', () => {
     assert.equal(shouldNotifySession({ header: { delegationDepth: -1 } }), true);
     assert.equal(shouldNotifySession({ header: { delegationDepth: Number.NaN } }), true);
     assert.equal(shouldNotifySession({ header: { delegationDepth: 0 } }), true);
+  });
+});
+
+describe('isCompletionTurnEnd —— 活动门只拦「对话完成」（issue #114）', () => {
+  test('turn/end + completed → true（唯一需要先确认空闲的帧）', () => {
+    assert.equal(isCompletionTurnEnd({ type: 'turn/end', data: { reason: { kind: 'completed' } } }), true);
+  });
+
+  test('turn/end 的其它 kind → false（失败/截断是"真出事了"，照弹）', () => {
+    assert.equal(isCompletionTurnEnd({ type: 'turn/end', data: { reason: { kind: 'error' } } }), false);
+    assert.equal(isCompletionTurnEnd({ type: 'turn/end', data: { reason: { kind: 'max-tokens' } } }), false);
+    assert.equal(isCompletionTurnEnd({ type: 'turn/end', data: { reason: { kind: 'aborted' } } }), false);
+    assert.equal(isCompletionTurnEnd({ type: 'turn/end', data: {} }), false);
+  });
+
+  test('权限申请 / 用户选择 / 缺字段 → false（等人操作的通知绝不能被活动门静默）', () => {
+    assert.equal(isCompletionTurnEnd({ type: 'approval/asked', data: { toolName: 'pwsh' } }), false);
+    assert.equal(
+      isCompletionTurnEnd({ type: 'tool/call', data: { name: 'ask_user_question', arguments: '{}' } }),
+      false,
+    );
+    assert.equal(isCompletionTurnEnd(undefined), false);
+    assert.equal(isCompletionTurnEnd(null), false);
+    assert.equal(isCompletionTurnEnd({}), false);
+  });
+});
+
+describe('sessionIdOf —— 活动门定时器的会话键', () => {
+  test('header.id 优先 → 回落顶层 id → 兜底 unknown', () => {
+    assert.equal(sessionIdOf({ id: 'top', header: { id: 'hdr' } }), 'hdr');
+    assert.equal(sessionIdOf({ id: 'top', header: {} }), 'top');
+    assert.equal(sessionIdOf({ id: 'top' }), 'top');
+    assert.equal(sessionIdOf({}), 'unknown');
+    assert.equal(sessionIdOf(null), 'unknown');
+    assert.equal(sessionIdOf(undefined), 'unknown');
+  });
+});
+
+describe('hasBlockingActivity —— 活动门判据（issue #114）', () => {
+  test('只有 turn 族 → 放行（这条会话自己的回合刚结束，不许自己挡自己）', () => {
+    assert.equal(hasBlockingActivity([{ kind: 'turn' }]), false);
+  });
+
+  test('在跑的团队成员 / 下属子代理（subagent）→ 拦（团队误报的主角）', () => {
+    assert.equal(hasBlockingActivity([{ kind: 'turn' }, { kind: 'subagent', items: [{ id: 'm1' }] }]), true);
+  });
+
+  test('后台任务（job）/ 活跃定时提醒（schedule）→ 拦', () => {
+    assert.equal(hasBlockingActivity([{ kind: 'job', items: [{ id: 'j1', label: 'x' }] }]), true);
+    assert.equal(hasBlockingActivity([{ kind: 'schedule' }]), true);
+  });
+
+  test('空 / 非数组 / 形状不对 → 放行（判据不可用绝不把通知打哑）', () => {
+    assert.equal(hasBlockingActivity([]), false);
+    assert.equal(hasBlockingActivity(undefined), false);
+    assert.equal(hasBlockingActivity(null), false);
+    assert.equal(hasBlockingActivity('nope'), false);
+    assert.equal(hasBlockingActivity({ kind: 'subagent' }), false, '非数组＝形状不对，放行');
+    assert.equal(hasBlockingActivity([null, 42, {}, { kind: 7 }]), false);
+  });
+
+  test('未知族 → 放行（宿主新增一族不能让通知整体失效）', () => {
+    assert.equal(hasBlockingActivity([{ kind: 'something-new' }]), false);
   });
 });

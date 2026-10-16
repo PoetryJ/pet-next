@@ -16,7 +16,8 @@
 //   - 生成失败（agent/error，无回合位置）
 //   - 权限申请（approval/asked）
 //   - 用户选择（tool/call ask_user_question）
-// 过滤：aborted / interrupted 不弹（host 侧 reduceNotifyFrame 已滤）；重连/刷新不重放历史
+// 过滤：aborted / interrupted 不弹（host 侧 reduceNotifyFrame 已滤）；「对话完成」在 host 侧还要过
+// 活动门 #114——该会话还有在跑的下属 / 团队成员、后台任务或活跃提醒时就先不弹；重连/刷新不重放历史
 //（首拉记基线 counter，与其余叶子同一套语义）。
 
 import { frameToToast, truncate, NOTIFY_ICONS as ICON_NAMES, type NotifyFrame } from '../shared/notify';
