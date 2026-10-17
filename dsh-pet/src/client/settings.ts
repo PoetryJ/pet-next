@@ -12,9 +12,10 @@
  * 样式对齐官方设置页：max-width 720px、全走 --dsw-alias-* 语义 token（主题跟随）。
  */
 import { PET_DISPLAYS } from '../shared/config';
+import { DEFAULT_FONT, FONT_PRESETS, FONT_SIZE_MAX, FONT_SIZE_MIN } from '../shared/fonts';
 import { DEFAULT_PHYSICS } from '../shared/physics';
 import { NOTIFY_ICONS, reloadNotifications, requestNotificationPermission } from './notify';
-import type { Corner, ModelSelection, Pet, PetDisplay, PhysicsParams } from '../shared/types';
+import type { Corner, FontConfig, FontFamilyId, ModelSelection, Pet, PetDisplay, PhysicsParams } from '../shared/types';
 import type { ChangeEvent, Dispatch, FunctionComponent, SetStateAction } from 'react';
 import type * as ReactNS from 'react';
 import type { jsx } from 'react/jsx-runtime';
@@ -286,6 +287,25 @@ export const zh = {
   physicsPetCollision: '宠物互撞 petCollision',
   physicsPetCollisionHint: '飞行中的宠物撞到别的宠物按动量守恒弹开（质量 ∝ 尺寸²）',
   invalidPhysics: '请检查物理参数：重力 / 地面摩擦 ≥ 0，弹性 0~1，总力度 > 0。',
+  fontTitle: '外观与字体',
+  fontHint:
+    '字体种类作用于现在用软糖体的全部文字：宠物气泡、悬浮提示、对话窗、得分弹窗；字号只作用于宠物气泡与悬浮提示（对话窗与得分弹窗的字号不变）。全局默认，所有宠物共用（pet pack 可在自己种类文件里单独覆盖）；随「保存」写入用户配置，浏览器保存后即时生效，桌面端由保存重载宠物窗口后生效。',
+  fontFamilyLabel: '字体',
+  fontFamilyHint:
+    '「软糖体（内置）」随插件提供；其余为系统字体，机器上没装时自动回退到字体栈里的下一个（不会空白或报错）。',
+  fontSizeLabel: '字号（px）',
+  fontSizeHint: '气泡正文字号；悬浮提示与气泡内的小字按既有比例派生。范围 4~200。',
+  fontFollowToggle: '字号随宠物大小缩放',
+  fontFollowToggleHint:
+    '开启（默认）：宠物调大时字号等比放大，462 宽时正好是上面设定的字号；关闭：字号恒定，不随宠物大小变化。',
+  invalidFont: '请检查字体设置：字体需在下拉列表内，字号需为 4~200 的数字。',
+  'font.candy': '软糖体（内置）',
+  'font.yahei': '微软雅黑 / 苹方',
+  'font.youyuan': '幼圆',
+  'font.kaiti': '楷体',
+  'font.simsun': '宋体',
+  'font.comic': '漫画体',
+  'font.system': '系统默认',
   modelTitle: 'AI 模型与对话上下文',
   modelHint:
     '碎碎念与对话各自用哪个模型，以及对话每次带多少历史进上下文。选「跟随当前对话」= 用你当前对话正在用的那个模型（默认）。全局默认：对所有宠物生效，pet pack 可在自己种类文件里单独覆盖。选项与 DSH 的模型选择器同源，由宿主实时提供。',
@@ -445,6 +465,27 @@ export const en = {
   physicsPetCollision: 'Pet collisions',
   physicsPetCollisionHint: 'A flying pet bounces off the others with momentum conservation (mass ∝ size²)',
   invalidPhysics: 'Check the physics values: gravity / ground friction ≥ 0, bounciness 0–1, throw power > 0.',
+  fontTitle: 'Appearance & font',
+  fontHint:
+    'The family applies to every place that currently uses the candy font: pet bubble, hover tooltip, chat popup, score popup. The size applies only to the pet bubble and the hover tooltip (chat and score popups keep their own size). Global default, shared by every pet (a pet pack may override it in its own kind file); written to the user config on "Save" — instant in the browser, and on the desktop it applies once Save reloads the pet windows.',
+  fontFamilyLabel: 'Font',
+  fontFamilyHint:
+    '"Candy (bundled)" ships with the plugin; the others are system fonts. If a font is missing on this machine, it falls back to the next one in the stack (never blank, never an error).',
+  fontSizeLabel: 'Font size (px)',
+  fontSizeHint:
+    'Bubble body text size; the tooltip and the smaller lines inside the bubble scale proportionally. Range 4–200.',
+  fontFollowToggle: 'Scale font with pet size',
+  fontFollowToggleHint:
+    'On (default): the font grows with the pet — at 462 px width it is exactly the size above. Off: the size stays fixed regardless of pet size.',
+  invalidFont:
+    'Check the font settings: the family must be in the list and the size must be a number between 4 and 200.',
+  'font.candy': 'Candy (bundled)',
+  'font.yahei': 'Microsoft YaHei / PingFang',
+  'font.youyuan': 'YouYuan',
+  'font.kaiti': 'KaiTi',
+  'font.simsun': 'SimSun',
+  'font.comic': 'Comic Sans MS',
+  'font.system': 'System default',
   modelTitle: 'AI models & chat context',
   modelHint:
     'Which model each of whisper and chat uses, and how much history every chat request carries. "Follow current conversation" uses the model your current conversation is on (default). Global default: applies to every pet, and a pet pack may override it in its own kind file. The options come from the same source as the DSH model picker, served live by the host.',
@@ -951,6 +992,10 @@ export function makePetConfigSection(rt: {
     // 与四个开关同一套语义：只改本地状态，随「保存」整包写入（不做即时写入）。
     // 初值仅作占位；成品配置加载成功后才允许编辑和保存。
     const [physics, setPhysics] = useState<PhysicsParams>({ ...DEFAULT_PHYSICS });
+    // 字体（全局默认：字体种类 / 字号 / 是否随宠物大小缩放，写用户级配置的 font 段）。
+    // 与四个全局开关 / physics 同一套语义：只改本地状态，随「保存」整包写入（不做即时写入）。
+    // 初值仅作占位；成品配置加载成功后才允许编辑和保存。
+    const [font, setFont] = useState<FontConfig>({ ...DEFAULT_FONT });
     // AI 模型（条目级：碎碎念 / 对话各自的服务商 + 模型，两者都留空 = 跟随当前对话的模型）。
     // 与四个全局开关同一套语义：只改本地状态，随「保存」整包写入（不做即时写入）。
     const [whisperModel, setWhisperModel] = useState<ModelSelection>({ provider: '', model: '' });
@@ -983,6 +1028,10 @@ export function makePetConfigSection(rt: {
       // physics 段：成品已按「内置默认 ← 用户层」整段填满，直接取用（缺子键再用默认兜底一次）
       if (m.physics && typeof m.physics === 'object') {
         setPhysics({ ...DEFAULT_PHYSICS, ...(m.physics as PhysicsParams) });
+      }
+      // 字体段：同 physics——成品已填满，缺子键再用默认兜底一次
+      if (m.font && typeof m.font === 'object') {
+        setFont({ ...DEFAULT_FONT, ...(m.font as FontConfig) });
       }
       // 模型选择：成品同样已填满（内置默认 = 两者都空 = 跟随当前对话），读得出就原样上屏
       const wm = m.whisperModel as Partial<ModelSelection> | undefined;
@@ -1136,6 +1185,16 @@ export function makePetConfigSection(rt: {
         setMsg({ kind: 'err', text: t('invalidChatImageLimit') });
         return false;
       }
+      // 字体：与宿主 fontValid 同一套规则（family 必须在预设白名单内、size 4~200、followPet 为布尔）
+      if (
+        !FONT_PRESETS.some((p) => p.id === font.family) ||
+        !Number.isFinite(font.size) ||
+        font.size < FONT_SIZE_MIN ||
+        font.size > FONT_SIZE_MAX
+      ) {
+        setMsg({ kind: 'err', text: t('invalidFont') });
+        return false;
+      }
       return true;
     };
 
@@ -1167,6 +1226,9 @@ export function makePetConfigSection(rt: {
           chatMemoryRounds: chatMemory,
           // 对话配图张数上限（同上；0 = 不限制）
           chatImageLimit: chatImageLimit,
+          // 字体（全局默认白名单字段）：宿主用 fontValid 整段校验（family 白名单 / size 4~200 /
+          // followPet 布尔）；传了就整段写进用户层，没传则透传保留磁盘旧值
+          font: font,
         };
         // force === true（用户在损坏弹窗里点了确认）：带 ?force=1 才允许按白名单重建损坏文件
         const res = await fetch('/dsh-pet-7340/config' + (force === true ? '?force=1' : ''), {
@@ -1518,6 +1580,58 @@ export function makePetConfigSection(rt: {
                 toggleCell('whisperImageToggle', whisperImage, busy, setWhisperImage),
                 toggleCell('chatImageToggle', chatImage, busy, setChatImage),
                 toggleCell('confineToggle', confineScreen, busy, setConfineScreen, true),
+              ],
+            }),
+          ],
+        }),
+
+        // 外观与字体卡：字体种类 + 字号 + 是否随宠物缩放（全局默认，与全局开关 / physics 同语义——
+        // 只改本地状态，随「保存」整包写入用户配置；不做即时写入）。
+        // 字体种类的作用范围 = 现在用软糖体的全部地方（气泡 / 悬浮提示 / 对话窗 / 得分弹窗）；
+        // 字号**只**作用于气泡与悬浮提示（对话窗与得分弹窗的字号不随本项变，故不在此列）。
+        h('div', {
+          className: 'dsh-pet-cfg__card',
+          children: [
+            cardHead(t('fontTitle'), t('fontHint')),
+            h('div', {
+              className: 'dsh-pet-cfg__grid2',
+              children: [
+                field(
+                  t('fontFamilyLabel'),
+                  h('select', {
+                    className: inputClass,
+                    value: font.family,
+                    disabled: busy,
+                    onChange: (e: ChangeEvent<HTMLSelectElement>) =>
+                      setFont((f) => ({ ...f, family: e.target.value as FontFamilyId })),
+                    children: FONT_PRESETS.map((p) =>
+                      h('option', { key: p.id, value: p.id, children: t('font.' + p.id) }),
+                    ),
+                  }),
+                  t('fontFamilyHint'),
+                ),
+                field(
+                  t('fontSizeLabel'),
+                  h('input', {
+                    type: 'number',
+                    className: inputClass,
+                    step: '1',
+                    min: String(FONT_SIZE_MIN),
+                    max: String(FONT_SIZE_MAX),
+                    value: String(font.size),
+                    disabled: busy,
+                    onChange: (e: ChangeEvent<HTMLInputElement>) =>
+                      setFont((f) => ({ ...f, size: Number(e.target.value) })),
+                  }),
+                  t('fontSizeHint'),
+                  true,
+                ),
+              ],
+            }),
+            h('div', {
+              className: 'dsh-pet-cfg__grid2',
+              children: [
+                toggleCell('fontFollowToggle', font.followPet, busy, (v) => setFont((f) => ({ ...f, followPet: v }))),
               ],
             }),
           ],

@@ -6,7 +6,7 @@
 //     workStatusEnabled / fixedEnabled / display / position
 //   · 全局默认（本文件是默认值；用户在 main-config.jsonc 里写一次就对**所有宠物**生效，
 //     含 pet/<名>-config.json 定义的种类；种类文件自己写了则覆盖自己那份）：
-//     physics / confineToScreen / whisperImageEnabled / chatImageEnabled /
+//     physics / font / confineToScreen / whisperImageEnabled / chatImageEnabled /
 //     chatMemoryRounds / whisperModel / chatModel / eventsRefreshSec
 //   · 条目级（每个条目一份：main 一份、每个种类各一份；种类文件顶层可覆盖）：
 //     whisperPrompt / memes / workStatusTexts / animations / animationWeights
@@ -132,6 +132,24 @@
     "ceilingBounce": true,
     "throwPower": 1.0,
     "petCollision": false
+  },
+  // ===================== 字体（全局默认，所有宠物共用；种类文件顶层可覆盖） =====================
+  // family：字体种类（预设 id，必须在白名单内，写错即配置错误 → 告警并取默认 candy）。
+  //   可选：candy=软糖体（内置，默认）/ yahei=微软雅黑·苹方 / youyuan=幼圆 / kaiti=楷体 /
+  //   simsun=宋体 / comic=漫画体 / system=系统默认。
+  //   作用范围：宠物气泡、悬浮提示、对话窗、得分弹窗（即现在用软糖体的全部地方）。
+  //   为什么只存 id 不存字体栈：字体栈是 CSS 片段，手改写错会把样式拼坏；id 有白名单可校验。
+  //   各 id 对应的实际字体栈见 src/shared/fonts.ts 的 FONT_PRESETS（系统字体没装时由兜底栈接住）。
+  // size：字号 px，**只影响气泡与悬浮提示**（对话窗与得分弹窗字号不变）。基准 = 气泡正文字号，
+  //   悬浮提示与气泡内小字按既有比例派生。范围 4~200，默认 21（= 462 宽宠物原本的气泡字号）。
+  // followPet：字号是否随宠物大小等比缩放。true（默认）= 按「实际 size ÷ 基准尺寸」缩放，
+  //   与接入本配置前的行为完全一致（宠物调大，字跟着大）；false = 恒为 size px，不随宠物大小变。
+  // 注意（对象字段都是整段替换）：要写就三个子键写全——只写一半会被判为整段非法，
+  //   告警后整段回退默认值。设置页「外观与字体」区改这三项会整段写回，不受此影响。
+  "font": {
+    "family": "candy",
+    "size": 21,
+    "followPet": true
   },
   // ===================== 默认宠物列表（多开） =====================
   // pets 数组定义默认宠物；「设置页 → 添加宠物」的默认模板取 pets[0]（main）。

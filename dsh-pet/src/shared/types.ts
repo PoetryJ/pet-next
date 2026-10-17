@@ -70,11 +70,11 @@ export interface Animations {
 }
 
 /** 一只宠物（与 jsonc pets[i] 同形，position 嵌套）。
- *  可选段（animations / animationWeights / extra / assetRoot / eventsRefreshSec / physics / confineToScreen /
+ *  可选段（animations / animationWeights / extra / assetRoot / eventsRefreshSec / physics / font / confineToScreen /
  *  workStatusTexts / whisperModel / chatModel）为渲染期派生或「文件定义宠物」专用：
- *  - animations / animationWeights / eventsRefreshSec / physics / confineToScreen / whisperModel / chatModel：所属条目的条目级字段，由配置合并
+ *  - animations / animationWeights / eventsRefreshSec / physics / font / confineToScreen / whisperModel / chatModel：所属条目的条目级字段，由配置合并
  *    （host readAllConfig / 客户端 flattenConfigPets）在拍平时吹进每只实例——多实例共享。
- *    其中 physics / confineToScreen / whisperImageEnabled / chatImageEnabled / chatImageLimit /
+ *    其中 physics / font / confineToScreen / whisperImageEnabled / chatImageEnabled / chatImageLimit /
  *    chatMemoryRounds / whisperModel / chatModel / eventsRefreshSec 是**全局默认**：文件宠物条目的合并基座取**用户层**
  *    （main-config.jsonc），即"设置页改一次，所有宠物（含 pet pack）都生效"；种类文件仍可在自己
  *    顶层覆盖（见 host/config.ts 的 GLOBAL_DEFAULT_KEYS）。其余条目级字段（animations /
@@ -129,6 +129,8 @@ export interface Pet {
   whisperModel?: ModelSelection;
   /** 全局默认：对话单独指定的服务商 + 模型（同上，都为空 = 跟随当前对话的模型） */
   chatModel?: ModelSelection;
+  /** 全局默认：字体（种类 / 字号 / 是否随宠物大小缩放；host 合并已填默认，拍平时吹入） */
+  font?: FontConfig;
 }
 
 /** 一处「服务商 + 模型」选择（config.jsonc 的 whisperModel / chatModel 段）。
@@ -155,6 +157,24 @@ export interface PhysicsParams {
   throwPower: number;
   /** 多宠物互相碰撞开关：true = 飞行中被甩出的宠物撞到其它宠物时按动量守恒弹开；false = 关闭（默认，互相穿过） */
   petCollision: boolean;
+}
+
+/** 字体种类预设 id（config.jsonc 的 font.family 白名单；清单与对应字体栈见 src/shared/fonts.ts） */
+export type FontFamilyId = 'candy' | 'yahei' | 'youyuan' | 'kaiti' | 'simsun' | 'comic' | 'system';
+
+/** config.jsonc 的 font 段：字体（全局一份，所有宠物共用）。
+ *  默认值 = src/shared/fonts.ts 的 DEFAULT_FONT（candy / 21 / true），内置配置与代码两侧保持一致。
+ *  **整段替换**（与 physics 同）：写了就整段用自己的，缺的子键不会从内置默认补回来——
+ *  所以手改配置时必须三个子键写全，否则整段非法 → 告警 + 取默认。 */
+export interface FontConfig {
+  /** 字体种类（预设 id）：影响气泡 / 悬浮提示 / 对话窗 / 得分弹窗——即现在用软糖体的全部地方 */
+  family: FontFamilyId;
+  /** 字号 px：**只**影响气泡与悬浮提示（对话窗与得分弹窗的字号不变）；基准 = 气泡正文字号，
+   *  提示与气泡内小字按既有比例派生 */
+  size: number;
+  /** 字号是否随宠物大小等比缩放：true = 按「实际 size / 基准尺寸」缩放（默认，与接入本配置前一致）；
+   *  false = 恒为 size px，宠物放大时字不变 */
+  followPet: boolean;
 }
 
 /** config.jsonc 全集——运行时直接使用（ANIM 即本类型） */
