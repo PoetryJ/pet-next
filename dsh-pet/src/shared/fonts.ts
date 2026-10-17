@@ -84,3 +84,44 @@ export function resolveFontPx(font: FontConfig | undefined, size: number): { bub
     tip: TIP_FONT_BASE_PX * ratio * scale,
   };
 }
+
+/** 气泡底边探出宠物盒顶边的比例：对应气泡 CSS 的 `bottom:calc(100% - var(--dsh-pet-size)*0.108)`。
+ *  探出的这一段同样算进「气泡可用的垂直空间」，见下面的 bubbleTopMarginPx。 */
+export const BUBBLE_OVERLAP_RATIO = 0.108;
+
+/** 气泡布局度量（em 语义，基准 = 气泡正文最终字号 `--f`）。系数与渲染层 CSS **同源**：
+ *  bubble.ts / index.html 的 `.dsh-pet-bubble`（行高 1.6、内边距 0.4835、次要行 0.7692）与
+ *  shared/whisper.ts 的 MEME_BUBBLE_CSS（配图宽 7.4725、下边距 0.3736）。
+ *  改任何一条 CSS 系数都必须同步这里，否则桌面窗口的上边距会算少 → 气泡顶端被窗口切掉。 */
+export const BUBBLE_METRICS = {
+  lineHeight: 1.6,
+  padY: 0.4835,
+  subScale: 0.7692,
+  imgWidth: 7.4725,
+  imgMargin: 0.3736,
+  /** 配图长宽比上限（内置 assets/memes 全为 128 宽、高 ≤ 128，即 ≤ 1.0） */
+  imgMaxRatio: 1,
+} as const;
+
+/** 气泡最大高度（px）：文本最多两行（余额气泡的「主行 + 次要行」），可带一张配图。
+ *  桌面端用它定窗口上边距（见 bubbleTopMarginPx）；浏览器端没有窗口限制，不需要。 */
+export function bubbleMaxHeightPx(font: FontConfig | undefined, size: number): number {
+  const f = resolveFontPx(font, size).bubble;
+  const m = BUBBLE_METRICS;
+  return (
+    m.padY * 2 * f + // 内边距上下
+    m.lineHeight * f + // 主行
+    m.lineHeight * m.subScale * f + // 次要行（字号 0.7692）
+    m.imgWidth * m.imgMaxRatio * f + // 配图（宽 × 比例上限）
+    m.imgMargin * f // 配图下边距
+  );
+}
+
+/** 桌面窗口的**最小上边距**（px）：上边距至少要容得下整只气泡。
+ *  气泡底边落在宠物盒顶边下方 `0.108 × 宠物尺寸` 处，所以余量 = 气泡最大高度 − 这一段。
+ *  默认配置（462px 宠物 / 21px 字号）算出 195px，仍小于既有余量 231px，窗口尺寸不变；
+ *  宠物变小而字号固定（关闭 followPet）时才会把窗口向上加高，避免气泡顶端被窗口上边缘切掉。 */
+export function bubbleTopMarginPx(font: FontConfig | undefined, size: number): number {
+  const overlap = (Number(size) || 0) * BUBBLE_OVERLAP_RATIO;
+  return Math.max(0, Math.ceil(bubbleMaxHeightPx(font, size) - overlap));
+}

@@ -287,6 +287,13 @@ const windows = new Map();
 const lastRequestedBounds = new Map();
 
 /**
+ * win.id -> 渲染端上报的窗口余量 `{ l, t }`（DIP）。
+ * 上边距按气泡最大高度加高后**余量不再四边相等**，命中区不能再按「窗口宽/4」反推——
+ * 这里存下来交给 pointer-target 的 spriteHitRect（见那里的注释）。
+ */
+const winMargins = new Map();
+
+/**
  * 宠物间碰撞 broker 状态：petId -> { x, y, vx, vy, size, bottomPad }。
  * 来源：pet:set-bounds（位置+尺寸+速度，随漫游/拖拽/静止保真上报，每帧一次）+
  *       pet:report-flight（飞行中每 ~30ms 高频补充速度）。
@@ -470,10 +477,11 @@ function createPetWindows() {
       const busy = inputBusy.get(win.id) === true;
       const point = screen.getCursorScreenPoint();
       // 余量区停留计时：只在"非 busy 且在余量区"时累加，离开余量区即清零；busy 期间不累加。
-      const zone = pointerZone(b, point);
+      const mg = winMargins.get(win.id);
+      const zone = pointerZone(b, point, mg);
       const nextMs = !busy && zone === 'margin' ? (offBodyMs.get(win.id) ?? 0) + POINTER_POLL_MS : 0;
       offBodyMs.set(win.id, nextMs);
-      const next = decideWindowIgnore(b, point, ignoring, busy, nextMs, inputRegions.get(win.id));
+      const next = decideWindowIgnore(b, point, ignoring, busy, nextMs, inputRegions.get(win.id), mg);
       if (next !== ignoring) setWindowIgnore(win, next);
     }, POINTER_POLL_MS);
     // [置顶看门狗] 建窗时那次 setAlwaysOnTop 之后再没人复查过：外部任何一次 z 序扰动都能让桌宠
@@ -500,6 +508,7 @@ function createPetWindows() {
       clearInterval(topmostTimer);
       windows.delete(pet.id);
       lastRequestedBounds.delete(win.id);
+      winMargins.delete(win.id);
       windowIgnore.delete(win.id);
       inputBusy.delete(win.id);
       inputRegions.delete(win.id);
@@ -687,6 +696,10 @@ app.whenReady().then(() => {
       lastRequestedBounds.set(win.id, key);
       win.setContentBounds(rect, false);
     }
+    // 窗口余量（左右/上）：命中区判定的依据，余量四边不再相等（上边距按气泡最大高度加高）
+    const ml = Number(bounds?.marginL);
+    const mt = Number(bounds?.marginT);
+    if (Number.isFinite(ml) && Number.isFinite(mt)) winMargins.set(win.id, { l: ml, t: mt });
     // 碰撞站场：位置必须用**包围盒左上角**（renderer 显式上报 boxX/boxY）——
     // 窗口坐标 = 包围盒 − margin（半只宠物宽），直接拿窗口坐标会让跨窗检测整体错位
     const petId = [...windows.keys()].find((id) => windows.get(id) === win);
@@ -749,7 +762,15 @@ app.whenReady().then(() => {
     // 渲染端的旧 menuOpen/chatOpen 守卫会请求整窗可交互；这里按真实光标和控件矩形裁定。
     const ignoring =
       interactive && input && inputBusy.get(win.id)
-        ? decideWindowIgnore(win.getContentBounds(), screen.getCursorScreenPoint(), false, true, 0, input)
+        ? decideWindowIgnore(
+            win.getContentBounds(),
+            screen.getCursorScreenPoint(),
+            false,
+            true,
+            0,
+            input,
+            winMargins.get(win.id),
+          )
         : !interactive;
     setWindowIgnore(win, ignoring);
   });

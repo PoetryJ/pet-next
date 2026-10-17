@@ -36,10 +36,14 @@ class PetSprite {
     // 但身体永不越界（漫游/拖拽都不会弄丢宠物）。与浏览器 overlay 的 sideAllow 同一套语义。
     this.sideAllow = (S.HIT_BOX.x0 / 640) * this.size;
     window.__dshPetDebug.sideAllow = this.sideAllow;
-    // 窗口四周外扩（= WINDOW_MARGIN_RATIO×宠物尺寸）：sprite 钉在 (margin.l, margin.t)，
-    // 窗口 = sprite + 四边余量——气泡/未来弹窗显示在余量里；余量透明且点击穿透
+    // 窗口四周外扩：左右下 = WINDOW_MARGIN_RATIO×宠物尺寸（既有取值，不动）；
+    // **上边距按气泡最大高度算**——气泡锚字号、窗口余量锚宠物，两者本就会脱钩：宠物变小
+    // （或关掉 followPet 把字号固定）时半只宠物的余量装不下气泡，气泡顶端会被窗口上边缘切掉。
+    // 余量是透明且点击穿透的，加高没有副作用（与菜单贴边那类"屏幕裁切"问题是两回事）。
+    // 注意：余量自此**不再四边相等**，主进程不能再按「窗口宽/4」反推命中区，故 setBounds 一并上报余量。
     const m = this.size * WINDOW_MARGIN_RATIO;
-    this.margin = { t: m, r: m, b: m, l: m };
+    const fontConf = pet.font || config.font || S.DEFAULT_FONT;
+    this.margin = { t: Math.max(m, S.bubbleTopMarginPx(fontConf, this.size)), r: m, b: m, l: m };
     window.__dshPetDebug.winMargin = this.margin;
     // 宠物包围盒左上角在【工作区】坐标系里的位置（本窗口的位置 = 宠物的位置）
     this.pos = { x: 0, y: 0 };
@@ -52,8 +56,9 @@ class PetSprite {
     // 拖拽抛掷物理参数（顶层全局；拍平已吹入实例，兜底回全局/默认）
     this.physics = pet.physics || config.physics || S.DEFAULT_PHYSICS;
     // 字体（全局一份；拍平已吹入实例，兜底回主条目/默认）：字号按本宠物尺寸算（resolveFontPx），
-    // 字体族不在这里用——它是全局变量、由 renderer.js 注入 documentElement
-    this.font = pet.font || config.font || S.DEFAULT_FONT;
+    // 字体族不在这里用——它是全局变量、由 renderer.js 注入 documentElement。
+    // fontConf 已在上面算窗口上边距时取好（上边距要用同一份字号）
+    this.font = fontConf;
     // 抛掷锁定在当前屏幕（根字段；拍平已吹入实例，兜底回主条目/默认）：
     // true = 甩出去只在松手时所在那块屏内弹（屏缝当墙），false = 照常跨屏飞行
     this.confineToScreen = pet.confineToScreen === true || config.confineToScreen === true;
@@ -292,6 +297,10 @@ class PetSprite {
         toScreen(this.bottomPad),
         fly ? toScreen(fly.vx) : 0,
         fly ? toScreen(fly.vy) : 0,
+        // 窗口余量（DIP）：主进程据此算宠物身体命中区——余量不再四边相等（上边距按气泡加高），
+        // 不能再按「窗口宽/4」反推（见 pointer-target.js 的 spriteHitRect）。
+        toScreen(this.margin.l),
+        toScreen(this.margin.t),
       );
     }
     // 位置变了（宠物漫游/拖拽/飞行，窗口跟着动）：提示若正显示必须重摆一次——它跟的是光标，

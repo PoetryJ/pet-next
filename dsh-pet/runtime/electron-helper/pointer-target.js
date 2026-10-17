@@ -23,21 +23,29 @@ const FEET_Y = 330;
 
 /**
  * 窗口矩形 → 宠物身体命中区的屏幕矩形（DIP）。
- * 窗口 = 宠物包围盒 + 四周各半只宠物的余量（renderer 的 WINDOW_MARGIN_RATIO = 0.5）：
- * 横向 `margin = round(width / 4)`、stageW = width − 2×margin；纵向从窗口顶边往下 margin 才是画布顶边
- * （底部还多一个 bottomPad，命中区计算用不到）。判定公式与渲染端 sprite.js 的命中判定同源，
- * 故两条通道的判定区域严格一致（报告者补丁里用 width/4 内缩会覆盖整个画布，比身体大一倍多）。
+ * 窗口 = 宠物包围盒 + 四周余量（渲染端 sprite.js 的 this.margin）：横向 `margin.l`、纵向 `margin.t`，
+ * stageW = width − 2×margin.l。
+ *
+ * **余量不再四边相等**：上边距按气泡最大高度加高（见 shared/fonts.ts 的 bubbleTopMarginPx），
+ * 所以不能再按「窗口宽 / 4」反推——那会把命中区整体下移/上移一个 (margin.t − margin.l)。
+ * 余量由渲染端随 setBounds 上报（preload → main 的 winMargins）；缺失时（旧渲染端/单测）
+ * 回退旧口径 width / 4，行为与改造前一致。
+ *
+ * @param {{x:number,y:number,width:number,height:number}} bounds 窗口矩形（DIP）
+ * @param {{l:number,t:number}} [margins] 渲染端上报的窗口余量（DIP）
  */
-function spriteHitRect(bounds) {
-  const margin = Math.round(bounds.width / 4);
-  const stageW = bounds.width - margin * 2;
+function spriteHitRect(bounds, margins) {
+  const legacy = Math.round(bounds.width / 4);
+  const ml = Number.isFinite(margins?.l) ? margins.l : legacy;
+  const mt = Number.isFinite(margins?.t) ? margins.t : legacy;
+  const stageW = bounds.width - ml * 2;
   const stageH = (stageW * CANVAS_H) / STAGE_W;
   const bottomPad = (stageH * (CANVAS_H - FEET_Y)) / CANVAS_H;
   return {
-    left: bounds.x + margin + (HIT_BOX.x0 / STAGE_W) * stageW,
-    top: bounds.y + margin + bottomPad + (HIT_BOX.y0 / CANVAS_H) * stageH,
-    right: bounds.x + margin + (HIT_BOX.x1 / STAGE_W) * stageW,
-    bottom: bounds.y + margin + bottomPad + (HIT_BOX.y1 / CANVAS_H) * stageH,
+    left: bounds.x + ml + (HIT_BOX.x0 / STAGE_W) * stageW,
+    top: bounds.y + mt + bottomPad + (HIT_BOX.y0 / CANVAS_H) * stageH,
+    right: bounds.x + ml + (HIT_BOX.x1 / STAGE_W) * stageW,
+    bottom: bounds.y + mt + bottomPad + (HIT_BOX.y1 / CANVAS_H) * stageH,
   };
 }
 
@@ -54,16 +62,17 @@ const OFF_BODY_RELEASE_MS = 400;
  *
  * @param {{x:number,y:number,width:number,height:number}} bounds 窗口矩形（DIP）
  * @param {{x:number,y:number}} point 真实光标位置（DIP）
+ * @param {{l:number,t:number}} [margins] 渲染端上报的窗口余量（DIP），见 spriteHitRect
  * @returns {'outside'|'body'|'margin'} 分区
  */
-function pointerZone(bounds, point) {
+function pointerZone(bounds, point, margins) {
   const inWindow =
     point.x >= bounds.x &&
     point.x < bounds.x + bounds.width &&
     point.y >= bounds.y &&
     point.y < bounds.y + bounds.height;
   if (!inWindow) return 'outside';
-  const r = spriteHitRect(bounds);
+  const r = spriteHitRect(bounds, margins);
   const inSprite = point.x >= r.left && point.x <= r.right && point.y >= r.top && point.y <= r.bottom;
   return inSprite ? 'body' : 'margin';
 }
@@ -96,9 +105,10 @@ function pointerZone(bounds, point) {
  * @param {number} [offBodyMs=0] 光标在窗口余量区（非 busy）的连续停留时长，超时即恢复穿透
  * @param {{dragging:boolean, rects:Array<{x:number,y:number,width:number,height:number}>}} [input]
  *   新渲染端上报的窗口局部交互矩形。菜单/聊天框只占自己的区域；拖拽仍拥有完整输入租约。
+ * @param {{l:number,t:number}} [margins] 渲染端上报的窗口余量（DIP），见 spriteHitRect
  * @returns {boolean} 新的穿透状态
  */
-function decideWindowIgnore(bounds, point, ignoring, busy, offBodyMs = 0, input) {
+function decideWindowIgnore(bounds, point, ignoring, busy, offBodyMs = 0, input, margins) {
   if (busy) {
     if (!input || input.dragging) return false; // 兼容旧渲染端；拖拽租约绝不被位置判定打断
     const inControl = input.rects.some(
@@ -108,9 +118,9 @@ function decideWindowIgnore(bounds, point, ignoring, busy, offBodyMs = 0, input)
         point.y >= bounds.y + r.y &&
         point.y < bounds.y + r.y + r.height,
     );
-    return !inControl && pointerZone(bounds, point) !== 'body';
+    return !inControl && pointerZone(bounds, point, margins) !== 'body';
   }
-  const zone = pointerZone(bounds, point);
+  const zone = pointerZone(bounds, point, margins);
   if (zone === 'outside') return true; // 窗外：恢复穿透
   if (zone === 'body') return false; // 宠物身上：可交互
   if (offBodyMs >= OFF_BODY_RELEASE_MS) return true; // 余量区停留超时：恢复穿透
