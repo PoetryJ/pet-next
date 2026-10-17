@@ -55,6 +55,9 @@ async function loadConfig() {
     physics: (merged && merged.main && merged.main.physics) || S.DEFAULT_PHYSICS,
     // 抛掷锁定在当前屏幕（根字段；合并器已填内置默认 false）
     confineToScreen: (merged && merged.main && merged.main.confineToScreen) === true,
+    // 字体（全局一份，合并器已填内置默认）：字体族在此取一次、注入全局变量；字号由每只宠物
+    // 按自己的尺寸算（见 PetSprite 注入的 --dsh-pet-font-bubble / --dsh-pet-font-tip）
+    font: (merged && merged.main && merged.main.font) || S.DEFAULT_FONT,
   };
 }
 
@@ -64,6 +67,10 @@ async function boot() {
     const cfg = await loadConfig();
     config = cfg;
     hideError();
+    // 字体族（全局配置 font.family）→ documentElement：对话窗/得分弹窗挂在 body 下、继承不到
+    // 宠物根容器，只能走全局变量；气泡与提示也一并从这里继承（与浏览器端同一套变量名）。
+    // 放在这里而不是 injectAssets()：字体族来自配置，必须等 /config 拉回来之后才有效。
+    document.documentElement.style.setProperty('--dsh-pet-font-family', S.fontStackOf(cfg.font.family));
     const pets = cfg.pets.filter((p) => S.isDesktopVisible(p.display));
     if (pets.length === 0) {
       showError('配置中没有 display 为 desktop/both 的宠物，桌面模式不显示宠物');

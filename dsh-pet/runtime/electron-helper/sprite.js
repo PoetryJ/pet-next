@@ -51,6 +51,9 @@ class PetSprite {
     this.weights = pet.animationWeights || cfg.animationWeights;
     // 拖拽抛掷物理参数（顶层全局；拍平已吹入实例，兜底回全局/默认）
     this.physics = pet.physics || config.physics || S.DEFAULT_PHYSICS;
+    // 字体（全局一份；拍平已吹入实例，兜底回主条目/默认）：字号按本宠物尺寸算（resolveFontPx），
+    // 字体族不在这里用——它是全局变量、由 renderer.js 注入 documentElement
+    this.font = pet.font || config.font || S.DEFAULT_FONT;
     // 抛掷锁定在当前屏幕（根字段；拍平已吹入实例，兜底回主条目/默认）：
     // true = 甩出去只在松手时所在那块屏内弹（屏缝当墙），false = 照常跨屏飞行
     this.confineToScreen = pet.confineToScreen === true || config.confineToScreen === true;
@@ -128,6 +131,11 @@ class PetSprite {
     this.el.style.left = this.margin.l + 'px';
     this.el.style.top = this.margin.t + 'px';
     this.el.style.setProperty('--pet-size', this.size + 'px');
+    // 字号（配置 font）：按本宠物尺寸算好最终 px 注入 —— 气泡与悬浮提示的 CSS 读这两个变量
+    // （与浏览器端同一套变量名、同一份换算 S.resolveFontPx，见 shared/fonts.ts）
+    const fontPx = S.resolveFontPx(this.font, this.size);
+    this.el.style.setProperty('--dsh-pet-font-bubble', fontPx.bubble + 'px');
+    this.el.style.setProperty('--dsh-pet-font-tip', fontPx.tip + 'px');
     const stage = document.createElement('div');
     stage.className = 'pet-stage';
     stage.style.transform = 'translateY(' + this.bottomPad + 'px)';

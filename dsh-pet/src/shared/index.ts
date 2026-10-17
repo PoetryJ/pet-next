@@ -14,6 +14,7 @@ export * from './motion';
 export * from './balance';
 export * from './whisper';
 export * from './config';
+export * from './fonts'; // 字体预设（id → CSS 字体栈）+ 字号换算（浏览器与桌面共用同一份）
 export * from './notify';
 export * from './menu'; // 统一右键菜单（本目录唯一的 DOM 例外：树=纯函数，渲染=两端共用同一份）
 export * from './chat'; // 对话弹窗（menu 之后第二个 DOM 例外：数据=纯函数，弹窗=两端共用同一份）

@@ -51,3 +51,36 @@ export const DEFAULT_FONT: FontConfig = {
 export function fontStackOf(id: string): string {
   return (FONT_PRESETS.find((p) => p.id === id) ?? FONT_PRESETS[0]).stack;
 }
+
+/** 基准宠物宽度（px）：字号换算的锚点——与内置 config.jsonc 的默认宠物 size 一致，
+ *  也是既有 CSS 系数（气泡 0.0455、提示 0.026）当初的设计基准。 */
+export const FONT_REF_SIZE = 462;
+
+/** 基准宽度下的气泡正文字号（px）＝ 0.0455 × 462 ≈ 21.02（= 接入 font 配置前 462 宽宠物的气泡字号） */
+export const BUBBLE_FONT_BASE_PX = 0.0455 * FONT_REF_SIZE;
+
+/** 基准宽度下的悬浮提示字号（px）＝ 0.026 × 462 ≈ 12.01（同上，改造前的取值） */
+export const TIP_FONT_BASE_PX = 0.026 * FONT_REF_SIZE;
+
+/** 气泡与悬浮提示的**最终字号**（px）——两端共用同一份换算，避免浏览器与桌面各算一套后漂移。
+ *
+ *  口径（以 462 宽为锚；CSS 只读算好的像素值，不在 CSS 里做除法）：
+ *    字号 = 基准px × (font.size ÷ 默认字号) × (followPet ? 宠物宽度 ÷ 462 : 1)
+ *  - 默认值（size=21 / followPet=true）在 462 宽宠物上得到 21.02px 与 12.01px —— 与接入本配置前一致；
+ *  - followPet=false 退化为「固定在 462 宽时的字号」，与宠物大小解耦；
+ *  - 配置被手改坏（字号非正 / 宽度非法）时按默认口径处理，绝不产出 NaN 或 0 字号。
+ *
+ *  @param font 该宠物的 font 配置（拍平时已吹入；缺失按 DEFAULT_FONT）
+ *  @param size 该宠物的宽度 px */
+export function resolveFontPx(font: FontConfig | undefined, size: number): { bubble: number; tip: number } {
+  const own = Number(font?.size);
+  // 用户层字号相对默认字号的倍率（默认字号 = DEFAULT_FONT.size）
+  const ratio = Number.isFinite(own) && own > 0 ? own / DEFAULT_FONT.size : 1;
+  const w = Number(size);
+  const follow = font?.followPet !== false;
+  const scale = follow && Number.isFinite(w) && w > 0 ? w / FONT_REF_SIZE : 1;
+  return {
+    bubble: BUBBLE_FONT_BASE_PX * ratio * scale,
+    tip: TIP_FONT_BASE_PX * ratio * scale,
+  };
+}

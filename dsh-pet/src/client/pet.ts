@@ -45,6 +45,9 @@ import {
 import { TOOLTIP_CLASS, TOOLTIP_CSS, TOOLTIP_GAP_RATIO, tooltipPlacement } from '../shared/tooltip';
 // 对话弹窗：与桌面共用同一份组件（数据经 host /chat 读写同一份记忆）
 import { mountChatDialog } from '../shared/chat';
+// 字体（全局配置 font）：种类 → CSS 字体栈、字号 → 最终 px。换算只在 shared 一处，
+// 与桌面端共用同一份（fontStackOf / resolveFontPx），避免两端各算一套后漂移。
+import { fontStackOf, resolveFontPx } from '../shared/fonts';
 import { petBridge } from './settings';
 import { notifyFromFrame } from './notify';
 
@@ -172,6 +175,9 @@ export function makePetUI(rt: {
   }) {
     // ---- 尺寸（由配置传入；容器/设置页更新后即时跟随）----
     const [size, setSize] = useState(cfg.size);
+    // 字号（全局配置 font）：按本宠物尺寸算好最终 px 注入 root（气泡与悬浮提示读它）。
+    // 随 size / cfg.font 变化即时重算——followPet 关闭时结果与 size 无关（见 resolveFontPx）。
+    const fontPx = resolveFontPx(cfg.font, size);
     const halfW = size / 2;
     const halfH = (size * 9) / 16 / 2;
     // 舞台脚底垫高（宠物站立于脚底线）：命中框 y、碰撞 body 框、渲染 stage 位移共用
@@ -1559,7 +1565,15 @@ export function makePetUI(rt: {
       'data-corner': corner,
       'data-facing': facing,
       style: Object.assign(
-        { '--dsh-pet-size': size + 'px', '--dsh-pet-mx': margin.x + 'px', '--dsh-pet-my': margin.y + 'px' },
+        {
+          '--dsh-pet-size': size + 'px',
+          '--dsh-pet-mx': margin.x + 'px',
+          '--dsh-pet-my': margin.y + 'px',
+          // 字号（配置 font）：注入算好的最终 px —— 气泡与悬浮提示的 CSS 读这两个变量
+          // （CSS 侧带原值回退，漏注入也不会坏，见 bubble.ts / tooltip.ts）
+          '--dsh-pet-font-bubble': fontPx.bubble + 'px',
+          '--dsh-pet-font-tip': fontPx.tip + 'px',
+        },
         rootStyle,
       ),
       children: [
@@ -1630,6 +1644,15 @@ export function makePetUI(rt: {
     const [workStatusTick, setWorkStatusTick] = useState(0);
     // 说话（碎碎念 / 命令气泡 / 对话回复三合一）：容器统一轮询 /state 的 pets.<id>.say，
     // 按宠物分发到对应 PetCard（sayRef + sayTick；见下方统一轮询与 PetCard 的 say 分支）。
+
+    // 字体族（全局配置 font.family）→ documentElement 上的全局变量：对话窗与得分弹窗挂在 body 下、
+    // 继承不到宠物根容器，只能走全局；气泡与悬浮提示也一并从这里继承。
+    // 多只宠物的 font 同值（配置只有一份），重复设置无副作用；列表为空（配置尚未加载）时不动。
+    useEffect(() => {
+      const family = pets[0]?.font?.family;
+      if (family === undefined) return;
+      document.documentElement.style.setProperty('--dsh-pet-font-family', fontStackOf(family));
+    }, [pets]);
 
     useEffect(() => {
       let alive = true;

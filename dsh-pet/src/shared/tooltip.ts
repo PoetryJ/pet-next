@@ -76,10 +76,13 @@ export const TOOLTIP_CSS = [
   'background:rgba(255,255,255,.96);color:#1f1f1f;',
   // 细边框：白底压到浅色宠物或浅色页面上会糊成一片，靠它划出轮廓（原生提示也有一道边）
   'border:1px solid rgba(0,0,0,.12);',
-  // 字体与气泡同一套（上首软糖体由两端各自注入 @font-face：客户端 bubble.ts、桌面 renderer.js）
-  'font-family:"ShangshouSoftCandy","Yuanti SC","YouYuan","幼圆","Comic Sans MS","PingFang SC","Microsoft YaHei",sans-serif;',
-  // 字号对齐 Windows 原生提示（9pt ≈ 12px）：462px 的宠物下 0.026 → 约 12px
-  'font-size:calc(var(--dsh-pet-size,var(--pet-size,462px))*0.026);line-height:1.4;',
+  // 字体与气泡同一套（上首软糖体由两端各自注入 @font-face：客户端 bubble.ts、桌面 renderer.js）。
+  // 字体族走全局配置变量 --dsh-pet-font-family（注入在 documentElement，回退参数 = 改造前的原栈）
+  'font-family:var(--dsh-pet-font-family,"ShangshouSoftCandy","Yuanti SC","YouYuan","幼圆","Comic Sans MS","PingFang SC","Microsoft YaHei",sans-serif);',
+  // 字号对齐 Windows 原生提示（9pt ≈ 12px）：462px 的宠物下 0.026 → 约 12px。
+  // --dsh-pet-font-tip 由两端按该宠物尺寸算好注入（shared/fonts.ts 的 resolveFontPx，
+  // 而非常量：followPet 关闭或字号被改时取值随之变化）；未注入时回退原表达式，行为与改造前一致。
+  'font-size:var(--dsh-pet-font-tip,calc(var(--dsh-pet-size,var(--pet-size,462px))*0.026));line-height:1.4;',
   // nowrap + 截断：宽度锁成一行才好和光标一起摆（换行会让宽度随位置跳变）
   'white-space:nowrap;overflow:hidden;text-overflow:ellipsis;',
   // 不设 backdrop-filter：白底没必要，原生提示也没有毛玻璃
