@@ -150,6 +150,7 @@ export function makePetUI(rt: {
     balance,
     balanceTick,
     balanceNoticeTick,
+    balanceManual,
     workStatus,
     workStatusTick,
     say,
@@ -162,6 +163,9 @@ export function makePetUI(rt: {
     balance: BalanceState | null;
     balanceTick: number;
     balanceNoticeTick: number;
+    /** 这次余额是不是**用户手动要的**（右键「查看余额」/ `/balance` 命令；host 在叶子里标 manual）。
+     *  手动请求一律给答复：即使本宠物关掉了 balanceEnabled，也要弹气泡（开关只关自动轮询）。 */
+    balanceManual: boolean;
     workStatus: WorkStatusSnapshot | null;
     workStatusTick: number;
     /** 本宠物的「说一句话」（碎碎念/命令气泡/对话回复三合一；容器从 S 分发下来） */
@@ -429,16 +433,26 @@ export function makePetUI(rt: {
       },
       [],
     );
-    // 余额事件：容器拉取成功后递增 balanceTick → 按档位播放事件动画 + 弹气泡
-    // （仅启用余额功能的宠物触发：未启用则该宠物完全不播余额动画、不显示气泡；
-    //   无效/不支持按设计不触发动画，错误由容器侧显式上报）
+    // 余额事件：容器拉取成功后递增 balanceTick → 按档位播放事件动画 + 弹气泡。
+    // 两条门控分得很清楚：
+    //  - 弹气泡：**手动请求**（右键「查看余额」/ `/balance` 命令，host 在叶子里标了 manual）无条件弹——
+    //    用户问了就得有答复，哪怕这只宠物关了 balanceEnabled、哪怕服务商没有百分比语义；
+    //    自动轮询则要求 balanceEnabled 且有百分比依据。与碎碎念同一条原则：开关只关自动，不关手动。
+    //  - 档位动画：始终只属于启用余额的宠物（关掉开关的宠物不该因为被点了一次菜单就突然演一遍）。
     const prevTickRef = useRef(0);
     useEffect(() => {
-      if (!cfg.balanceEnabled) return; // 未启用余额功能 -> 该宠物对余额事件完全免疫
       if (balanceTick === 0 || balanceTick === prevTickRef.current) return;
       prevTickRef.current = balanceTick;
       if (!balance || !balance.ok) return;
+      if (!cfg.balanceEnabled && !balanceManual) return; // 自动轮询受开关门控；手动无条件通过
       const p = balancePercent(balance);
+      if (balanceManual || p !== undefined) {
+        setBubbleOn(true);
+        // 气泡 10s 定时消失（与动画解耦：即使动画被点击/拖拽打断，气泡也按时收起；重复触发先清旧定时器）
+        if (bubbleTimerRef.current !== null) window.clearTimeout(bubbleTimerRef.current);
+        bubbleTimerRef.current = window.setTimeout(() => setBubbleOn(false), BUBBLE_DURATION_MS);
+      }
+      if (!cfg.balanceEnabled) return; // 档位动画只属于启用余额的宠物
       if (p === undefined) return; // 当前数据源没有百分比语义（如 DeepSeek 余额），不触发档位动画
       const pool = petAnims.events?.balance;
       if (!pool || pool.length === 0) {
@@ -465,10 +479,6 @@ export function makePetUI(rt: {
           name,
       );
       stopMove();
-      setBubbleOn(true);
-      // 气泡 10s 定时消失（与动画解耦：即使动画被点击/拖拽打断，气泡也按时收起；重复触发先清旧定时器）
-      if (bubbleTimerRef.current !== null) window.clearTimeout(bubbleTimerRef.current);
-      bubbleTimerRef.current = window.setTimeout(() => setBubbleOn(false), BUBBLE_DURATION_MS);
       setOnce(true);
       setAnim(name);
       // eslint-disable-next-line react-hooks/exhaustive-deps
@@ -476,10 +486,10 @@ export function makePetUI(rt: {
 
     // 余额不可用（服务商未登记 / 缺凭证 / 抓取失败）：容器判定该提示时递增 balanceNoticeTick
     // → 本宠物只弹「文字说明」气泡，不播档位动画（非 ok 没有百分比语义，档位动画无从映射）。
-    // 门控与成功路径一致（仅 balanceEnabled 的宠物提示）；显隐/定时与成功路径同一套（10s 自动消失）。
+    // 门控：自动轮询要求 balanceEnabled；**手动请求无条件弹**（用户问了就该有答复，包括"服务商不支持"这件事）。
     const prevNoticeRef = useRef(0);
     useEffect(() => {
-      if (!cfg.balanceEnabled) return; // 未启用余额功能 -> 该宠物对余额事件完全免疫
+      if (!cfg.balanceEnabled && !balanceManual) return; // 自动轮询受开关门控；手动无条件通过
       if (balanceNoticeTick === 0 || balanceNoticeTick === prevNoticeRef.current) return;
       prevNoticeRef.current = balanceNoticeTick;
       if (!balance || balance.ok) return;
@@ -1371,9 +1381,22 @@ export function makePetUI(rt: {
 
     // ---- 右键菜单（统一自绘组件：树 + 渲染 + 样式与桌面共用 src/shared/menu.ts） ----
     // 注意：菜单是独立浮层，只在宠物命中区拦截右键（preventDefault + stopPropagation），
-    // 绝不进入/改动 DSH 页面自己的菜单；浏览器端只有「碎碎念 / 回到初始位置 + 动作」——
-    // 无「打开网站 / 查看余额」（打开网站=就在网页里；查看余额已由对话框 /balance 命令实现）。
+    // 绝不进入/改动 DSH 页面自己的菜单。浏览器端工具项 = 查看余额 / 碎碎念 / 对话 / 回到初始位置
+    // （无「打开网站」——宠物就在网页里；无「重载配置」——刷新页面即可）。
     const handleMenuAction = (leaf: MenuLeaf) => {
+      if (leaf.action === 'show-balance') {
+        // 查看余额（与桌面菜单同一套语义）：POST 动作端点让 host 立即刷新一次并写入 S（manual 标记随数据一起写），
+        // 随即**立刻跑一拍 /state** 拿结果展示——0 延迟，不必等下一个轮询周期。
+        // 动作端点不回数据：余额只有一个出口（/state 的 sections.balance），与碎碎念同一条契约。
+        console.info('[dsh-pet] 菜单查看余额 pet=' + cfg.id);
+        postAction('/dsh-pet-7340/balance')
+          .then((ok: boolean) => {
+            if (!ok) console.warn('[dsh-pet] 余额刷新动作未成功 pet=' + cfg.id);
+            statePoller.now();
+          })
+          .catch((e: unknown) => console.warn('[dsh-pet] 余额刷新异常', e));
+        return;
+      }
       if (leaf.action === 'whisper') {
         // 手动碎碎念：POST 动作端点让 host 立即新生成一句（写进 S）。
         // 动作**不回文本**——收到 ok 后叫醒一拍 /state，文本随下一拍到达并弹气泡（0 延迟）。
@@ -1459,9 +1482,11 @@ export function makePetUI(rt: {
       setAnim(leaf.anim);
     };
     const handleContextMenu = (e: ReactNS.MouseEvent<HTMLDivElement>) => {
-      // 工具项（碎碎念——手动触发**不受 whisperEnabled 限制**，该字段只影响自动周期轮询；
-      // 回到初始位置，两端共用）+ 动作树（动作→分类→具体动画）
+      // 工具项（查看余额 / 碎碎念 / 对话 / 回到初始位置，与桌面端同一套）+ 动作树（动作→分类→具体动画）。
+      // 「查看余额」**无条件显示**（与桌面端一致）：即使该宠物关了 balanceEnabled 也能点——手动请求不受开关限制
+      //（该开关只关自动轮询与档位动画），与碎碎念「手动触发不受 whisperEnabled 限制」同一条原则。
       const tree: MenuNode[] = [
+        { label: '查看余额', action: 'show-balance' },
         { label: '碎碎念', action: 'whisper' },
         { label: '对话', action: 'chat' },
         { label: '回到初始位置', action: 'home' },
@@ -1528,7 +1553,7 @@ export function makePetUI(rt: {
           on: whisperBubbleOn,
         });
       }
-      if (bubbleOn && balance && cfg.balanceEnabled) {
+      if (bubbleOn && balance && (cfg.balanceEnabled || balanceManual)) {
         return h(BalanceBubble, { state: balance, on: bubbleOn });
       }
       if (workBubbleOn && workText && cfg.workStatusEnabled) {
@@ -1618,6 +1643,9 @@ export function makePetUI(rt: {
     const [balance, setBalance] = useState<BalanceState | null>(null);
     const [balanceTick, setBalanceTick] = useState(0);
     const [balanceNoticeTick, setBalanceNoticeTick] = useState(0);
+    // 这次余额是不是**用户手动要的**（host 在叶子里标 manual）：下发给各宠物，
+    // 决定「关了 balanceEnabled 的宠物要不要也答复」——手动请求无条件弹，开关只关自动。
+    const [balanceManual, setBalanceManual] = useState(false);
     // 上次已提示的不可用原因（reason:provider）：自动轮询只在原因变化时再弹（判定在 src/shared，两端同一份）
     const noticeKeyRef = useRef<string | null>(null);
     // 余额结果 → 状态与气泡（周期刷新与手动触发**共用这一条路径**，避免各写一份后漂移）。
@@ -1627,6 +1655,7 @@ export function makePetUI(rt: {
     const applyBalanceRef = useRef<(state: BalanceState, explicit: boolean) => void>(() => {});
     applyBalanceRef.current = (state, explicit) => {
       setBalance(state);
+      setBalanceManual(explicit); // 手动标记随本次数据一起下发（每次到达都覆盖，人工标记不会滞留）
       if (state.ok) {
         setBalanceTick((t) => t + 1); // 成功：播档位动画 + 弹余额气泡
         return;
@@ -1800,6 +1829,7 @@ export function makePetUI(rt: {
             balance,
             balanceTick,
             balanceNoticeTick,
+            balanceManual,
             workStatus,
             workStatusTick,
             say: sayRef.current[p.id],

@@ -1186,7 +1186,9 @@ class PetSprite {
     // 碎碎念/对话项无条件显示：手动触发不受 whisperEnabled 限制（该字段只影响自动周期轮询）
     // 首项文案随宿主形态变（OPEN_TARGET）：宿主是 DSH 桌面应用时点是"唤起桌面应用窗口"，仍叫「打开网站」会误导
     const tools = [{ label: OPEN_TARGET === 'desktop' ? '打开 DeepSeek Harness' : '打开网站', action: 'open-site' }];
-    if (this.pet.balanceEnabled) tools.push({ label: '查看余额', action: 'show-balance' });
+    // 「查看余额」无条件显示（与浏览器端一致）：关了 balanceEnabled 的宠物也能点——手动请求不受开关限制
+    //（该开关只关自动轮询与档位动画），点了一定给答复。
+    tools.push({ label: '查看余额', action: 'show-balance' });
     tools.push(
       { label: '碎碎念', action: 'whisper' },
       { label: '对话', action: 'chat' },
@@ -1284,8 +1286,9 @@ class PetSprite {
   // 「查看余额」菜单：POST 动作让 host 刷新余额（写进 S），随即**立刻跑一拍 /state** 拿结果展示
   // （0 延迟，不用等下一个 1s；展示走 showBalanceNow/showBalanceNotice 同一路径）。
   // 注意这里不再直接拉余额：数据只有一个出口（S），菜单只负责"让它刷新"。
+  // **不做 balanceEnabled 门控**（菜单项也无条件显示）：手动请求不受开关限制——开关只关自动轮询与档位动画，
+  // 关掉余额的宠物被点一次菜单也该看到数据（与浏览器端一致）。
   showBalanceFromMenu() {
-    if (!this.pet.balanceEnabled) return;
     S.postAction(BALANCE_URL)
       .then((ok) => {
         if (!ok) console.warn('[dsh-pet] 菜单查看余额：刷新动作未成功');
