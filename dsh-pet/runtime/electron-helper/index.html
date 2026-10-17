@@ -62,17 +62,26 @@
       .pet-hit.dragging {
         cursor: grabbing;
       }
-      /* 余额气泡：与浏览器 overlay 同一套视觉（白色圆润泡 + 峰/谷/错误着色），
-         尺寸随宠物宽度 var(--pet-size) 等比缩放；字体经 renderer 注入上首软糖体 @font-face */
+      /* 余额气泡：与浏览器 overlay 同一套视觉（白色圆润泡 + 峰/谷/错误着色）。
+         尺寸分两类锚点：盒子（宽度/内边距/圆角/尾巴/阴影/行间距）锚在字号 --f 上——字号调大盒子同步变大，
+         文字不会顶出白底；位置（bottom 偏移）仍锚在宠物宽度 var(--pet-size)，气泡始终贴着宠物头顶。
+         宽度必须写 width:max-content：气泡是 left:50% 的绝对定位盒，可用宽度只有包含块一半，
+         shrink-to-fit 会先被这道墙卡死（max-width 调多大都不生效）；写 max-content 后按内容取宽，
+         再由 max-width 收口，上限同时不超过宠物宽度（桌面窗口只比宠物大一圈，超了会被裁）。
+         字体经 renderer 注入上首软糖体 @font-face */
       .pet-bubble {
         position: absolute;
         left: 50%;
         transform: translateX(-50%);
         bottom: calc(100% - var(--pet-size, 462px) * 0.108);
-        min-width: calc(var(--pet-size, 462px) * 0.26);
-        max-width: calc(var(--pet-size, 462px) * 0.5);
-        padding: calc(var(--pet-size, 462px) * 0.022) calc(var(--pet-size, 462px) * 0.03);
-        border-radius: calc(var(--pet-size, 462px) * 0.035);
+        width: max-content;
+        /* 钉死 content-box：本文件全局设了 border-box，那会让 min/max-width 把内边距也算进去，
+           内容可用宽度被悄悄缩掉一圈（表现为「明明还有空位却折行」）。与浏览器 bubble.ts 同一口径 */
+        box-sizing: content-box;
+        min-width: calc(var(--f) * 5.7143);
+        max-width: min(calc(var(--f) * 10.989), 100%);
+        padding: calc(var(--f) * 0.4835) calc(var(--f) * 0.6593);
+        border-radius: calc(var(--f) * 0.7692);
         background: rgba(255, 255, 255, 0.92);
         color: #2b2b2b;
         /* 字体族走全局配置变量（renderer.js 注入到 documentElement）：对话窗/得分弹窗挂在 body 下、
@@ -96,38 +105,39 @@
         z-index: 3;
         pointer-events: none;
         box-shadow:
-          0 calc(var(--pet-size, 462px) * 0.009) calc(var(--pet-size, 462px) * 0.035) rgba(0, 0, 0, 0.14),
+          0 calc(var(--f) * 0.1978) calc(var(--f) * 0.7692) rgba(0, 0, 0, 0.14),
           0 1px 3px rgba(0, 0, 0, 0.08);
         opacity: 0;
         transition: opacity 0.25s ease;
-        white-space: nowrap;
+        /* 不锁 nowrap：折行只在内容真超过宽度上限时才发生；break-word 只在整词放不下时断，
+           不会把 85% / ¥12.34 这类数字拆到两行 */
+        white-space: normal;
+        overflow-wrap: break-word;
       }
       .pet-bubble::after {
         content: '';
         position: absolute;
         left: 50%;
-        bottom: calc(var(--pet-size, 462px) * -0.017);
+        bottom: calc(var(--f) * -0.3736);
         transform: translateX(-50%);
-        border: calc(var(--pet-size, 462px) * 0.017) solid transparent;
+        border: calc(var(--f) * 0.3736) solid transparent;
         border-top-color: rgba(255, 255, 255, 0.92);
         border-bottom: none;
       }
       .pet-bubble.is-on {
         opacity: 1;
       }
-      /* 碎碎念变体：与浏览器 overlay 一致 —— 字号缩到余额气泡的 0.75、取消 nowrap 允许换行、
-         宽度随文字数量自适应（短句窄框、长句封顶绕行），高度随行数自然增长 */
+      /* 碎碎念变体：与浏览器 overlay 一致 —— 字号缩到余额气泡的 0.75、宽度下限更窄（0.10 → 2.1978），
+         上限与余额气泡相同；宽度取宽/折行规则继承 .pet-bubble，高度随行数自然增长 */
       .pet-bubble.is-whisper {
         font-size: calc(var(--f) * 0.7473);
-        min-width: calc(var(--pet-size, 462px) * 0.1);
-        max-width: calc(var(--pet-size, 462px) * 0.5);
-        white-space: normal;
-        overflow-wrap: anywhere;
+        min-width: calc(var(--f) * 2.1978);
+        max-width: min(calc(var(--f) * 10.989), 100%);
       }
       .pet-bub-row {
         display: flex;
         justify-content: space-between;
-        gap: calc(var(--pet-size, 462px) * 0.03);
+        gap: calc(var(--f) * 0.6593);
       }
       .pet-bub-sub {
         font-size: calc(var(--f) * 0.7692);
