@@ -209,6 +209,48 @@ describe('/state + /balance —— 轮询统一状态与余额动作端点', () 
     assert.equal((await call('/dsh-pet-7340/state', 'POST')).status, 405);
   });
 
+  test('只传 since / 只传 timeout → 400（成对必填，与 /playback 的 wait/timeout 同一套约定）', async () => {
+    assert.equal((await call('/dsh-pet-7340/state?since=0')).status, 400);
+    assert.equal((await call('/dsh-pet-7340/state?timeout=1000')).status, 400);
+  });
+
+  test('非法 since / timeout → 400（非整数、负数、小数、超上限）', async () => {
+    for (const q of [
+      'since=abc&timeout=1000',
+      'since=-1&timeout=1000',
+      'since=0&timeout=99999',
+      'since=0&timeout=1.5',
+    ]) {
+      assert.equal((await call('/dsh-pet-7340/state?' + q)).status, 400, q);
+    }
+  });
+
+  test('since 与当前版本不同 → 立刻返回全量（不挂起）', async () => {
+    const r = await call('/dsh-pet-7340/state?since=12345&timeout=10000');
+    assert.equal(r.status, 200);
+    const body = JSON.parse(r.body) as { counter: number; sections: Record<string, unknown> };
+    assert.equal(typeof body.counter, 'number', '响应必须带顶层 counter（调用方拿它当下一拍的 since）');
+    assert.ok(body.sections, '立刻返回时同样是全量状态');
+  });
+
+  test('since 与当前版本相同 + timeout=0 → 走挂起分支但下一拍就醒（等价"立刻返回"）', async () => {
+    const first = JSON.parse((await call('/dsh-pet-7340/state')).body) as { counter: number };
+    const r = await call('/dsh-pet-7340/state?since=' + first.counter + '&timeout=0');
+    assert.equal(r.status, 200);
+    assert.equal((JSON.parse(r.body) as { counter: number }).counter, first.counter, '没人写过 → 版本号不变');
+  });
+
+  test('since 与当前版本相同 → **真的挂起**，到点才返回（长轮询的核心行为）', async () => {
+    const first = JSON.parse((await call('/dsh-pet-7340/state')).body) as { counter: number };
+    const t0 = Date.now();
+    const r = await call('/dsh-pet-7340/state?since=' + first.counter + '&timeout=200');
+    const elapsed = Date.now() - t0;
+    assert.equal(r.status, 200);
+    // 没人写叶子 → 只能等超时。这条用例存在的意义就是证明"挂起"不是空话：
+    // 其余用例都用 timeout=0，走同一个分支但不会真的等。
+    assert.ok(elapsed >= 180, `应当真的挂起约 200ms，实测 ${elapsed}ms`);
+  });
+
   test('POST /balance 是动作端点：只回 { ok: true }，不返回余额数据', async () => {
     const r = await call('/dsh-pet-7340/balance', 'POST');
     assert.equal(r.status, 200);

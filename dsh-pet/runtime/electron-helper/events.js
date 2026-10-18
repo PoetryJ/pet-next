@@ -240,10 +240,14 @@ function applyBalanceNotice(state, explicit) {
   }
 }
 
-// ---------- 统一轮询（GET /state，1s）：与浏览器同一份数据来源与渲染入口 ----------
+// ---------- 统一轮询（GET /state，长轮询）：与浏览器同一份数据来源与渲染入口 ----------
 // 每个叶子 = { counter, data }：首拉只记基线（不渲染），之后 counter 变了才渲染。
 // 各功能逐个接入，旧的独立轮询循环随迁随删。
 let stateBaseline = null;
+/** 我手里这份 S 的版本号（undefined = 首拉，不带参数 → 立刻拿全量） */
+let stateSince;
+/** 宿主支持长轮询吗？响应带 counter = 支持；不带 = 老宿主（会立刻返回全量，必须退避） */
+let stateLongPoll = true;
 
 /** 余额叶子 → 展示（成功播档位动画 + 气泡；不可用按 shared 判定弹文字说明） */
 function applyBalanceLeaf(leaf) {
@@ -317,14 +321,21 @@ function applyThrowLeaf(petId, leaf) {
   }
 }
 
-/** 跑一拍 /state（1s 定时与「前端动作后立刻刷新」共用同一份实现） */
+/** 跑一拍 /state。返回 true = "按长轮询命中"（宿主支持长轮询，可以立刻再请求） */
 async function pollStateOnce() {
   try {
-    const s = await S.fetchState(STATE_URL);
-    if (!s) return;
+    const s = await S.fetchState(
+      STATE_URL,
+      stateLongPoll && stateSince !== undefined ? { since: stateSince, timeoutMs: STATE_WAIT_MS } : undefined,
+    );
+    if (!s) return false;
+    // 响应带 counter = 宿主支持长轮询；不带 = 老宿主（不认识 since/timeout，会立刻返回全量），
+    // 这时必须退回固定间隔轮询，否则这个循环就是忙等。
+    stateLongPoll = typeof s.counter === 'number';
+    if (stateLongPoll) stateSince = s.counter;
     if (stateBaseline === null) {
       stateBaseline = S.flattenCounters(s); // 首拉：只记基线，不渲染（避免启动/重载时重放旧气泡）
-      return;
+      return true;
     }
     for (const change of S.takeChanged(s, stateBaseline)) {
       if (change.leaf.data === null) continue;
@@ -344,24 +355,24 @@ async function pollStateOnce() {
         applyThrowLeaf(change.path.slice('pets.'.length, -'.throw'.length), change.leaf);
       }
     }
+    return true;
   } catch {
     /* 轻量轮询失败静默：下一拍再试 */
+    return false;
   }
-}
-
-/** 立即跑一拍：右键菜单等**前端动作**完成后调用——结果 0 延迟可见，不用等下一个 1s */
-function pollStateNow() {
-  void pollStateOnce();
 }
 
 function startLoops() {
   if (loopsStarted) return;
   loopsStarted = true;
 
-  // 统一轮询：1s 一拍（余额数据由 host 定时器刷新后写进 S，这里只读）
+  // 统一轮询：**自调度长轮询**（请求 → 处理 → 立刻再请求）。宿主在版本没变时挂起，所以
+  // 空闲时是 1 请求/秒（与改造前一致），叶子一变立刻收到——不需要"前端动作后叫醒一拍"了
+  // （动作端点都会写叶子 → 版本变 → 挂着的这一拍自己就返回）。本窗口只装一只宠物，
+  // 所以每个窗口各跑一份；全局计数器意味着任意写入会唤醒所有窗口（有意为之，见 host ./state）。
   const stateLoop = async () => {
-    await pollStateOnce();
-    setTimeout(() => void stateLoop(), 1000);
+    const hit = await pollStateOnce();
+    setTimeout(() => void stateLoop(), hit && stateLongPoll ? 0 : 1000);
   };
   void stateLoop();
 }

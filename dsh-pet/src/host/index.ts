@@ -125,7 +125,7 @@ import {
   type HostNotifyFrame,
 } from './notify-events';
 import { profileNameFrom, storageEntries } from './storage-paths';
-import { PollStateStore } from './state';
+import { parseStateWaitQuery, PollStateStore } from './state';
 import { timeContextOf } from './time-context';
 import {
   HelperProcess,
@@ -1127,19 +1127,54 @@ export function apply(ctx: any): void {
       }
     }
 
-    // 轮询统一状态（S）：/dsh-pet-7340/state（GET，no-cache）——前端 1s 轮询的**唯一**数据源
-    // （余额 / 工作状态 / 通知 / 宠物说话，形状见 ./state）。
-    // 只读、纯内存、**零副作用**：绝不在这里触发外部调用或模型生成——那会把所有人的 1s 轮询拖死；
+    // 轮询统一状态（S）：/dsh-pet-7340/state（GET，no-cache）——前端轮询的**唯一**数据源
+    // （余额 / 工作状态 / 通知 / 配置变更信号 / 宠物说话，形状见 ./state）。
+    // 只读、纯内存、**零副作用**：绝不在这里触发外部调用或模型生成——那会把所有人的轮询拖死；
     // 也**不在这里碰磁盘**（早先这里现算配置文件的 mtime 指纹，等于每拍读一次盘，
-    // 桌面端一窗一宠各自轮询 → N 倍；配置变更信号已改走 sections.config 叶子，见 ./state）。
+    // 桌面端一窗一宠各自轮询 → N 倍；配置变更信号已改走 sections.config 叶子）。
+    //
+    // **长轮询**：带 `?since=&timeout=`（成对必填）时，若调用方手里的版本与当前相同就**挂起**，
+    // 直到任意叶子被写过（立刻返回）或超时。不带这两个参数 = 立刻返回全量（改造前的语义）。
+    // 等待语义与 GET /playback/{id} 的 wait 是同一套：上限同值、断线走同一个 signal 收尸、
+    // 卸载走 cancelAll()。区别只有一个——那边的唤醒条件是"某条记录进入某个状态"，
+    // 这边是"任意叶子被写过"，所以等待者是全局集合，一次写入唤醒所有人。
     if (rest === 'state') {
       if (method !== 'GET') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
-      return {
-        kind: 'json',
-        status: 200,
-        obj: state.read(),
-        headers: { 'cache-control': 'no-cache, no-store' },
-      };
+      const headers = { 'cache-control': 'no-cache, no-store' };
+      const parsed = parseStateWaitQuery(url.searchParams.get('since'), url.searchParams.get('timeout'));
+      if (parsed.kind === 'error') return { kind: 'json', status: 400, obj: { error: parsed.error } };
+      const current = state.read();
+      // 两者都没传 → 立刻返回；已经有新东西 → 也立刻返回（别白等一整个 timeout）。
+      // timeout=0 走挂起分支，下一拍就醒，等价"立刻返回"，这里不特判。
+      if (parsed.kind === 'none' || current.counter !== parsed.since) {
+        return { kind: 'json', status: 200, obj: current, headers };
+      }
+      const since = parsed.since;
+      return await new Promise<RouteResult>((resolveWait) => {
+        let settled = false;
+        /** 收尾：只认第一次（唤醒 / 超时 / 取消 / 调用方断开 都可能先后到达） */
+        const settle = (result: RouteResult): void => {
+          if (settled) return;
+          settled = true;
+          resolveWait(result);
+        };
+        // 唤醒时**才** read()：store 保证"叶子已写定"之后才叫醒，所以这里拿到的一定是新状态
+        const cancel = state.wait({
+          since,
+          timeoutMs: parsed.timeoutMs,
+          onWake: () => settle({ kind: 'json', status: 200, obj: state.read(), headers }),
+        });
+        // 调用方断开：取消等待者（清掉它的超时定时器），以"无需应答"收尾。
+        const onAbort = (): void => {
+          cancel();
+          settle({ kind: 'none' });
+        };
+        if (signal?.aborted) {
+          onAbort();
+          return;
+        }
+        signal?.addEventListener('abort', onAbort, { once: true });
+      });
     }
 
     // 余额：/dsh-pet-7340/balance（POST = 立即刷新一次并写入 S，返回 {ok}）
@@ -1919,11 +1954,12 @@ export function apply(ctx: any): void {
   // agent/error 生成通知帧入队，浏览器轮询 /notify 拉取弹 toast（DSH 0.1.5 删除了浏览器侧
   // api.events.mux/host 事件流，通知与宠物一样改走 host 通道，两端行为一致）。
 
-  // 随插件生命周期清理：桌面 Helper 回收（异步下载完成后不再拉起）+ **结束所有挂起的回执等待**
-  // （不结束的话，插件重载会留下一批悬挂的响应，各自要等到超时才收尾）
+  // 随插件生命周期清理：桌面 Helper 回收（异步下载完成后不再拉起）+ **结束所有挂起的等待**
+  // （回执的与 /state 长轮询的都不结束的话，插件重载会留下一批悬挂的响应，各自要等到超时才收尾）
   ctx.effect(() => () => {
     disposed = true;
     playback.cancelAll();
+    state.cancelAll();
     stopHelper('dsh-host-stop');
   });
 

@@ -13,7 +13,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { PollStateStore } from './state.ts';
+import { MAX_STATE_WAIT_MS, parseStateWaitQuery, PollStateStore } from './state.ts';
 
 describe('PollStateStore —— 初始形态', () => {
   test('四个全局叶子都是 {counter:0, data:null}（0 = 从未写过，前端首拉当基线）', () => {
@@ -146,5 +146,170 @@ describe('PollStateStore —— counter 必须严格递增（前端唯一的渲�
     const counter = store.read().sections.balance.counter;
     assert.ok(counter >= before, 'counter 应 ≥ 写入前的墙上时间（重启后前端手里的旧值只会更小）');
     assert.ok(counter - before < 1000, 'counter 不该明显超前于墙上时间');
+  });
+});
+
+describe('PollStateStore —— 顶层 counter（整份 S 的版本号）', () => {
+  test('从未写过 = 0；写过之后等于最后一次写入的编号', () => {
+    const store = new PollStateStore();
+    assert.equal(store.read().counter, 0);
+    store.writeSection('balance', 1);
+    assert.equal(store.read().counter, store.read().sections.balance.counter);
+    store.writePet('main', 'say', { text: 'x' });
+    assert.equal(store.read().counter, store.read().pets.main.say.counter, 'counter 必须跟着最新那次写入走');
+  });
+});
+
+describe('parseStateWaitQuery —— ?since=&timeout= 的解析', () => {
+  test('两者都没传 → none（立刻返回全量 = 改造前的语义）', () => {
+    assert.deepEqual(parseStateWaitQuery(null, null), { kind: 'none' });
+  });
+
+  test('只传一个 → error（成对必填，与 /playback 的 wait/timeout 同一套约定）', () => {
+    assert.equal(parseStateWaitQuery('5', null).kind, 'error');
+    assert.equal(parseStateWaitQuery(null, '1000').kind, 'error');
+  });
+
+  test('合法值原样透出；since=0 与 timeout=0 都合法', () => {
+    assert.deepEqual(parseStateWaitQuery('0', '0'), { kind: 'ok', since: 0, timeoutMs: 0 });
+    assert.deepEqual(parseStateWaitQuery('1755000000000', '1000'), {
+      kind: 'ok',
+      since: 1755000000000,
+      timeoutMs: 1000,
+    });
+    assert.deepEqual(parseStateWaitQuery('1', String(MAX_STATE_WAIT_MS)), {
+      kind: 'ok',
+      since: 1,
+      timeoutMs: MAX_STATE_WAIT_MS,
+    });
+  });
+
+  test('非法值一律 error（负数 / 小数 / 非数字 / 超上限 / 空串）', () => {
+    const badSince = ['-1', '1.5', 'abc', '', ' ', '1e3', '+5'];
+    for (const s of badSince) {
+      assert.equal(parseStateWaitQuery(s, '1000').kind, 'error', `since=${JSON.stringify(s)} 应判非法`);
+    }
+    const badTimeout = [...badSince, String(MAX_STATE_WAIT_MS + 1)];
+    for (const t of badTimeout) {
+      assert.equal(parseStateWaitQuery('1', t).kind, 'error', `timeout=${JSON.stringify(t)} 应判非法`);
+    }
+  });
+});
+
+describe('PollStateStore.wait —— 挂起等待（长轮询）', () => {
+  /** 收集唤醒次数的小工具 */
+  const collector = () => {
+    const seen: number[] = [];
+    return { seen, onWake: () => void seen.push(seen.length) };
+  };
+
+  test('叶子被写过 → 立刻唤醒，并摘掉等待者', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const store = new PollStateStore();
+    const c = collector();
+    const cancel = store.wait({ since: store.read().counter, timeoutMs: 10_000, onWake: c.onWake });
+    assert.equal(store.waiterCount(), 1);
+    store.writeSection('balance', { ok: true });
+    assert.deepEqual(c.seen, [0], '写叶子必须唤醒');
+    assert.equal(store.waiterCount(), 0, '唤醒后必须摘掉（否则定时器与引用都留着）');
+    cancel(); // 幂等：已经摘掉了，再取消不该出事
+    assert.equal(store.waiterCount(), 0);
+  });
+
+  test('写宠物叶子同样唤醒（等待条件是"任意写入"，不分 section / pets）', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const store = new PollStateStore();
+    const c = collector();
+    store.wait({ since: store.read().counter, timeoutMs: 10_000, onWake: c.onWake });
+    store.writePet('main', 'say', { text: 'x' });
+    assert.deepEqual(c.seen, [0]);
+  });
+
+  test('唤醒时**叶子已经写定**（回调里 read() 必须看到新值，不能看到旧的）', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const store = new PollStateStore();
+    let seenText: unknown = 'NOT_WOKEN';
+    store.wait({
+      since: store.read().counter,
+      timeoutMs: 10_000,
+      onWake: () => {
+        seenText = (store.read().pets.main?.say?.data as { text?: unknown } | undefined)?.text;
+      },
+    });
+    store.writePet('main', 'say', { text: '该喝水了' });
+    assert.equal(seenText, '该喝水了', '唤醒必须发生在叶子赋值之后（放在 next() 里就会读到旧状态）');
+  });
+
+  test('没有任何写入 → 到点超时才唤醒，且只唤醒一次', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const store = new PollStateStore();
+    const c = collector();
+    store.wait({ since: store.read().counter, timeoutMs: 1000, onWake: c.onWake });
+    t.mock.timers.tick(999);
+    assert.deepEqual(c.seen, [], '没到点不该醒');
+    t.mock.timers.tick(1);
+    assert.deepEqual(c.seen, [0]);
+    assert.equal(store.waiterCount(), 0);
+    t.mock.timers.tick(10_000);
+    assert.deepEqual(c.seen, [0], '超时后定时器不能再响第二次');
+  });
+
+  test('timeout=0 → 下一拍就醒（等价"立刻返回"，路由不需要特判）', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const store = new PollStateStore();
+    const c = collector();
+    store.wait({ since: store.read().counter, timeoutMs: 0, onWake: c.onWake });
+    assert.deepEqual(c.seen, [], '注册时不该同步回调');
+    t.mock.timers.tick(1);
+    assert.deepEqual(c.seen, [0]);
+  });
+
+  test('取消 → 摘掉且不再唤醒（调用方断开走这条）', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const store = new PollStateStore();
+    const c = collector();
+    const cancel = store.wait({ since: store.read().counter, timeoutMs: 1000, onWake: c.onWake });
+    cancel();
+    assert.equal(store.waiterCount(), 0);
+    t.mock.timers.tick(10_000);
+    assert.deepEqual(c.seen, [], '取消后定时器必须清掉，不能再回调');
+  });
+
+  test('since 已经是最新（没人写）→ 挂起期间不会被空转唤醒', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const store = new PollStateStore();
+    const c = collector();
+    store.writeSection('balance', 1);
+    store.wait({ since: store.read().counter, timeoutMs: 10_000, onWake: c.onWake });
+    // 再写一次**同一个值**也算写入（counter 变），所以这里必须真的写才会醒
+    store.writeSection('balance', 1);
+    assert.deepEqual(c.seen, [0], 'counter 变了就是变化，与 data 是否相同无关');
+  });
+
+  test('cancelAll（插件卸载路径）→ 全部唤醒并清空', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const store = new PollStateStore();
+    const a = collector();
+    const b = collector();
+    store.wait({ since: 0, timeoutMs: 10_000, onWake: a.onWake });
+    store.wait({ since: 0, timeoutMs: 10_000, onWake: b.onWake });
+    assert.equal(store.waiterCount(), 2);
+    store.cancelAll();
+    assert.deepEqual([a.seen.length, b.seen.length], [1, 1]);
+    assert.equal(store.waiterCount(), 0);
+    t.mock.timers.tick(10_000);
+    assert.deepEqual([a.seen.length, b.seen.length], [1, 1], 'cancelAll 之后定时器不能再响');
+  });
+
+  test('一次写入唤醒**所有**等待者（全局计数器 = 唤醒所有人，有意为之）', (t) => {
+    t.mock.timers.enable({ apis: ['setTimeout'] });
+    const store = new PollStateStore();
+    const a = collector();
+    const b = collector();
+    store.wait({ since: 0, timeoutMs: 10_000, onWake: a.onWake });
+    store.wait({ since: 0, timeoutMs: 10_000, onWake: b.onWake });
+    store.writeSection('notify', { x: 1 });
+    assert.deepEqual([a.seen.length, b.seen.length], [1, 1], '两个等待者都该醒');
+    assert.equal(store.waiterCount(), 0, '不泄漏');
   });
 });

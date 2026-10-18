@@ -18,6 +18,10 @@ export interface StateLeaf {
 
 /** S 的客户端视图（叶子已规范化：counter 必为数字） */
 export interface PollState {
+  /** 整份 S 的版本号（= 最后一次写入的编号）。回传成 `?since=` 表达"我手里这份是哪个版本"。
+   *  **老宿主不带此字段** → undefined：消费端据此退回定时轮询——老宿主不认识 since/timeout，
+   *  会立刻返回，不退避就变成狂打。 */
+  counter?: number;
   sections: Record<string, StateLeaf>;
   pets: Record<string, Record<string, StateLeaf>>;
 }
@@ -39,12 +43,20 @@ function normLeaf(value: unknown): StateLeaf | null {
 /**
  * 拉一次 /state。
  * 失败 / HTTP 非 2xx / 形状不对 → null（轮询侧静默重试，与其余轮询同一容错口径）。
+ *
+ * `wait` 传了就带 `?since=&timeout=` 走**长轮询**：宿主在"版本没变"时挂起，直到任意叶子被写过
+ * （立刻返回）或超时。不传 = 立刻返回全量（改造前的语义）。
  */
-export async function fetchState(baseUrl = '/dsh-pet-7340/state'): Promise<PollState | null> {
+export async function fetchState(
+  baseUrl = '/dsh-pet-7340/state',
+  wait?: { since: number; timeoutMs: number },
+): Promise<PollState | null> {
   try {
-    const res = await fetch(baseUrl, { cache: 'no-store' });
+    const url = wait ? `${baseUrl}?since=${wait.since}&timeout=${wait.timeoutMs}` : baseUrl;
+    const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return null;
     const raw = (await res.json().catch(() => null)) as {
+      counter?: unknown;
       sections?: unknown;
       pets?: unknown;
     } | null;
@@ -67,7 +79,11 @@ export async function fetchState(baseUrl = '/dsh-pet-7340/state'): Promise<PollS
       }
       pets[petId] = leaves;
     }
-    return { sections, pets };
+    return {
+      counter: typeof raw.counter === 'number' && Number.isFinite(raw.counter) ? raw.counter : undefined,
+      sections,
+      pets,
+    };
   } catch {
     return null;
   }
@@ -200,8 +216,9 @@ export function readThrow(leaf: StateLeaf): { angle: number; power: number } | n
 
 /**
  * 动作端点：POST 一次，返回是否成功（`{ok:true}`）。
- * 动作**不返回数据**——数据只有一个出口（/state），调用方收到 ok 后立刻 `pollStateNow()`
- * 拉一拍即可 0 延迟看到结果（见 host 侧的路由说明）。
+ * 动作**不返回数据**——数据只有一个出口（/state）。调用方**不需要**在收到 ok 后再做什么：
+ * 这些动作都会写叶子 → 顶层 `counter` 变 → 挂着的长轮询那一拍立刻返回，结果 0 延迟到达。
+ * （改造前这里靠"前端主动叫醒一拍"，长轮询上线后那套已经删掉了。）
  */
 export async function postAction(baseUrl: string, body?: unknown): Promise<boolean> {
   try {

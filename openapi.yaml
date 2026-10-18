@@ -92,6 +92,7 @@ paths:
 
         ```jsonc
         {
+          "counter": 1755000000007,
           "sections": {
             "balance":    { "counter": 1755000000000, "data": { /* BalanceState */ } },
             "workStatus": { "counter": 1755000000001, "data": { /* WorkStatusSnapshot */ } },
@@ -129,6 +130,9 @@ paths:
           保存 / 同步配置（`PUT` / `POST /config`）**不写它**：它们的调用方自己就拿到了成品聚合。
           **用户手工编辑 `main-config.jsonc` / `pet/*.json` 不会被感知**——宿主不再读盘比对 mtime
           （那等于每拍读一次盘），改完需要重载。
+        - **`counter` 是整份 S 的版本号**（顶层，**不是叶子**）：它就是"最后一次写入的编号"。
+          把它回传成 `?since=` 表达"我手里这份是哪个版本"——长轮询靠它判断要不要挂起。
+          `0` = 从未写过任何叶子。
         - 叶子 `data` 为 `null` 表示"从未写过"（此时 `counter` 为 `0`）；消费端应跳过它。
         - **`counter` 只在内容被写入时更新**，不是每次请求都变。所以"数据没变"和"接口挂了"
           要区分开：后者表现为 HTTP 非 2xx 或连接失败。
@@ -139,9 +143,42 @@ paths:
           **不要按 `.` 切分**：宠物 id 允许包含点号（例如 `a.b`），切分必然出错。
           要提取 id 请用固定前缀/后缀做切片。
         - 宠物 id 是配置里 `pets[].id`，默认是 `main`。要拿到全部 id 请看 `GET /config`。
+
+        **长轮询（推荐用法）**
+
+        带 `?since=<顶层 counter>&timeout=<ms>`（**成对必填**）时，若调用方手里的版本与当前相同，
+        宿主就**挂起**这一请求，直到任意叶子被写过（立刻返回）或超时——于是叶子一变就能立刻收到，
+        不必按固定间隔空转。**两个参数都不传 = 立刻返回全量**，与不带长轮询的旧行为完全一致。
+
+        推荐姿势：首拉不带参数 → 记下 `counter` → 之后每拍带上它长挂 → 收到响应后**立刻**再发一次。
+        这样空闲时的请求率取决于你自己给的 `timeout`，而延迟是"叶子一变就到"。
+      parameters:
+        - name: since
+          in: query
+          required: false
+          description: |
+            调用方手里那份 S 的版本号（= 上一拍响应里的顶层 `counter`）。
+            与当前不同 → 立刻返回；相同 → 挂起。`0` 合法（"我手里什么都没有"）。
+            与 `timeout` **成对必填**：只传一个 → HTTP 400。
+          schema:
+            type: integer
+            format: int64
+            minimum: 0
+          example: 1755000000007
+        - name: timeout
+          in: query
+          required: false
+          description: |
+            挂起等待的封顶时长（毫秒），只接受 `0..10000` 的**非负整数**。
+            `0` 合法（等价"立刻返回"）。与 `since` **成对必填**：只传一个 → HTTP 400。
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 10000
+          example: 1000
       responses:
         "200":
-          description: 当前状态
+          description: 当前状态（长轮询时：等到了变化，或等到了超时）
           headers:
             cache-control:
               description: 恒为 `no-cache, no-store`
@@ -151,6 +188,14 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/PollState"
+        "400":
+          description: |
+            `since`/`timeout` 非法（只传一个、非整数、负数、超过 10000）。
+            响应体是 `{ "error": "..." }`，附明确原因。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
         "500":
@@ -1518,12 +1563,20 @@ components:
 
     PollState:
       type: object
-      required: [sections, pets]
+      required: [counter, sections, pets]
       description: |
         统一状态 S。每个叶子都是 `{ counter, data }`；`counter` 变化即表示该叶子更新了。
-        顶层只有 `sections` 与 `pets` 两项——**没有附带字段**，配置变更信号也是叶子
-        （`sections.config`）。
+        顶层 `counter` 是整份 S 的版本号（不是叶子），配置变更信号也是叶子（`sections.config`）。
       properties:
+        counter:
+          type: integer
+          format: int64
+          minimum: 0
+          description: |
+            整份 S 的版本号 = **最后一次写入的编号**（顶层，不是叶子：没有 `data`，不参与叶子比对）。
+            回传成 `?since=` 表达"我手里这份是哪个版本"；与当前不同即表示有东西变了。
+            `0` = 从未写过任何叶子。它天然等于**所有叶子 counter 里最大的那个**（全局单点递增）。
+          example: 1755000000007
         sections:
           type: object
           description: 全局段（所有端共享一份）
@@ -1556,6 +1609,7 @@ components:
         typical:
           summary: 一只有余额与碎碎念的宠物
           value:
+            counter: 1755000000600
             sections:
               balance:
                 counter: 1755000000000

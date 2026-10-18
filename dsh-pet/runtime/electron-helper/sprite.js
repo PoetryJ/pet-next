@@ -1434,8 +1434,9 @@ class PetSprite {
     if (!this.inputBusy()) this.setInteractive(false);
   }
 
-  // 「查看余额」菜单：POST 动作让 host 刷新余额（写进 S），随即**立刻跑一拍 /state** 拿结果展示
-  // （0 延迟，不用等下一个 1s；展示走 showBalanceNow/showBalanceNotice 同一路径）。
+  // 「查看余额」菜单：POST 动作让 host 刷新余额（写进 S）。
+  // 结果**这里什么都不用做**：写叶子会让版本号变，挂着的长轮询那一拍立刻返回并展示
+  // （展示走 showBalanceNow/showBalanceNotice 同一路径）。
   // 注意这里不再直接拉余额：数据只有一个出口（S），菜单只负责"让它刷新"。
   // **不做 balanceEnabled 门控**（菜单项也无条件显示）：手动请求不受开关限制——开关只关自动轮询与档位动画，
   // 关掉余额的宠物被点一次菜单也该看到数据（与浏览器端一致）。
@@ -1443,21 +1444,19 @@ class PetSprite {
     S.postAction(BALANCE_URL)
       .then((ok) => {
         if (!ok) console.warn('[dsh-pet] 菜单查看余额：刷新动作未成功');
-        pollStateNow(); // 立即拉一拍：结果 0 延迟可见（失败也会由 /state 里的 ok:false 弹文字说明）
       })
       .catch((e) => {
         console.error('[dsh-pet] 菜单查看余额异常', e);
       });
   }
 
-  // 「碎碎念」菜单：POST 动作让 host 立即新生成一句（写进 S），随即立刻跑一拍 /state 拿文本展示
-  // （0 延迟，不用等下一个 1s）。动作不回文本——文本只有一个出口（S）。
+  // 「碎碎念」菜单：POST 动作让 host 立即新生成一句（写进 S）。
+  // 动作不回文本——文本只有一个出口（S），随"版本号变化"唤醒的那一拍长轮询到达并展示。
   // 手动触发不受 whisperEnabled 限制——该字段只关自动周期，手动永远可用。
   showWhisperFromMenu() {
     S.postAction(WHISPER_URL + '?pet=' + encodeURIComponent(this.pet.id))
       .then((ok) => {
         if (!ok) console.warn('[dsh-pet] 菜单碎碎念：生成动作未成功 pet=' + this.pet.id);
-        pollStateNow(); // 立即拉一拍：文本随这一拍到达并展示
       })
       .catch((e) => {
         console.warn('[dsh-pet] 菜单碎碎念异常', e);
@@ -1484,9 +1483,8 @@ class PetSprite {
       // 弹窗同菜单：只允许在「窗口 ∩ 工作区」内显示，贴边时不被屏幕裁掉（#41）
       clamp: this.visibleClampRect(),
       onSent: () => {
-        // 发送成功：回复已写进 S，立刻跑一拍 /state 让气泡 0 延迟出现（不必等下一个 1s）
+        // 发送成功：回复已写进 S → 版本号变 → 挂着的长轮询立刻返回并弹气泡（0 延迟）
         console.info('[dsh-pet] 对话已发送 pet=' + this.pet.id);
-        pollStateNow();
       },
       onClose: () => {
         this.chatClose = null;

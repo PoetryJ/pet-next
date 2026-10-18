@@ -28,6 +28,7 @@ import {
   readThrow,
   readWorkStatus,
   takeChanged,
+  type PollState,
   type SayCue,
 } from '../shared/state';
 import { WORK_STATUS_INDEX, type WorkStatusSnapshot } from '../shared/work-status';
@@ -54,10 +55,6 @@ import { fontStackOf, resolveFontPx } from '../shared/fonts';
 import { petBridge } from './settings';
 import { notifyFromFrame } from './notify';
 
-/** 容器注册的「立刻拉一拍 /state」钩子：前端动作（右键菜单 / 对话弹窗）完成后调用——
- *  数据只从 S 来（动作端点不回数据），但叫醒一拍就能 0 延迟看到结果，不用等下一个 1s。
- *  未注册（容器还没挂）时是空操作，调用方不需要判空。 */
-export const statePoller: { now: () => void } = { now: () => {} };
 // 拖拽抛掷物理（弹簧跟手 + 甩抛 + 重力反弹）：两端共用同一份纯计算（src/shared/physics.ts）
 import {
   estimateReleaseVelocity,
@@ -96,6 +93,15 @@ const THUMB_EXT = ANIMATION_EXT;
 
 /** 余额气泡展示时长（ms）：定时自动消失，与动画生命周期解耦 */
 const BUBBLE_DURATION_MS = 10 * 1000;
+
+/** /state 长轮询的挂起时长（ms）：宿主在"版本没变"时最多挂这么久。
+ *  1s 是**前端自己定的下限**——空闲时请求率因此与改造前完全一致（1 req/s），
+ *  而叶子一变宿主立刻返回，前端不必再等满一拍。 */
+const STATE_WAIT_MS = 1000;
+
+/** 老宿主 / 请求失败时的轮询间隔（ms）。老宿主不认识 since/timeout，会**立刻**返回全量，
+ *  不退避就是忙等；网络失败同理。 */
+const STATE_FALLBACK_MS = 1000;
 
 /** 内联 CSS —— 注入一次（官方插件标准做法） */
 const css = [
@@ -1602,27 +1608,25 @@ export function makePetUI(rt: {
     // （无「打开网站」——宠物就在网页里；无「重载配置」——刷新页面即可）。
     const handleMenuAction = (leaf: MenuLeaf, playbackId?: string) => {
       if (leaf.action === 'show-balance') {
-        // 查看余额（与桌面菜单同一套语义）：POST 动作端点让 host 立即刷新一次并写入 S（manual 标记随数据一起写），
-        // 随即**立刻跑一拍 /state** 拿结果展示——0 延迟，不必等下一个轮询周期。
+        // 查看余额（与桌面菜单同一套语义）：POST 动作端点让 host 立即刷新一次并写入 S（manual 标记随数据一起写）。
+        // 结果**这里什么都不用做**：写叶子会让版本号变，挂着的长轮询那一拍立刻返回并展示（0 延迟）。
         // 动作端点不回数据：余额只有一个出口（/state 的 sections.balance），与碎碎念同一条契约。
         console.info('[dsh-pet] 菜单查看余额 pet=' + cfg.id);
         postAction('/dsh-pet-7340/balance')
           .then((ok: boolean) => {
             if (!ok) console.warn('[dsh-pet] 余额刷新动作未成功 pet=' + cfg.id);
-            statePoller.now();
           })
           .catch((e: unknown) => console.warn('[dsh-pet] 余额刷新异常', e));
         return;
       }
       if (leaf.action === 'whisper') {
         // 手动碎碎念：POST 动作端点让 host 立即新生成一句（写进 S）。
-        // 动作**不回文本**——收到 ok 后叫醒一拍 /state，文本随下一拍到达并弹气泡（0 延迟）。
+        // 动作**不回文本**——文本随"版本号变化"唤醒的那一拍长轮询到达并弹气泡（0 延迟）。
         // 手动触发不受 whisperEnabled 限制——该字段只关自动周期，手动永远可用。
         console.info('[dsh-pet] 菜单触发碎碎念 pet=' + cfg.id);
         postAction('/dsh-pet-7340/whisper?pet=' + encodeURIComponent(cfg.id))
           .then((ok: boolean) => {
             if (!ok) console.warn('[dsh-pet] 碎碎念手动触发失败 pet=' + cfg.id);
-            statePoller.now();
           })
           .catch((e: unknown) => console.warn('[dsh-pet] 碎碎念手动触发异常', e));
         return;
@@ -1641,9 +1645,8 @@ export function makePetUI(rt: {
           x: hitRect ? hitRect.right + 6 : window.innerWidth - 256,
           y: hitRect ? hitRect.top + 6 : 8,
           onSent: () => {
-            // 发送成功：回复已写进 S，叫醒一拍 /state 让气泡 0 延迟出现（不必等下一个 1s）
+            // 发送成功：回复已写进 S → 版本号变 → 挂着的长轮询立刻返回并弹气泡（0 延迟）
             console.info('[dsh-pet] 对话已发送 pet=' + cfg.id);
-            statePoller.now();
           },
           onClose: () => {
             chatRef.current = null;
@@ -1984,86 +1987,106 @@ export function makePetUI(rt: {
       if (!ready) return;
       let alive = true;
       let baseline: Record<string, number> | null = null;
-      const poll = async () => {
-        try {
-          const s = await fetchState();
-          if (!alive || !s) return;
-          if (baseline === null) {
-            baseline = flattenCounters(s); // 首拉：只记基线，不渲染
-            return;
-          }
-          for (const { path, leaf } of takeChanged(s, baseline)) {
-            if (leaf.data === null) continue;
-            if (path === 'sections.config') {
-              // 配置被别处改过 → 重拉配置重拍平。**唯一的写方是 POST /pet-display**
-              // （桌面端右键改显示位置）——那个改动不是本页面发起的，只能靠这个信号知道。
-              // 叶子 data 恒为 {}（纯信号），配置本体太大不能塞进每秒的 /state，所以这里再拉一次。
-              // 这就是「桌面端改了、浏览器端要刷新才可见」的解药，1s 内自动跟随。
-              petBridge.reload(); // 内部 GET /config（该响应已带 no-cache）→ applyMerged → visiblePets 重算
-            } else if (path === 'sections.balance') {
-              const hit = readBalance(leaf);
-              if (hit) applyBalanceRef.current(hit.state, hit.manual);
-            } else if (path === 'sections.workStatus') {
-              const snap = readWorkStatus(leaf);
-              if (snap) {
-                setWorkStatus(snap);
-                setWorkStatusTick((t) => t + 1); // 任何变化都触发（含回到空闲：用于收起常驻气泡）
-              }
-            } else if (path === 'sections.notify') {
-              // 系统通知（单槽：同一秒多条只留最后一条，由 host 决定）→ 弹 toast（内部有开关/聚焦/权限门）
-              notifyFromFrame(leaf.data);
-            } else if (path.startsWith('pets.') && path.endsWith('.say')) {
-              // 说话叶子：路径形如 pets.<id>.say。宠物 id **允许含点号**，所以按前缀/后缀切片，
-              // 绝不 split('.')（那会把 id 切碎、派发给不存在的宠物）。
-              const petId = path.slice('pets.'.length, -'.say'.length);
-              const said = readSay(leaf);
-              if (said) {
-                sayRef.current[petId] = { ...said, seq: (sayRef.current[petId]?.seq ?? 0) + 1 };
-                setSayTick((t) => t + 1);
-              }
-            } else if (path.startsWith('pets.') && path.endsWith('.anim')) {
-              // 点播动画叶子：路径形如 pets.<id>.anim。同样按前缀/后缀切片，绝不 split('.')。
-              // 每次写入 counter 都递增，所以同一个动画连点两次也会分发两次（重播）。
-              const petId = path.slice('pets.'.length, -'.anim'.length);
-              const hit = readAnim(leaf);
-              if (hit) {
-                animCueRef.current[petId] = {
-                  name: hit.name,
-                  playbackId: hit.playbackId,
-                  seq: (animCueRef.current[petId]?.seq ?? 0) + 1,
-                };
-                setAnimCueTick((t) => t + 1);
-              }
-            } else if (path.startsWith('pets.') && path.endsWith('.position')) {
-              // 位置指令叶子：路径形如 pets.<id>.position（同样按前缀/后缀切片，绝不 split('.')）
-              const petId = path.slice('pets.'.length, -'.position'.length);
-              const hit = readPosition(leaf);
-              if (hit) {
-                posCueRef.current[petId] = { ...hit, seq: (posCueRef.current[petId]?.seq ?? 0) + 1 };
-                setPosCueTick((t) => t + 1);
-              }
-            } else if (path.startsWith('pets.') && path.endsWith('.throw')) {
-              // 抛掷指令叶子：路径形如 pets.<id>.throw
-              const petId = path.slice('pets.'.length, -'.throw'.length);
-              const hit = readThrow(leaf);
-              if (hit) {
-                throwCueRef.current[petId] = { ...hit, seq: (throwCueRef.current[petId]?.seq ?? 0) + 1 };
-                setThrowCueTick((t) => t + 1);
-              }
+      // 长轮询：since = 我手里这份 S 的版本号（undefined = 首拉，不带参数 → 立刻拿全量）
+      let since: number | undefined;
+      // 宿主支持长轮询吗？响应带 counter = 支持；不带 = **老宿主**——它不认识 since/timeout，
+      // 会立刻返回全量，这时必须退回固定间隔轮询，否则就成忙等了。
+      let longPoll = true;
+      /** 应用一份 S：首拉只记基线，之后按 counter 变化逐个分发 */
+      const applyState = (s: PollState) => {
+        if (baseline === null) {
+          baseline = flattenCounters(s); // 首拉：只记基线，不渲染
+          return;
+        }
+        for (const { path, leaf } of takeChanged(s, baseline)) {
+          if (leaf.data === null) continue;
+          if (path === 'sections.config') {
+            // 配置被别处改过 → 重拉配置重拍平。**唯一的写方是 POST /pet-display**
+            // （桌面端右键改显示位置）——那个改动不是本页面发起的，只能靠这个信号知道。
+            // 叶子 data 恒为 {}（纯信号），配置本体太大不能塞进 /state，所以这里再拉一次。
+            // 长轮询下这个信号一到就醒，比改造前的 1s 更快。
+            petBridge.reload(); // 内部 GET /config（该响应已带 no-cache）→ applyMerged → visiblePets 重算
+          } else if (path === 'sections.balance') {
+            const hit = readBalance(leaf);
+            if (hit) applyBalanceRef.current(hit.state, hit.manual);
+          } else if (path === 'sections.workStatus') {
+            const snap = readWorkStatus(leaf);
+            if (snap) {
+              setWorkStatus(snap);
+              setWorkStatusTick((t) => t + 1); // 任何变化都触发（含回到空闲：用于收起常驻气泡）
+            }
+          } else if (path === 'sections.notify') {
+            // 系统通知（单槽：同一秒多条只留最后一条，由 host 决定）→ 弹 toast（内部有开关/聚焦/权限门）
+            notifyFromFrame(leaf.data);
+          } else if (path.startsWith('pets.') && path.endsWith('.say')) {
+            // 说话叶子：路径形如 pets.<id>.say。宠物 id **允许含点号**，所以按前缀/后缀切片，
+            // 绝不 split('.')（那会把 id 切碎、派发给不存在的宠物）。
+            const petId = path.slice('pets.'.length, -'.say'.length);
+            const said = readSay(leaf);
+            if (said) {
+              sayRef.current[petId] = { ...said, seq: (sayRef.current[petId]?.seq ?? 0) + 1 };
+              setSayTick((t) => t + 1);
+            }
+          } else if (path.startsWith('pets.') && path.endsWith('.anim')) {
+            // 点播动画叶子：路径形如 pets.<id>.anim。同样按前缀/后缀切片，绝不 split('.')。
+            // 每次写入 counter 都递增，所以同一个动画连点两次也会分发两次（重播）。
+            const petId = path.slice('pets.'.length, -'.anim'.length);
+            const hit = readAnim(leaf);
+            if (hit) {
+              animCueRef.current[petId] = {
+                name: hit.name,
+                playbackId: hit.playbackId,
+                seq: (animCueRef.current[petId]?.seq ?? 0) + 1,
+              };
+              setAnimCueTick((t) => t + 1);
+            }
+          } else if (path.startsWith('pets.') && path.endsWith('.position')) {
+            // 位置指令叶子：路径形如 pets.<id>.position（同样按前缀/后缀切片，绝不 split('.')）
+            const petId = path.slice('pets.'.length, -'.position'.length);
+            const hit = readPosition(leaf);
+            if (hit) {
+              posCueRef.current[petId] = { ...hit, seq: (posCueRef.current[petId]?.seq ?? 0) + 1 };
+              setPosCueTick((t) => t + 1);
+            }
+          } else if (path.startsWith('pets.') && path.endsWith('.throw')) {
+            // 抛掷指令叶子：路径形如 pets.<id>.throw
+            const petId = path.slice('pets.'.length, -'.throw'.length);
+            const hit = readThrow(leaf);
+            if (hit) {
+              throwCueRef.current[petId] = { ...hit, seq: (throwCueRef.current[petId]?.seq ?? 0) + 1 };
+              setThrowCueTick((t) => t + 1);
             }
           }
-        } catch {
-          /* 轻量轮询失败静默：下一拍再试 */
         }
       };
-      // 前端动作（右键菜单/对话弹窗）完成后叫醒一拍：数据只从 S 来，但结果可以 0 延迟可见
-      statePoller.now = () => void poll();
-      void poll();
-      const timer = window.setInterval(() => void poll(), 1000);
+      // 自调度循环：**请求 → 处理 → 立刻再请求**。宿主侧在没变化时挂起，所以这个循环
+      // 空闲时是 1 请求/秒（与改造前一致），有变化时立刻收到——不需要"前端动作后叫醒一拍"
+      // 那套了：动作端点都会写叶子 → 版本变 → 挂着的这一拍自己就返回了。
+      const loop = async () => {
+        while (alive) {
+          let s: PollState | null = null;
+          try {
+            s = await fetchState(
+              undefined,
+              longPoll && since !== undefined ? { since, timeoutMs: STATE_WAIT_MS } : undefined,
+            );
+          } catch {
+            /* 轻量轮询失败静默：下一拍再试 */
+          }
+          if (!alive) return;
+          if (s) {
+            longPoll = typeof s.counter === 'number';
+            if (longPoll) since = s.counter;
+            applyState(s);
+          }
+          // 长轮询命中（或首拉）→ 立刻再请求，宿主已经替我们等过了；
+          // 失败 / 老宿主 → 退避一个间隔（不退避就是忙等）。
+          if (!s || !longPoll) await new Promise((r) => setTimeout(r, STATE_FALLBACK_MS));
+        }
+      };
+      void loop();
       return () => {
         alive = false;
-        statePoller.now = () => {};
-        window.clearInterval(timer);
       };
     }, [ready]);
 
