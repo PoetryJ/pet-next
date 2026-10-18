@@ -13,7 +13,7 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 
 | 接口 | 功能 |
 | --- | --- |
-| `GET /dsh-pet-7340/state` | **轮询唯一数据源**：全局段拿到余额、工作状态、系统通知；每只宠物另有说话、动画、位置、抛掷四个槽位。另带 `configVersion`（配置版本指纹，变了就该重拉 `/config`） |
+| `GET /dsh-pet-7340/state` | **轮询唯一数据源**：全局段拿到余额、工作状态、系统通知、配置变更信号；每只宠物另有说话、动画、位置、抛掷四个槽位。`sections.config` 是配置变更信号（`data` 恒为 `{}`，只看 `counter`），变了就该重拉 `/config`——**只有 `POST /pet-display` 会写它** |
 | `GET /dsh-pet-7340/config` | 读合并后的成品配置（内置默认 + 用户层，字段已填满） |
 | `GET /dsh-pet-7340/config/meta` | 配置文件路径、各类数据落盘位置、卸载该用哪个 profile |
 | `GET /dsh-pet-7340/models` | 可用服务商与模型清单（与 DSH 自己的模型选择器同源） |

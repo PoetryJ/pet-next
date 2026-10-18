@@ -93,7 +93,6 @@ import { decideAnim } from './anim';
 import { decidePosition, decideThrow } from './motion-cue';
 import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
 import {
-  configVersion,
   findPetInstance,
   flattenPetList,
   ID_FORBIDDEN,
@@ -1035,6 +1034,11 @@ export function apply(ctx: any): void {
       } catch (e) {
         return { kind: 'json', status: 500, obj: { error: e instanceof Error ? e.message : String(e) } };
       }
+      // 配置变更信号（**只在写盘成功之后**：失败时不该动版本号，否则浏览器白重拉一次 /config）。
+      // 这是全插件**唯一**写 sections.config 的地方：保存 / 同步配置的调用方自己就拿到了成品聚合
+      // （响应体），桌面端由下面的 syncDesktop() 重启，都不需要这个信号；
+      // 而桌面端右键改 display 时浏览器页面**不是发起方**，只能靠它发现「配置被别处改过」。
+      state.writeSection('config', {});
       // 不 await：发起者很可能就是**即将被这次重载换掉的**桌面 Helper（与 /reload 同一处境）。
       // 写盘已经落定，重启结果不需要回给调用方。
       void syncDesktop();
@@ -1125,15 +1129,15 @@ export function apply(ctx: any): void {
 
     // 轮询统一状态（S）：/dsh-pet-7340/state（GET，no-cache）——前端 1s 轮询的**唯一**数据源
     // （余额 / 工作状态 / 通知 / 宠物说话，形状见 ./state）。
-    // 只读、纯内存、**零副作用**：绝不在这里触发外部调用或模型生成——那会把所有人的 1s 轮询拖死。
+    // 只读、纯内存、**零副作用**：绝不在这里触发外部调用或模型生成——那会把所有人的 1s 轮询拖死；
+    // 也**不在这里碰磁盘**（早先这里现算配置文件的 mtime 指纹，等于每拍读一次盘，
+    // 桌面端一窗一宠各自轮询 → N 倍；配置变更信号已改走 sections.config 叶子，见 ./state）。
     if (rest === 'state') {
       if (method !== 'GET') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
       return {
         kind: 'json',
         status: 200,
-        // 顺带下发配置版本：浏览器端靠它发现「配置被别处改过」（桌面端右键改 display / 另一个标签页
-        // 保存 / 用户手改配置文件）后重拉 /config。没有它，桌面端的改动要刷新页面才可见。
-        obj: { ...state.read(), configVersion: configVersion(configPaths) },
+        obj: state.read(),
         headers: { 'cache-control': 'no-cache, no-store' },
       };
     }

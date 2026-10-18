@@ -34,7 +34,7 @@
  * 本模块是 host 自包含实现（不 import src/shared —— DSH 单文件加载约束）；
  * 浏览器/桌面侧的对应纯逻辑（把成品拍平成渲染列表）在 src/shared/config.ts。
  */
-import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, statSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
 /** 位置角落白名单 */
@@ -241,33 +241,6 @@ export function readPetConfigEntry(
 ): { path: string; raw: Record<string, unknown> | undefined } | undefined {
   const hit = scanPetFiles(paths.petDir).find((f) => f.prefix === entry);
   return hit ? { path: hit.path, raw: readJsonc(hit.path) } : undefined;
-}
-
-/**
- * 配置版本号（GET /state 顺带下发的「配置有没有变过」指纹）。
- *
- * 取「所有会被合并进来的配置文件」的 mtime 最大值：用户主配置（含旧路径回落）+ 全部文件宠物配置。
- * 为什么用文件时间戳而不是内存计数器：**用户手工编辑 main-config.jsonc / pet/*.json 也必须被感知**——
- * 那条路径不经过任何写接口，计数器永远不动。
- *
- * 消费端只比较「与上一拍是否相同」，不解析、不排序，所以直接给毫秒时间戳的字符串。
- * 文件都不存在（首次使用）→ "0"；首次写盘后 mtime 立刻变化，版本随之改变。
- */
-export function configVersion(paths: ConfigPaths): string {
-  let max = 0;
-  const bump = (file: string | undefined): void => {
-    if (!file) return;
-    try {
-      const st = statSync(file);
-      if (st.mtimeMs > max) max = st.mtimeMs;
-    } catch {
-      /* 文件不存在（尚未写过配置 / pet 目录为空）→ 跳过该来源 */
-    }
-  };
-  bump(paths.userFile);
-  bump(paths.legacyUserFile);
-  for (const file of scanPetFiles(paths.petDir)) bump(file.path);
-  return String(max);
 }
 
 /** animations 段完整性校验（与旧 assertAnimationsHost 同一套规则；不 throw，非法返回 false） */

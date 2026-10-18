@@ -8,7 +8,7 @@
  *
  * 形状：
  *   {
- *     sections: { balance: {counter,data}, workStatus: {…}, notify: {…} },  // 全局，所有端共享
+ *     sections: { balance: {counter,data}, workStatus: {…}, notify: {…}, config: {…} },  // 全局，所有端共享
  *     pets: { <宠物id>: { say: {…}, anim: {…}, position: {…}, throw: {…} } } // 每只宠物各自一份
  *   }
  *
@@ -30,8 +30,13 @@ export interface StateLeaf {
   data: unknown;
 }
 
-/** 全局段（所有端共享一份） */
-export type SectionName = 'balance' | 'workStatus' | 'notify';
+/** 全局段（所有端共享一份）。
+ *  `config` 是**纯信号叶子**：`data` 恒为 `{}`，只看 `counter`——它变了就说明配置被写过，
+ *  消费端据此重拉 `GET /config`（配置本体太大，不能塞进每秒一次的 /state）。
+ *  当前只有 `POST /pet-display` 写它：那是唯一一个**不是发起页面自己**的配置改动
+ *  （桌面端右键改显示位置），浏览器端只能靠这个信号知道。
+ *  保存 / 同步配置（PUT / POST /config）**不写**——它们的调用方自己就拿到了成品聚合。 */
+export type SectionName = 'balance' | 'workStatus' | 'notify' | 'config';
 
 /** 每宠物段（say = 要说的话；anim = 要播的动画名；position = 要挪到的位置；throw = 要给的初速度）。
  *  后两个是**指令**（host → 前端），与 say/anim 同族：前端读到即执行，不往它们写任何东西。 */
@@ -57,7 +62,7 @@ export class PollStateStore {
 
   constructor() {
     this.last = 0;
-    this.sections = { balance: emptyLeaf(), workStatus: emptyLeaf(), notify: emptyLeaf() };
+    this.sections = { balance: emptyLeaf(), workStatus: emptyLeaf(), notify: emptyLeaf(), config: emptyLeaf() };
     this.pets = new Map();
   }
 
@@ -68,7 +73,7 @@ export class PollStateStore {
   }
 
   /**
-   * 写一个全局叶子（余额 / 工作状态 / 通知）。
+   * 写一个全局叶子（余额 / 工作状态 / 通知 / 配置变更信号）。
    * 每次都整体替换叶子对象（不原地改字段），保证 `read()` 拿到的引用不会半新半旧。
    */
   writeSection(name: SectionName, data: unknown): void {

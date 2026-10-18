@@ -92,11 +92,11 @@ paths:
 
         ```jsonc
         {
-          "configVersion": "1755000000000",
           "sections": {
             "balance":    { "counter": 1755000000000, "data": { /* BalanceState */ } },
             "workStatus": { "counter": 1755000000001, "data": { /* WorkStatusSnapshot */ } },
-            "notify":     { "counter": 1755000000002, "data": { /* NotifyFrame */ } }
+            "notify":     { "counter": 1755000000002, "data": { /* NotifyFrame */ } },
+            "config":     { "counter": 1755000000007, "data": {} }
           },
           "pets": {
             "main": {
@@ -122,10 +122,13 @@ paths:
           清空 `{ "clear": true }`（由 `POST /bubble/clear` 写入）。`duration` 缺省 10 秒、
           `0` = 不显示；`anim` 缺省 `true`（联动 `events.whisper` 动画），显式 `false` = 只弹气泡。
           碎碎念与对话回复**不写**这两个字段，消费端按缺省处理——行为与改造前完全一致。
-        - **`configVersion` 不是叶子**（没有 `counter`/`data`，不参与 counter 比对）：它是配置文件的
-          版本指纹，与上一拍不同就说明配置被改过——桌面端右键改了显示位置、另一个页面保存了配置、
-          或用户手工编辑了 `main-config.jsonc` / `pet/*.json`。消费端此时应重拉 `GET /config`。
-          老版本宿主不带该字段（`undefined`），按"无从判断"处理即可，不要误触发重拉。
+        - **`sections.config` 是配置变更信号**（`data` 恒为 `{}`，只看 `counter`）：它变了就说明配置
+          被写过，消费端应重拉 `GET /config`。**当前唯一的写方是 `POST /pet-display`**（桌面端右键改
+          显示位置）——那是唯一一个**不是发起页面自己**的配置改动，浏览器端只能靠这个信号知道。
+          配置本体太大，不能塞进每秒一次的 `/state`，所以这里只放一个信号。
+          保存 / 同步配置（`PUT` / `POST /config`）**不写它**：它们的调用方自己就拿到了成品聚合。
+          **用户手工编辑 `main-config.jsonc` / `pet/*.json` 不会被感知**——宿主不再读盘比对 mtime
+          （那等于每拍读一次盘），改完需要重载。
         - 叶子 `data` 为 `null` 表示"从未写过"（此时 `counter` 为 `0`）；消费端应跳过它。
         - **`counter` 只在内容被写入时更新**，不是每次请求都变。所以"数据没变"和"接口挂了"
           要区分开：后者表现为 HTTP 非 2xx 或连接失败。
@@ -1518,19 +1521,13 @@ components:
       required: [sections, pets]
       description: |
         统一状态 S。每个叶子都是 `{ counter, data }`；`counter` 变化即表示该叶子更新了。
-        `configVersion` 是顶层附带字段，**不是叶子**（没有 counter/data，不参与比对）。
+        顶层只有 `sections` 与 `pets` 两项——**没有附带字段**，配置变更信号也是叶子
+        （`sections.config`）。
       properties:
-        configVersion:
-          type: string
-          description: |
-            配置版本指纹（参与合并的全部配置文件 mtime 的最大值，毫秒时间戳的字符串形式；
-            文件都不存在时为 `"0"`）。与上一拍不同即表示配置被改过——桌面端右键改显示位置、
-            另一个页面保存、或用户手工编辑 `main-config.jsonc` / `pet/*.json`——
-            消费端应重拉 `GET /config`。老版本宿主不带该字段，消费端按"无从判断"处理。
         sections:
           type: object
           description: 全局段（所有端共享一份）
-          required: [balance, workStatus, notify]
+          required: [balance, workStatus, notify, config]
           properties:
             balance:
               $ref: "#/components/schemas/BalanceLeaf"
@@ -1538,6 +1535,8 @@ components:
               $ref: "#/components/schemas/WorkStatusLeaf"
             notify:
               $ref: "#/components/schemas/NotifyLeaf"
+            config:
+              $ref: "#/components/schemas/ConfigLeaf"
         pets:
           type: object
           description: 每只宠物各自一份；键是宠物 id（**可含点号，勿切分**）
@@ -1583,6 +1582,9 @@ components:
                     data:
                       reason:
                         kind: completed
+              config:
+                counter: 1755000000600
+                data: {}
             pets:
               main:
                 say:
@@ -1756,6 +1758,30 @@ components:
           oneOf:
             - $ref: "#/components/schemas/NotifyFrame"
             - type: "null"
+
+    ConfigLeaf:
+      type: object
+      required: [counter, data]
+      description: |
+        **配置变更信号**（纯信号叶子）。`data` 恒为 `{}`，**只有 `counter` 是有用信息**：
+        它变了就说明配置被写过，消费端应重拉 `GET /config`。
+
+        为什么是信号而不是配置本体：配置聚合很大，而 `/state` 每次请求都会返回**全部叶子的完整
+        data**，把配置塞进来等于每秒（桌面端还是一窗一宠各一次）传一整份配置。
+
+        **唯一写方**：`POST /pet-display`（桌面端右键改显示位置）——那是唯一一个不是发起页面
+        自己的配置改动。保存 / 同步配置（`PUT` / `POST /config`）不写它，因为它们的调用方自己
+        就拿到了成品聚合。
+
+        **用户手工编辑 `main-config.jsonc` / `pet/*.json` 不会被感知**：宿主不再读盘比对 mtime
+        （早先的做法等于每拍读一次盘），改完需要重载。
+      properties:
+        counter:
+          $ref: "#/components/schemas/Counter"
+        data:
+          type: object
+          description: 恒为 `{}`（空对象）。不要从这里读配置内容——去 `GET /config`。
+          maxProperties: 0
 
     NotifyFrame:
       oneOf:

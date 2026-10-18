@@ -16,11 +16,39 @@ import assert from 'node:assert/strict';
 import { PollStateStore } from './state.ts';
 
 describe('PollStateStore —— 初始形态', () => {
-  test('三个全局叶子都是 {counter:0, data:null}（0 = 从未写过，前端首拉当基线）', () => {
+  test('四个全局叶子都是 {counter:0, data:null}（0 = 从未写过，前端首拉当基线）', () => {
     const s = new PollStateStore().read();
-    assert.deepEqual(Object.keys(s.sections).sort(), ['balance', 'notify', 'workStatus']);
+    assert.deepEqual(Object.keys(s.sections).sort(), ['balance', 'config', 'notify', 'workStatus']);
     for (const leaf of Object.values(s.sections)) assert.deepEqual(leaf, { counter: 0, data: null });
     assert.deepEqual(s.pets, {});
+  });
+});
+
+describe('PollStateStore —— 配置变更信号（sections.config）', () => {
+  test('纯信号叶子：data 恒为 {}，只有 counter 是有效信息', () => {
+    const store = new PollStateStore();
+    store.writeSection('config', {});
+    const leaf = store.read().sections.config;
+    assert.deepEqual(leaf.data, {});
+    assert.ok(leaf.counter > 0);
+  });
+
+  test('每次写入都推进 counter（连写两次也必须能分辨出"又变了一次"）', () => {
+    const store = new PollStateStore();
+    store.writeSection('config', {});
+    const a = store.read().sections.config.counter;
+    store.writeSection('config', {});
+    const b = store.read().sections.config.counter;
+    assert.ok(b > a, 'counter 必须严格递增，否则同一毫秒内的第二次改动会被消费端漏掉');
+  });
+
+  test('写它不影响别的全局叶子（各叶子计数器互不干扰）', () => {
+    const store = new PollStateStore();
+    store.writeSection('balance', { ok: true });
+    const before = store.read().sections.balance.counter;
+    store.writeSection('config', {});
+    assert.equal(store.read().sections.balance.counter, before);
+    assert.equal(store.read().sections.notify.counter, 0, '没写过的叶子保持 0');
   });
 });
 

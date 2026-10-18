@@ -1984,27 +1984,23 @@ export function makePetUI(rt: {
       if (!ready) return;
       let alive = true;
       let baseline: Record<string, number> | null = null;
-      // 配置版本基线：与叶子同一套约定——首拉只记基线，之后与上一拍不同才动作
-      let configBaseline: string | undefined;
       const poll = async () => {
         try {
           const s = await fetchState();
           if (!alive || !s) return;
-          // 配置被别处改过（桌面端右键改 display / 另一个标签页保存 / 用户手改配置文件）→ 重拉配置重拍平。
-          // 这是「桌面端改了、浏览器端要刷新才可见」的解药：宿主把配置 mtime 挂在 /state 上，1s 内自动跟随。
-          if (configBaseline === undefined) {
-            configBaseline = s.configVersion;
-          } else if (s.configVersion !== undefined && s.configVersion !== configBaseline) {
-            configBaseline = s.configVersion;
-            petBridge.reload(); // 内部 GET /config（该响应已带 no-cache）→ applyMerged → visiblePets 重算
-          }
           if (baseline === null) {
             baseline = flattenCounters(s); // 首拉：只记基线，不渲染
             return;
           }
           for (const { path, leaf } of takeChanged(s, baseline)) {
             if (leaf.data === null) continue;
-            if (path === 'sections.balance') {
+            if (path === 'sections.config') {
+              // 配置被别处改过 → 重拉配置重拍平。**唯一的写方是 POST /pet-display**
+              // （桌面端右键改显示位置）——那个改动不是本页面发起的，只能靠这个信号知道。
+              // 叶子 data 恒为 {}（纯信号），配置本体太大不能塞进每秒的 /state，所以这里再拉一次。
+              // 这就是「桌面端改了、浏览器端要刷新才可见」的解药，1s 内自动跟随。
+              petBridge.reload(); // 内部 GET /config（该响应已带 no-cache）→ applyMerged → visiblePets 重算
+            } else if (path === 'sections.balance') {
               const hit = readBalance(leaf);
               if (hit) applyBalanceRef.current(hit.state, hit.manual);
             } else if (path === 'sections.workStatus') {
