@@ -659,6 +659,14 @@ export function apply(ctx: any): void {
   };
 
   let hasDesktopPet = false;
+  /**
+   * 桌面模式是否**曾经**成功启动过（粘性，仅本插件生命周期内有效）。
+   * 把「没有桌面宠物就不启动」放宽成「从来没有过桌面宠物才不启动」：桌面宠物被全部改成
+   * web/none 之后，Helper 仍会带着空宠物列表重启并常驻——因为托盘（桌面端显示开关）是此时
+   * 唯一还能把宠物切回桌面的入口，Helper 一退它就没了。
+   * 纯浏览器用户（从未有过桌面宠物）不受影响：照旧不探测、不下载、不拉起 Electron。
+   */
+  let desktopModeEverActive = false;
   const refreshDesktop = (): void => {
     hasDesktopPet = false;
     try {
@@ -690,7 +698,7 @@ export function apply(ctx: any): void {
   /** 用已确认存在的 Electron 路径拉起桌面 Helper（每只桌面宠物一个局部小窗口）。 */
   const launchHelper = (electronPath: string | undefined): void => {
     if (helper || disposed) return;
-    if (!hasDesktopPet) return; // 无宠物显示在桌面（display 含 desktop/both）：不启动
+    if (!hasDesktopPet && !desktopModeEverActive) return; // 无桌面宠物且桌面模式从未启用过：不启动
     const port = typeof ctx.webServer?.port === 'number' ? ctx.webServer.port : 0;
     if (!port || port <= 0) {
       // webServer 可能尚未完成监听（OS 分配端口时 port 短暂为 0）：延迟重试。
@@ -752,6 +760,7 @@ export function apply(ctx: any): void {
     );
     try {
       helper.start();
+      desktopModeEverActive = true; // 此后即使桌面宠物清零也保留 Helper：托盘常驻，可随时切回来
       ctx.logger?.info?.(`dsh-pet desktop helper started (config: ${configUrl})`);
     } catch (e) {
       ctx.logger?.warn?.(`dsh-pet desktop helper start failed: ${e instanceof Error ? e.message : String(e)}`);
@@ -763,7 +772,7 @@ export function apply(ctx: any): void {
    *  （不 spawn 子进程，CLI node 与 DSH Desktop 均适用），下载完成后自动拉起。 */
   const startHelper = (): void => {
     if (helper || electronEnsure || disposed) return;
-    if (!hasDesktopPet) return; // 无宠物显示在桌面（display 含 desktop/both）：不启动
+    if (!hasDesktopPet && !desktopModeEverActive) return; // 无桌面宠物且桌面模式从未启用过：不启动
     // 无图形显示环境（Linux 服务器 / 容器）：直接放弃，不探测、不下载、不拉起。
     // 否则 Electron 会「拉起即崩」，被守护循环反复重启并刷满 core dump。
     if (!hasGraphicalDisplay()) {
