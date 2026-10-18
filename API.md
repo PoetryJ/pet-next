@@ -24,7 +24,8 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 | 接口 | 功能 |
 | --- | --- |
 | `POST /dsh-pet-7340/whisper?pet=` | 让桌宠**生成**一句碎碎念（走当前模型） |
-| `POST /dsh-pet-7340/broadcast?pet=` | **第三方投喂**：把外部给定的文本直接写进气泡（不生成，只搬运） |
+| `POST /dsh-pet-7340/broadcast?pet=` | **第三方投喂**：把外部给定的文本直接写进气泡（不生成，只搬运）。可选 `duration`（毫秒，默认 10000，**`0` = 不显示**）与 `anim`（默认 `true`；**只有严格 `false`** 才只弹气泡、不播说话动画） |
+| `POST /dsh-pet-7340/bubble/clear?pet=` | **清空气泡**：提前收起当前正显示的说话气泡。只动气泡——动画、余额气泡、工作状态气泡都不碰；没有气泡时也回 `ok`（幂等）；无请求体 |
 | `POST /dsh-pet-7340/anim?pet=` | **点播动画**：让桌宠播一段指定动画，效果与右键「动作」菜单一致。响应额外带回 `playbackId`，可用它查**真实回执** |
 | `GET /dsh-pet-7340/playback/{id}` | **播放回执**：查那次点播的真实状态（`accepted` / `playing` / `ended` / `failed` / `cancelled`）。带 `?wait=<状态[,状态]>&timeout=<ms>`（成对必填）时挂起等待，命中即回；不传则立刻返回 |
 | `POST /dsh-pet-7340/playback/{id}/report` | 渲染端上报播放状态（**内部通道**：浏览器/桌面渲染进程 → 宿主，第三方不用调） |
@@ -80,6 +81,14 @@ curl -s -X POST "$BASE/broadcast?pet=main" \
      -H 'content-type: application/json' \
      -d '{"text":"巡检完毕，一切正常"}'
 curl -s $BASE/state   # → pets.main.say.data.text
+
+# 只弹 3 秒气泡、不播说话动画
+curl -s -X POST "$BASE/broadcast?pet=main" \
+     -H 'content-type: application/json' \
+     -d '{"text":"该喝水了","duration":3000,"anim":false}'
+
+# 提前收起气泡（正在播的动画不受影响）
+curl -s -X POST "$BASE/bubble/clear?pet=main"
 
 # 让它播一段动画（名字取自 GET /config 里**该宠物所属条目**的 animations：
 #  main 条目的宠物用 main 的池，pet/<名>-config.json 的种类各用自己的池）

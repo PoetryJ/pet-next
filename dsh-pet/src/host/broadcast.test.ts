@@ -13,7 +13,13 @@ import { mkdirSync, mkdtempSync, rmSync, writeFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { decideBroadcast, normalizeBroadcastText } from './broadcast.ts';
+import {
+  decideBroadcast,
+  decideBubbleClear,
+  normalizeBroadcastAnim,
+  normalizeBroadcastDuration,
+  normalizeBroadcastText,
+} from './broadcast.ts';
 
 /** 池里真实存在的两张图 */
 const IN_POOL = '可爱';
@@ -34,6 +40,8 @@ const decide = (over: Partial<Parameters<typeof decideBroadcast>[0]> = {}) =>
     active: '',
     text: '主人，该喝水了',
     image: undefined,
+    duration: 10000,
+    anim: true,
     memeDirs: () => [memesDir],
     ...over,
   });
@@ -209,5 +217,86 @@ describe('decideBroadcast —— 配图只认该桌宠条目的表情包池', ()
     assert.equal(decide({ cfg: two, memeDirs: dirs, requested: 'pack1', image: IN_POOL }).ok, false);
     assert.equal(decide({ cfg: two, memeDirs: dirs, requested: 'pack1', image: '自家图' }).ok, true);
     assert.equal(decide({ cfg: two, memeDirs: dirs, requested: 'main', image: IN_POOL }).ok, true);
+  });
+});
+
+describe('normalizeBroadcastDuration —— 气泡时长（issue #122 第 5 条）', () => {
+  test('缺省 / null → 10s（老调用方的行为一个字不变）', () => {
+    assert.equal(normalizeBroadcastDuration(undefined), 10000);
+    assert.equal(normalizeBroadcastDuration(null), 10000);
+  });
+
+  test('合法值原样透出；`0` 是合法值（字面意思：不显示）；不设上限', () => {
+    assert.equal(normalizeBroadcastDuration(0), 0);
+    assert.equal(normalizeBroadcastDuration(1), 1);
+    assert.equal(normalizeBroadcastDuration(3000), 3000);
+    assert.equal(normalizeBroadcastDuration(999999999), 999999999);
+  });
+
+  test('负数 / 非有限数 / 非数字 → null（路由据此回 bad-request）', () => {
+    for (const v of [-1, -0.5, NaN, Infinity, -Infinity, '3000', {}, [], true]) {
+      assert.equal(normalizeBroadcastDuration(v), null, `${JSON.stringify(v)} 应判非法`);
+    }
+  });
+});
+
+describe('normalizeBroadcastAnim —— 动画联动开关（宽松口径，同 /position 的 smooth）', () => {
+  test('只有严格 false 才关闭', () => {
+    assert.equal(normalizeBroadcastAnim(false), false);
+  });
+
+  test('其余一律按"要联动"：缺省、true、字符串 "false"、0、null 都算开', () => {
+    for (const v of [undefined, null, true, 'false', 0, 1, {}]) {
+      assert.equal(normalizeBroadcastAnim(v), true, `${JSON.stringify(v)} 应按联动处理`);
+    }
+  });
+});
+
+describe('decideBroadcast —— 新参数原样进入结论（写进叶子的是解析后的生效值）', () => {
+  test('缺省解析成显式值：10s + 联动', () => {
+    const d = decide();
+    assert.equal(d.ok, true);
+    assert.equal(d.ok === true && d.duration, 10000);
+    assert.equal(d.ok === true && d.anim, true);
+  });
+
+  test('调用方给的值原样带出（含 duration=0 与 anim=false）', () => {
+    const d = decide({ duration: 0, anim: false });
+    assert.equal(d.ok, true);
+    assert.equal(d.ok === true && d.duration, 0);
+    assert.equal(d.ok === true && d.anim, false);
+  });
+
+  test('失败分支不带这两个字段（调用方不会误以为生效了）', () => {
+    const d = decide({ text: '', duration: 0, anim: false });
+    assert.equal(d.ok, false);
+    assert.equal(d.ok === false && 'duration' in d, false);
+  });
+});
+
+describe('decideBubbleClear —— 清空气泡（只有"清哪只宠物"会失败）', () => {
+  test('指定存在的宠物 → 通过', () => {
+    const d = decideBubbleClear({ cfg, requested: 'test1', active: '' });
+    assert.equal(d.ok, true);
+    assert.equal(d.ok === true && d.petId, 'test1');
+  });
+
+  test('pet 缺省的解析链与 /broadcast 完全一致：active → 兜底 main', () => {
+    const a = decideBubbleClear({ cfg, requested: '', active: 'test1' });
+    assert.equal(a.ok === true && a.petId, 'test1');
+    const b = decideBubbleClear({ cfg, requested: '', active: '' });
+    assert.equal(b.ok === true && b.petId, 'main');
+  });
+
+  test('不存在的宠物 → unknown-pet（显式失败，不去写一个没人看的叶子）', () => {
+    const d = decideBubbleClear({ cfg, requested: 'ghost', active: '' });
+    assert.equal(d.ok, false);
+    assert.equal(d.ok === false && d.reason, 'unknown-pet');
+    assert.match(d.ok === false ? d.message : '', /ghost/);
+  });
+
+  test('没有"气泡不存在"这种失败：空状态下也是 ok（幂等）', () => {
+    // 决策层看不到气泡当前显隐，本来就不该为它造一个失败分支
+    assert.equal(decideBubbleClear({ cfg, requested: 'main', active: '' }).ok, true);
   });
 });

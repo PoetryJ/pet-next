@@ -28,6 +28,7 @@ import {
   readThrow,
   readWorkStatus,
   takeChanged,
+  type SayCue,
 } from '../shared/state';
 import { WORK_STATUS_INDEX, type WorkStatusSnapshot } from '../shared/work-status';
 import { makeBalanceBubble, makeWhisperBubble } from './bubble';
@@ -175,8 +176,9 @@ export function makePetUI(rt: {
     balanceManual: boolean;
     workStatus: WorkStatusSnapshot | null;
     workStatusTick: number;
-    /** 本宠物的「说一句话」（碎碎念/命令气泡/对话回复三合一；容器从 S 分发下来） */
-    say?: { text: string; image?: string; seq: number };
+    /** 本宠物的「说话指令」（碎碎念/命令气泡/对话回复/清空，容器从 S 分发下来）。
+     *  `kind: 'clear'` = 收起气泡（POST /bubble/clear）；其余 = 弹一个气泡。 */
+    say?: SayCue & { seq: number };
     sayTick: number;
     /** 本宠物的「点播动画」指令（其他插件经 POST /anim 写进 S；容器从 S 分发下来）。
      *  注意与组件内既有的 `anim`（**当前正在播的**动画名）区分：这个只是"要播什么"的指令。 */
@@ -675,8 +677,8 @@ export function makePetUI(rt: {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [workStatusTick]);
 
-    // 说话（碎碎念周期 / 命令气泡 / 对话回复**三合一**）：容器统一轮询 /state 后，把属于本宠物的
-    // pets.<id>.say 分发下来；seq 变化即播说话动画 + 弹气泡（10s）。
+    // 说话（碎碎念周期 / 命令气泡 / 对话回复 / 清空**四合一**）：容器统一轮询 /state 后，把属于
+    // 本宠物的 pets.<id>.say 分发下来；seq 变化即执行——`clear` 形态收起气泡，其余弹气泡。
     // 改造前这里是两条独立轮询（/whisper 周期 + /broadcast 1s）、host 侧也是两个缓存；
     // 现在只有一个数据源（S），"首拉记基线"由容器统一处理。
     // 不受 whisperEnabled 门控：那个字段只关自动周期，命令/对话的手动语义永远可用。
@@ -684,7 +686,11 @@ export function makePetUI(rt: {
     useEffect(() => {
       if (!say || say.seq === prevSaySeqRef.current) return;
       prevSaySeqRef.current = say.seq;
-      triggerWhisper(say.text, say.image);
+      if (say.kind === 'clear') {
+        clearWhisperBubble();
+        return;
+      }
+      triggerWhisper(say.text, say.image, say.duration, say.anim);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [sayTick]);
 
@@ -718,36 +724,62 @@ export function makePetUI(rt: {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [throwCueTick]);
 
-    // 碎碎念触发（本宠物）：随机抽 events.whisper 动画 + 弹文本气泡（10s 消失，与动画解耦）
-    // image：host 侧随机抽定的配图名称（未开配图/池为空则 undefined）——与文本同一次触发一起来
-    const triggerWhisper = (text: string, image?: string) => {
-      const pool = petAnims.events?.whisper;
-      if (!pool || pool.length === 0) {
-        console.error('[dsh-pet] 配置缺少 animations.events.whisper，无法播放碎碎念动画');
-        return;
+    /** 收起说话气泡（`POST /bubble/clear` 的落点）。
+     *  **只动气泡**：正在播的动画、余额气泡、工作状态气泡都不碰——气泡与动作是两把锁、
+     *  分别释放（issue #122 第 5 条）。顺带清掉文本/配图，免得残留内容在下次渲染时闪一下。 */
+    const clearWhisperBubble = () => {
+      if (whisperBubbleTimerRef.current !== null) window.clearTimeout(whisperBubbleTimerRef.current);
+      whisperBubbleTimerRef.current = null;
+      setWhisperBubbleOn(false);
+      setWhisperText(null);
+      setWhisperImage(undefined);
+    };
+
+    // 碎碎念触发（本宠物）：随机抽 events.whisper 动画 + 弹文本气泡（与动画解耦）。
+    // image：host 侧随机抽定的配图名称（未开配图/池为空则 undefined）——与文本同一次触发一起来。
+    // duration / anim：`POST /broadcast` 的两个新参数（issue #122 第 5 条）。两者**互相独立**：
+    //   - `anim === false` 时整段跳过动画联动——不查池、不换源，也不 stopMove()
+    //     （stopMove 属于"开始播这段动画"的一部分，不是弹气泡的副作用）。
+    //     于是配置里缺 events.whisper 时，只弹气泡这条路照样走得通。
+    //   - `duration === 0` 表示"这一条不显示"：**不动当前已在显示的气泡**
+    //     （要收起它请用 POST /bubble/clear，两件事不重叠）。
+    const triggerWhisper = (text: string, image?: string, duration?: number, anim?: boolean) => {
+      let name: string | null = null;
+      if (anim !== false) {
+        const pool = petAnims.events?.whisper;
+        if (!pool || pool.length === 0) {
+          console.error('[dsh-pet] 配置缺少 animations.events.whisper，无法播放碎碎念动画');
+          return;
+        }
+        // 整池随机抽 1 槽（避开当前正播动画，避免连续重复）；槽位若为数组候选再档内随机
+        name = pickSlot(pick(pool, animRef.current), animRef.current);
       }
-      // 整池随机抽 1 槽（避开当前正播动画，避免连续重复）；槽位若为数组候选再档内随机
-      const name = pickSlot(pick(pool, animRef.current), animRef.current);
       console.log(
         '[dsh-pet] ' +
           new Date().toTimeString().slice(0, 8) +
           ' whisper pet=' +
           cfg.id +
-          ' -> [' +
-          name +
-          '] 「' +
+          (name === null ? ' （不联动动画）' : ' -> [' + name + ']') +
+          ' 「' +
           text +
           '」',
       );
-      stopMove();
+      // 先起动画：它与气泡时长是两个独立参数（duration=0 时动画照播、只是不弹泡）
+      if (name !== null) {
+        stopMove();
+        setOnce(true);
+        setAnim(name);
+      }
+      if (duration === 0) return;
       setWhisperText(text);
       setWhisperImage(image);
       setWhisperBubbleOn(true);
-      // 气泡 10s 定时消失（与动画解耦；重复触发先清旧定时器）
+      // 气泡定时消失（与动画解耦；重复触发先清旧定时器）
       if (whisperBubbleTimerRef.current !== null) window.clearTimeout(whisperBubbleTimerRef.current);
-      whisperBubbleTimerRef.current = window.setTimeout(() => setWhisperBubbleOn(false), BUBBLE_DURATION_MS);
-      setOnce(true);
-      setAnim(name);
+      whisperBubbleTimerRef.current = window.setTimeout(
+        () => setWhisperBubbleOn(false),
+        duration ?? BUBBLE_DURATION_MS,
+      );
     };
     useEffect(() => {
       const onResize = () => setCustomPos((prev) => (prev ? { ...prev } : prev));
@@ -1941,7 +1973,7 @@ export function makePetUI(rt: {
     // 为什么不再按"有没有启用某功能"决定要不要轮询：说话（命令触发）与宠物开关无关，
     // 今天每只宠物的 /broadcast 轮询本来就不受开关门控——统一后至少不比现在多。
     const [sayTick, setSayTick] = useState(0);
-    const sayRef = useRef<Record<string, { text: string; image?: string; seq: number }>>({});
+    const sayRef = useRef<Record<string, SayCue & { seq: number }>>({});
     const [animCueTick, setAnimCueTick] = useState(0);
     const animCueRef = useRef<Record<string, { name: string; seq: number; playbackId?: string }>>({});
     const [posCueTick, setPosCueTick] = useState(0);

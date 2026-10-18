@@ -82,7 +82,13 @@ import { generateWhisper } from './whisper';
 import { generateChat, type ChatMemoryMessage } from './chat';
 import { configuredModel } from './model-selection';
 import { limitPool, pickMeme, readMemePool } from './memes';
-import { decideBroadcast, normalizeBroadcastText } from './broadcast';
+import {
+  decideBroadcast,
+  decideBubbleClear,
+  normalizeBroadcastAnim,
+  normalizeBroadcastDuration,
+  normalizeBroadcastText,
+} from './broadcast';
 import { decideAnim } from './anim';
 import { decidePosition, decideThrow } from './motion-cue';
 import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
@@ -1169,7 +1175,9 @@ export function apply(ctx: any): void {
     // 校验（不通过一律 HTTP 200 + ok:false，与 /chat 的失败口径一致）：
     //   text 必填、trim 后非空（**不设长度限制，也不限频**：内容与频率由调用方自己负责）；
     //   pet 缺省 = 当前桌宠（resolveActivePetId），须真实存在；
-    //   image 只认**包内表情包名**（池内命中即用其规范名），杜绝第三方注入外部地址。
+    //   image 只认**包内表情包名**（池内命中即用其规范名），杜绝第三方注入外部地址；
+    //   duration 可选，气泡显示时长（ms）；缺省 10s，`0` = 字面意思「不显示」，负数/非有限数拒绝；
+    //   anim 可选，是否联动 events.whisper 动画；只有严格 false 才关闭（宽松口径，同 /position 的 smooth）。
     if (rest === 'broadcast') {
       if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
       let parsed: unknown;
@@ -1183,6 +1191,16 @@ export function apply(ctx: any): void {
       if (!normalizeBroadcastText(o.text)) {
         return { kind: 'json', status: 200, obj: { ok: false, reason: 'bad-request', message: 'text 为空' } };
       }
+      // duration 同理：判定不需要配置，先短路（anim 没有非法值，宽松口径下永远有结论）
+      const duration = normalizeBroadcastDuration(o.duration);
+      if (duration === null) {
+        return {
+          kind: 'json',
+          status: 200,
+          obj: { ok: false, reason: 'bad-request', message: 'duration 必须是 ≥0 的有限数字（毫秒）' },
+        };
+      }
+      const anim = normalizeBroadcastAnim(o.anim);
       try {
         const cfg = readAllConfig(configPaths);
         const d = decideBroadcast({
@@ -1191,13 +1209,52 @@ export function apply(ctx: any): void {
           active: resolveActivePetId(),
           text: o.text,
           image: o.image,
+          duration,
+          anim,
           memeDirs: memeDirsFor,
         });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
-        state.writePet(d.petId, 'say', d.image ? { text: d.text, image: d.image } : { text: d.text });
+        // duration / anim 写**解析后的生效值**（缺省也已填成显式值）：/state 里因此能看到
+        // 实际生效的时长与联动开关，调用方不用自己猜缺省是多少。
+        state.writePet(
+          d.petId,
+          'say',
+          d.image
+            ? { text: d.text, image: d.image, duration: d.duration, anim: d.anim }
+            : { text: d.text, duration: d.duration, anim: d.anim },
+        );
         return { kind: 'json', status: 200, obj: { ok: true } };
       } catch (e) {
         // 配置读取失败等（安装损坏）→ 显式失败，不静默
+        return {
+          kind: 'json',
+          status: 200,
+          obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
+        };
+      }
+    }
+
+    // 清空气泡：/dsh-pet-7340/bubble/clear?pet=<id>（POST = 收起该宠物**当前正显示的说话气泡**）
+    // 与 /broadcast 的关系：投喂写气泡，这个收气泡；两者共用同一个叶子（pets.<id>.say）。
+    // 清空靠叶子里的 `{ clear: true }` 标记——**空文本表达不了这个动作**：消费端的 readSay
+    // 会把空文本判成非法、整拍跳过，所以必须有一个独立的形态（见 src/shared/state.ts 的 SayCue）。
+    // 只收说话气泡：余额气泡、工作状态气泡、以及 anim/position/throw 三个叶子**都不动**
+    // （气泡与动作是两把锁，分别释放——issue #122 第 5 条）。
+    // 幂等：当前没有气泡也回 { ok: true }（"让气泡消失"这个意图在空状态下已经成立）。
+    // 无请求体；动作端点，只回 {ok}。
+    if (rest === 'bubble/clear') {
+      if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      try {
+        const cfg = readAllConfig(configPaths);
+        const d = decideBubbleClear({
+          cfg,
+          requested: String(url.searchParams.get('pet') ?? ''),
+          active: resolveActivePetId(),
+        });
+        if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        state.writePet(d.petId, 'say', { clear: true });
+        return { kind: 'json', status: 200, obj: { ok: true } };
+      } catch (e) {
         return {
           kind: 'json',
           status: 200,

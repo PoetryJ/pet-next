@@ -18,6 +18,7 @@ import {
   readAnim,
   readBalance,
   readPosition,
+  readSay,
   readThrow,
   takeChanged,
   type PollState,
@@ -190,6 +191,66 @@ describe('readAnim —— 点播动画叶子（名字 + 回执编号）', () => 
     assert.equal(readAnim({ counter: 1, data: 'nope' }), null);
     assert.equal(readAnim({ counter: 1, data: { name: '' } }), null);
     assert.equal(readAnim({ counter: 1, data: { name: 42 } }), null);
+  });
+});
+
+describe('readSay —— 说话叶子（弹气泡 / 清空 两种形态）', () => {
+  /** 只取"弹气泡"形态（清空 / 脏数据都归 null），让断言短一点 */
+  const say = (data: unknown) => {
+    const hit = readSay({ counter: 1, data });
+    return hit && hit.kind === 'say' ? hit : null;
+  };
+
+  test('弹气泡：文本与配图取到；不带 duration/anim 时两者都 undefined（= 老行为 10s + 联动）', () => {
+    assert.deepEqual(say({ text: '主人今天也要加油哦～', image: '可爱' }), {
+      kind: 'say',
+      text: '主人今天也要加油哦～',
+      image: '可爱',
+      duration: undefined,
+      anim: undefined,
+    });
+  });
+
+  test('duration / anim 原样带出（含 0 与 false 这两个"有含义的假值"）', () => {
+    assert.equal(say({ text: 'x', duration: 0, anim: false })?.duration, 0, 'duration=0 不能被兜成缺省');
+    assert.equal(say({ text: 'x', duration: 0, anim: false })?.anim, false);
+    assert.equal(say({ text: 'x', duration: 3000, anim: true })?.duration, 3000);
+    assert.equal(say({ text: 'x', duration: 3000, anim: true })?.anim, true);
+  });
+
+  test('清空形态：{ clear: true } → { kind: "clear" }（**空文本表达不了它**）', () => {
+    assert.deepEqual(readSay({ counter: 1, data: { clear: true } }), { kind: 'clear' });
+    // 空文本被判非法、整拍跳过——这正是"清空"必须有独立形态的原因。
+    // 纯空白不归这里管：host 写入前已经 trim 过，readSay 只做形状校验。
+    assert.equal(readSay({ counter: 1, data: { text: '' } }), null);
+    assert.equal(say({ text: '   ' })?.text, '   ');
+  });
+
+  test('clear 优先于 text：两个都在时按清空处理（host 不会这么写，但形状上要确定）', () => {
+    assert.deepEqual(readSay({ counter: 1, data: { clear: true, text: 'x' } }), { kind: 'clear' });
+  });
+
+  test('clear 只认严格 true（"yes"/1 之类不算，免得脏数据把气泡误清掉）', () => {
+    for (const v of ['yes', 1, {}, null]) {
+      assert.equal(say({ clear: v, text: 'x' })?.text, 'x', `clear=${JSON.stringify(v)} 不应判成清空`);
+    }
+  });
+
+  test('duration 脏值当"没给"（负数 / NaN / Infinity / 字符串），不毁掉整拍', () => {
+    for (const v of [-1, NaN, Infinity, '3000', {}]) {
+      assert.equal(
+        say({ text: 'x', duration: v })?.duration,
+        undefined,
+        `duration=${JSON.stringify(v)} 应归一成 undefined`,
+      );
+    }
+  });
+
+  test('脏数据 → null（消费端跳过这一拍）', () => {
+    assert.equal(readSay({ counter: 1, data: null }), null);
+    assert.equal(readSay({ counter: 1, data: 'nope' }), null);
+    assert.equal(readSay({ counter: 1, data: {} }), null);
+    assert.equal(readSay({ counter: 1, data: { text: 42 } }), null);
   });
 });
 

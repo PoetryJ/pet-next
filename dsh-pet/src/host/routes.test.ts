@@ -296,6 +296,43 @@ describe('/broadcast —— 第三方投喂（POST 写入端点，issue #76）',
     assert.equal(body.ok, false, '读不到配置绝不能回 ok:true——否则调用方以为气泡已投喂');
     assert.equal(body.reason, 'generate-error');
   });
+
+  test('非法 duration → bad-request，且**在读配置之前**就短路（不是 generate-error）', async () => {
+    // 与本文件里"配置不可达"这一前提配合：若 duration 校验被放到读配置之后，
+    // 这几条会变成 generate-error——断言 reason 就同时钉住了**短路顺序**。
+    for (const duration of [-1, -0.5, '3000', {}, [], true]) {
+      const r = await call('/dsh-pet-7340/broadcast?pet=main', 'POST', JSON.stringify({ text: '该喝水了', duration }));
+      assert.equal(r.status, 200, `duration=${JSON.stringify(duration)}`);
+      assert.equal(
+        (JSON.parse(r.body) as { reason: string }).reason,
+        'bad-request',
+        `duration=${JSON.stringify(duration)} 应在读配置前被拦下`,
+      );
+    }
+  });
+});
+
+describe('/bubble/clear —— 清空气泡（POST 写入端点，issue #122 第 5 条）', () => {
+  // 覆盖范围同 /broadcast：源码形态下 readAllConfig 必然抛错，"成功写进 pets.<id>.say"
+  // 那条路径在这里测不了（宠物选择由 broadcast.test.ts 的 decideBubbleClear 单测覆盖）。
+  // 这里只钉路由层契约：方法、无请求体、失败口径。
+
+  test('GET → 405（清空是动作端点，不是读端点）', async () => {
+    assert.equal((await call('/dsh-pet-7340/bubble/clear?pet=main')).status, 405);
+  });
+
+  test('无请求体也照常受理（不像 /broadcast 那样要求 JSON body）', async () => {
+    const r = await call('/dsh-pet-7340/bubble/clear?pet=main', 'POST');
+    assert.notEqual(r.status, 400, '本端点不解析请求体，不该因为"没给 body"而 400');
+  });
+
+  test('配置不可达时不静默：显式 ok:false/generate-error（不假装气泡已清空）', async () => {
+    const r = await call('/dsh-pet-7340/bubble/clear?pet=main', 'POST');
+    assert.equal(r.status, 200);
+    const body = JSON.parse(r.body) as { ok: boolean; reason: string };
+    assert.equal(body.ok, false, '读不到配置绝不能回 ok:true——否则调用方以为气泡已收起');
+    assert.equal(body.reason, 'generate-error');
+  });
 });
 
 describe('/anim —— 点播动画（POST 写入端点）', () => {

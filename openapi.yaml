@@ -40,8 +40,8 @@ info:
 
     1. **数据只有一个出口**：`GET /state`。它返回宿主内存里的一份"已发布状态" S，
        里面是若干 **叶子（leaf）**，每个叶子形如 `{ counter, data }`。
-    2. **动作端点不返回数据**：`POST /balance`、`POST /whisper`、`POST /broadcast`、`POST /anim`、
-       `POST /chat` 只回 `{ ok: true }`，
+    2. **动作端点不返回数据**：`POST /balance`、`POST /whisper`、`POST /broadcast`、`POST /bubble/clear`、
+       `POST /anim`、`POST /chat` 只回 `{ ok: true }`，
        表示"这次动作做完了"。它们在宿主内部把结果**写进 S**，调用方随后拉一拍 `/state` 就能看到。
     3. **`counter` 是"变了没有"的唯一信号**：它是 `Date.now()` 且**严格递增**（同毫秒连写会 +1），
        宿主重启也不会倒退。消费端只比较 `counter` 是否与自己上次记录的一致，一致就跳过渲染。
@@ -100,7 +100,7 @@ paths:
           },
           "pets": {
             "main": {
-              "say":      { "counter": 1755000000003, "data": { "text": "……" } },
+              "say":      { "counter": 1755000000003, "data": { "text": "……", "duration": 10000, "anim": true } },
               "anim":     { "counter": 1755000000004, "data": { "name": "东张西望" } },
               "position": { "counter": 1755000000005, "data": { "x": 0.5, "y": 0.35, "smooth": true } },
               "throw":    { "counter": 1755000000006, "data": { "angle": 45, "power": 1 } }
@@ -118,6 +118,10 @@ paths:
         - `position` / `throw` 是**运动指令**（宿主 → 渲染端），与 `anim` 同族：渲染端读到就执行，
           **不往回写**。它们是 `POST /position` 与 `POST /throw` 的落点，本身不含"宠物现在在哪"
           这类状态。
+        - `pets.<id>.say` 有**两种形态**：弹气泡 `{ text, image?, duration?, anim? }` 与
+          清空 `{ "clear": true }`（由 `POST /bubble/clear` 写入）。`duration` 缺省 10 秒、
+          `0` = 不显示；`anim` 缺省 `true`（联动 `events.whisper` 动画），显式 `false` = 只弹气泡。
+          碎碎念与对话回复**不写**这两个字段，消费端按缺省处理——行为与改造前完全一致。
         - **`configVersion` 不是叶子**（没有 `counter`/`data`，不参与 counter 比对）：它是配置文件的
           版本指纹，与上一拍不同就说明配置被改过——桌面端右键改了显示位置、另一个页面保存了配置、
           或用户手工编辑了 `main-config.jsonc` / `pet/*.json`。消费端此时应重拉 `GET /config`。
@@ -231,7 +235,24 @@ paths:
         - `image` 只接受**该桌宠条目表情包池内**的名称（即该条目 `memes` 里、且在其表情包目录链
           —— `pet/<素材根>-memes/`（独占）或 `memes/` → 包内 `assets/memes/` ——里真实存在的键）。
           传入外部 URL 或池外名称一律拒绝——前端因此永远不会去加载任意外部地址
-          （与对话选图共用同一份校验）。
+          （与对话选图共用同一份校验）；
+        - `duration` 可选，气泡显示时长（毫秒）。缺省 `10000`；**`0` 是合法值**，字面意思
+          「不显示」（请求照常受理，只是不渲染）；负数 / `NaN` / `Infinity` / 非数字 → `bad-request`。
+          **不设上限**——和内容、频率一样，由调用方自己负责；
+        - `anim` 可选，是否联动一次 `events.whisper` 动画。缺省 `true`（= 老行为）。
+          **只有严格 `false` 才关闭**（与 `POST /position` 的 `smooth` 同一套宽松口径：
+          `"false"` 字符串之类一律按"要联动"处理）。关闭时渲染端**不查动画池、不换源**，
+          因此该宠物配置里没有 `events.whisper` 也不影响"只弹气泡"这条路。
+
+        两个新参数**互相独立**，各管一件事：
+
+        - `anim: false` + `duration: 3000` → 只弹 3 秒气泡，不播动画；
+        - `anim: true` + `duration: 0` → 照播动画，但不弹气泡；
+        - `duration: 0` **不会**收起当前已经在显示的气泡——那是 `POST /bubble/clear` 的事，
+          两件事刻意不重叠。
+
+        写入叶子时 `duration` / `anim` 是**解析后的生效值**（缺省也已填成显式值），
+        所以读 `/state` 就能看到实际生效的时长与联动开关，不用自己猜缺省是多少。
       parameters:
         - name: pet
           in: query
@@ -260,9 +281,24 @@ paths:
                     必须在该桌宠条目的 `memes` 里、且在其表情包目录链里真实存在，否则 `ok: false` +
                     `reason: unknown-image`。不接受 URL。
                   example: 可爱
+                duration:
+                  type: number
+                  minimum: 0
+                  default: 10000
+                  description: |
+                    气泡显示时长（毫秒）。缺省 `10000`；`0` = 字面意思「不显示」（合法值）。
+                    负数 / 非有限数 / 非数字 → `ok: false` + `reason: bad-request`。不设上限。
+                  example: 3000
+                anim:
+                  type: boolean
+                  default: true
+                  description: |
+                    是否联动一次 `events.whisper` 动画。缺省 `true`（老行为）。
+                    **只有严格 `false` 才关闭**——其余值（含 `"false"` 字符串）一律按"要联动"处理。
+                  example: false
             examples:
               textOnly:
-                summary: 只说一句
+                summary: 只说一句（缺省 10 秒 + 联动动画）
                 value:
                   text: 主人，该喝水了
               withMeme:
@@ -270,11 +306,17 @@ paths:
                 value:
                   text: 巡检完毕，一切正常
                   image: 厉害了我的鲸
+              noAnimShort:
+                summary: 只弹 3 秒气泡，不播说话动画
+                value:
+                  text: 该喝水了
+                  duration: 3000
+                  anim: false
       responses:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（空文本/超长）、`unknown-pet`、`unknown-image`、
+            `bad-request`（空文本 / 非法 `duration`）、`unknown-pet`、`unknown-image`、
             `generate-error`（配置不可读等）。
           content:
             application/json:
@@ -288,6 +330,48 @@ paths:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /dsh-pet-7340/bubble/clear:
+    post:
+      tags: [Action]
+      operationId: clearBubble
+      summary: 清空气泡——收起桌宠当前正在显示的那个说话气泡
+      description: |
+        把 `pets.<id>.say` 写成一个**清空指令**，渲染端在 1 秒内收起说话气泡
+        （issue #122 第 5 条的"提前撤回"）。这是 `POST /broadcast` 的反面：那个写气泡，这个收气泡。
+
+        **只收说话气泡**：
+
+        - 余额气泡、工作状态气泡**不动**；
+        - `anim` / `position` / `throw` 三个叶子也**不动**——正在播的动画照播。
+          气泡与动作是两把锁、**分别释放**（issue #122 第 5 条）。本端点没有"停止动画"的语义。
+
+        **清空靠一个独立形态表达**：叶子里写的是 `{ "clear": true }`，**不是空文本**。
+        空文本会被消费端判成非法、整拍跳过（见 `SayLeaf`），表达不了"清空"这个动作。
+
+        **幂等**：当前没有气泡时同样返回 `{ "ok": true }`——"让气泡消失"这个意图在空状态下已经成立，
+        所以本端点**没有"气泡不存在"这种失败**。
+
+        **认不出调用方**：本端点没有租约 token（issue #122 第 4 条尚未实现），谁调都清当前这一个泡。
+        两个第三方同时使用时，后调的那个会把前一个的气泡一并抹掉——这是已知且被接受的后果。
+
+        **无请求体。** 动作端点，只回 `{ ok }`；要确认效果请读 `/state` 的 `pets.<id>.say`。
+      parameters:
+        - $ref: "#/components/parameters/PetIdQuery"
+      responses:
+        "200":
+          description: |
+            恒为 200（除 405）。失败通过 `ok: false` 表达，`reason` 可能是
+            `unknown-pet`（指定的 id 不存在）、`generate-error`（配置不可读等）。
+            **当前没有气泡不是失败。**
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/OkResponse"
+                  - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
 
@@ -1851,16 +1935,19 @@ components:
           $ref: "#/components/schemas/Counter"
         data:
           description: |
-            该宠物要说的话；`null` = 从未写过。
+            该宠物的说话指令；`null` = 从未写过。**两种形态**：`Say`（弹一个气泡）与
+            `SayClear`（收起当前气泡，由 `POST /bubble/clear` 写入）。
             **碎碎念、命令气泡、对话回复共用这一个叶子**——前端本来就是同一条展示链路
             （同一个气泡槽、同一批 `events.whisper` 动画）。
           oneOf:
             - $ref: "#/components/schemas/Say"
+            - $ref: "#/components/schemas/SayClear"
             - type: "null"
 
     Say:
       type: object
       required: [text]
+      description: 弹一个气泡。
       properties:
         text:
           type: string
@@ -1872,6 +1959,36 @@ components:
             仅在配置开启了 `whisperImageEnabled` / `chatImageEnabled` 且命中池内图片时出现。
             消费端（浏览器 / 桌面）按素材根拼成 `/dsh-pet-7340/pic/memes/<素材根>/<名>.png`
             取图，素材根 = 该宠物的条目 key（`assetRoot`）。
+        duration:
+          type: number
+          minimum: 0
+          description: |
+            气泡显示时长（毫秒）。**缺省 10 秒**（老 host 不写该字段时按 10 秒走）；
+            `0` = 字面意思「不显示」（合法值，消费端不渲染这个气泡）。
+            只有 `POST /broadcast` 会写这个字段（缺省也已填成显式值）；碎碎念与对话回复不写。
+          example: 10000
+        anim:
+          type: boolean
+          description: |
+            本次是否联动 `events.whisper` 动画。**缺省 `true`**（老 host 不写该字段时按联动走）；
+            显式 `false` = 只弹气泡，不查动画池、不换源。
+            同样只有 `POST /broadcast` 会写；碎碎念与对话回复不写。
+          example: true
+
+    SayClear:
+      type: object
+      required: [clear]
+      description: |
+        **清空指令**（`POST /bubble/clear` 的落点）：收起该宠物当前正在显示的说话气泡。
+        渲染端发现 `counter` 变化且 `data` 是这个形状时收起气泡，**不动正在播的动画**。
+
+        为什么必须单独一个形态：消费端的 `readSay` 会把空文本判成非法、整拍跳过，
+        所以"清空"没法用 `{ "text": "" }` 表达。
+      properties:
+        clear:
+          type: boolean
+          const: true
+          description: 恒为 `true`。消费端只认**严格 `true`**，其余值一律当普通文本处理。
 
     Counter:
       type: integer
