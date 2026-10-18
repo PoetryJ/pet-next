@@ -510,6 +510,90 @@
     .path-row .k { color: var(--muted); }
     .path-row .v { font-family: ui-monospace, Consolas, monospace; word-break: break-all; }
 
+    /* ── 位置预览框 / 抛掷拨盘 ── */
+    .stage {
+      position: relative;
+      margin-top: 8px;
+      aspect-ratio: 16 / 9;
+      max-height: 250px;
+      border: 1px solid var(--border-strong);
+      border-radius: 8px;
+      /* 四分格背景：给"屏幕比例"一个视觉参照，便于估摸归一化坐标 */
+      background:
+        linear-gradient(rgba(128, 128, 128, .07) 1px, transparent 1px) 0 0 / 100% 25%,
+        linear-gradient(90deg, rgba(128, 128, 128, .07) 1px, transparent 1px) 0 0 / 25% 100%,
+        #fcfcfd;
+      cursor: crosshair;
+      overflow: hidden;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .stage-dot {
+      position: absolute;
+      width: 14px; height: 14px;
+      margin: -7px 0 0 -7px;
+      border-radius: 50%;
+      background: var(--accent);
+      box-shadow: 0 0 0 3px rgba(79, 70, 229, .18);
+      pointer-events: none;
+      transition: left .08s linear, top .08s linear;
+    }
+
+    .stage-tip {
+      position: absolute; left: 9px; bottom: 6px;
+      font-size: 11.5px; color: var(--faint);
+      pointer-events: none;
+    }
+
+    .throw-row { display: flex; gap: 18px; flex-wrap: wrap; align-items: flex-start; margin-top: 10px; }
+
+    .dial {
+      position: relative;
+      width: 132px; height: 132px;
+      flex: 0 0 auto;
+      border-radius: 50%;
+      border: 1px solid var(--border-strong);
+      background: #fcfcfd;
+      cursor: grab;
+      touch-action: none;
+      user-select: none;
+    }
+
+    .dial-ring {
+      position: absolute; inset: 15px;
+      border-radius: 50%;
+      border: 1px dashed var(--border-strong);
+      pointer-events: none;
+    }
+
+    .dial-hub {
+      position: absolute; left: 50%; top: 50%;
+      width: 8px; height: 8px; margin: -4px 0 0 -4px;
+      border-radius: 50%;
+      background: var(--faint);
+      pointer-events: none;
+    }
+
+    .dial-arrow {
+      position: absolute; left: 50%; top: 50%;
+      width: 52px; height: 2px;
+      margin-top: -1px;
+      border-radius: 2px;
+      background: var(--accent);
+      transform-origin: 0 50%;
+      pointer-events: none;
+    }
+
+    .throw-side { flex: 1; min-width: 236px; display: flex; flex-direction: column; gap: 10px; }
+
+    .throw-readout {
+      font-size: 12.5px;
+      color: var(--muted);
+      font-variant-numeric: tabular-nums;
+      line-height: 1.7;
+    }
+
     /* ── 活动日志 ── */
     .logpanel {
       background: var(--side);
@@ -622,6 +706,12 @@
         <button type="button" data-view="overview" class="active">
           <span class="ico">🏠</span><span>桌宠总览</span>
         </button>
+        <button type="button" data-view="action">
+          <span class="ico">🎛️</span><span>动作</span>
+        </button>
+        <button type="button" data-view="state">
+          <span class="ico">📋</span><span>实时状态</span>
+        </button>
         <button type="button" data-view="chat">
           <span class="ico">💬</span><span>对话</span>
           <span class="badge" id="nav-chat-badge"></span>
@@ -722,6 +812,10 @@
           </div>
         </div>
 
+      </section>
+
+      <!-- ── 动作：以"外部插件"身份让桌宠做事 ── -->
+      <section class="view" id="view-action">
         <!-- 第三方投喂：这就是 issue #76 的场景——控制台扮演"别的插件"，把外部文本送进气泡 -->
         <div class="card">
           <div class="card-head">
@@ -837,11 +931,100 @@
           </div>
         </div>
 
-        <!-- 显示位置：第三方改单只宠物的 display（两端右键菜单走的就是这个接口） -->
+        <!-- 位置与抛掷：第三方让宠物挪位 / 飞出去（issue #122 第 6 项） -->
         <div class="card">
           <div class="card-head">
-            <h2>显示位置</h2>
-            <span class="hint">以"外部插件"身份改某只宠物的显示位置</span>
+            <h2>位置与抛掷</h2>
+            <span class="hint">以"外部插件"身份控制宠物去哪、往哪飞</span>
+          </div>
+          <div class="card-body">
+            <div class="card-desc">
+              模拟第三方调用 <span class="mono">POST /position</span> 与 <span class="mono">POST /throw</span>。
+              两条都是<b>运动指令</b>：写进状态后由渲染端执行，<b>不引入任何新物理</b>——位置复用拖拽跟手
+              那套弹簧，抛掷复用已有的重力 / 反弹 / 地面摩擦 / 落地 Q 弹。
+              <b>手指正按在宠物身上时会被静默丢弃</b>：接口仍回 <span class="mono">ok</span>，
+              但宠物不动，而且轮询也看不出来（这是设计上的已知缺口）。
+            </div>
+
+            <div class="field" style="margin-top:10px">
+              <label for="mv-pet">目标宠物</label>
+              <select id="mv-pet" style="width:auto"></select>
+              <span class="hint" id="mv-hint"></span>
+            </div>
+
+            <!-- ── 位置 ── -->
+            <div class="card-desc" style="margin-top:12px;border-top:1px solid rgba(128,128,128,.25);padding-top:10px">
+              <b>位置</b>：<span class="mono">x</span> / <span class="mono">y</span> 是宠物<b>中心</b>的归一化坐标
+              （合法 <span class="mono">0~1</span>，越界会被夹取）。在下面的框里<b>点一下或拖一下</b>就能设位置——
+              不必手算归一化坐标。
+            </div>
+            <div class="stage" id="mv-stage">
+              <div class="stage-dot" id="mv-dot"></div>
+              <div class="stage-tip">点或拖这里设定宠物中心</div>
+            </div>
+            <div class="field" style="margin-top:8px">
+              <label>目标位置（宠物中心）</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <span class="hint">x</span>
+                <input type="number" id="mv-x" step="0.01" value="0.5" style="width:96px">
+                <span class="hint">y</span>
+                <input type="number" id="mv-y" step="0.01" value="0.5" style="width:96px">
+                <label class="chk"><input type="checkbox" id="mv-smooth" checked> 平滑</label>
+                <span class="hint" id="mv-note"></span>
+              </div>
+            </div>
+            <div class="field">
+              <button type="button" class="btn primary" id="mv-go">挪过去</button>
+              <button type="button" class="btn" id="mv-snap">立即到位</button>
+              <span class="hint" id="mv-result"></span>
+            </div>
+
+            <!-- ── 抛掷 ── -->
+            <div class="card-desc" style="margin-top:12px;border-top:1px solid rgba(128,128,128,.25);padding-top:10px">
+              <b>抛掷</b>：<span class="mono">angle</span> 单位度，<span class="mono">0</span> = 正右、
+              <b>逆时针为正</b>（<span class="mono">90</span> = 正上）。<span class="mono">power</span> 是力度倍率，
+              <span class="mono">1.0</span> 对应软上限<b>前</b>的 1200 px/s——实际初速会被压到约 1021 px/s，
+              下面的读数实时算给你看。拖左边的拨盘就能定方向。
+            </div>
+            <div class="throw-row">
+              <div class="dial" id="th-dial">
+                <div class="dial-ring"></div>
+                <div class="dial-arrow" id="th-arrow"></div>
+                <div class="dial-hub"></div>
+              </div>
+              <div class="throw-side">
+                <div class="field">
+                  <label for="th-angle">角度</label>
+                  <input type="number" id="th-angle" step="1" value="45" style="width:92px">
+                  <span class="hint">度 · 0 = 正右，逆时针为正</span>
+                </div>
+                <div class="field">
+                  <label for="th-power">力度</label>
+                  <div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap">
+                    <input type="range" id="th-power" min="0.1" max="6" step="0.05" value="1" style="flex:1;min-width:150px">
+                    <input type="number" id="th-power-num" min="0.01" step="0.1" value="1" style="width:84px">
+                  </div>
+                </div>
+                <div class="throw-readout" id="th-readout"></div>
+                <div class="field">
+                  <button type="button" class="btn primary" id="th-go">抛出去</button>
+                  <span class="hint" id="th-result"></span>
+                </div>
+              </div>
+            </div>
+            <div class="note" style="margin-top:8px">
+              抛掷<b>不设死区</b>：力度再小也照抛（死区是拖拽语义，表示"手停住了 = 温柔放下"）。
+              角度是<b>数学惯例</b>而非屏幕惯例，所以"往上抛"写 <span class="mono">90</span> 而不是
+              <span class="mono">270</span>。宠物<b>从当前位置起飞</b>，不需要先被"抓住"。
+            </div>
+          </div>
+        </div>
+
+        <!-- 显示在哪端：第三方改单只宠物的 display（两端右键菜单走的就是这个接口） -->
+        <div class="card">
+          <div class="card-head">
+            <h2>显示在哪端</h2>
+            <span class="hint">以"外部插件"身份改某只宠物出现在哪个端</span>
           </div>
           <div class="card-body">
             <div class="card-desc">
@@ -850,9 +1033,10 @@
               <span class="mono">main-config.jsonc</span> 还是
               <span class="mono">pet/&lt;前缀&gt;-config.json</span>）由宿主按 id 反查。
               桌面端与浏览器端的右键菜单「显示位置」走的就是它。
+              <b>这管的是"哪个端"，不是屏幕坐标</b>——屏幕坐标见同页的「位置与抛掷」。
             </div>
             <div class="field" style="margin-top:10px">
-              <label for="disp-value">显示位置</label>
+              <label for="disp-value">显示在哪端</label>
               <select id="disp-value" style="flex:1;min-width:180px">
                 <option value="web">仅网页</option>
                 <option value="desktop">仅桌面</option>
@@ -867,11 +1051,15 @@
             </div>
             <div class="note" style="margin-top:8px">
               这是<b>持久配置写入</b>，不是临时隐藏：选「都不」后这只宠物两端都不可见，
-              恢复入口是设置页的「显示位置」下拉框。返回体是改动后的成品聚合，本页据此刷新宠物清单。
+              恢复入口是设置页的「显示在哪端」下拉框。返回体是改动后的成品聚合，本页据此刷新宠物清单。
             </div>
           </div>
         </div>
 
+      </section>
+
+      <!-- ── 实时状态：轮询到的每个状态位（叶子）与原始 JSON ── -->
+      <section class="view" id="view-state">
         <!-- 原始状态 -->
         <div class="card">
           <div class="card-head">
@@ -1583,7 +1771,7 @@
     }
 
     function fillPetSelects() {
-      for (const id of ["pet-select", "chat-pet-select", "bc-pet", "anim-pet", "disp-pet"]) {
+      for (const id of ["pet-select", "chat-pet-select", "bc-pet", "anim-pet", "disp-pet", "mv-pet"]) {
         const sel = $(id);
         sel.innerHTML = "";
         for (const p of S.pets) {
@@ -2083,7 +2271,7 @@
         fields.appendChild(field("显示名", textInput(p.name, (v) => { p.name = v; })));
         fields.appendChild(field("id", textInput(p.id, (v) => { p.id = v; })));
         fields.appendChild(field("尺寸", numInput(p.size, (v) => { p.size = v; })));
-        fields.appendChild(field("显示位置", selectInput(DISPLAYS, p.display, (v) => { p.display = v; })));
+        fields.appendChild(field("显示在哪端", selectInput(DISPLAYS, p.display, (v) => { p.display = v; })));
         fields.appendChild(field("停靠角", selectInput(CORNERS, p.corner, (v) => { p.corner = v; })));
         fields.appendChild(field("横向边距", numInput(p.marginX, (v) => { p.marginX = v; })));
         fields.appendChild(field("纵向边距", numInput(p.marginY, (v) => { p.marginY = v; })));
@@ -2285,7 +2473,7 @@
     // 视图切换
     // ═══════════════════════════════════════════════════════════════
 
-    const TITLES = { overview: "桌宠总览", chat: "对话", settings: "设置" };
+    const TITLES = { overview: "桌宠总览", action: "动作", state: "实时状态", chat: "对话", settings: "设置" };
 
     async function showView(v) {
       document.querySelectorAll(".nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
@@ -2293,6 +2481,8 @@
       $("view-title").textContent = TITLES[v] || "";
       $("view-sub").textContent =
         v === "overview" ? "这些数据来自宿主每秒发布的状态" :
+        v === "action" ? "以“外部插件”身份让桌宠做事——每个动作都会真的发出去" :
+        v === "state" ? "宿主每秒发布的每个状态位（叶子），以及原始 JSON" :
         v === "chat" ? "回复会同时出现在桌宠气泡里" :
         v === "settings" ? "改动会写入用户配置文件" : "";
       if (v === "chat") { await loadChat(); $("chat-input").focus(); }
@@ -2635,6 +2825,193 @@
     });
     $("pb-stop").addEventListener("click", () => stopPlaybackWatch("手动停止"));
     window.addEventListener("beforeunload", () => stopPlaybackWatch(""));
+
+    // ═══════════════════════════════════════════════════════════════
+    // 位置与抛掷（issue #122 第 6 项）
+    // ═══════════════════════════════════════════════════════════════
+    // 两条都是**运动指令**：本页只把参数送出去，运动学全在宿主与渲染端
+    // （位置 = 拖拽跟手那套弹簧；抛掷 = 既有的 startThrow）。
+    // 下面唯一"复制"的一处是初速换算——只为把文档里那张表实时算给用户看。
+
+    const THROW_SPEED_ANCHOR = 1200;
+    const MAX_THROW_SPEED = 3600;
+    /** 与宿主 shared/physics.ts 的 softClampSpeed 同一公式（只用于显示，不参与控制） */
+    const softClampSpeed = (v) => (v <= 0 ? 0 : MAX_THROW_SPEED * (1 - Math.exp(-v / MAX_THROW_SPEED)));
+
+    /** 本卡片自己的目标宠物（它有自己的下拉框，与顶部「当前桌宠」可以不一致） */
+    function mvPet() {
+      const sel = $("mv-pet");
+      const id = (sel && sel.value) || S.petId;
+      return S.pets.find((p) => p.id === id) || null;
+    }
+
+    /**
+     * 读当前输入的目标坐标。**故意不夹取**：允许填越界值，好让用户亲眼看到
+     * "宿主会夹到 0~1、响应里回的是夹取后的值"这件事。
+     */
+    function mvTarget() {
+      const x = Number($("mv-x").value);
+      const y = Number($("mv-y").value);
+      return { x: Number.isFinite(x) ? x : 0, y: Number.isFinite(y) ? y : 0 };
+    }
+
+    /** 把目标点画进预览框（越界值夹到框内显示，并在旁边说明） */
+    function mvRender() {
+      const { x, y } = mvTarget();
+      const cx = Math.max(0, Math.min(1, x));
+      const cy = Math.max(0, Math.min(1, y));
+      const dot = $("mv-dot");
+      dot.style.left = cx * 100 + "%";
+      dot.style.top = cy * 100 + "%";
+      const out = x < 0 || x > 1 || y < 0 || y > 1;
+      $("mv-note").textContent = out ? "越界了（合法 0~1）——宿主会夹到边界" : "";
+      $("mv-note").style.color = out ? "var(--warn)" : "";
+      const p = mvPet();
+      $("mv-hint").textContent = p ? "条目 " + p.entry : "";
+    }
+
+    /** 指针位置 → 归一化坐标（预览框内的比例，夹到框内） */
+    function mvStagePoint(e) {
+      const box = $("mv-stage").getBoundingClientRect();
+      return {
+        x: Math.max(0, Math.min(1, (e.clientX - box.left) / box.width)),
+        y: Math.max(0, Math.min(1, (e.clientY - box.top) / box.height)),
+      };
+    }
+
+    (function bindStage() {
+      const stage = $("mv-stage");
+      let down = false;
+      const apply = (e) => {
+        const p = mvStagePoint(e);
+        $("mv-x").value = p.x.toFixed(3);
+        $("mv-y").value = p.y.toFixed(3);
+        mvRender();
+      };
+      stage.addEventListener("pointerdown", (e) => {
+        down = true;
+        try { stage.setPointerCapture(e.pointerId); } catch { /* 捕获失败不影响拖动 */ }
+        apply(e);
+      });
+      stage.addEventListener("pointermove", (e) => { if (down) apply(e); });
+      stage.addEventListener("pointerup", (e) => {
+        down = false;
+        try { stage.releasePointerCapture(e.pointerId); } catch { /* 已释放 */ }
+      });
+      stage.addEventListener("pointercancel", () => { down = false; });
+    })();
+
+    // ── 抛掷：角度拨盘 + 力度 ────────────────────────────────────────
+
+    function thValues() {
+      const a = Number($("th-angle").value);
+      const p = Number($("th-power").value);
+      return { angle: Number.isFinite(a) ? a : 0, power: Number.isFinite(p) && p > 0 ? p : 0.1 };
+    }
+
+    /** 拨盘指针 + 实时读数（力度 → 实际初速用与宿主同一公式算） */
+    function thRender() {
+      const { angle, power } = thValues();
+      // 屏幕坐标 y 向下，而接口约定逆时针为正 → CSS rotate 取负号
+      $("th-arrow").style.transform = "rotate(" + -angle + "deg)";
+      const rad = (angle * Math.PI) / 180;
+      const speed = softClampSpeed(power * THROW_SPEED_ANCHOR);
+      const vx = Math.cos(rad) * speed;
+      const vy = -Math.sin(rad) * speed;
+      $("th-readout").textContent =
+        "实际初速 " + speed.toFixed(0) + " px/s（软上限前 " + (power * THROW_SPEED_ANCHOR).toFixed(0) +
+        "，上限 " + MAX_THROW_SPEED + "）" +
+        "　vx " + vx.toFixed(0) + " / vy " + vy.toFixed(0) +
+        (angle === 90 ? "　← 正上" : angle === -90 ? "　← 正下" : angle === 0 ? "　← 正右" : angle === 180 ? "　← 正左" : "");
+    }
+
+    /** 指针位置 → 角度（0 = 正右、逆时针为正，与接口同一约定） */
+    function thSetFromPointer(e) {
+      const box = $("th-dial").getBoundingClientRect();
+      const dx = e.clientX - (box.left + box.width / 2);
+      const dy = e.clientY - (box.top + box.height / 2);
+      let deg = (Math.atan2(-dy, dx) * 180) / Math.PI;
+      if (deg <= -180) deg += 360;
+      $("th-angle").value = String(Math.round(deg));
+      thRender();
+    }
+
+    (function bindDial() {
+      const dial = $("th-dial");
+      let down = false;
+      dial.addEventListener("pointerdown", (e) => {
+        down = true;
+        try { dial.setPointerCapture(e.pointerId); } catch { /* 捕获失败不影响拖动 */ }
+        thSetFromPointer(e);
+      });
+      dial.addEventListener("pointermove", (e) => { if (down) thSetFromPointer(e); });
+      dial.addEventListener("pointerup", (e) => {
+        down = false;
+        try { dial.releasePointerCapture(e.pointerId); } catch { /* 已释放 */ }
+      });
+      dial.addEventListener("pointercancel", () => { down = false; });
+    })();
+
+    /** 发一条位置指令。smooth 决定走弹簧还是立即到位 */
+    async function mvGo(smooth) {
+      const petId = $("mv-pet").value || S.petId;
+      const { x, y } = mvTarget();
+      const res = $("mv-result");
+      res.textContent = "发送中…";
+      const r = await POST("/position?pet=" + encodeURIComponent(petId), { body: { x, y, smooth } });
+      if (r.status === 200 && r.body && r.body.ok) {
+        const ax = Number(r.body.x);
+        const ay = Number(r.body.y);
+        const clamped = Math.abs(ax - x) > 1e-9 || Math.abs(ay - y) > 1e-9;
+        res.textContent =
+          "已受理 · " + r.ms + "ms · 实际生效 x=" + ax + " y=" + ay +
+          (clamped ? "（传的值被夹取了）" : "");
+        // 回填实际生效值：让"夹取"这件事在界面上留下痕迹，而不是只闪一句提示
+        $("mv-x").value = ax;
+        $("mv-y").value = ay;
+        mvRender();
+        await poll(); // 动作端点不回数据：立刻补拉一拍，让叶子表反映出来
+      } else {
+        const why = (r.body && r.body.message) || (r.body && r.body.reason) || r.error || "HTTP " + r.status;
+        res.textContent = "被拒：" + why;
+      }
+    }
+
+    $("mv-go").addEventListener("click", () => void mvGo($("mv-smooth").checked));
+    $("mv-snap").addEventListener("click", () => void mvGo(false));
+    $("mv-x").addEventListener("input", mvRender);
+    $("mv-y").addEventListener("input", mvRender);
+    $("mv-pet").addEventListener("change", mvRender);
+
+    $("th-go").addEventListener("click", async () => {
+      const petId = $("mv-pet").value || S.petId;
+      const { angle, power } = thValues();
+      const res = $("th-result");
+      res.textContent = "发送中…";
+      const r = await POST("/throw?pet=" + encodeURIComponent(petId), { body: { angle, power } });
+      if (r.status === 200 && r.body && r.body.ok) {
+        res.textContent = "已受理 · " + r.ms + "ms（宠物从当前位置起飞）";
+        await poll();
+      } else {
+        const why = (r.body && r.body.message) || (r.body && r.body.reason) || r.error || "HTTP " + r.status;
+        res.textContent = "被拒：" + why;
+      }
+    });
+
+    // 角度数字框 ↔ 拨盘、力度滑块 ↔ 数字框，双向同步
+    $("th-angle").addEventListener("input", thRender);
+    $("th-power").addEventListener("input", () => {
+      $("th-power-num").value = $("th-power").value;
+      thRender();
+    });
+    $("th-power-num").addEventListener("input", () => {
+      const v = Number($("th-power-num").value);
+      if (Number.isFinite(v) && v > 0) $("th-power").value = String(Math.min(6, v));
+      thRender();
+    });
+
+    mvRender();
+    thRender();
 
     // 第三方投喂：以"外部插件"的身份把文本写进气泡（issue #76 的场景）
     $("bc-send").addEventListener("click", async () => {
