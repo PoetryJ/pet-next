@@ -829,6 +829,7 @@
               （图片归属按条目分：<span class="mono">pet/&lt;素材根&gt;-memes/</span> 独占 → 用户
               <span class="mono">memes/</span> → 包内 <span class="mono">assets/memes/</span>）。
               下拉框已经把池算好了——只列<b>磁盘上真实存在</b>的图（配置里写了但文件不在的会被宿主剔除，这里提前隐藏）。
+              <b>时长可调、可关掉动画联动、可提前撤回</b>——这三件事就是 issue #122 第 5 条要的。
             </div>
             <div class="field" style="margin-top:10px">
               <label for="bc-text">要说的话</label>
@@ -846,11 +847,23 @@
               <div id="bc-image-hint" style="margin-top:6px;font-size:12px;color:var(--faint)"></div>
             </div>
             <div class="field">
+              <label>显示时长与动画</label>
+              <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
+                <input id="bc-duration" type="number" min="0" step="500" value="10000" style="width:110px">
+                <span class="hint">毫秒 · 缺省 10000 · <b>0 = 字面意思「不显示」</b></span>
+                <label class="chk"><input type="checkbox" id="bc-anim" checked> 联动说话动画</label>
+                <span class="hint">关掉 = 只弹气泡（不查 <span class="mono">events.whisper</span> 池、不换源）</span>
+              </div>
+            </div>
+            <div class="field">
               <button type="button" class="btn primary" id="bc-send">投喂</button>
+              <button type="button" class="btn" id="bc-clear">清空气泡</button>
               <span class="hint" id="bc-result"></span>
             </div>
             <div class="note" style="margin-top:8px">
               内容与频率由调用方自己负责：<b>不设长度限制，也不限频</b>。
+              「清空气泡」（<span class="mono">POST /bubble/clear</span>）只收起气泡——
+              正在播的动画、余额气泡、工作状态气泡都不动，没有气泡时也回 <span class="mono">ok</span>。
             </div>
           </div>
         </div>
@@ -1496,6 +1509,13 @@
     function renderSay(data, petId) {
       const b = $("say-bubble");
       b.innerHTML = "";
+      // 清空指令（POST /bubble/clear 写入 { clear: true }）：气泡被收起，不是"没说过话"
+      if (data && data.clear === true) {
+        b.className = "bubble empty";
+        b.textContent = "（气泡已被清空）";
+        $("say-time").textContent = hhmmss(Date.now());
+        return;
+      }
       if (!data || typeof data.text !== "string" || !data.text) {
         b.className = "bubble empty";
         b.textContent = "还没有说过话";
@@ -1514,7 +1534,15 @@
         img.onerror = () => img.remove();
         b.appendChild(img);
       }
-      $("say-time").textContent = hhmmss(S.sayAt);
+      // 时长与联动开关（POST /broadcast 的两个新参数）。碎碎念/对话回复不写这两个字段，
+      // 于是这里显示的就是缺省值——正好说明"老行为 = 10s + 联动"。
+      const dur = typeof data.duration === "number" ? data.duration : 10000;
+      const linked = data.anim !== false;
+      $("say-time").textContent =
+        hhmmss(S.sayAt) +
+        " · " +
+        (dur === 0 ? "时长 0（不显示）" : dur / 1000 + "s") +
+        (linked ? " · 联动动画" : " · 不联动动画");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -3014,18 +3042,44 @@
     thRender();
 
     // 第三方投喂：以"外部插件"的身份把文本写进气泡（issue #76 的场景）
+    // 新参数（issue #122 第 5 条）：duration 毫秒（0 = 字面意思「不显示」）、anim 是否联动说话动画
     $("bc-send").addEventListener("click", async () => {
       const petId = $("bc-pet").value || S.petId;
       const text = $("bc-text").value;
       const image = $("bc-image").value.trim();
+      const duration = Number($("bc-duration").value);
+      const anim = $("bc-anim").checked;
       const res = $("bc-result");
       res.textContent = "投喂中…";
-      const r = await POST("/broadcast?pet=" + encodeURIComponent(petId), {
-        body: image ? { text, image } : { text },
-      });
+      const body = { text };
+      if (image) body.image = image;
+      if (Number.isFinite(duration)) body.duration = duration;
+      body.anim = anim;
+      const r = await POST("/broadcast?pet=" + encodeURIComponent(petId), { body });
       if (r.status === 200 && r.body && r.body.ok) {
         res.textContent = "已投喂 · " + r.ms + "ms";
         // 动作端点不回数据：立刻补拉一拍 /state，0 延迟看到气泡
+        const s = await GET("/state");
+        const leaf = s.body && s.body.pets && s.body.pets[petId] && s.body.pets[petId].say;
+        if (leaf) {
+          S.baseline["pets." + petId + ".say"] = leaf.counter;
+          if (petId === S.petId) renderSay(leaf.data, petId);
+        }
+      } else {
+        const why = (r.body && r.body.message) || (r.body && r.body.reason) || r.error || "HTTP " + r.status;
+        res.textContent = "被拒：" + why;
+      }
+    });
+
+    // 清空气泡：POST /bubble/clear —— 提前撤回（issue #122 第 5 条）。无请求体。
+    $("bc-clear").addEventListener("click", async () => {
+      const petId = $("bc-pet").value || S.petId;
+      const res = $("bc-result");
+      res.textContent = "清空中…";
+      const r = await POST("/bubble/clear?pet=" + encodeURIComponent(petId));
+      if (r.status === 200 && r.body && r.body.ok) {
+        res.textContent = "已清空 · " + r.ms + "ms";
+        // 立刻补拉一拍：叶子里会是 { clear: true }
         const s = await GET("/state");
         const leaf = s.body && s.body.pets && s.body.pets[petId] && s.body.pets[petId].say;
         if (leaf) {
