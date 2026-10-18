@@ -89,6 +89,10 @@ class PetSprite {
     this.dragFollowToken = 0;
     this.throwRef = null; // 抛掷 rAF handle
     this.throwToken = 0;
+    // 位置指令（POST /position）的弹簧跟随 rAF：与拖拽跟手分开——拖拽没有终点（指针一直喂目标），
+    // 这条有终点，收敛后必须自己收掉，否则 rAF 永远转下去
+    this.posFollow = null;
+    this.posFollowToken = 0;
     this.space = null; // 抛掷空间（逐屏 AABB）缓存；显示器变化时由 relayout() 置空重建
     // Q 弹挤压（点击回应 / 抛掷落地）：rAF + 待压标记（等新动画成为前台再压，压新首帧）
     this.squashRef = null;
@@ -675,6 +679,9 @@ class PetSprite {
       cancelAnimationFrame(this.moveRef);
       this.moveRef = null;
     }
+    // 位置指令的弹簧也是一种"自主移动"：任何停走路的地方都该把它一并停掉，否则两套运动系统会
+    // 同时改窗口位置（用户拖拽 / 抛掷 / 事件动画 / 菜单点播都会走到这）。
+    this.stopPosFollow();
   }
 
   // ---- 拖拽抛掷物理（弹簧跟手 + 甩抛 + 重力反弹；与浏览器 pet.ts 同构）----
@@ -809,6 +816,81 @@ class PetSprite {
       this.throwRef = requestAnimationFrame(step);
     };
     this.throwRef = requestAnimationFrame(step);
+  }
+
+  // ---- 位置 / 抛掷指令（POST /position、POST /throw；与浏览器 pet.ts 同构）----
+  stopPosFollow() {
+    this.posFollowToken++;
+    if (this.posFollow !== null) {
+      cancelAnimationFrame(this.posFollow);
+      this.posFollow = null;
+    }
+  }
+
+  /**
+   * 位置指令：把宠物**中心**挪到归一化坐标 (rx, ry)（与 this.customPos 同一套语义）。
+   * `smooth` 为真走拖拽那套过阻尼弹簧（S.springStep），为假直接落位。
+   * 用户正按着宠物（`dragState.active` 含点击与拖拽）时**整拍丢弃**——手指底下的东西不该跑；
+   * 丢弃是静默的（接口早已回过 ok，与浏览器端同一契约）。
+   * 归一化空间 = **全部显示器工作区并集的外接矩形**；落点会被夹到 AREAS 并集（空洞不可达）。
+   */
+  moveToCenter(rx, ry, smooth) {
+    if (this.dragState.active) return; // 用户交互优先
+    this.stopThrow(); // 先显式接管：停掉飞行与走路（stopMove 顺带停掉上一次的位置弹簧）
+    this.stopMove();
+    // 归一化空间是**外接矩形**（VIEW = AREAS 的 hull），不规则布局里含大片不属于任何屏的空洞
+    // （实测右倒 T 双屏：hull 的 23.7% 是空洞）。而 position() 在 customPos 分支**零夹取**
+    // （原文"松手无任何边界夹取"），不夹的话落进空洞的坐标会把宠物放进看不见的地方。
+    // 注意：鼠标拖拽到不了那里**不是因为代码在拦**，而是光标物理上出不去屏幕——所以位置接口
+    // 必须自己补这道守卫。判据与 relayout() 完全一致：把**身体中心**夹到 AREAS 并集。
+    // 浏览器端 0~1 就是视口、没有空洞，那边不走本函数。
+    const c = S.clampPointToRegion(AREAS, rx * VIEW.w, ry * VIEW.h);
+    // 夹取后的**比例**才是要写进 customPos 的值：position() 会按它重算窗口位置，
+    // 存原始 rx/ry 等于把刚做的夹取撤销掉。
+    const fx = c.x / VIEW.w;
+    const fy = c.y / VIEW.h;
+    const px = c.x - this.halfW;
+    const py = c.y - this.halfH;
+    if (!smooth) {
+      this.sendBounds(px, py);
+      this.customPos = { rx: fx, ry: fy };
+      return;
+    }
+    const token = ++this.posFollowToken;
+    let last = performance.now();
+    const vel = { vx: 0, vy: 0 };
+    const step = () => {
+      if (this.posFollowToken !== token) return;
+      const now = performance.now();
+      const dt = Math.min((now - last) / 1000, 1 / 30);
+      last = now;
+      let x = this.pos.x;
+      let y = this.pos.y;
+      vel.vx = S.springStep(vel.vx, x, px, dt, this.physics.throwPower);
+      vel.vy = S.springStep(vel.vy, y, py, dt, this.physics.throwPower);
+      x += vel.vx * dt;
+      y += vel.vy * dt;
+      this.sendBounds(x, y);
+      // 收敛判定：足够近且足够慢 → 精确落位并提交。拖拽跟手靠指针松手结束，这条得自己判。
+      if (Math.abs(px - x) < 0.5 && Math.abs(py - y) < 0.5 && Math.abs(vel.vx) < 1 && Math.abs(vel.vy) < 1) {
+        this.posFollow = null;
+        this.sendBounds(px, py);
+        this.customPos = { rx: fx, ry: fy };
+        return;
+      }
+      this.posFollow = requestAnimationFrame(step);
+    };
+    this.posFollow = requestAnimationFrame(step);
+  }
+
+  /**
+   * 抛掷指令：角度（度，`0` = 正右，逆时针为正）+ 力度倍率 → 初速度，交给 startThrow。
+   * 下游（重力 / 反弹 / 地面摩擦 / 落地 Q 弹 / 宠物间碰撞 / 落定写 customPos）全是**既有行为**。
+   */
+  throwWith(angleDeg, power) {
+    if (this.dragState.active) return; // 用户交互优先
+    const v = S.throwVelocity(angleDeg, power);
+    this.startThrow(this.pos.x, this.pos.y, v.vx, v.vy);
   }
 
   /** 被撞回调（跨窗碰撞 broker 转发）：停当前动作，从落点以新初速抛出去（全复用现有物理） */

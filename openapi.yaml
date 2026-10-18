@@ -99,7 +99,12 @@ paths:
             "notify":     { "counter": 1755000000002, "data": { /* NotifyFrame */ } }
           },
           "pets": {
-            "main": { "say": { "counter": 1755000000003, "data": { "text": "……" } } }
+            "main": {
+              "say":      { "counter": 1755000000003, "data": { "text": "……" } },
+              "anim":     { "counter": 1755000000004, "data": { "name": "东张西望" } },
+              "position": { "counter": 1755000000005, "data": { "x": 0.5, "y": 0.35, "smooth": true } },
+              "throw":    { "counter": 1755000000006, "data": { "angle": 45, "power": 1 } }
+            }
           }
         }
         ```
@@ -107,6 +112,12 @@ paths:
         **约定与注意事项**：
 
         - `sections` 是**全局**段，所有端共享一份；`pets.<id>` 是**每只宠物**各自一份。
+        - `pets.<id>` 的四个槽位（`say` / `anim` / `position` / `throw`）**是一起建的**：只要该宠物
+          被写过任意一个叶子，四个键就都存在；没写过的那个是 `{ "counter": 0, "data": null }`。
+          而**从没被写过任何叶子**的宠物，整个条目都不出现在 `pets` 里。
+        - `position` / `throw` 是**运动指令**（宿主 → 渲染端），与 `anim` 同族：渲染端读到就执行，
+          **不往回写**。它们是 `POST /position` 与 `POST /throw` 的落点，本身不含"宠物现在在哪"
+          这类状态。
         - **`configVersion` 不是叶子**（没有 `counter`/`data`，不参与 counter 比对）：它是配置文件的
           版本指纹，与上一拍不同就说明配置被改过——桌面端右键改了显示位置、另一个页面保存了配置、
           或用户手工编辑了 `main-config.jsonc` / `pet/*.json`。消费端此时应重拉 `GET /config`。
@@ -374,6 +385,215 @@ paths:
                               这一次点播的**回执编号**。`ok: true` 只代表受理了，
                               拿它查 `GET /playback/{id}` 才能知道到底播完没有。
                             example: pb-mfh2k1-1
+                  - $ref: "#/components/schemas/FailureResponse"
+        "400":
+          description: '请求体不是合法 JSON（`{ "error": "invalid JSON body" }`）'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /dsh-pet-7340/position:
+    post:
+      tags: [Action]
+      operationId: setPetPosition
+      summary: 位置控制——把桌宠挪到指定位置
+      description: |
+        让指定桌宠移动到归一化坐标处，写进 `pets.<id>.position`；渲染端在 1 秒内轮询发现
+        `counter` 变化后执行。这是动作端点，只回 `{ ok }`（成功时另带宿主夹取后的 `x`/`y`）。
+
+        **坐标语义（两端不同，务必看清）**：`x`/`y` 是宠物**中心**的归一化坐标，合法 `0~1`。
+        选中心而不是左上角，是为了让调用方**不必知道宠物多大**——用左上角的话，想居中就得先去
+        `GET /config` 查这只宠物的 `size`。
+
+        - **浏览器 overlay**：`0~1` 就是**视口**。`0.5` = 屏幕正中。
+        - **桌面**：`0~1` 是**全部显示器工作区并集的外接矩形**——不是主屏，也不是某一块屏。
+          左右并排的双屏下 `x: 0.5` 落在两块屏的接缝上；三屏等宽时 `x: 1/3` 约等于第二块屏的左缘。
+          所以**同一个 `x` 在两端含义不同**，调用方需要知道自己面对的是哪一种。
+
+        **越界与不可达都会被夹取**：
+
+        - **超出 `0~1`**：由宿主在写入前夹到边界。
+        - **落进多屏空洞**（仅桌面端）：外接矩形在不规则布局里有**大片不属于任何屏的空洞**
+          （实测右倒 T 型双屏约 23.7% 的面积是空洞）。落点会被夹到**最近的可达屏**上，判据与
+          宿主 `relayout()`（显示器变化后把宠物拉回可见区）完全一致。
+
+        响应里的 `x`/`y` 是**宿主夹取后**的值。
+
+        **允许半个身体出屏**：传 `0.01` 就真的挪到那儿，不会按「身体贴边」再夹一次。
+        用户手动拖拽则仍是身体贴边——两条路径互不影响。
+
+        **不碰动画**：这是纯位置接口——不换 `anim`、不播走路动画。若宠物正在走路，本次调用会
+        打断走路，收尾走既有逻辑。
+
+        **撞上用户拖拽时静默丢弃**：渲染端发现手指正按在宠物身上（含点击与拖拽）就丢掉这一拍。
+        此时本端点**依然回 `ok: true`**——动作端点只表示"受理了"，不表示"生效了"（与 `POST /anim`
+        同一契约）。这种丢弃不改变叶子，调用方从 `/state` 也观察不到。
+
+        **`smooth` 的语义**：`true` 走拖拽跟手那套过阻尼弹簧（`springStep`）；`false` 直接落位。
+      parameters:
+        - name: pet
+          in: query
+          required: false
+          description: |
+            目标桌宠 id。缺省时落到当前桌宠；仍无法确定时兜底 `main`。
+            指定的 id 不存在 → `ok: false` + `reason: unknown-pet`。
+            **多宠物时建议显式传**——缺省落到的是"当前桌宠"，未必是你要挪的那只。
+          schema:
+            type: string
+          example: main
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [x, y]
+              properties:
+                x:
+                  type: number
+                  description: |
+                    宠物**中心**的横向归一化坐标，合法 `0~1`。越界、以及桌面端落在多屏空洞里的
+                    落点，都会被夹取（见上文「坐标语义」）。
+                  example: 0.5
+                y:
+                  type: number
+                  description: |
+                    宠物**中心**的纵向归一化坐标，合法 `0~1`。越界、以及桌面端落在多屏空洞里的
+                    落点，都会被夹取（见上文「坐标语义」）。
+                  example: 0.35
+                smooth:
+                  type: boolean
+                  description: |
+                    `true`（缺省）= 弹簧平滑过去；`false` = 立即到位。
+                    缺省按 `true` 处理——瞬移看起来像 bug。
+              examples:
+                smooth:
+                  summary: 平滑挪到屏幕正中偏上
+                  value:
+                    x: 0.5
+                    y: 0.35
+                instant:
+                  summary: 立即跳到左下角
+                  value:
+                    x: 0.05
+                    y: 0.9
+                    smooth: false
+      responses:
+        "200":
+          description: |
+            恒为 200（除 405/400）：失败通过 `ok: false` 表达，这样调用方只需解析一层即可。
+            成功时额外回 `x`/`y`——**宿主夹取后的值**。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - allOf:
+                      - $ref: "#/components/schemas/OkResponse"
+                      - type: object
+                        required: [x, y]
+                        properties:
+                          x:
+                            type: number
+                            description: 实际生效的横向坐标（夹取后）
+                          y:
+                            type: number
+                            description: 实际生效的纵向坐标（夹取后）
+                  - $ref: "#/components/schemas/FailureResponse"
+        "400":
+          description: '请求体不是合法 JSON（`{ "error": "invalid JSON body" }`）'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /dsh-pet-7340/throw:
+    post:
+      tags: [Action]
+      operationId: throwPet
+      summary: 原生抛掷——给桌宠一个初速度让它飞出去
+      description: |
+        给指定桌宠一个初速度，写进 `pets.<id>.throw`；渲染端在 1 秒内轮询发现 `counter`
+        变化后执行。宠物**从当前位置起飞**，不需要先被"抓住"。
+
+        **物理表现与用户手动甩出去完全一致**：重力、碰壁反弹、地面摩擦、多屏越界判定、落地 Q 弹
+        挤压、宠物间碰撞（配置 `petCollision` 开启时）、落定后提交位置，走的是同一条路径。
+
+        **`angle` 单位度，`0` = 正右，逆时针为正**：`90` = 正上，`-90` = 正下。
+        注意这是**数学惯例**而不是屏幕惯例（屏幕坐标 y 向下），所以"往上抛"写 `90` 而非 `270`。
+        任意实数都成立，不必自己归一化到 `0~360`。
+
+        **`power` 与 3600 px/s 软上限的关系**（这条容易踩）：初速 = `power × 1200`，
+        再过既有的软钳速 `3600 × (1 − e^(−v/3600))`——与拖拽甩抛同一条限速。所以：
+
+        | `power` | 实际初速 |
+        | --- | --- |
+        | `1.0` | ≈ 1021 px/s |
+        | `3.0` | ≈ 2276 px/s |
+        | → ∞ | → 3600 px/s |
+
+        即 `1.0` 是**软钳速前**的锚点，不是实际初速。任意 `power` 都单调可区分，且恒不超过 3600。
+
+        **任意 `power` 都会真的抛出去**：拖拽松手时低于 500 px/s 会被当作"温柔放下"（那是拖拽
+        语义，表示手停住了），本端点没有这个门槛，`power` 再小也照抛。
+
+        **撞上用户拖拽时静默丢弃**：同 `POST /position`，且同样回 `ok: true`。
+      parameters:
+        - name: pet
+          in: query
+          required: false
+          description: |
+            目标桌宠 id。缺省时落到当前桌宠；仍无法确定时兜底 `main`。
+            指定的 id 不存在 → `ok: false` + `reason: unknown-pet`。
+          schema:
+            type: string
+          example: main
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [angle, power]
+              properties:
+                angle:
+                  type: number
+                  description: |
+                    方向，单位**度**。`0` = 正右，**逆时针为正**（`90` = 正上，`-90` = 正下）。
+                    任意实数，不需要自己归一化。
+                  example: 45
+                power:
+                  type: number
+                  exclusiveMinimum: 0
+                  description: |
+                    力度倍率，必须 > 0。`1.0` 对应软钳速**前**的 1200 px/s
+                    （实际初速约 1021 px/s，见上表）。
+                  example: 1
+              examples:
+                upRight:
+                  summary: 往右上方抛，普通力度
+                  value:
+                    angle: 45
+                    power: 1
+                hardLeft:
+                  summary: 使劲往左上甩
+                  value:
+                    angle: 135
+                    power: 3
+      responses:
+        "200":
+          description: |
+            恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
+            `bad-request`（角度/力度非法）、`unknown-pet`、`generate-error`（配置不可读等）。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/OkResponse"
                   - $ref: "#/components/schemas/FailureResponse"
         "400":
           description: '请求体不是合法 JSON（`{ "error": "invalid JSON body" }`）'
@@ -1239,11 +1459,16 @@ components:
           description: 每只宠物各自一份；键是宠物 id（**可含点号，勿切分**）
           additionalProperties:
             type: object
+            required: [say, anim, position, throw]
             properties:
               say:
                 $ref: "#/components/schemas/SayLeaf"
               anim:
                 $ref: "#/components/schemas/AnimLeaf"
+              position:
+                $ref: "#/components/schemas/PositionLeaf"
+              throw:
+                $ref: "#/components/schemas/ThrowLeaf"
       examples:
         typical:
           summary: 一只有余额与碎碎念的宠物
@@ -1281,6 +1506,20 @@ components:
                   data:
                     text: 主人今天也要加油哦～
                     image: 可爱
+                anim:
+                  counter: 1755000000400
+                  data:
+                    name: 东张西望
+                    playbackId: pb-mfh2k1-1
+                position:
+                  counter: 1755000000500
+                  data:
+                    x: 0.5
+                    y: 0.35
+                    smooth: true
+                throw:
+                  counter: 0
+                  data: null
 
     BalanceLeaf:
       type: object
@@ -1545,6 +1784,64 @@ components:
           type: string
           description: 要播放的动画名（等于 `animations` 配置里菜单可点到的某个名字）
           example: 东张西望
+
+    PositionLeaf:
+      type: object
+      required: [counter, data]
+      properties:
+        counter:
+          $ref: "#/components/schemas/Counter"
+        data:
+          description: |
+            该宠物要挪到的位置；`null` = 从未写过。
+            **这是指令不是状态上报**：宿主写、渲染端读来挪宠物，渲染端**不往回写**。
+            由 `POST /position` 写入。
+          oneOf:
+            - $ref: "#/components/schemas/PositionCue"
+            - type: "null"
+
+    PositionCue:
+      type: object
+      required: [x, y, smooth]
+      properties:
+        x:
+          type: number
+          description: 宠物**中心**的横向归一化坐标（`0~1`，宿主写入前已夹取）
+        y:
+          type: number
+          description: 宠物**中心**的纵向归一化坐标（`0~1`，宿主写入前已夹取）
+        smooth:
+          type: boolean
+          description: '`true` = 弹簧平滑过去；`false` = 立即到位'
+
+    ThrowLeaf:
+      type: object
+      required: [counter, data]
+      properties:
+        counter:
+          $ref: "#/components/schemas/Counter"
+        data:
+          description: |
+            该宠物要受的抛掷初速度；`null` = 从未写过。
+            **这是指令不是状态上报**：宿主写、渲染端读来抛掷，渲染端**不往回写**。
+            由 `POST /throw` 写入。
+          oneOf:
+            - $ref: "#/components/schemas/ThrowCue"
+            - type: "null"
+
+    ThrowCue:
+      type: object
+      required: [angle, power]
+      properties:
+        angle:
+          type: number
+          description: |
+            方向，单位**度**。`0` = 正右，**逆时针为正**（`90` = 正上，`-90` = 正下）。
+        power:
+          type: number
+          exclusiveMinimum: 0
+          description: |
+            力度倍率。`1.0` = 软钳速**前**的 1200 px/s（实际初速约 1021 px/s）。
 
     SayLeaf:
       type: object

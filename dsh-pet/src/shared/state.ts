@@ -162,6 +162,33 @@ export function readAnim(leaf: StateLeaf): { name: string; playbackId?: string }
 }
 
 /**
+ * 类型收窄：位置指令叶子 → `{ x, y, smooth }`（形状非法 → null，消费端跳过这一拍）。
+ * **这是指令不是状态上报**：host 写、前端读来挪宠物，前端不往回写。
+ * `x`/`y` 是宠物**中心**的归一化坐标（0~1，host 写入前已夹取）；
+ * `smooth` 缺省按 `true` 处理（老 host 不写该字段时按平滑走）。
+ */
+export function readPosition(leaf: StateLeaf): { x: number; y: number; smooth: boolean } | null {
+  if (!leaf.data || typeof leaf.data !== 'object') return null;
+  const d = leaf.data as { x?: unknown; y?: unknown; smooth?: unknown };
+  if (typeof d.x !== 'number' || !Number.isFinite(d.x)) return null;
+  if (typeof d.y !== 'number' || !Number.isFinite(d.y)) return null;
+  return { x: d.x, y: d.y, smooth: d.smooth !== false };
+}
+
+/**
+ * 类型收窄：抛掷指令叶子 → `{ angle, power }`（形状非法 → null，消费端跳过这一拍）。
+ * `angle` 单位**度**（`0` = 正右，逆时针为正）；`power` 是力度倍率（`1.0` = 1200 px/s 软钳速前）。
+ * 同样是**指令**，前端不往回写。
+ */
+export function readThrow(leaf: StateLeaf): { angle: number; power: number } | null {
+  if (!leaf.data || typeof leaf.data !== 'object') return null;
+  const d = leaf.data as { angle?: unknown; power?: unknown };
+  if (typeof d.angle !== 'number' || !Number.isFinite(d.angle)) return null;
+  if (typeof d.power !== 'number' || !Number.isFinite(d.power) || d.power <= 0) return null;
+  return { angle: d.angle, power: d.power };
+}
+
+/**
  * 动作端点：POST 一次，返回是否成功（`{ok:true}`）。
  * 动作**不返回数据**——数据只有一个出口（/state），调用方收到 ok 后立刻 `pollStateNow()`
  * 拉一拍即可 0 延迟看到结果（见 host 侧的路由说明）。

@@ -50,6 +50,28 @@ describe('PollStateStore —— 写入与读取', () => {
     assert.equal(store.read().sections.notify.data, null);
   });
 
+  test('宠物条目的四个槽位一起建好（没写过的槽位是 {counter:0, data:null}）', () => {
+    const store = new PollStateStore();
+    store.writePet('main', 'position', { x: 0.5, y: 0.5, smooth: true });
+    const entry = store.read().pets.main;
+    // 形状恒定：只要被写过任意一个叶子，四个键就都存在（消费端不必判 undefined）
+    assert.deepEqual(Object.keys(entry).sort(), ['anim', 'position', 'say', 'throw']);
+    assert.deepEqual(entry.position.data, { x: 0.5, y: 0.5, smooth: true });
+    assert.deepEqual(entry.say, { counter: 0, data: null }, '没写过的槽位保持空叶子');
+    assert.deepEqual(entry.anim, { counter: 0, data: null });
+    assert.deepEqual(entry.throw, { counter: 0, data: null });
+  });
+
+  test('position 与 throw 各自独立更新 counter（两条指令互不吞掉）', () => {
+    const store = new PollStateStore();
+    store.writePet('main', 'position', { x: 0.1, y: 0.2, smooth: true });
+    const posCounter = store.read().pets.main.position.counter;
+    store.writePet('main', 'throw', { angle: 45, power: 1 });
+    const s = store.read();
+    assert.ok(s.pets.main.throw.counter > posCounter, 'throw 写入必须推进自己的 counter');
+    assert.equal(s.pets.main.position.counter, posCounter, 'position 的 counter 不该被 throw 的写入改动');
+  });
+
   test('叶子整体替换：先读到的引用不会被后续写入改动（半新半旧不可能发生）', () => {
     const store = new PollStateStore();
     store.writeSection('workStatus', { state: 'working' });

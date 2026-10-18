@@ -322,6 +322,45 @@ describe('/anim —— 点播动画（POST 写入端点）', () => {
   });
 });
 
+describe('/position + /throw —— 位置与抛掷指令（POST 写入端点）', () => {
+  // 覆盖范围同 /anim：源码形态下 PACKAGE_ROOT 解析为 <pkg>/src，readAllConfig 必然抛错，
+  // 因此"成功写进 pets.<id>.position / pets.<id>.throw"那条路径在这里测不了（参数校验、坐标夹取
+  // 与宠物解析由 motion-cue.test.ts 的决策层单测覆盖）。这里只钉路由层契约：方法、JSON 解析、失败口径。
+
+  test('GET → 405（两条都是动作端点，不是读端点）', async () => {
+    assert.equal((await call('/dsh-pet-7340/position?pet=main')).status, 405);
+    assert.equal((await call('/dsh-pet-7340/throw?pet=main')).status, 405);
+  });
+
+  test('请求体不是合法 JSON → 400', async () => {
+    for (const path of ['position', 'throw']) {
+      const r = await call(`/dsh-pet-7340/${path}?pet=main`, 'POST', '{ 不是 json');
+      assert.equal(r.status, 400, path);
+      assert.match(r.body, /invalid JSON body/);
+    }
+  });
+
+  test('配置不可达时不静默：显式 ok:false/generate-error（不假装已挪位 / 已抛出）', async () => {
+    const pos = await call('/dsh-pet-7340/position?pet=main', 'POST', JSON.stringify({ x: 0.5, y: 0.5 }));
+    assert.equal(pos.status, 200);
+    const posBody = JSON.parse(pos.body) as { ok: boolean; reason: string };
+    assert.equal(posBody.ok, false, '读不到配置绝不能回 ok:true——否则调用方以为宠物已经挪过去了');
+    assert.equal(posBody.reason, 'generate-error');
+
+    const thr = await call('/dsh-pet-7340/throw?pet=main', 'POST', JSON.stringify({ angle: 45, power: 1 }));
+    assert.equal(thr.status, 200);
+    const thrBody = JSON.parse(thr.body) as { ok: boolean; reason: string };
+    assert.equal(thrBody.ok, false, '读不到配置绝不能回 ok:true——否则调用方以为宠物已经飞出去了');
+    assert.equal(thrBody.reason, 'generate-error');
+  });
+
+  test('空请求体（不是对象）→ 不抛，走失败口径', async () => {
+    const r = await call('/dsh-pet-7340/position?pet=main', 'POST', 'null');
+    assert.equal(r.status, 200);
+    assert.equal((JSON.parse(r.body) as { ok: boolean }).ok, false);
+  });
+});
+
 describe('thumb 路由 —— 合法路径照常（修复不得误杀）', () => {
   test('pet pack 自己的素材：中文名 petId 正常返回', async () => {
     const r = await call(`/dsh-pet-7340/thumb/${encodeURIComponent(CN_PET)}/test.webm`);

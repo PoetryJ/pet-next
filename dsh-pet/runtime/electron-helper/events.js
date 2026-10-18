@@ -269,6 +269,27 @@ function applyAnimLeaf(petId, leaf) {
   }
 }
 
+/** 位置指令叶子 → 对应宠物挪过去（其他插件经 POST /position 写进 S）。
+ *  复用 sprite.moveToCenter（内部走拖拽那套过阻尼弹簧），与 /anim 同一族：只分发，不重写运动学。
+ *  petId 由路径解析出来（pets.<id>.position）；本窗口只装一只宠物，按 id 命中即可。 */
+function applyPositionLeaf(petId, leaf) {
+  const hit = S.readPosition(leaf);
+  if (!hit) return;
+  for (const s of sprites) {
+    if (s.pet.id === petId) s.moveToCenter(hit.x, hit.y, hit.smooth);
+  }
+}
+
+/** 抛掷指令叶子 → 对应宠物按给定角度/力度飞出去（其他插件经 POST /throw 写进 S）。
+ *  初速换算在 shared（S.throwVelocity），下游全是既有抛掷物理（重力/反弹/摩擦/落地 Q 弹）。 */
+function applyThrowLeaf(petId, leaf) {
+  const hit = S.readThrow(leaf);
+  if (!hit) return;
+  for (const s of sprites) {
+    if (s.pet.id === petId) s.throwWith(hit.angle, hit.power);
+  }
+}
+
 /** 跑一拍 /state（1s 定时与「前端动作后立刻刷新」共用同一份实现） */
 async function pollStateOnce() {
   try {
@@ -288,6 +309,12 @@ async function pollStateOnce() {
       } else if (change.path.startsWith('pets.') && change.path.endsWith('.anim')) {
         // 点播动画：同样按前缀/后缀切片（counter 每次写入都递增，连点两次也会分发两次）
         applyAnimLeaf(change.path.slice('pets.'.length, -'.anim'.length), change.leaf);
+      } else if (change.path.startsWith('pets.') && change.path.endsWith('.position')) {
+        // 位置指令：同样按前缀/后缀切片，绝不 split('.')
+        applyPositionLeaf(change.path.slice('pets.'.length, -'.position'.length), change.leaf);
+      } else if (change.path.startsWith('pets.') && change.path.endsWith('.throw')) {
+        // 抛掷指令：同上
+        applyThrowLeaf(change.path.slice('pets.'.length, -'.throw'.length), change.leaf);
       }
     }
   } catch {

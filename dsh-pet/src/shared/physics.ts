@@ -200,9 +200,31 @@ export const springStep = (
   power: number = DEFAULT_THROW_POWER,
 ): number => v + ((target - x) * SPRING_K - v * SPRING_C) * power * dt;
 
-const softClampSpeed = (speed: number): number => {
+/** 软钳速：`cap*(1-e^(-s/cap))`，任意速度下单调可区分、渐近不超过 cap。
+ *  导出供抛掷指令（`POST /throw` 的 power）复用——接口抛掷与拖拽甩抛走同一条限速，手感一致。 */
+export const softClampSpeed = (speed: number): number => {
   if (speed <= 0) return 0;
   return MAX_THROW_SPEED * (1 - Math.exp(-speed / MAX_THROW_SPEED));
+};
+
+/** 抛掷指令的力度锚点：`power = 1.0` 对应软钳速**前**的 1200 px/s
+ *  （实际初速会被软上限压到约 1021 px/s，见 softClampSpeed）。 */
+export const THROW_SPEED_ANCHOR = 1200;
+
+/**
+ * 抛掷指令（`POST /dsh-pet-7340/throw` 的 `angle` + `power`）→ 初速度 (vx, vy)，px/s。
+ *
+ * `angle` 单位度，`0` = 正右，**逆时针为正**——屏幕坐标 y 向下，所以 `vy` 取负号
+ * （"往上抛"写 90，而不是 270）。任意实数角度都成立（sin/cos 天然按 360 周期）。
+ * 初速 = `power × THROW_SPEED_ANCHOR`，再过**既有软上限**：与拖拽甩抛同一条限速，
+ * 所以任意 `power` 都单调可区分且恒不超过 `MAX_THROW_SPEED`。
+ *
+ * 两端（浏览器 overlay / 桌面 sprite）共用本函数，保证接口抛掷的初速换算严格一致。
+ */
+export const throwVelocity = (angleDeg: number, power: number): { vx: number; vy: number } => {
+  const speed = softClampSpeed(power * THROW_SPEED_ANCHOR);
+  const rad = (angleDeg * Math.PI) / 180;
+  return { vx: Math.cos(rad) * speed, vy: -Math.sin(rad) * speed };
 };
 
 /**

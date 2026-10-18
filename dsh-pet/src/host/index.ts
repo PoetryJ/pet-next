@@ -84,6 +84,7 @@ import { configuredModel } from './model-selection';
 import { limitPool, pickMeme, readMemePool } from './memes';
 import { decideBroadcast, normalizeBroadcastText } from './broadcast';
 import { decideAnim } from './anim';
+import { decidePosition, decideThrow } from './motion-cue';
 import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
 import {
   configVersion,
@@ -1248,6 +1249,54 @@ export function apply(ctx: any): void {
       }
     }
 
+    // 位置与抛掷：/dsh-pet-7340/position 与 /dsh-pet-7340/throw（POST）——两条**运动指令**。
+    //
+    // 与 /anim 同族：受理后写进 S 的宠物叶子（pets.<id>.position / pets.<id>.throw），由渲染端消费。
+    // 它们**不引入任何新行为**——位置复用渲染端已有的弹簧跟随（目标从指针换成参数），抛掷复用已有的
+    // startThrow（角度/力度换算成初速度），下游的重力/反弹/摩擦/落地 Q 弹/宠物间碰撞一概照旧。
+    // 所以这里只做校验与夹取（纯逻辑在 ./motion-cue，可离线单测）。
+    //
+    // 位置：x/y 是宠物**中心**的归一化坐标（0~1），越界**夹取**并把实际生效值回给调用方。
+    // 抛掷：angle 单位度（0 = 正右，逆时针为正）；power 是力度倍率（1.0 = 1200 px/s 软钳速前）。
+    //
+    // 与用户拖拽撞车时**静默丢弃**：渲染端发现手指正按在宠物身上就丢掉这一拍，但仍然回 ok:true
+    // （动作端点只表示"受理了"，不表示"生效了"，与 /anim 同一契约）。宿主判不了拖拽状态——
+    // 那只有渲染端知道（见两端的 active 标志），所以这里不做拒绝。
+    if (rest === 'position' || rest === 'throw') {
+      const isPosition = rest === 'position';
+      if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body ?? 'null');
+      } catch {
+        return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      }
+      const o = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+      try {
+        const cfg = readAllConfig(configPaths);
+        const requested = String(url.searchParams.get('pet') ?? '');
+        const active = resolveActivePetId();
+        if (isPosition) {
+          const d = decidePosition({ cfg, requested, active, x: o.x, y: o.y, smooth: o.smooth });
+          if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+          state.writePet(d.petId, 'position', { x: d.x, y: d.y, smooth: d.smooth });
+          // 回**夹取后**的实际生效值：调用方不必自己算边界，也不会误以为越界值被照单全收
+          return { kind: 'json', status: 200, obj: { ok: true, x: d.x, y: d.y } };
+        }
+        const d = decideThrow({ cfg, requested, active, angle: o.angle, power: o.power });
+        if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        state.writePet(d.petId, 'throw', { angle: d.angle, power: d.power });
+        return { kind: 'json', status: 200, obj: { ok: true } };
+      } catch (e) {
+        // 配置读取失败等（安装损坏）→ 显式失败，不静默（与 /anim 同一口径）
+        return {
+          kind: 'json',
+          status: 200,
+          obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
+        };
+      }
+    }
+
     // 播放回执：/dsh-pet-7340/playback/<id>        （GET 查询，可挂起等待）
     //           /dsh-pet-7340/playback/<id>/report （POST，**渲染端上报**）
     //
@@ -1259,8 +1308,7 @@ export function apply(ctx: any): void {
     // 二是让 scripts/check-openapi.mjs 的「文档 ↔ 路由实现」对齐检查能认出这条路由
     //（它靠 rest 与单引号段名的字面量比较从实现里提取路由，纯正则形式的匹配它看不见；
     //  注意注释里别把那个比较原样写出来，会被同一条正则当成一条真实路由）。
-    const playbackPath =
-      rest === 'playback' || rest.startsWith('playback/') ? parsePlaybackPath(rest) : undefined;
+    const playbackPath = rest === 'playback' || rest.startsWith('playback/') ? parsePlaybackPath(rest) : undefined;
     if (playbackPath) {
       const playbackId = playbackPath.playbackId;
       // ---- 上报（渲染端 → host）：开始播 / 播完 / 失败 / 被打断时各来一次 ----

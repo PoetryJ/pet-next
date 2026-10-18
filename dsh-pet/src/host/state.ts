@@ -9,7 +9,7 @@
  * 形状：
  *   {
  *     sections: { balance: {counter,data}, workStatus: {…}, notify: {…} },  // 全局，所有端共享
- *     pets: { <宠物id>: { say: {counter,data} } }                           // 每只宠物各自一份
+ *     pets: { <宠物id>: { say: {…}, anim: {…}, position: {…}, throw: {…} } } // 每只宠物各自一份
  *   }
  *
  * counter 语义（整个设计的地基，改之前先读完这段）：
@@ -33,8 +33,9 @@ export interface StateLeaf {
 /** 全局段（所有端共享一份） */
 export type SectionName = 'balance' | 'workStatus' | 'notify';
 
-/** 每宠物段（say = 要说的话；anim = 要播的动画名） */
-export type PetLeafName = 'say' | 'anim';
+/** 每宠物段（say = 要说的话；anim = 要播的动画名；position = 要挪到的位置；throw = 要给的初速度）。
+ *  后两个是**指令**（host → 前端），与 say/anim 同族：前端读到即执行，不往它们写任何东西。 */
+export type PetLeafName = 'say' | 'anim' | 'position' | 'throw';
 
 /** S 的完整形态（GET /state 的响应体） */
 export interface PollState {
@@ -74,11 +75,11 @@ export class PollStateStore {
     this.sections[name] = { counter: this.next(), data };
   }
 
-  /** 写一只宠物的叶子（宠物条目不存在则自动建立，两个槽位一起建好，形状恒定） */
+  /** 写一只宠物的叶子（宠物条目不存在则自动建立，**所有槽位一起建好**，形状恒定） */
   writePet(petId: string, leaf: PetLeafName, data: unknown): void {
     let entry = this.pets.get(petId);
     if (!entry) {
-      entry = { say: emptyLeaf(), anim: emptyLeaf() };
+      entry = { say: emptyLeaf(), anim: emptyLeaf(), position: emptyLeaf(), throw: emptyLeaf() };
       this.pets.set(petId, entry);
     }
     entry[leaf] = { counter: this.next(), data };

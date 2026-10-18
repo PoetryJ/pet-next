@@ -13,7 +13,15 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { flattenCounters, readAnim, readBalance, takeChanged, type PollState } from './state.ts';
+import {
+  flattenCounters,
+  readAnim,
+  readBalance,
+  readPosition,
+  readThrow,
+  takeChanged,
+  type PollState,
+} from './state.ts';
 
 /** 造一份 S：sections / pets 用简写（叶子值 = counter，data 用 data 字段给） */
 function makeState(
@@ -182,5 +190,49 @@ describe('readAnim —— 点播动画叶子（名字 + 回执编号）', () => 
     assert.equal(readAnim({ counter: 1, data: 'nope' }), null);
     assert.equal(readAnim({ counter: 1, data: { name: '' } }), null);
     assert.equal(readAnim({ counter: 1, data: { name: 42 } }), null);
+  });
+});
+
+describe('readPosition —— 位置指令叶子（中心归一化坐标）', () => {
+  test('坐标与 smooth 都取到', () => {
+    const hit = readPosition({ counter: 1, data: { x: 0.5, y: 0.35, smooth: false } });
+    assert.deepEqual(hit, { x: 0.5, y: 0.35, smooth: false });
+  });
+
+  test('老 host 不写 smooth → 按 true（平滑）处理，不是非法数据', () => {
+    assert.equal(readPosition({ counter: 1, data: { x: 0.1, y: 0.2 } })?.smooth, true);
+  });
+
+  test('边界值 0 与 1 合法（中心可到屏幕边缘）', () => {
+    const hit = readPosition({ counter: 1, data: { x: 0, y: 1 } });
+    assert.deepEqual(hit, { x: 0, y: 1, smooth: true });
+  });
+
+  test('脏数据 → null（缺坐标 / 非数字 / NaN / Infinity 都拒，不把 NaN 送进运动学）', () => {
+    assert.equal(readPosition({ counter: 1, data: null }), null);
+    assert.equal(readPosition({ counter: 1, data: 'nope' }), null);
+    assert.equal(readPosition({ counter: 1, data: { y: 0.5 } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5 } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: '0.5', y: 0.5 } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: NaN, y: 0.5 } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: Infinity } }), null);
+  });
+});
+
+describe('readThrow —— 抛掷指令叶子（角度 + 力度）', () => {
+  test('角度与力度都取到（角度不归一化，负值原样保留）', () => {
+    assert.deepEqual(readThrow({ counter: 1, data: { angle: 45, power: 1 } }), { angle: 45, power: 1 });
+    assert.deepEqual(readThrow({ counter: 1, data: { angle: -90, power: 3 } }), { angle: -90, power: 3 });
+  });
+
+  test('脏数据 → null（power ≤ 0 也拒：那不是一个初速度）', () => {
+    assert.equal(readThrow({ counter: 1, data: null }), null);
+    assert.equal(readThrow({ counter: 1, data: 'nope' }), null);
+    assert.equal(readThrow({ counter: 1, data: { angle: 45 } }), null);
+    assert.equal(readThrow({ counter: 1, data: { power: 1 } }), null);
+    assert.equal(readThrow({ counter: 1, data: { angle: '45', power: 1 } }), null);
+    assert.equal(readThrow({ counter: 1, data: { angle: 45, power: 0 } }), null);
+    assert.equal(readThrow({ counter: 1, data: { angle: 45, power: -1 } }), null);
+    assert.equal(readThrow({ counter: 1, data: { angle: 45, power: NaN } }), null);
   });
 });

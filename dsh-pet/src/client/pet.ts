@@ -24,6 +24,8 @@ import {
   readBalance,
   readSay,
   readAnim,
+  readPosition,
+  readThrow,
   readWorkStatus,
   takeChanged,
 } from '../shared/state';
@@ -69,6 +71,7 @@ import {
   SQ_SQUASH,
   squashScale,
   landingSquash,
+  throwVelocity,
   type DragSample,
   type PetCollisionSlot,
   type ThrowState,
@@ -157,6 +160,10 @@ export function makePetUI(rt: {
     sayTick,
     animCue,
     animCueTick,
+    posCue,
+    posCueTick,
+    throwCue,
+    throwCueTick,
     arena,
   }: {
     cfg: RuntimePet;
@@ -175,6 +182,14 @@ export function makePetUI(rt: {
      *  注意与组件内既有的 `anim`（**当前正在播的**动画名）区分：这个只是"要播什么"的指令。 */
     animCue?: { name: string; seq: number; playbackId?: string };
     animCueTick: number;
+    /** 本宠物的「位置」指令（其他插件经 POST /position 写进 S；容器从 S 分发下来）。
+     *  `x`/`y` 是宠物**中心**的归一化坐标（0~1，host 写入前已夹取）。 */
+    posCue?: { x: number; y: number; smooth: boolean; seq: number };
+    posCueTick: number;
+    /** 本宠物的「抛掷」指令（其他插件经 POST /throw 写进 S；容器从 S 分发下来）。
+     *  `angle` 单位度（`0` = 正右，逆时针为正）；`power` 是力度倍率。 */
+    throwCue?: { angle: number; power: number; seq: number };
+    throwCueTick: number;
     arena: ReactNS.MutableRefObject<{ slots: Record<string, PetCollisionSlot> }>;
   }) {
     // ---- 尺寸（由配置传入；容器/设置页更新后即时跟随）----
@@ -684,6 +699,25 @@ export function makePetUI(rt: {
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [animCueTick]);
 
+    // 位置指令（其他插件经 POST /position 写进 S）：容器统一轮询后把属于本宠物的
+    // pets.<id>.position 分发下来；seq 变化即执行。用户正按着宠物时整拍丢弃（见 applyPositionCue）。
+    const prevPosSeqRef = useRef(0);
+    useEffect(() => {
+      if (!posCue || posCue.seq === prevPosSeqRef.current) return;
+      prevPosSeqRef.current = posCue.seq;
+      applyPositionCue(posCue.x, posCue.y, posCue.smooth);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [posCueTick]);
+
+    // 抛掷指令（其他插件经 POST /throw 写进 S）：同上，seq 变化即执行。
+    const prevThrowSeqRef = useRef(0);
+    useEffect(() => {
+      if (!throwCue || throwCue.seq === prevThrowSeqRef.current) return;
+      prevThrowSeqRef.current = throwCue.seq;
+      applyThrowCue(throwCue.angle, throwCue.power);
+      // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [throwCueTick]);
+
     // 碎碎念触发（本宠物）：随机抽 events.whisper 动画 + 弹文本气泡（10s 消失，与动画解耦）
     // image：host 侧随机抽定的配图名称（未开配图/池为空则 undefined）——与文本同一次触发一起来
     const triggerWhisper = (text: string, image?: string) => {
@@ -998,6 +1032,9 @@ export function makePetUI(rt: {
         cancelAnimationFrame(moveRef.current);
         moveRef.current = null;
       }
+      // 位置指令的弹簧也是一种"自主移动"：任何停走路的地方都该把它一并停掉，否则两套运动系统会
+      // 同时改 DOM 位置（用户拖拽 / 抛掷 / 事件动画 / 菜单点播都会走到这）。
+      stopPosFollow();
     };
 
     // ---- 拖拽抛掷物理（与桌面 renderer.js 同构；纯计算在 shared/physics.ts）----
@@ -1133,6 +1170,86 @@ export function makePetUI(rt: {
     /** 被撞回调（宠物间碰撞）：被其它飞行中宠物撞到 → 停当前动作，从落点以新初速抛出去（全复用现有物理） */
     const startThrowLatestRef = useRef<(px: number, py: number, vx: number, vy: number) => void>(() => {});
     startThrowLatestRef.current = startThrow;
+
+    // ---- 位置 / 抛掷指令（其他插件经 POST /position、POST /throw 写进 S）----
+    // 两条都是**指令**，与上面的 animCue 同族：容器统一轮询后按宠物 id 分发，seq 变化即执行。
+    // 这里不新写运动学——位置复用 springStep（拖拽跟手同一套过阻尼弹簧），抛掷复用 startThrow。
+    /** 位置指令的弹簧跟随 rAF。与拖拽跟手分开：拖拽没有终点（指针一直喂目标），这条有终点，
+     *  收敛后必须自己收掉，否则 rAF 永远转下去。 */
+    const posFollowRef = useRef<number | null>(null);
+    const posFollowTokenRef = useRef(0);
+
+    const stopPosFollow = () => {
+      posFollowTokenRef.current++;
+      if (posFollowRef.current !== null) {
+        cancelAnimationFrame(posFollowRef.current);
+        posFollowRef.current = null;
+      }
+    };
+
+    /**
+     * 执行一条位置指令：把宠物**中心**挪到归一化坐标 (rx, ry)。
+     * `smooth` 为真走拖拽那套弹簧，为假直接落位并提交 customPos。
+     * 用户正按着宠物（`active` 含点击与拖拽）时**整拍丢弃**——手指底下的东西不该跑；
+     * 这与动画链的守卫同一语义（见 handleEnded）。丢弃是静默的：接口早已回过 ok。
+     */
+    const applyPositionCue = (rx: number, ry: number, smooth: boolean) => {
+      if (dragRef.current.active) return; // 用户交互优先
+      stopThrow(); // 先显式接管：停掉飞行与走路（stopMove 顺带停掉上一次的位置弹簧）
+      stopMove();
+      // 中心 → 包围盒左上角 px（与下面提交 customPos 时的换算互逆）
+      const px = rx * window.innerWidth - halfW;
+      const py = ry * window.innerHeight - halfH;
+      const rootEl = rootRef.current;
+      if (!smooth || !rootEl) {
+        boxPxRef.current = { x: px, y: py };
+        setCustomPos({ rx, ry });
+        return;
+      }
+      const token = ++posFollowTokenRef.current;
+      let last = performance.now();
+      const vel = { vx: 0, vy: 0 };
+      const step = () => {
+        if (posFollowTokenRef.current !== token) return;
+        const now = performance.now();
+        const dt = Math.min((now - last) / 1000, 1 / 30);
+        last = now;
+        let x = boxPxRef.current?.x ?? px;
+        let y = boxPxRef.current?.y ?? py;
+        vel.vx = springStep(vel.vx, x, px, dt, cfg.physics.throwPower);
+        vel.vy = springStep(vel.vy, y, py, dt, cfg.physics.throwPower);
+        x += vel.vx * dt;
+        y += vel.vy * dt;
+        boxPxRef.current = { x, y };
+        rootEl.style.left = x + 'px';
+        rootEl.style.top = y + 'px';
+        rootEl.style.right = 'auto';
+        rootEl.style.bottom = 'auto';
+        // 收敛判定：足够近且足够慢 → 精确落位并提交。拖拽跟手靠指针松手结束，这条得自己判。
+        if (Math.abs(px - x) < 0.5 && Math.abs(py - y) < 0.5 && Math.abs(vel.vx) < 1 && Math.abs(vel.vy) < 1) {
+          boxPxRef.current = { x: px, y: py };
+          rootEl.style.left = px + 'px';
+          rootEl.style.top = py + 'px';
+          posFollowRef.current = null;
+          setCustomPos({ rx, ry });
+          return;
+        }
+        posFollowRef.current = requestAnimationFrame(step);
+      };
+      posFollowRef.current = requestAnimationFrame(step);
+    };
+
+    /**
+     * 执行一条抛掷指令：角度（度，`0` = 正右，逆时针为正）+ 力度倍率 → 初速度，交给 startThrow。
+     * 下游（重力 / 反弹 / 地面摩擦 / 落地 Q 弹 / 宠物间碰撞 / 落定提交位置）全是**既有行为**，
+     * 本接口不引入任何新物理。不设死区：接口是明确命令，power 再小也照抛。
+     */
+    const applyThrowCue = (angleDeg: number, power: number) => {
+      if (dragRef.current.active) return; // 用户交互优先
+      const { vx, vy } = throwVelocity(angleDeg, power);
+      const box = boxPxRef.current ?? { x: currentCenterX() - halfW, y: currentCenterY() - halfH };
+      startThrow(box.x, box.y, vx, vy);
+    };
     const onPetHit = (vx: number, vy: number) => {
       stopMove();
       stopDragFollow();
@@ -1827,6 +1944,10 @@ export function makePetUI(rt: {
     const sayRef = useRef<Record<string, { text: string; image?: string; seq: number }>>({});
     const [animCueTick, setAnimCueTick] = useState(0);
     const animCueRef = useRef<Record<string, { name: string; seq: number; playbackId?: string }>>({});
+    const [posCueTick, setPosCueTick] = useState(0);
+    const posCueRef = useRef<Record<string, { x: number; y: number; smooth: boolean; seq: number }>>({});
+    const [throwCueTick, setThrowCueTick] = useState(0);
+    const throwCueRef = useRef<Record<string, { angle: number; power: number; seq: number }>>({});
     useEffect(() => {
       if (!ready) return;
       let alive = true;
@@ -1885,6 +2006,22 @@ export function makePetUI(rt: {
                 };
                 setAnimCueTick((t) => t + 1);
               }
+            } else if (path.startsWith('pets.') && path.endsWith('.position')) {
+              // 位置指令叶子：路径形如 pets.<id>.position（同样按前缀/后缀切片，绝不 split('.')）
+              const petId = path.slice('pets.'.length, -'.position'.length);
+              const hit = readPosition(leaf);
+              if (hit) {
+                posCueRef.current[petId] = { ...hit, seq: (posCueRef.current[petId]?.seq ?? 0) + 1 };
+                setPosCueTick((t) => t + 1);
+              }
+            } else if (path.startsWith('pets.') && path.endsWith('.throw')) {
+              // 抛掷指令叶子：路径形如 pets.<id>.throw
+              const petId = path.slice('pets.'.length, -'.throw'.length);
+              const hit = readThrow(leaf);
+              if (hit) {
+                throwCueRef.current[petId] = { ...hit, seq: (throwCueRef.current[petId]?.seq ?? 0) + 1 };
+                setThrowCueTick((t) => t + 1);
+              }
             }
           }
         } catch {
@@ -1917,6 +2054,10 @@ export function makePetUI(rt: {
             sayTick,
             animCue: animCueRef.current[p.id],
             animCueTick,
+            posCue: posCueRef.current[p.id],
+            posCueTick,
+            throwCue: throwCueRef.current[p.id],
+            throwCueTick,
             arena: arenaRef,
           }),
         )
