@@ -13,7 +13,7 @@
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { flattenCounters, readBalance, takeChanged, type PollState } from './state.ts';
+import { flattenCounters, readAnim, readBalance, takeChanged, type PollState } from './state.ts';
 
 /** 造一份 S：sections / pets 用简写（叶子值 = counter，data 用 data 字段给） */
 function makeState(
@@ -156,5 +156,31 @@ describe('readBalance —— 余额叶子 → 客户端视图', () => {
     assert.equal(readBalance({ counter: 1, data: 'nope' }), null);
     assert.equal(readBalance({ counter: 1, data: { ok: true, provider: 'p', shape: '未知' } }), null);
     assert.equal(readBalance({ counter: 1, data: { ok: true, provider: 'p', shape: 'money' } }), null, '缺 data 段');
+  });
+});
+
+describe('readAnim —— 点播动画叶子（名字 + 回执编号）', () => {
+  test('名字与 playbackId 都取到（渲染端据此在四个时机上报真实状态）', () => {
+    const hit = readAnim({ counter: 1, data: { name: '拉侧栏-拉拽', playbackId: 'pb-abc-1' } });
+    assert.deepEqual(hit, { name: '拉侧栏-拉拽', playbackId: 'pb-abc-1' });
+  });
+
+  test('老 host 不写 playbackId → undefined（按"无回执"处理，不是非法数据）', () => {
+    const hit = readAnim({ counter: 1, data: { name: '东张西望' } });
+    assert.equal(hit?.name, '东张西望');
+    assert.equal(hit?.playbackId, undefined);
+  });
+
+  test('playbackId 形状非法（非字符串 / 空串）→ 归一成 undefined，不影响名字', () => {
+    assert.equal(readAnim({ counter: 1, data: { name: 'A', playbackId: 42 } })?.playbackId, undefined);
+    assert.equal(readAnim({ counter: 1, data: { name: 'A', playbackId: '' } })?.playbackId, undefined);
+    assert.equal(readAnim({ counter: 1, data: { name: 'A', playbackId: null } })?.name, 'A');
+  });
+
+  test('脏数据 → null（消费端跳过这一拍）', () => {
+    assert.equal(readAnim({ counter: 1, data: null }), null);
+    assert.equal(readAnim({ counter: 1, data: 'nope' }), null);
+    assert.equal(readAnim({ counter: 1, data: { name: '' } }), null);
+    assert.equal(readAnim({ counter: 1, data: { name: 42 } }), null);
   });
 });

@@ -261,8 +261,11 @@ function applyWorkStatusLeaf(leaf) {
 function applyAnimLeaf(petId, leaf) {
   const hit = S.readAnim(leaf);
   if (!hit) return;
+  // 回执编号**直接从叶子取**：shared-core 是构建产物（它的 readAnim 只回 name），
+  // 绕开它就不必重建桌面共享核心也能拿到 playbackId（events.js 是入库源文件）。
+  const playbackId = leaf.data && typeof leaf.data.playbackId === 'string' ? leaf.data.playbackId : undefined;
   for (const s of sprites) {
-    if (s.pet.id === petId) s.onMenuAction({ label: hit.name, anim: hit.name });
+    if (s.pet.id === petId) s.onMenuAction({ label: hit.name, anim: hit.name, playbackId });
   }
 }
 

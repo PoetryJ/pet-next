@@ -25,7 +25,9 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 | --- | --- |
 | `POST /dsh-pet-7340/whisper?pet=` | 让桌宠**生成**一句碎碎念（走当前模型） |
 | `POST /dsh-pet-7340/broadcast?pet=` | **第三方投喂**：把外部给定的文本直接写进气泡（不生成，只搬运） |
-| `POST /dsh-pet-7340/anim?pet=` | **点播动画**：让桌宠播一段指定动画，效果与右键「动作」菜单一致 |
+| `POST /dsh-pet-7340/anim?pet=` | **点播动画**：让桌宠播一段指定动画，效果与右键「动作」菜单一致。响应额外带回 `playbackId`，可用它查**真实回执** |
+| `GET /dsh-pet-7340/playback/{id}` | **播放回执**：查那次点播的真实状态（`accepted` / `playing` / `ended` / `failed` / `cancelled`）。带 `?wait=<状态[,状态]>&timeout=<ms>`（成对必填）时挂起等待，命中即回；不传则立刻返回 |
+| `POST /dsh-pet-7340/playback/{id}/report` | 渲染端上报播放状态（**内部通道**：浏览器/桌面渲染进程 → 宿主，第三方不用调） |
 | `POST /dsh-pet-7340/chat?pet=` | 对桌宠说一句话并生成回复，同时写入对话记忆 |
 | `POST /dsh-pet-7340/balance` | 立即刷新一次余额 |
 | `POST /dsh-pet-7340/reload` | 重载桌面端（重启桌面宠物进程，按最新配置重建窗口） |
@@ -54,6 +56,9 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
    `{ counter, data }`。
 2. **动作端点不返回数据**：上表第二节与第三节的 `POST` 只回 `{ ok: true }`，表示"动作做完了"；
    结果写进状态，调用方随后拉一拍 `/state` 即可看到（立刻补拉就是 0 延迟，不必等下一个轮询周期）。
+   **一个例外**：`POST /anim` 额外带回 `playbackId`——它只代表"受理了"，**不等于视频播完了**
+   （素材不存在、解码失败、被别的动画顶掉都不会有任何反馈），要拿它查
+   `GET /playback/{id}` 才是真实回执。
 3. **`counter` 变了才渲染**：它是 `Date.now()` 且严格递增，宿主重启也不会倒退。
    状态位的路径（如 `sections.balance`、`pets.<id>.say`）请当作**不透明键**使用——
    宠物 id 允许含点号，**不要按 `.` 切分**。

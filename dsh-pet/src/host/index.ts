@@ -41,7 +41,16 @@
  *   /dsh-pet-7340/broadcast            → 第三方投喂：把外部给定的文本写进气泡（POST 动作端点，写 S 的
  *                                       pets.<id>.say；不生成、只搬运，供宿主侧其他插件集成）
  *   /dsh-pet-7340/anim                 → 点播动画：让桌宠播一段指定动画（POST 动作端点，写 S 的
- *                                       pets.<id>.anim；效果与右键「动作」菜单一致，供其他插件调用）
+ *                                       pets.<id>.anim；效果与右键「动作」菜单一致，供其他插件调用）。
+ *                                       响应带 playbackId，供 /playback 查**真实回执**
+ *   /dsh-pet-7340/playback/<id>        → **播放回执**（GET）：返回那一次点播的真实状态
+ *                                       （accepted/playing/ended/failed/cancelled）。带
+ *                                       `?wait=<状态[,状态]>` + `?timeout=<ms>`（**成对必填**）时挂起等待：
+ *                                       状态进入 wait 集合立刻返回（matched:true），到点返回当时状态
+ *                                       （matched:false）；两者都不传则立刻返回
+ *   /dsh-pet-7340/playback/<id>/report → 渲染端上报播放状态（POST，**内部通道**：浏览器/桌面
+ *                                       渲染进程 → host）。这是回执的**地基**——没有它，记录永远停在
+ *                                       accepted（host 只知道"受理了"，不知道播没播完）。见 ./playback
  *   /dsh-pet-7340/chat                 → 对话与记忆（GET 最近窗口 / POST 对话并写 memory.json；
  *                                       POST 只回 {ok}，回复同样写 S 的 pets.<id>.say）
  *   /dsh-pet-7340/font|pic             → 字体 / 通知图标素材
@@ -75,6 +84,7 @@ import { configuredModel } from './model-selection';
 import { limitPool, pickMeme, readMemePool } from './memes';
 import { decideBroadcast, normalizeBroadcastText } from './broadcast';
 import { decideAnim } from './anim';
+import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
 import {
   configVersion,
   findPetInstance,
@@ -238,7 +248,9 @@ function sendText(res: ServerResponse, status: number, body: string): void {
 type RouteResult =
   | { kind: 'json'; status: number; obj: unknown; headers?: Record<string, string> }
   | { kind: 'text'; status: number; body: string }
-  | { kind: 'file'; file: string; contentType: string };
+  | { kind: 'file'; file: string; contentType: string }
+  /** 无需应答：调用方在挂起等待期间已断开（见 /playback 的等待分支）——消费方直接收尾，不写 */
+  | { kind: 'none' };
 
 /** 收集请求体（文本） */
 function readBody(req: IncomingMessage): Promise<string> {
@@ -300,6 +312,10 @@ export function apply(ctx: any): void {
   // 轮询统一状态（S）：前端 1s 轮询的**唯一**数据源（余额 / 工作状态 / 通知 / 宠物说话）。
   // 所有写入走 state.writeSection / writePet（由它统一更新 counter），见 ./state 的说明。
   const state = new PollStateStore();
+  // 播放记录表（issue #122 第 3 项「播放与完成回执」）：**由渲染端上报驱动**的状态机 + 等待者。
+  // 与 S 无关：播放记录是 per-caller 资源（只有发起那次点播的调用方关心、有生命周期、数量随
+  // 第三方调用方增长），塞进 1s 全局广播会让每个窗口为每个功能付流量。见 ./playback 的说明。
+  const playback = new PlaybackStore();
   // 工作状态联动快照（/work-status 端点响应，浏览器 1s 轮询）：state=当前活动状态（null=空闲）、
   // task=当前任务详情、ts=最近变化时间（轮询侧检测变化用）。气泡文案不在此：浏览器读配置
   // events.workStatusTexts（host 不内置文案）。
@@ -748,6 +764,10 @@ export function apply(ctx: any): void {
           if (result.kind === 'text') {
             return { id: req.id, status: result.status, contentType: 'text/plain; charset=utf-8', body: result.body };
           }
+          if (result.kind === 'none') {
+            // 无需应答：管道侧不传 abort signal，正常到不了这里；保底给个空 204
+            return { id: req.id, status: 204, contentType: 'text/plain; charset=utf-8', body: '' };
+          }
           return {
             id: req.id,
             status: result.status,
@@ -860,8 +880,15 @@ export function apply(ctx: any): void {
 
   /** 单次业务路由(WebServer 注册 → HTTP 落盘 / 桌面 Helper 管道 → scheme 应答,共用同一份实现):
    *  输入只需 rawUrl(/dsh-pet-7340/... + 查询) + method + body 文本;返回 RouteResult(JSON/文本/文件),
-   *  消费方各自落盘——业务逻辑只有一份,两端天然一致(硬契约:浏览器/桌面行为严格对齐)。 */
-  const handlePetRoute = async (rawUrl: string, method: string, body?: string): Promise<RouteResult> => {
+   *  消费方各自落盘——业务逻辑只有一份,两端天然一致(硬契约:浏览器/桌面行为严格对齐)。
+   *  signal（可选）：调用方断开时**中止挂起等待**（只有 /playback 的 wait 分支会用到）。
+   *  管道侧不传——桌面渲染端不查 /playback；HTTP 侧由注册处按 res 的 close 触发。 */
+  const handlePetRoute = async (
+    rawUrl: string,
+    method: string,
+    body?: string,
+    signal?: AbortSignal,
+  ): Promise<RouteResult> => {
     const url = new URL(rawUrl, 'http://localhost');
     const rest = decodeURIComponent(url.pathname.slice(ROUTE_PREFIX.length + 1));
 
@@ -1206,8 +1233,11 @@ export function apply(ctx: any): void {
           name: o.name,
         });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
-        state.writePet(d.petId, 'anim', { name: d.name });
-        return { kind: 'json', status: 200, obj: { ok: true } };
+        // 播放回执：受理时建记录（accepted），并把编号随叶子一起下发——渲染端据此上报
+        // （叶子多一个字段对老客户端无害：readAnim 只读 name）。见 ./playback 与下方 /playback 路由。
+        const record = playback.create(d.petId, d.name);
+        state.writePet(d.petId, 'anim', { name: d.name, playbackId: record.playbackId });
+        return { kind: 'json', status: 200, obj: { ok: true, playbackId: record.playbackId } };
       } catch (e) {
         // 配置读取失败等（安装损坏）→ 显式失败，不静默
         return {
@@ -1216,6 +1246,89 @@ export function apply(ctx: any): void {
           obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
         };
       }
+    }
+
+    // 播放回执：/dsh-pet-7340/playback/<id>        （GET 查询，可挂起等待）
+    //           /dsh-pet-7340/playback/<id>/report （POST，**渲染端上报**）
+    //
+    // 记录由**渲染端上报驱动**（见 ./playback）：host 只知道"受理了"，不知道播没播完——
+    // 所以没有 /report 就没有真实回执，查询永远停在 accepted。
+    // 与 S 无关：播放记录是 per-caller 资源（只有发起那次点播的调用方关心、有生命周期、
+    // 数量随第三方调用方增长），放进 1s 全局广播会让每个窗口为每个功能付流量。
+    // 前缀守卫写成**字面量比较**：一是把正则尝试限定在 playback 段（更快、边界更明确），
+    // 二是让 scripts/check-openapi.mjs 的「文档 ↔ 路由实现」对齐检查能认出这条路由
+    //（它靠 rest 与单引号段名的字面量比较从实现里提取路由，纯正则形式的匹配它看不见；
+    //  注意注释里别把那个比较原样写出来，会被同一条正则当成一条真实路由）。
+    const playbackPath =
+      rest === 'playback' || rest.startsWith('playback/') ? parsePlaybackPath(rest) : undefined;
+    if (playbackPath) {
+      const playbackId = playbackPath.playbackId;
+      // ---- 上报（渲染端 → host）：开始播 / 播完 / 失败 / 被打断时各来一次 ----
+      if (playbackPath.isReport) {
+        if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+        let reported: unknown;
+        try {
+          reported = JSON.parse(body ?? 'null');
+        } catch {
+          return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+        }
+        const o = reported && typeof reported === 'object' ? (reported as Record<string, unknown>) : {};
+        const outcome = playback.report(playbackId, o.status, o.reason);
+        if (outcome === 'unknown') return { kind: 'json', status: 404, obj: { error: 'unknown playback' } };
+        if (outcome === 'invalid') return { kind: 'json', status: 400, obj: { error: 'invalid status' } };
+        // ok / ignored 都回 200：上报是幂等的，"已经这样了"对上报方就是成功
+        // （迟到的 ended 不许覆盖 cancelled——终态保护在 ./playback 里）
+        return { kind: 'json', status: 200, obj: { ok: true } };
+      }
+      // ---- 查询（第三方调用方）----
+      if (method !== 'GET') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      const record = playback.get(playbackId);
+      if (!record) return { kind: 'json', status: 404, obj: { error: 'unknown playback' } };
+      const parsed = parseWaitQuery(url.searchParams.get('wait'), url.searchParams.get('timeout'));
+      if (parsed.kind === 'error') return { kind: 'json', status: 400, obj: { error: parsed.error } };
+      // 两者都没传 = 立刻返回（兜底 / 调试 / 只想知道当下状态的调用方）
+      if (parsed.kind === 'none') {
+        return { kind: 'json', status: 200, obj: { ...record, matched: false } };
+      }
+      const { wait: waitList, timeoutMs } = parsed;
+      // 已经是等的状态之一 → 立刻返回，别白等一整个 timeout
+      if (waitList.includes(record.status)) {
+        return { kind: 'json', status: 200, obj: { ...record, matched: true } };
+      }
+      // 挂起等待：状态进入 wait 集合立刻唤醒（matched:true）；到点回当时的记录（matched:false）。
+      // timeout=0 时 playback.wait 下一拍就唤醒，等价"立刻返回"，这里不特判。
+      return await new Promise<RouteResult>((resolveWait) => {
+        let settled = false;
+        /** 收尾：只认第一次（唤醒 / 超时 / 取消 / 调用方断开 都可能先后到达） */
+        const settle = (result: RouteResult): void => {
+          if (settled) return;
+          settled = true;
+          resolveWait(result);
+        };
+        const cancel = playback.wait({
+          playbackId,
+          wait: waitList,
+          timeoutMs,
+          // 唤醒时**不需要**再取消：store 在回调前已把等待者摘掉（超时定时器也清了）
+          onWake: (r, matched) => settle({ kind: 'json', status: 200, obj: { ...r, matched } }),
+        });
+        // get 之后记录被清理（极端竞态）→ 立刻 404，不挂
+        if (cancel === undefined) {
+          settle({ kind: 'json', status: 404, obj: { error: 'unknown playback' } });
+          return;
+        }
+        // 调用方断开：取消等待者（清掉它的超时定时器），以"无需应答"收尾。
+        // 监听不摘也无妨：signal 只被这次请求持有，请求结束后整条引用链一起回收。
+        const onAbort = (): void => {
+          cancel();
+          settle({ kind: 'none' });
+        };
+        if (signal?.aborted) {
+          onAbort();
+          return;
+        }
+        signal?.addEventListener('abort', onAbort, { once: true });
+      });
     }
 
     // 对话：/dsh-pet-7340/chat?pet=<id>
@@ -1356,14 +1469,26 @@ export function apply(ctx: any): void {
         kind: 'prefix',
         path: ROUTE_PREFIX,
         handler: async (req: IncomingMessage, res: ServerResponse) => {
+          // 挂起等待（/playback?wait=）期间调用方可能提前断开：据此中止等待，
+          // 否则那个等待者要一直留到超时才回收。'close' 在正常应答后也会触发，但那时监听已摘掉。
+          const abort = new AbortController();
+          const onClose = (): void => abort.abort();
+          res.on('close', onClose);
           try {
             const body = req.method === 'PUT' || req.method === 'POST' ? await readBody(req) : undefined;
-            const result = await handlePetRoute(req.url ?? '/', req.method ?? 'GET', body);
+            const result = await handlePetRoute(req.url ?? '/', req.method ?? 'GET', body, abort.signal);
+            res.off('close', onClose);
             if (result.kind === 'json') sendJson(res, result.status, result.obj, result.headers);
             else if (result.kind === 'text') sendText(res, result.status, result.body);
-            else sendFile(res, result.file, result.contentType); // 非 async：流在 open 后自己 pipe，错误内部收口
+            else if (result.kind === 'none') {
+              /* 调用方已断开：不再写（写了会抛） */
+            } else sendFile(res, result.file, result.contentType); // 非 async：流在 open 后自己 pipe，错误内部收口
           } catch (e) {
-            sendJson(res, 500, { error: e instanceof Error ? e.message : String(e) });
+            res.off('close', onClose);
+            // 连接已断（挂起等待被中止后也可能撞上）→ 不再写，避免二次抛错
+            if (!res.destroyed && !res.writableEnded) {
+              sendJson(res, 500, { error: e instanceof Error ? e.message : String(e) });
+            }
           }
         },
       }),
@@ -1685,9 +1810,11 @@ export function apply(ctx: any): void {
   // agent/error 生成通知帧入队，浏览器轮询 /notify 拉取弹 toast（DSH 0.1.5 删除了浏览器侧
   // api.events.mux/host 事件流，通知与宠物一样改走 host 通道，两端行为一致）。
 
-  // 随插件生命周期清理：桌面 Helper 回收（异步下载完成后不再拉起）
+  // 随插件生命周期清理：桌面 Helper 回收（异步下载完成后不再拉起）+ **结束所有挂起的回执等待**
+  // （不结束的话，插件重载会留下一批悬挂的响应，各自要等到超时才收尾）
   ctx.effect(() => () => {
     disposed = true;
+    playback.cancelAll();
     stopHelper('dsh-host-stop');
   });
 

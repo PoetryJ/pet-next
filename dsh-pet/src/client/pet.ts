@@ -173,7 +173,7 @@ export function makePetUI(rt: {
     sayTick: number;
     /** 本宠物的「点播动画」指令（其他插件经 POST /anim 写进 S；容器从 S 分发下来）。
      *  注意与组件内既有的 `anim`（**当前正在播的**动画名）区分：这个只是"要播什么"的指令。 */
-    animCue?: { name: string; seq: number };
+    animCue?: { name: string; seq: number; playbackId?: string };
     animCueTick: number;
     arena: ReactNS.MutableRefObject<{ slots: Record<string, PetCollisionSlot> }>;
   }) {
@@ -236,6 +236,13 @@ export function makePetUI(rt: {
     const videoBRef = useRef<HTMLVideoElement | null>(null);
     const frontRef = useRef(0);
     const pendingRef = useRef<null | { anim: string; once: boolean; gen: number }>(null);
+    // 播放回执（issue #122 第 3 项）：待归属的第三方点播编号**随 anim 一起经 state 下发**。
+    // 为什么用 state 而不是 ref：目标动画与当前动画相同时客户端有防重语义（不换源），
+    // ref 会把这个编号留下、串到后续某次自播动画的换源上；state 变化本身会驱动 effect 再跑一趟，
+    // 那一趟正好落进防重分支，于是"本来就在播"也能被如实回成 playing。
+    const [cuePlayback, setCuePlayback] = useState<string | null>(null);
+    /** 当前正在播的第三方点播编号（null = 自播动画，不上报）；播完 / 失败 / 被打断后清空 */
+    const playingPlaybackRef = useRef<string | null>(null);
     const genRef = useRef(0);
     const dragRef = useRef({
       active: false,
@@ -277,7 +284,28 @@ export function makePetUI(rt: {
     const mountedRef = useRef(false);
     const inflightRef = useRef<AbortController[]>([]);
 
-    const switchTo = (next: string, nextOnce: boolean) => {
+    /**
+     * 播放回执上报（issue #122 第 3 项）：把这一段点播的**真实**状态告诉 host。
+     *
+     * 只对第三方点播（带 playbackId）上报；自播动画（随机链 / 点击 / 拖拽 / 碎碎念 / 余额…）不报。
+     * 为什么必须有这一层：host 只知道"受理了"，不知道播没播完——动画在浏览器里播，只有这里知道真相。
+     * 失败静默（postAction 从不抛）+ 一条 warn：回执是附加能力，绝不能因为它把播放本身搞挂。
+     */
+    const reportPlayback = (playbackId: string, status: string, reason?: string): void => {
+      void postAction(
+        '/dsh-pet-7340/playback/' + encodeURIComponent(playbackId) + '/report',
+        reason === undefined ? { status } : { status, reason },
+      ).then((ok: boolean) => {
+        if (!ok) {
+          console.warn('[dsh-pet] 播放回执未送达 pet=' + cfg.id + ' id=' + playbackId + ' status=' + status);
+        }
+      });
+    };
+
+    const switchTo = (next: string, nextOnce: boolean, cuePlaybackId: string | null) => {
+      // 一次性消费：立刻清掉待归属编号（清空会再跑一趟本 effect，那一趟 cuePlaybackId 为 null，
+      // 落进下面的防重分支，无副作用）
+      if (cuePlaybackId !== null) setCuePlayback(null);
       if (!next) return;
       const pending = pendingRef.current;
       if (pending && pending.anim === next && pending.once === nextOnce) {
@@ -287,6 +315,12 @@ export function makePetUI(rt: {
           pendingSquashRef.current = false;
           const front = frontRef.current === 0 ? videoARef : videoBRef;
           if (front.current) startSquash(front.current);
+        }
+        // 这次点播的目标**本来就在播**（没有换源，但确实在播）→ 如实回 playing，
+        // 否则调用方只能干等到 timeout（host 对终态幂等，重复上报无害）
+        if (cuePlaybackId !== null) {
+          playingPlaybackRef.current = cuePlaybackId;
+          reportPlayback(cuePlaybackId, 'playing');
         }
         return;
       }
@@ -320,6 +354,9 @@ export function makePetUI(rt: {
       el.autoplay = true;
       el.playsInline = true;
       el.onended = nextOnce ? handleEnded : null;
+      // 元素级失败（解码 / 格式不支持）：既有实现**完全没有检测**（只表现为"点了没反应"），
+      // 这里补一条回执——只上报，不改播放控制（换源时与 onended 一起清掉，见 onReady）
+      el.onerror = cuePlaybackId === null ? null : () => reportPlayback(cuePlaybackId, 'failed', 'decode-error');
       // 素材加载走 fetch+blob：一次拿全整文件，绕开 video 流式加载在 DSH WebServer 上偶发的
       // stalled/连接竞争（用户环境实测：慢点 5 次全部 stall、动画永不切换）。10s 超时兜底。
       // cache 用默认策略：服务端 cache-control 是 max-age=3600（src/host/index.ts:140），有效期内
@@ -355,6 +392,11 @@ export function makePetUI(rt: {
           if (!mountedRef.current) return; // 卸载后的 abort：静默
           if (pendingRef.current?.gen !== gen) return; // 已被更新的切换覆盖
           pendingRef.current = null; // 释放挂起的 pending：后续点击不再被困在防重/覆盖循环里
+          // 素材没拿到 → 这一段点播不可能播起来，如实回 failed（而不是让调用方干等）
+          if (cuePlaybackId !== null) {
+            if (playingPlaybackRef.current === cuePlaybackId) playingPlaybackRef.current = null;
+            reportPlayback(cuePlaybackId, 'failed', 'asset-load');
+          }
           console.warn(
             '[dsh-pet] 素材加载失败 pet=' +
               cfg.id +
@@ -375,12 +417,31 @@ export function makePetUI(rt: {
           // 拆雷：降级为背景的视频继续播完会触发它身上残留的 onended → handleEnded，
           // 掐断当前前台动画（历史上表现为随机急速跳转/雪崩）。清 handler + 停播彻底消除。
           old.current.onended = null;
+          old.current.onerror = null;
           old.current.pause();
+          // 被换下去的那一段若属第三方点播且没播完 → 如实回 cancelled。
+          // （"被新点播顶掉"由 host 在受理时直接标记，这里补的是**非点播**打断：
+          //   点击 / 拖拽 / 碎碎念 / 余额 / 工作状态 / 空闲回收。）
+          const outgoing = playingPlaybackRef.current;
+          if (outgoing !== null && outgoing !== cuePlaybackId) {
+            reportPlayback(outgoing, 'cancelled', 'superseded');
+          }
         }
         frontRef.current = frontRef.current === 0 ? 1 : 0;
         pendingRef.current = null;
+        playingPlaybackRef.current = cuePlaybackId;
         el.style.transform = facingRef.current === 'right' ? 'scaleX(-1)' : '';
-        el.play().catch(() => {});
+        el.play()
+          .then(() => {
+            // 只有 play() 兑现才代表"确实开始出画"（loadeddata 只代表可解码）
+            if (cuePlaybackId !== null) reportPlayback(cuePlaybackId, 'playing');
+          })
+          .catch(() => {
+            // 自动播放被拒 / 元素不可播：既有实现静默吞掉 → 现在如实回 failed（不改播放控制）
+            if (cuePlaybackId === null) return;
+            if (playingPlaybackRef.current === cuePlaybackId) playingPlaybackRef.current = null;
+            reportPlayback(cuePlaybackId, 'failed', 'play-rejected');
+          });
         // 点击 Q 弹：等新动画就位后才压（压的是新点击动画的首帧，与桌面一致）
         if (pendingSquashRef.current) {
           pendingSquashRef.current = false;
@@ -393,9 +454,9 @@ export function makePetUI(rt: {
 
     // ---- 状态驱动播放 ----
     useEffect(() => {
-      switchTo(anim, once);
+      switchTo(anim, once, cuePlayback);
       // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [anim, once, seq]);
+    }, [anim, once, seq, cuePlayback]);
     useEffect(() => {
       mountedRef.current = true;
       const bu = blobUrlRef.current;
@@ -619,7 +680,7 @@ export function makePetUI(rt: {
     useEffect(() => {
       if (!animCue || animCue.seq === prevAnimSeqRef.current) return;
       prevAnimSeqRef.current = animCue.seq;
-      handleMenuAction({ label: animCue.name, anim: animCue.name });
+      handleMenuAction({ label: animCue.name, anim: animCue.name }, animCue.playbackId);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [animCueTick]);
 
@@ -740,6 +801,13 @@ export function makePetUI(rt: {
       // 只认前台视频触发的 ended：后台（被降级停播）视频即便有残留事件也一律丢弃，防止掐断当前动画
       const evEl = e && (e.currentTarget as HTMLVideoElement | null);
       if (evEl && !evEl.classList.contains('is-front')) return;
+      // 播放回执：前台视频真的播完了 → 如实回 ended。放在拖拽守卫**之前**：
+      // "播完了"是既成事实，拖拽守卫管的是动画链怎么推进，不该影响回执的准确性。
+      const donePlayback = playingPlaybackRef.current;
+      if (donePlayback !== null) {
+        playingPlaybackRef.current = null; // 先清再上报：后续链式换源不该把它当成"被打断"
+        reportPlayback(donePlayback, 'ended');
+      }
       const animations = petAnims;
       if (dragRef.current.active) return;
       // 事件动画播完：回 idle（与 drag/clicks 同分支，不进入随机链）；气泡由定时器自动消失，与动画解耦
@@ -1383,7 +1451,7 @@ export function makePetUI(rt: {
     // 注意：菜单是独立浮层，只在宠物命中区拦截右键（preventDefault + stopPropagation），
     // 绝不进入/改动 DSH 页面自己的菜单。浏览器端工具项 = 查看余额 / 碎碎念 / 对话 / 回到初始位置
     // （无「打开网站」——宠物就在网页里；无「重载配置」——刷新页面即可）。
-    const handleMenuAction = (leaf: MenuLeaf) => {
+    const handleMenuAction = (leaf: MenuLeaf, playbackId?: string) => {
       if (leaf.action === 'show-balance') {
         // 查看余额（与桌面菜单同一套语义）：POST 动作端点让 host 立即刷新一次并写入 S（manual 标记随数据一起写），
         // 随即**立刻跑一拍 /state** 拿结果展示——0 延迟，不必等下一个轮询周期。
@@ -1463,6 +1531,9 @@ export function makePetUI(rt: {
         return;
       }
       if (!leaf.anim) return;
+      // 回执归属：这一段动画若来自第三方点播，编号要跟着这次换源一起下发（自播动画传 null，
+      // 顺带把上一次的编号清掉，避免陈旧编号串到自播动画上）
+      const cuePlaybackId = playbackId ?? null;
       // 文字类（noMirror）朝右站姿是镜像的：点播前强制朝左，避免文字镜像（与随机链"朝右不选文字"同语义）
       if (isNoMirrorAnimation(petAnims.categories, leaf.anim) && facingRef.current === 'right') {
         setFacing('left');
@@ -1474,12 +1545,18 @@ export function makePetUI(rt: {
           stopMove();
           setOnce(true);
           setAnim(leaf.anim);
+          setCuePlayback(cuePlaybackId);
+        } else if (cuePlaybackId !== null) {
+          // 移动系统接管：这条路径**不换视频源**（宠物走真实位移），本段点播不会真的播起来。
+          // 如实回 failed/busy，而不是让调用方干等到 timeout。
+          reportPlayback(cuePlaybackId, 'failed', 'busy');
         }
         return;
       }
       stopMove();
       setOnce(true);
       setAnim(leaf.anim);
+      setCuePlayback(cuePlaybackId);
     };
     const handleContextMenu = (e: ReactNS.MouseEvent<HTMLDivElement>) => {
       // 工具项（查看余额 / 碎碎念 / 对话 / 回到初始位置，与桌面端同一套）+ 动作树（动作→分类→具体动画）。
@@ -1749,7 +1826,7 @@ export function makePetUI(rt: {
     const [sayTick, setSayTick] = useState(0);
     const sayRef = useRef<Record<string, { text: string; image?: string; seq: number }>>({});
     const [animCueTick, setAnimCueTick] = useState(0);
-    const animCueRef = useRef<Record<string, { name: string; seq: number }>>({});
+    const animCueRef = useRef<Record<string, { name: string; seq: number; playbackId?: string }>>({});
     useEffect(() => {
       if (!ready) return;
       let alive = true;
@@ -1801,7 +1878,11 @@ export function makePetUI(rt: {
               const petId = path.slice('pets.'.length, -'.anim'.length);
               const hit = readAnim(leaf);
               if (hit) {
-                animCueRef.current[petId] = { name: hit.name, seq: (animCueRef.current[petId]?.seq ?? 0) + 1 };
+                animCueRef.current[petId] = {
+                  name: hit.name,
+                  playbackId: hit.playbackId,
+                  seq: (animCueRef.current[petId]?.seq ?? 0) + 1,
+                };
                 setAnimCueTick((t) => t + 1);
               }
             }

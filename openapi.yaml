@@ -363,10 +363,217 @@ paths:
             application/json:
               schema:
                 oneOf:
-                  - $ref: "#/components/schemas/OkResponse"
+                  - allOf:
+                      - $ref: "#/components/schemas/OkResponse"
+                      - type: object
+                        required: [playbackId]
+                        properties:
+                          playbackId:
+                            type: string
+                            description: |
+                              这一次点播的**回执编号**。`ok: true` 只代表受理了，
+                              拿它查 `GET /playback/{id}` 才能知道到底播完没有。
+                            example: pb-mfh2k1-1
                   - $ref: "#/components/schemas/FailureResponse"
         "400":
           description: '请求体不是合法 JSON（`{ "error": "invalid JSON body" }`）'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /dsh-pet-7340/playback/{id}:
+    get:
+      tags: [Action]
+      operationId: getPlayback
+      summary: 播放回执——查某一次点播的真实状态
+      description: |
+        `POST /anim` 的 `ok: true` **只代表受理了**，不代表视频播完了：素材不存在、解码失败、
+        被别的动画顶掉，受理响应都不会有任何反馈（历史上表现为"点了没反应"）。
+        本接口返回那一次点播的**真实状态**——状态由**真正在播的那一端**（浏览器 / 桌面渲染进程）
+        上报驱动，宿主不做猜测（读视频时长再起定时器是错的：加载失败时根本没开始播，
+        定时器却会照常走到"播完"）。
+
+        **状态机**：`accepted` → `playing` → `ended` / `failed` / `cancelled`。
+        终态**不可再变**（迟到的 `ended` 不会覆盖 `cancelled`），重复上报幂等。
+
+        **等待（推荐用法）**：带 `wait` + `timeout`（**成对必填**）时请求会**挂起**：
+        状态进入 `wait` 集合立刻返回（`matched: true`），到点仍未进入则返回当时的状态
+        （`matched: false`）。`wait` 支持**逗号列表**——终态有三个，只等 `ended` 会在失败时
+        **白等一整个 timeout**，建议写 `wait=ended,failed,cancelled`。两个都不传则立刻返回。
+
+        **生命周期**：终态记录保留约 60 秒后清理，之后查询回 404。宿主重启后全部失效
+        （编号只保证一次运行内唯一）。
+
+        **与 `/state` 无关**：播放记录是 **per-caller 资源**（只有发起那次点播的调用方关心、
+        有生命周期、数量随第三方调用方增长），**不进 1 秒全局广播**——否则每个宠物窗口
+        都要为所有调用方的所有播放记录付流量。
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: '`POST /anim` 响应里的 `playbackId`。'
+          schema:
+            type: string
+          example: pb-mfh2k1-1
+        - name: wait
+          in: query
+          required: false
+          description: |
+            要等的状态，逗号分隔（如 `ended,failed,cancelled`）。**必须与 `timeout` 同时出现**，
+            只填一个回 400。当前状态已在其中时**立刻返回**（不会白等）。
+            可取值即五个状态名（`accepted` / `playing` / `ended` / `failed` / `cancelled`）。
+          schema:
+            type: string
+          example: ended,failed,cancelled
+        - name: timeout
+          in: query
+          required: false
+          description: |
+            最多挂起多少毫秒（`0`–`10000`）。`0` 合法（下一拍立刻返回）。
+            **必须与 `wait` 同时出现**；非整数 / 负数 / 超过上限一律回 400。
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 10000
+          example: 10000
+      responses:
+        "200":
+          description: |
+            播放记录。`matched` 表示是否等到了 `wait` 里的状态（不传 `wait` 时恒为 `false`）。
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [playbackId, petId, name, status, createdAt, updatedAt, matched]
+                properties:
+                  playbackId:
+                    type: string
+                  petId:
+                    type: string
+                    description: 目标桌宠 id
+                  name:
+                    type: string
+                    description: 动画名（即素材文件名）
+                  status:
+                    type: string
+                    enum: [accepted, playing, ended, failed, cancelled]
+                  createdAt:
+                    type: integer
+                    description: 受理时刻（epoch 毫秒）
+                  updatedAt:
+                    type: integer
+                    description: 最近一次状态变化时刻（epoch 毫秒）
+                  endedAt:
+                    type: integer
+                    description: 只在 status 为 `ended` 时出现（进入终态的时刻）
+                  reason:
+                    type: string
+                    description: |
+                      只在 `failed` / `cancelled` 时出现。当前取值：`asset-load`（素材没拿到）/
+                      `decode-error`（解码失败）/ `play-rejected`（自动播放被拒）/
+                      `busy`（移动系统占用，本次点播没能播起来）/ `superseded`（被打断或顶掉）。
+                  matched:
+                    type: boolean
+                    description: '`true` = 等到了 `wait` 里的状态；`false` = 超时返回'
+        "400":
+          description: |
+            参数非法，`{ "error": "..." }`：`wait` 与 `timeout` 未成对
+            （`wait and timeout must be used together`）、`wait` 含非法状态名
+            （`invalid wait status: xxx`）、`timeout` 不是 0–10000 的整数（`invalid timeout ...`）。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: '编号不存在或已过期（`{ "error": "unknown playback" }`）'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /dsh-pet-7340/playback/{id}/report:
+    post:
+      tags: [Action]
+      operationId: reportPlayback
+      summary: 上报播放状态（内部通道：渲染端 → 宿主）
+      description: |
+        **这是回执的地基。** 宿主只知道"受理了"，不知道播没播完——动画在浏览器 / 桌面渲染进程里播，
+        只有那一端知道真相。所以没有本接口的上报，`GET /playback/{id}` 永远只会停在 `accepted`。
+
+        **第三方调用方不需要调它**，它由本插件自己的渲染端在四个时机各发一次：
+
+        | status | 时机 |
+        | --- | --- |
+        | `playing` | 视频**确实开始出画**（`play()` 兑现，而不是"设了 src"） |
+        | `ended` | 播到结尾 |
+        | `failed` | 素材没拿到 / 解码失败 / 自动播放被拒 / 移动系统占用（见 `reason`） |
+        | `cancelled` | 被**非点播**动画顶掉（点击 / 拖拽 / 碎碎念 / 余额 / 工作状态 / 空闲回收） |
+
+        `accepted` 由宿主在受理时写入，**不接受渲染端上报**（报了回 400）。
+        终态之后的上报一律被忽略但仍回 200（幂等）——迟到的 `ended` 不会覆盖 `cancelled`。
+
+        "被新点播顶掉"由**宿主**在受理新点播时直接标记，不需要渲染端上报。
+      parameters:
+        - name: id
+          in: path
+          required: true
+          description: '`playbackId`。'
+          schema:
+            type: string
+          example: pb-mfh2k1-1
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [status]
+              properties:
+                status:
+                  type: string
+                  enum: [playing, ended, failed, cancelled]
+                  description: '只接受这四个——`accepted` 是宿主受理态，上报它回 400。'
+                reason:
+                  type: string
+                  description: |
+                    可选原因（自由字符串）。渲染端当前使用：`asset-load` / `decode-error` /
+                    `play-rejected` / `busy` / `superseded`。
+              examples:
+                playing:
+                  summary: 真的开始播了
+                  value:
+                    status: playing
+                ended:
+                  summary: 播完了
+                  value:
+                    status: ended
+                failed:
+                  summary: 素材没拿到
+                  value:
+                    status: failed
+                    reason: asset-load
+      responses:
+        "200":
+          description: |
+            恒为 200：`{ "ok": true }`。**状态已更新**与**幂等忽略**（终态后的上报、同状态重复上报）
+            都算成功——对上报方来说"已经这样了"就是成功。
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/OkResponse"
+        "400":
+          description: '非法状态名（含 `accepted`）或请求体不是合法 JSON'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: '编号不存在或已过期（`{ "error": "unknown playback" }`）'
           content:
             application/json:
               schema:

@@ -148,15 +148,17 @@ export function readWorkStatus(leaf: StateLeaf): WorkStatusSnapshot | null {
 }
 
 /**
- * 类型收窄：点播动画叶子 → 动画名（形状非法 / 空名 → null，消费端跳过这一拍）。
+ * 类型收窄：点播动画叶子 → 动画名 + 回执编号（形状非法 / 空名 → null，消费端跳过这一拍）。
  * **名字即文件名**：消费端拿到后交给菜单动作处理函数换源播放，所以这里只做形状校验；
  * "这个动画是否存在于该宠物"由宿主在写入前保证（播放端对不存在的名字没有兜底）。
+ * `playbackId`：宿主受理时生成的回执编号（issue #122），渲染端拿它在播放的四个时机
+ * 上报真实状态（见 /playback 路由）。老 host 不写这个字段 → undefined，消费端按"无回执"处理。
  */
-export function readAnim(leaf: StateLeaf): { name: string } | null {
+export function readAnim(leaf: StateLeaf): { name: string; playbackId?: string } | null {
   if (!leaf.data || typeof leaf.data !== 'object') return null;
-  const d = leaf.data as { name?: unknown };
+  const d = leaf.data as { name?: unknown; playbackId?: unknown };
   if (typeof d.name !== 'string' || !d.name) return null;
-  return { name: d.name };
+  return { name: d.name, playbackId: typeof d.playbackId === 'string' && d.playbackId ? d.playbackId : undefined };
 }
 
 /**

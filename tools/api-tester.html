@@ -782,6 +782,54 @@
               <button type="button" class="btn primary" id="anim-play">播放</button>
               <span class="hint" id="anim-result"></span>
             </div>
+
+            <!-- 播放回执（issue #122 第 3 项）：POST /anim 会带回 playbackId，
+                 拿它轮询 GET /playback/<id> 才能知道这一段**到底**播完了没有 -->
+            <div class="card-desc" style="margin-top:12px;border-top:1px solid rgba(128,128,128,.25);padding-top:10px">
+              <b>播放回执</b>：<span class="mono">POST /anim</span> 只代表"受理了"，
+              <span class="mono">accepted</span> ≠ 播完。响应里的
+              <span class="mono">playbackId</span> 可以查
+              <span class="mono">GET /playback/&lt;id&gt;</span>：勾选要等的状态，命中即停；
+              没命中就按「轮询时间」反复挂起等待（长轮询）。
+            </div>
+            <div class="field" style="margin-top:8px">
+              <label>等待状态</label>
+              <label class="chk"><input type="checkbox" class="pb-wait" value="accepted"> accepted</label>
+              <label class="chk"><input type="checkbox" class="pb-wait" value="playing"> playing</label>
+              <label class="chk"><input type="checkbox" class="pb-wait" value="ended" checked> ended</label>
+              <label class="chk"><input type="checkbox" class="pb-wait" value="failed" checked> failed</label>
+              <label class="chk"><input type="checkbox" class="pb-wait" value="cancelled" checked> cancelled</label>
+            </div>
+            <div class="field">
+              <label for="pb-timeout">轮询时间</label>
+              <input type="number" id="pb-timeout" value="10000" min="100" max="10000" step="500" style="width:110px">
+              <span class="hint">ms（每次最多挂这么久，回来立刻再发一次；限 100–10000）</span>
+            </div>
+            <div class="field">
+              <button type="button" class="btn" id="pb-start" disabled>开始轮询</button>
+              <button type="button" class="btn" id="pb-stop" disabled>停止</button>
+              <span class="hint" id="pb-state">先点上面的「播放」拿到 playbackId</span>
+            </div>
+            <!-- 直观显示：当前状态高亮成阶梯 + 每轮一行表格（原始 JSON 收在下面的折叠里） -->
+            <div id="pb-stages" style="display:flex;gap:6px;flex-wrap:wrap;margin-top:10px"></div>
+            <div style="margin-top:8px;overflow:auto;max-height:200px">
+              <table style="width:100%;border-collapse:collapse;font-size:12px">
+                <thead>
+                  <tr style="text-align:left;opacity:.6">
+                    <th style="padding:4px 6px;font-weight:600">轮次</th>
+                    <th style="padding:4px 6px;font-weight:600">等了</th>
+                    <th style="padding:4px 6px;font-weight:600">状态</th>
+                    <th style="padding:4px 6px;font-weight:600">命中</th>
+                    <th style="padding:4px 6px;font-weight:600">reason</th>
+                  </tr>
+                </thead>
+                <tbody id="pb-rows"></tbody>
+              </table>
+            </div>
+            <details style="margin-top:8px">
+              <summary class="hint" style="cursor:pointer">原始响应文本（逐轮，要查再展开）</summary>
+              <div id="pb-log" class="mono" style="margin-top:6px;max-height:240px;overflow:auto;font-size:12px;line-height:1.5;white-space:pre-wrap;word-break:break-all;background:rgba(128,128,128,.08);border:1px solid rgba(128,128,128,.2);border-radius:6px;padding:8px"></div>
+            </details>
             <div class="note" style="margin-top:8px">
               点播是"插播一段"：播完会回到正常动画链；<span class="mono">display: both</span>
               时浏览器与桌面都会播。
@@ -2436,10 +2484,19 @@
         res.textContent = "该宠物没有可点播的动画";
         return;
       }
+      stopPlaybackWatch("重新点播"); // 新的一次点播：先停掉上一次的回执轮询
       res.textContent = "点播中…";
       const r = await POST("/anim?pet=" + encodeURIComponent(petId), { body: { name } });
       if (r.status === 200 && r.body && r.body.ok) {
-        res.textContent = "已点播 · " + r.ms + "ms（桌宠 1 秒内开始播）";
+        // 回执编号：宿主受理时生成。老版本 host 不回这个字段 → 回执不可用，明确提示（不静默）
+        const pid = typeof r.body.playbackId === "string" ? r.body.playbackId : "";
+        if (pid) {
+          res.textContent = "已点播 · " + r.ms + "ms · playbackId=" + pid;
+          startPlaybackWatch(pid);
+        } else {
+          res.textContent = "已点播 · " + r.ms + "ms（宿主未返回 playbackId —— 回执接口不可用，需先 npm run build）";
+          $("pb-start").disabled = true;
+        }
         // 动作端点不回数据：立刻补拉一拍，让状态位里的 anim counter 及时反映出来
         await poll();
       } else {
@@ -2447,6 +2504,137 @@
         res.textContent = "被拒：" + why;
       }
     });
+
+    // ── 播放回执轮询（issue #122 第 3 项）────────────────────────────────
+    // 勾选框 = 要等的状态名单（→ 接口的 wait=），轮询时间 = 每次最多挂多久（→ timeout=）。
+    // 命中名单里的状态就停；没命中就回来立刻再发一次 —— 这就是长轮询的有效轮询间隔。
+    // 时间钳在 100–10000ms：0 会变成打服务器的热循环，接口允许但这里不给用。
+    let lastPlaybackId = "";
+    let pbWatch = { timer: 0, round: 0, running: false };
+
+    function pbWaitList() {
+      return Array.from(document.querySelectorAll(".pb-wait"))
+        .filter((el) => el.checked)
+        .map((el) => el.value);
+    }
+
+    function pbAppend(line) {
+      const box = $("pb-log");
+      if (!box) return;
+      box.textContent += "[" + new Date().toTimeString().slice(0, 8) + "] " + line + "\n";
+      box.scrollTop = box.scrollHeight;
+    }
+
+    function stopPlaybackWatch(why) {
+      if (pbWatch.timer) window.clearTimeout(pbWatch.timer);
+      const was = pbWatch.running;
+      pbWatch = { timer: 0, round: 0, running: false };
+      $("pb-stop").disabled = true;
+      if (was && why) $("pb-state").textContent = "已停止：" + why;
+    }
+
+    // ── 直观显示：状态阶梯 + 每轮一行 ──────────────────────────────
+    const PB_STAGES = ["accepted", "playing", "ended", "failed", "cancelled"];
+    const PB_COLOR = { ended: "#2e9e4f", failed: "#d94f3d", cancelled: "#c98a1a" };
+
+    /** 五个状态各一个 pill：当前状态填色高亮，其余淡显——一眼看出走到哪一步 */
+    function pbRenderStages(current) {
+      const box = $("pb-stages");
+      if (!box) return;
+      box.textContent = "";
+      for (const s of PB_STAGES) {
+        const color = PB_COLOR[s] || "#4D6BFE";
+        const on = s === current;
+        const pill = document.createElement("span");
+        pill.textContent = s;
+        pill.style.cssText =
+          "padding:3px 10px;border-radius:999px;font-size:12px;border:1px solid " + color + ";" +
+          (on ? "background:" + color + ";color:#fff;font-weight:600" : "color:" + color + ";opacity:.5");
+        box.appendChild(pill);
+      }
+    }
+
+    /** 每轮一行：轮次 / 等了多久 / 回来的状态 / 是否命中 / 原因 */
+    function pbAddRow(round, ms, status, matched, reason) {
+      const tb = $("pb-rows");
+      if (!tb) return;
+      const tr = document.createElement("tr");
+      for (const v of [round, ms === null ? "—" : ms + "ms", status, matched ? "✓" : "", reason || ""]) {
+        const td = document.createElement("td");
+        td.textContent = String(v);
+        td.style.cssText = "padding:3px 6px;border-top:1px solid rgba(128,128,128,.18)";
+        tr.appendChild(td);
+      }
+      tb.appendChild(tr);
+      const scroller = tb.closest("div");
+      if (scroller) scroller.scrollTop = scroller.scrollHeight;
+    }
+
+    /** 一轮：发一次 /playback/<id>?wait=&timeout=，结果画进阶梯与表格，原文丢进折叠区 */
+    async function pbRound(id) {
+      if (!pbWatch.running) return;
+      const wait = pbWaitList();
+      if (!wait.length) {
+        $("pb-state").textContent = "没有勾选任何等待状态 —— 请至少勾一个（否则永远等不到）";
+        stopPlaybackWatch("未勾选等待状态");
+        return;
+      }
+      const raw = Number($("pb-timeout").value) || 0;
+      const timeout = Math.max(100, Math.min(10000, raw));
+      const q =
+        "/playback/" + encodeURIComponent(id) +
+        "?wait=" + encodeURIComponent(wait.join(",")) +
+        "&timeout=" + timeout;
+      pbWatch.round += 1;
+      const round = pbWatch.round;
+      pbAppend("──────── 第 " + round + " 轮 ────────\nGET " + PREFIX + q);
+      const r = await GET(q);
+      if (!pbWatch.running) return; // 等待期间被停掉了：不再动 UI
+      pbAppend(
+        "HTTP " + r.status + " · " + r.ms + "ms" + (r.error ? " · " + r.error : "") + "\n" +
+          (r.text === undefined || r.text === "" ? "(空响应体)" : r.text),
+      );
+      const b = r.body;
+      if (!b || typeof b !== "object" || typeof b.status !== "string") {
+        // 宿主还没重载 / 编号失效：表格里也留一行，状态列直接写 HTTP 码，一眼看出"路由没通"
+        pbAddRow(round, r.ms, "HTTP " + r.status + "（非 JSON）", false, "");
+        $("pb-state").textContent = "返回里没有 status —— 宿主可能还没重载（展开下面原始文本确认）";
+        stopPlaybackWatch("返回不可识别");
+        return;
+      }
+      pbRenderStages(b.status);
+      pbAddRow(round, r.ms, b.status, b.matched, b.reason);
+      if (b.matched) {
+        stopPlaybackWatch("");
+        $("pb-state").textContent = "已命中 " + b.status + "（第 " + round + " 轮）";
+        return;
+      }
+      $("pb-state").textContent = "第 " + round + " 轮等到了 " + b.status + "，没命中等待名单 → 继续等";
+      pbWatch.timer = window.setTimeout(() => void pbRound(id), 0);
+    }
+
+    function startPlaybackWatch(id) {
+      stopPlaybackWatch("");
+      lastPlaybackId = id;
+      pbWatch = { timer: 0, round: 0, running: true };
+      $("pb-start").disabled = false;
+      $("pb-stop").disabled = false;
+      $("pb-log").textContent = "";
+      $("pb-rows").textContent = "";
+      pbRenderStages(""); // 阶梯清空：还没有任何状态
+      pbAppend(
+        "开始轮询 " + id + " · wait=" + (pbWaitList().join(",") || "(空)") +
+          " · timeout=" + $("pb-timeout").value + "ms",
+      );
+      void pbRound(id);
+    }
+
+    $("pb-start").addEventListener("click", () => {
+      if (lastPlaybackId) startPlaybackWatch(lastPlaybackId);
+      else $("pb-state").textContent = "先点「播放」拿到 playbackId";
+    });
+    $("pb-stop").addEventListener("click", () => stopPlaybackWatch("手动停止"));
+    window.addEventListener("beforeunload", () => stopPlaybackWatch(""));
 
     // 第三方投喂：以"外部插件"的身份把文本写进气泡（issue #76 的场景）
     $("bc-send").addEventListener("click", async () => {

@@ -70,6 +70,10 @@ class PetSprite {
     this.gen = 0;
     this.anim = this.animations.idle[0] ?? '';
     this.once = true;
+    // 播放回执（issue #122 第 3 项）：当前正在播的**第三方点播**编号（null = 自播动画，不上报）。
+    // 为什么要单独一个字段：this.anim 只是动画名，右键菜单点播与第三方 /anim 可以播同名动画，
+    // 光看名字分不出"这一段该不该上报回执"。
+    this.playback = null;
     this.facing = 'left';
     // 交互/移动
     this.dragState = { active: false, dragging: false, sx: 0, sy: 0, petX: 0, petY: 0 };
@@ -378,8 +382,23 @@ class PetSprite {
     return this.pos.y + this.halfH;
   }
 
+  /**
+   * 播放回执上报（issue #122 第 3 项）：把这一段点播的**真实**状态告诉 host。
+   *
+   * 只对第三方点播（带 playbackId）上报；自播动画（随机链 / 点击 / 拖拽 / 碎碎念 / 余额…）不报。
+   * 为什么必须有这一层：host 只知道"受理了"，不知道播没播完——动画在这里播，只有这里知道真相。
+   * S.postAction 自带 body 序列化且从不抛异常；再加一层 then 只为留一条排障日志。
+   */
+  reportPlayback(playbackId, status, reason) {
+    if (!playbackId) return;
+    const body = reason ? { status, reason } : { status };
+    void S.postAction(BASE + '/playback/' + encodeURIComponent(playbackId) + '/report', body).then((ok) => {
+      if (!ok) console.warn('[dsh-pet] 播放回执未送达 pet=' + this.pet.id + ' id=' + playbackId + ' status=' + status);
+    });
+  }
+
   // 双缓冲切换（与浏览器同一套：前台 opacity 切换 + 降级视频清 handler 并停播，防残留 ended 雪崩）
-  switchTo(next, nextOnce) {
+  switchTo(next, nextOnce, playbackId) {
     if (!next) return;
     const pending = this.pending;
     if (pending && pending.anim === next && pending.once === nextOnce) {
@@ -388,6 +407,12 @@ class PetSprite {
       if (this.pendingSquash) {
         this.pendingSquash = false;
         this.startSquash(this.front === 0 ? this.videoA : this.videoB);
+      }
+      // 这次点播的目标**本来就在播**（没换源，但确实在播）→ 如实回 playing，
+      // 否则调用方只能干等到 timeout（host 对终态幂等，重复上报无害）
+      if (playbackId) {
+        this.playback = playbackId;
+        this.reportPlayback(playbackId, 'playing');
       }
       return;
     }
@@ -409,6 +434,11 @@ class PetSprite {
       if (!this.pending || this.pending.gen !== gen) return;
       this.pending = null;
       console.warn('[dsh-pet] 素材加载失败 pet=' + this.pet.id + ' anim=' + next + '：' + why + '（已释放本次切换）');
+      // 播放回执：这一段点播没能播起来 → 如实回 failed（而不是让调用方干等到 timeout）
+      if (playbackId) {
+        if (this.playback === playbackId) this.playback = null;
+        this.reportPlayback(playbackId, 'failed', why === 'video error' ? 'decode-error' : 'asset-load');
+      }
     };
     const loadTimer = window.setTimeout(() => loadGuard('10s 超时'), 10000);
     el.onerror = () => {
@@ -427,11 +457,28 @@ class PetSprite {
         old.classList.remove('is-front');
         old.onended = null;
         old.pause();
+        // 被换下去的那一段若属第三方点播且没播完 → 如实回 cancelled。
+        // （"被新点播顶掉"由 host 在受理时直接标记，这里补的是**非点播**打断：
+        //   点击 / 拖拽 / 碎碎念 / 余额 / 工作状态 / 空闲回收。）
+        if (this.playback && this.playback !== playbackId) {
+          this.reportPlayback(this.playback, 'cancelled', 'superseded');
+        }
       }
       this.front = this.front === 0 ? 1 : 0;
       this.pending = null;
+      this.playback = playbackId || null;
       el.style.transform = this.facing === 'right' ? 'scaleX(-1)' : '';
-      el.play().catch(() => {});
+      el.play()
+        .then(() => {
+          // 只有 play() 兑现才代表"确实开始出画"（loadeddata 只代表可解码）
+          if (playbackId) this.reportPlayback(playbackId, 'playing');
+        })
+        .catch(() => {
+          // 自动播放被拒 / 元素不可播：既有实现静默吞掉 → 现在如实回 failed（不改播放控制）
+          if (!playbackId) return;
+          if (this.playback === playbackId) this.playback = null;
+          this.reportPlayback(playbackId, 'failed', 'play-rejected');
+        });
       // 点击 Q 弹：等新动画就位后才压（压的是新点击动画的首帧，与浏览器一致）
       if (this.pendingSquash) {
         this.pendingSquash = false;
@@ -443,10 +490,10 @@ class PetSprite {
     if (el.readyState >= 2) onReady();
   }
 
-  playOnce(name) {
+  playOnce(name, playbackId) {
     this.anim = name;
     this.once = true;
-    this.switchTo(name, true);
+    this.switchTo(name, true, playbackId);
   }
 
   // 动画链（与浏览器 pickNext 语义一致，纯逻辑在 shared）
@@ -482,6 +529,13 @@ class PetSprite {
   }
 
   handleEnded() {
+    // 播放回执：前台视频真的播完了 → 如实回 ended。放在拖拽守卫**之前**：
+    // "播完了"是既成事实，拖拽守卫管的是动画链怎么推进，不该影响回执的准确性。
+    if (this.playback) {
+      const done = this.playback;
+      this.playback = null; // 先清再上报：后续链式换源不该把它当成"被打断"
+      this.reportPlayback(done, 'ended');
+    }
     if (this.dragState.active) return;
     const { animations } = { animations: this.animations };
     // 事件动画播完：回 idle（与 drag/clicks 同分支，不进随机链）；气泡由定时器自动消失，与动画解耦
@@ -549,7 +603,7 @@ class PetSprite {
 
   // ---- 漫游（rAF 驱动，动画首尾各 leadSec/tailSec 秒原地不动；几何在 shared/planMove） ----
   // preferredName 传入时固定使用该动画（右键菜单点播移动动画），否则与随机链一致随机选
-  tryMove(preferredName) {
+  tryMove(preferredName, playbackId) {
     if (this.moveRef !== null || this.pendingMove || this.throwRef !== null) return true;
     const moves = this.animations.moves;
     const actions = moves.actions;
@@ -581,7 +635,7 @@ class PetSprite {
     this.pendingMove = { ...plan, dir, leadSec: mp.leadSec, tailSec: mp.tailSec };
     this.anim = chosen.name;
     this.once = true;
-    this.switchTo(chosen.name, true);
+    this.switchTo(chosen.name, true, playbackId);
     return chosen.name;
   }
 
@@ -1268,6 +1322,8 @@ class PetSprite {
       return;
     }
     if (!leaf.anim) return;
+    // 回执归属：这一段动画若来自第三方点播，编号要跟着换源一起走（自播动画传 null）
+    const playbackId = typeof leaf.playbackId === 'string' && leaf.playbackId ? leaf.playbackId : null;
     // 文字类（noMirror）朝右站姿是镜像的：点播前强制朝左，避免文字镜像（与浏览器随机链"朝右不选文字"同语义）
     if (S.isNoMirrorAnimation(this.animations.categories, leaf.anim) && this.facing === 'right') {
       this.facing = 'left';
@@ -1275,10 +1331,14 @@ class PetSprite {
     // 点播移动动画：走真实移动（与随机游走同一套：边界检查 / 随机距离 / leadSec·tailSec / dir），
     // 仅"选哪个动画"由菜单决定；挪不动（false）退化纯播放
     if (this.animations.moves.actions.some((a) => a.name === leaf.anim)) {
-      if (this.tryMove(leaf.anim) === false) this.playOnce(leaf.anim);
+      const moved = this.tryMove(leaf.anim, playbackId);
+      if (moved === false) this.playOnce(leaf.anim, playbackId);
+      // moved === true = 已有移动/抛掷在进行中（tryMove 提前返回，**根本没换源**）：
+      // 本段点播不会真的播起来 → 如实回 failed/busy，而不是让调用方干等到 timeout
+      else if (moved === true && playbackId) this.reportPlayback(playbackId, 'failed', 'busy');
       return;
     }
-    this.playOnce(leaf.anim);
+    this.playOnce(leaf.anim, playbackId);
   }
 
   closeMenu() {
