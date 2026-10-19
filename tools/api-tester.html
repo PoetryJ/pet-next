@@ -825,10 +825,13 @@
           <div class="card-body">
             <div class="card-desc">
               模拟宿主侧其他插件（如巡检类插件）调用 <span class="mono">POST /broadcast</span>：
-              <b>不生成内容</b>，只把给定的文本搬运到桌宠气泡。配图只接受<b>该桌宠条目表情包池内</b>的名字
-              （图片归属按条目分：<span class="mono">pet/&lt;素材根&gt;-memes/</span> 独占 → 用户
-              <span class="mono">memes/</span> → 包内 <span class="mono">assets/memes/</span>）。
-              下拉框已经把池算好了——只列<b>磁盘上真实存在</b>的图（配置里写了但文件不在的会被宿主剔除，这里提前隐藏）。
+              <b>不生成内容</b>，只把给定的文本搬运到桌宠气泡。配图<b>两种形态二选一</b>（issue #122 第 1 条）：
+              给<b>名称</b>时只接受<b>该桌宠条目表情包池内</b>的名字（图片归属按条目分：
+              <span class="mono">pet/&lt;素材根&gt;-memes/</span> 独占 → 用户
+              <span class="mono">memes/</span> → 包内 <span class="mono">assets/memes/</span>），
+              下拉框已经把池算好了——只列<b>磁盘上真实存在</b>的图（配置里写了但文件不在的会被宿主剔除，这里提前隐藏）；
+              给<b>地址</b>时直接给完整 URL，<b>不查池</b>（素材由你自己托管）。两个都给 → 宿主判
+              <span class="mono">bad-request</span>。
               <b>时长可调、可关掉动画联动、可提前撤回</b>——这三件事就是 issue #122 第 5 条要的。
             </div>
             <div class="field" style="margin-top:10px">
@@ -836,7 +839,15 @@
               <input id="bc-text" type="text" value="巡检完毕，一切正常" style="flex:1;min-width:220px">
             </div>
             <div class="field">
-              <label for="bc-image">配图</label>
+              <label for="bc-pic-mode">配图来源</label>
+              <select id="bc-pic-mode" style="width:auto">
+                <option value="image">表情包池内名称</option>
+                <option value="url">自己托管的地址</option>
+              </select>
+              <span class="hint">两种形态<b>二选一</b>：都填会被判 <span class="mono">bad-request</span></span>
+            </div>
+            <div class="field" id="bc-image-row">
+              <label for="bc-image">配图名称</label>
               <div style="display:flex;gap:8px;flex-wrap:wrap;align-items:center">
                 <select id="bc-image" style="flex:1;min-width:200px;width:auto">
                   <option value="">（加载中…）</option>
@@ -845,6 +856,20 @@
                 <button type="button" class="btn sm" id="bc-image-reload">刷新图片清单</button>
               </div>
               <div id="bc-image-hint" style="margin-top:6px;font-size:12px;color:var(--faint)"></div>
+            </div>
+            <div class="field" id="bc-url-row" style="display:none">
+              <label for="bc-url">配图地址</label>
+              <input id="bc-url" type="text" placeholder="https://…/拒绝换壁纸.png（或点下面的「选择图片」）" style="flex:1;min-width:240px">
+              <span class="hint">
+                完整 URL，只放行 <span class="mono">http</span> / <span class="mono">https</span>；不查表情包池
+              </span>
+            </div>
+            <div class="field" id="bc-upload-row" style="display:none">
+              <label>上传图片</label>
+              <button type="button" class="btn" id="bc-file-btn">选择图片</button>
+              <input id="bc-file" type="file" accept="image/png,image/jpeg,image/webp,image/gif,.png,.jpg,.jpeg,.webp,.gif" style="display:none">
+              <button type="button" class="btn primary" id="bc-upload">上传并填入地址</button>
+              <span class="hint" id="bc-upload-result"></span>
             </div>
             <div class="field">
               <label>显示时长与动画</label>
@@ -876,14 +901,48 @@
           </div>
           <div class="card-body">
             <div class="card-desc">
-              模拟其他插件调用 <span class="mono">POST /anim</span>：把动画名写进状态，
-              桌宠在 1 秒内发现后换源播放，<b>效果与右键菜单点「动作」完全一致</b>。
-              名字必须是该宠物动画池里真实存在的（下拉框列的就是池子）。
+              模拟其他插件调用 <span class="mono">POST /anim</span>：把动画写进状态，
+              桌宠在 1 秒内发现后换源播放。<b>两种形态二选一</b>（issue #122 第 1 条）：
+              给<b>名字</b>时必须是该宠物动画池里真实存在的（下拉框列的就是池子），
+              <b>效果与右键菜单点「动作」完全一致</b>；给<b>地址</b>时是第三方自带的素材，
+              完整 URL、<b>不查池</b>，消费端直接换源播一次、<b>不走菜单语义</b>。
             </div>
             <div class="field" style="margin-top:10px">
+              <label for="anim-mode">来源</label>
+              <select id="anim-mode" style="width:auto">
+                <option value="name">动画池内名字</option>
+                <option value="url">自己托管的地址</option>
+              </select>
+              <select id="anim-pet" style="width:auto"></select>
+              <span class="hint">两种形态<b>二选一</b>：都填会被判 <span class="mono">bad-request</span></span>
+            </div>
+            <div class="field" id="anim-name-row">
               <label for="anim-name">动画</label>
               <select id="anim-name" style="flex:1;min-width:220px"></select>
-              <select id="anim-pet" style="width:auto"></select>
+            </div>
+            <div class="field" id="anim-url-row" style="display:none">
+              <label for="anim-url">动画地址</label>
+              <input id="anim-url" type="text" placeholder="https://…/拉侧栏.webm（或点下面的「上传并填入地址」）" style="flex:1;min-width:260px">
+              <span class="hint">
+                完整 URL，只放行 <span class="mono">http</span> / <span class="mono">https</span>；不查动画池
+              </span>
+            </div>
+            <div class="field" id="anim-upload-row" style="display:none">
+              <label>上传视频</label>
+              <button type="button" class="btn" id="anim-file-btn">选择视频</button>
+              <input id="anim-file" type="file" accept="video/webm,video/mp4,.webm,.mp4" style="display:none">
+              <button type="button" class="btn primary" id="anim-upload">上传并填入地址</button>
+              <span class="hint" id="anim-upload-result"></span>
+            </div>
+            <div class="field" id="anim-upload-preview-row" style="display:none">
+              <label>回读预览</label>
+              <video id="anim-preview" muted loop playsinline style="max-width:260px;border-radius:8px;background:#000"></video>
+              <span class="hint">
+                这段画面是浏览器<b>从上传后的那个地址</b>取回来的——能出画，就说明"自己的服务确实能访问这个视频"。
+                测试代理跑在 <span class="mono">127.0.0.1:8741</span>，DSH 页面在另一个端口，所以这条地址是
+                <b>跨源</b>的：代理给 <span class="mono">/__uploads</span> 补了
+                <span class="mono">Access-Control-Allow-Origin</span> 才能过——这正是"外站 url 要对方自己配 CORS"。
+              </span>
             </div>
             <div class="field">
               <button type="button" class="btn primary" id="anim-play">播放</button>
@@ -1279,7 +1338,7 @@
       baseline: {},        // 叶子路径 → 上次见到的 counter（首拉只记基线，不渲染）
       firstPoll: true,
       polls: 0,            // 轮询次数（活动日志有上限，计数另记）
-      say: null,           // { text, image }
+      say: null,           // { text, image } 或 { text, url }（配图两种形态二选一）
       sayAt: 0,
       sayCounter: 0,
       notes: [],           // 客户端自己攒的通知历史（host 侧只有一个槽位）
@@ -1299,8 +1358,9 @@
     const enc = (p) => String(p).split("/").map(encodeURIComponent).join("/");
     /**
      * 表情包名 → 图片地址。
-     * 注意：宿主在 say 叶子里存的 image 是**表情包名**（如「可爱」），不是 URL；
-     * 直接把 name 当 src 用会被解析成相对路径 → 裂图。
+     * 注意：这个函数只服务**名称形态**——宿主在 say 叶子里存的 `image` 是**表情包名**
+     *（如「可爱」），不是 URL；直接把 name 当 src 用会被解析成相对路径 → 裂图。
+     *（配图的另一种形态 `url` 是完整地址，**直接当 src 用**、不走这个函数，见 renderSay。）
      *
      * 拼法与两端共用逻辑一致：`<前缀>/pic/memes/<素材根>/<名称>.png`（素材根与名称都要编码）。
      * 素材根 = 该宠物所属条目（= `/config` 的顶层键）——图片归属与动画同一套：
@@ -1534,9 +1594,17 @@
       S.sayAt = Date.now();
       b.className = "bubble";
       b.appendChild(document.createTextNode(data.text));
-      if (typeof data.image === "string" && data.image) {
+      // 配图两种形态二选一（issue #122 第 1 条），**由字段名区分**、不靠嗅探：
+      //   url   → 第三方自带的地址，直接当 src 用（与本页 origin 无关）；
+      //   image → 池内名称，须经 memeUrl 拼地址；素材根取该宠物所属条目（配图归属按条目分）。
+      if (typeof data.url === "string" && data.url) {
         const img = el("img", "meme");
-        // image 是名称，须经 memeUrl 拼地址；素材根取该宠物所属条目（配图归属按条目分）
+        img.src = data.url;
+        img.alt = "自带配图";
+        img.onerror = () => img.remove();
+        b.appendChild(img);
+      } else if (typeof data.image === "string" && data.image) {
+        const img = el("img", "meme");
         img.src = memeUrl(data.image, assetRootOf(petId));
         img.alt = data.image;
         img.onerror = () => img.remove();
@@ -2581,6 +2649,24 @@
     // 刚往 memes/ 里丢了新图 → 忽略存在性缓存重探一次（否则要刷新整个页面才看得到）
     $("bc-image-reload").addEventListener("click", () => void fillBcImageSelect({ force: true }));
 
+    // 配图 / 动画的"来源"下拉：两种形态二选一，切换时只显示对应的那一行输入
+    //（与宿主同一套 XOR —— 两个都给会被判 bad-request，所以界面上根本不给同时填的机会）
+    $("bc-pic-mode").addEventListener("change", () => {
+      const url = $("bc-pic-mode").value === "url";
+      $("bc-image-row").style.display = url ? "none" : "";
+      $("bc-url-row").style.display = url ? "" : "none";
+      $("bc-upload-row").style.display = url ? "" : "none";
+    });
+    $("anim-mode").addEventListener("change", () => {
+      const url = $("anim-mode").value === "url";
+      $("anim-name-row").style.display = url ? "none" : "";
+      $("anim-url-row").style.display = url ? "" : "none";
+      $("anim-upload-row").style.display = url ? "" : "none";
+      // 预览只在真的传过东西之后才占位置
+      const hasPreview = !!$("anim-preview").getAttribute("src");
+      $("anim-upload-preview-row").style.display = url && hasPreview ? "" : "none";
+    });
+
     $("chat-pet-select").addEventListener("change", (e) => {
       S.chatPetId = e.target.value;
       void loadChat();
@@ -2701,18 +2787,22 @@
       if (prev && names.includes(prev)) sel.value = prev;
     }
 
-    // 点播动画：以"外部插件"的身份让桌宠播一段（效果与右键「动作」菜单一致）
+    // 点播动画：以"外部插件"的身份让桌宠播一段。两种形态二选一（与宿主同一套 XOR）：
+    //   名字 → 走菜单语义（镜像修正 / 真实位移），效果与右键「动作」一致；
+    //   地址 → 第三方自带的素材，直接换源播一次，不走菜单语义（issue #122 第 1 条）。
     $("anim-play").addEventListener("click", async () => {
       const petId = $("anim-pet").value || S.petId;
-      const name = $("anim-name").value;
+      const mode = $("anim-mode").value;
       const res = $("anim-result");
-      if (!name) {
-        res.textContent = "该宠物没有可点播的动画";
+      // 按来源下拉决定发 name 还是 url——**绝不两个都发**（宿主会判 bad-request）
+      const body = mode === "url" ? { url: $("anim-url").value.trim() } : { name: $("anim-name").value };
+      if (!body.url && !body.name) {
+        res.textContent = mode === "url" ? "请填一个动画地址" : "该宠物没有可点播的动画";
         return;
       }
       stopPlaybackWatch("重新点播"); // 新的一次点播：先停掉上一次的回执轮询
       res.textContent = "点播中…";
-      const r = await POST("/anim?pet=" + encodeURIComponent(petId), { body: { name } });
+      const r = await POST("/anim?pet=" + encodeURIComponent(petId), { body });
       if (r.status === 200 && r.body && r.body.ok) {
         // 回执编号：宿主受理时生成。老版本 host 不回这个字段 → 回执不可用，明确提示（不静默）
         const pid = typeof r.body.playbackId === "string" ? r.body.playbackId : "";
@@ -2729,6 +2819,96 @@
         const why = (r.body && r.body.message) || (r.body && r.body.reason) || r.error || "HTTP " + r.status;
         res.textContent = "被拒：" + why;
       }
+    });
+
+    /**
+     * 原生 <input type="file"> 长什么样由浏览器定，跟本页风格完全不搭 —— 藏起来，
+     * 用一个页面自己的 .btn 触发它，并把选中的文件名回填到按钮上（太长就截断）。
+     */
+    function bindFilePicker(inputId, btnId, emptyLabel, prefix) {
+      const input = $(inputId);
+      const btn = $(btnId);
+      btn.addEventListener("click", () => input.click());
+      input.addEventListener("change", () => {
+        const f = input.files && input.files[0];
+        if (!f) {
+          btn.textContent = emptyLabel;
+          btn.title = "";
+          return;
+        }
+        btn.textContent = prefix + (f.name.length > 16 ? f.name.slice(0, 15) + "…" : f.name);
+        btn.title = f.name;
+      });
+    }
+
+    /**
+     * 把一个文件交给**测试代理自己的** /__upload 收下，拿回一个可访问的地址。
+     * 动画与配图两个卡片共用这一条 —— 服务端本来就是通用的（按扩展名定 MIME）。
+     * 上传落在系统临时目录、回读走 /__uploads/，两者都在 dsh-pet 接口前缀之外，宿主全程不参与。
+     */
+    async function uploadToTester(file) {
+      const upPath = "/__upload?name=" + encodeURIComponent(file.name);
+      const t0 = performance.now();
+      try {
+        // 直接发 File 本体（不套 multipart）：代理那边就是"请求体 = 原始字节"
+        const r = await fetch(upPath, {
+          method: "POST",
+          headers: { "content-type": file.type || "application/octet-stream" },
+          body: file,
+        });
+        const ms = Math.round(performance.now() - t0);
+        const j = await r.json().catch(() => null);
+        logActivity("POST", upPath, { status: r.status, ms, error: r.ok ? "" : (j && j.error) || "" });
+        if (!r.ok || !j || !j.ok) return { error: (j && j.error) || "HTTP " + r.status };
+        return { url: j.url, bytes: j.bytes };
+      } catch (e) {
+        return { error: e && e.message ? e.message : String(e) };
+      }
+    }
+
+    bindFilePicker("anim-file", "anim-file-btn", "选择视频", "视频：");
+    bindFilePicker("bc-file", "bc-file-btn", "选择图片", "图片：");
+
+    // 上传视频 → 拿回地址 → 填进 url 字段 → 回读预览。
+    // 这就是"第三方自己托管素材、只给一个 url"的完整演示（issue #122 第 1 条那条路）。
+    $("anim-upload").addEventListener("click", async () => {
+      const file = $("anim-file").files && $("anim-file").files[0];
+      const res = $("anim-upload-result");
+      if (!file) {
+        res.textContent = "先选一个视频文件";
+        return;
+      }
+      res.textContent = "上传中…";
+      const up = await uploadToTester(file);
+      if (up.error) {
+        res.textContent = "上传失败：" + up.error;
+        return;
+      }
+      $("anim-url").value = up.url;
+      res.textContent = "已上传 " + Math.max(1, Math.round(up.bytes / 1024)) + " KB → " + up.url;
+      // 回读预览：让浏览器从**那个地址**再取一次，确认服务真的能访问到这个视频
+      const pv = $("anim-preview");
+      pv.src = up.url;
+      pv.load();
+      $("anim-upload-preview-row").style.display = "";
+    });
+
+    // 上传图片 → 同一条路（配图也能"自己托管"）。填进 #bc-url，投喂时走 /broadcast 的 url 参数。
+    $("bc-upload").addEventListener("click", async () => {
+      const file = $("bc-file").files && $("bc-file").files[0];
+      const res = $("bc-upload-result");
+      if (!file) {
+        res.textContent = "先选一个图片文件";
+        return;
+      }
+      res.textContent = "上传中…";
+      const up = await uploadToTester(file);
+      if (up.error) {
+        res.textContent = "上传失败：" + up.error;
+        return;
+      }
+      $("bc-url").value = up.url;
+      res.textContent = "已上传 " + Math.max(1, Math.round(up.bytes / 1024)) + " KB → " + up.url;
     });
 
     // ── 播放回执轮询（issue #122 第 3 项）────────────────────────────────
@@ -3052,16 +3232,23 @@
 
     // 第三方投喂：以"外部插件"的身份把文本写进气泡（issue #76 的场景）
     // 新参数（issue #122 第 5 条）：duration 毫秒（0 = 字面意思「不显示」）、anim 是否联动说话动画
+    // 配图（issue #122 第 1 条）：名称 / 地址**二选一**——按来源下拉决定发哪个，绝不两个都发
     $("bc-send").addEventListener("click", async () => {
       const petId = $("bc-pet").value || S.petId;
       const text = $("bc-text").value;
-      const image = $("bc-image").value.trim();
+      const picMode = $("bc-pic-mode").value;
       const duration = Number($("bc-duration").value);
       const anim = $("bc-anim").checked;
       const res = $("bc-result");
       res.textContent = "投喂中…";
       const body = { text };
-      if (image) body.image = image;
+      if (picMode === "url") {
+        const url = $("bc-url").value.trim();
+        if (url) body.url = url;
+      } else {
+        const image = $("bc-image").value.trim();
+        if (image) body.image = image;
+      }
       if (Number.isFinite(duration)) body.duration = duration;
       body.anim = anim;
       const r = await POST("/broadcast?pet=" + encodeURIComponent(petId), { body });
