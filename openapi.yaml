@@ -251,6 +251,7 @@ paths:
           指定模型生成失败时会**自动回落到当前对话的模型**重试一次。
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
+        - $ref: "#/components/parameters/SurfaceQuery"
       responses:
         "200":
           description: |
@@ -260,7 +261,8 @@ paths:
             `reason` 取值：`provider-missing`（没有可用的模型——独立模式下恒为它）、
             `generate-error`（生成失败或 IO 失败，带 `message`）、`unknown-pet`（目标宠物在
             "校验那次读"与生成前那次读之间被删掉了——罕见，但如实报，**不会静默按 `main` 生成**，
-            也不会写下一只已不存在宠物的叶子）。
+            也不会写下一只已不存在宠物的叶子）、`bad-request`（`surface` 缺省 / 非法）、
+            `pet-not-displayed`（带 `display`）。
           content:
             application/json:
               schema:
@@ -316,6 +318,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/LockQuery"
+        - $ref: "#/components/parameters/SurfaceQuery"
       requestBody:
         required: true
         content:
@@ -386,8 +389,9 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（空文本 / 非法 `duration`）、`pet-required`（没给 pet）、
-            `unknown-pet`、`unknown-image`、`generate-error`（配置不可读等）。
+            `bad-request`（空文本 / 非法 `duration` / `surface` 缺省或非法）、`pet-required`（没给 pet）、
+            `unknown-pet`、`unknown-image`、`generate-error`（配置不可读等）、
+            `pet-not-displayed`（带 `display`）。
           content:
             application/json:
               schema:
@@ -431,11 +435,13 @@ paths:
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/LockQuery"
+        - $ref: "#/components/parameters/SurfaceQuery"
       responses:
         "200":
           description: |
             恒为 200（除 405）。失败通过 `ok: false` 表达，`reason` 可能是
             `pet-required`（没给 pet）、`unknown-pet`（指定的 id 不存在）、
+            `bad-request`（`surface` 缺省 / 非法）、`pet-not-displayed`（带 `display`）、
             `generate-error`（配置不可读等）。**当前没有气泡不是失败。**
           content:
             application/json:
@@ -511,6 +517,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/LockQuery"
+        - $ref: "#/components/parameters/SurfaceQuery"
       requestBody:
         required: true
         content:
@@ -571,8 +578,9 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（名字为空 / `facing` 非法）、`pet-required`（没给 pet）、`unknown-pet`、
-            `unknown-animation`、`generate-error`（配置不可读等）。
+            `bad-request`（名字为空 / `facing` 非法 / `surface` 缺省或非法）、`pet-required`（没给 pet）、
+            `unknown-pet`、`unknown-animation`、`generate-error`（配置不可读等）、
+            `pet-not-displayed`（带 `display`）。
           content:
             application/json:
               schema:
@@ -648,6 +656,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/LockQuery"
+        - $ref: "#/components/parameters/SurfaceQuery"
       requestBody:
         required: true
         content:
@@ -706,6 +715,8 @@ paths:
           description: |
             恒为 200（除 405/400）：失败通过 `ok: false` 表达，这样调用方只需解析一层即可。
             成功时额外回 `x`/`y`——**宿主夹取后的值**。
+            `reason` 另有：`bad-request`（坐标/模式非法 / `surface` 缺省或非法）、
+            `pet-not-displayed`（带 `display`）。
           content:
             application/json:
               schema:
@@ -765,6 +776,7 @@ paths:
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/LockQuery"
+        - $ref: "#/components/parameters/SurfaceQuery"
       requestBody:
         required: true
         content:
@@ -801,8 +813,8 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（角度/力度非法）、`pet-required`（没给 pet）、`unknown-pet`、
-            `generate-error`（配置不可读等）。
+            `bad-request`（角度/力度非法 / `surface` 缺省或非法）、`pet-required`（没给 pet）、
+            `unknown-pet`、`generate-error`（配置不可读等）、`pet-not-displayed`（带 `display`）。
           content:
             application/json:
               schema:
@@ -863,6 +875,7 @@ paths:
         （issue #122 最重要的边界：「没有有效联动占用时，接口不改变 pet 原有行为」）。
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
+        - $ref: "#/components/parameters/SurfaceQuery"
       requestBody:
         required: true
         content:
@@ -899,8 +912,9 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（`ttl` / `lockId` 非法）、`pet-required`（没给 pet）、`unknown-pet`、
-            `locked`（带 `expiresAt`）、`lock-lost`（带 `cause`）。
+            `bad-request`（`ttl` / `lockId` 非法 / `surface` 缺省或非法）、`pet-required`（没给 pet）、
+            `unknown-pet`、`locked`（带 `expiresAt`）、`lock-lost`（带 `cause`）、
+            `pet-not-displayed`（带 `display`——拿不到锁：这只宠物当前不显示在你要的那一端）。
           content:
             application/json:
               schema:
@@ -1263,6 +1277,7 @@ paths:
         - 记忆只存**正文**：配图属展示层，不进上下文（否则下次请求会把标记当历史读回去）。
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
+        - $ref: "#/components/parameters/SurfaceQuery"
       requestBody:
         required: true
         content:
@@ -1285,8 +1300,8 @@ paths:
           description: |
             恒为 200（除 405）。`reason` 取值：`pet-required`（没给 pet）、`unknown-pet`（没有这只宠物，
             或在排队等记忆锁期间被删掉了——这一支**不写记忆也不写气泡**）、
-            `bad-request`（空/超长消息）、`provider-missing`（没有可用的对话服务商）、
-            `generate-error`（生成/IO 失败）。
+            `bad-request`（空/超长消息 / `surface` 缺省或非法）、`provider-missing`（没有可用的对话服务商）、
+            `pet-not-displayed`（带 `display`）、`generate-error`（生成/IO 失败）。
           content:
             application/json:
               schema:
@@ -1779,6 +1794,40 @@ components:
         type: string
       example: main
 
+    SurfaceQuery:
+      name: surface
+      in: query
+      required: true
+      description: |
+        **调用方期望的显示端**——**必填**（与 `pet` 同级，issue #122 第 1 条）。
+
+        `pet` 只说明"哪一只"，不说明"哪一端"。一只 `display: desktop` 的宠物被当成网页目标时，
+        宿主照旧会受理，但**没有任何渲染端会消费它**：调用方拿到 `ok: true` 却什么都不会发生，
+        一直等到回执超时才知道不对。这个参数就是把那种"必然不可能"提前变成显式失败。
+
+        取值：
+
+        - `web` —— 必须显示在**网页**（`display` 为 `web` / `both`）；
+        - `desktop` —— 必须显示在**桌面**（`display` 为 `desktop` / `both`）；
+        - `both` —— **两端都要**显示（只匹配 `display: both`，比"哪端都行"更严）；
+        - `any` —— **哪端都行**，只要不是不显示（`display` 为 `web` / `desktop` / `both`）。
+
+        失败两种（都是 HTTP 200 + `ok: false`）：
+
+        - 缺省 / 非法（含大小写不符、空串）→ `bad-request`；
+        - 与该宠物的 `display` 对不上（含 `display: none`——`any` 也拒）→ `pet-not-displayed`，
+          并**回带该宠物实际的 `display`**，调用方据此一眼知道该怎么办。
+
+        **这是前置校验，不是"按面分发"**：指令照旧写进同一个叶子、两端内容照旧完全一致。
+        要"网页播 A、桌面播 B"，用**两只宠物**表达（`display: web` / `display: desktop`）。
+
+        **不接受本参数的端点**：`/lock/release`（释放必须永远能成功，否则宠物中途被隐藏就撤不掉锁）
+        与 `GET /chat`（读记忆与宠物显示在哪一端无关）。
+      schema:
+        type: string
+        enum: [web, desktop, both, any]
+      example: web
+
     LockQuery:
       name: lock
       in: query
@@ -1849,6 +1898,9 @@ components:
             占用锁（issue #122 第 4 项）另有三个：`locked` 该宠物已被别人占用（带 `expiresAt`）、
             `lock-required` 当前有占用但没传 `lock`、`lock-lost` 传的 `lock` 不是当前生效的那个
             （带 `cause`）。
+
+            显示端对齐（issue #122 第 1 条）另有一个：`pet-not-displayed` 该宠物的 `display`
+            不满足请求里的 `surface`（带 `display` = 该宠物**实际**的显示模式）。
           enum:
             [
               bad-request,
@@ -1861,6 +1913,7 @@ components:
               locked,
               lock-required,
               lock-lost,
+              pet-not-displayed,
             ]
         cause:
           type: string
@@ -1874,6 +1927,13 @@ components:
           description: |
             只有 `locked` 带：当前占用**到什么时候**（epoch 毫秒）。据此决定何时重试。
           example: 1755000030000
+        display:
+          type: string
+          description: |
+            只有 `pet-not-displayed` 带：该宠物**实际**的显示模式（`web` / `desktop` / `both` /
+            `none`），原样透出——调用方据此决定是换 `surface` 还是换 `pet`。
+          enum: [web, desktop, both, none]
+          example: desktop
         message:
           type: string
           description: 人类可读的补充说明（可选）

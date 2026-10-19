@@ -1841,7 +1841,8 @@ export function makePetUI(rt: {
         // 动作**不回文本**——文本随"版本号变化"唤醒的那一拍长轮询到达并弹气泡（0 延迟）。
         // 手动触发不受 whisperEnabled 限制——该字段只关自动周期，手动永远可用。
         console.info('[dsh-pet] 菜单触发碎碎念 pet=' + cfg.id);
-        postAction('/dsh-pet-7340/whisper?pet=' + encodeURIComponent(cfg.id))
+        // surface 必填：本页面就是网页端
+        postAction('/dsh-pet-7340/whisper?pet=' + encodeURIComponent(cfg.id) + '&surface=web')
           .then((ok: boolean) => {
             if (!ok) console.warn('[dsh-pet] 碎碎念手动触发失败 pet=' + cfg.id);
           })
@@ -1859,6 +1860,7 @@ export function makePetUI(rt: {
         chatRef.current = mountChatDialog({
           petId: cfg.id,
           baseUrl: '/dsh-pet-7340/chat',
+          surface: 'web',
           x: hitRect ? hitRect.right + 6 : window.innerWidth - 256,
           y: hitRect ? hitRect.top + 6 : 8,
           onSent: () => {

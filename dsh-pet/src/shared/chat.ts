@@ -102,6 +102,9 @@ export function mountChatDialog(opts: {
   petId: string;
   /** 端点基址：浏览器默认相对 /dsh-pet-7340/chat；桌面传绝对 URL（file:// 页面需绝对） */
   baseUrl?: string;
+  /** 这个弹窗开在**哪一端**：`POST /chat` 的 `?surface=` 是必填的（宿主据此把"必然不可能"提前
+   *  拒掉，见 src/host/surface.ts）。弹窗只可能开在网页或桌面，所以这里只有两个取值。 */
+  surface: 'web' | 'desktop';
   x: number;
   y: number;
   /** 发送成功后调用（弹窗此时已关闭）：调用方叫醒一拍 /state 让回复 0 延迟出现。
@@ -112,9 +115,10 @@ export function mountChatDialog(opts: {
   clamp?: { x: number; y: number; w: number; h: number };
 }): ChatDialogMount {
   injectChatCss();
-  const { petId, x, y, onSent, onClose, clamp } = opts;
+  const { petId, surface, x, y, onSent, onClose, clamp } = opts;
   const baseUrl = opts.baseUrl ?? '/dsh-pet-7340/chat';
-  const withPet = baseUrl + '?pet=' + encodeURIComponent(petId);
+  // `surface` 必填（宿主校验）；这个 URL 只用于 POST 发送——GET 读记忆那条路不需要它
+  const withPet = baseUrl + '?pet=' + encodeURIComponent(petId) + '&surface=' + surface;
   const c =
     clamp && Number.isFinite(clamp.x + clamp.y + clamp.w + clamp.h)
       ? clamp

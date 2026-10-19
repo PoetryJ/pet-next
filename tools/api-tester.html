@@ -817,6 +817,21 @@
               </div>
               <div class="pet-id" id="pet-id"></div>
 
+              <div class="pet-id">
+                <label for="surface-select">显示端</label>
+                <select id="surface-select" style="width:auto">
+                  <option value="any">any（哪端都行）</option>
+                  <option value="web">web（仅网页）</option>
+                  <option value="desktop">desktop（仅桌面）</option>
+                  <option value="both">both（两端都要）</option>
+                </select>
+                <span class="hint">
+                  动作接口的 <span class="mono">?surface=</span>（必填）：宿主拿它跟宠物的
+                  <span class="mono">display</span> 对一下，对不上就回
+                  <span class="mono">pet-not-displayed</span> + 该宠物<b>实际</b>的 display
+                </span>
+              </div>
+
               <div class="bubble-wrap">
                 <div class="bubble empty" id="say-bubble">还没有说过话</div>
                 <div class="bubble-time" id="say-time"></div>
@@ -2307,7 +2322,7 @@
       $("typing").style.visibility = "visible";
 
       // 动作接口只回 {ok}，回复从 /state 的 pets.<id>.say 拿
-      const r = await POST("/chat?pet=" + encodeURIComponent(S.chatPetId), { body: { text } });
+      const r = await POST("/chat?pet=" + encodeURIComponent(S.chatPetId) + "&surface=" + surfaceOf(), { body: { text } });
 
       if (!r.ok) {
         // 失败：把乐观插入的那条撤掉，并说明原因
@@ -2897,7 +2912,7 @@
       const b = $("btn-whisper");
       b.disabled = true;
       b.textContent = "生成中…";
-      const r = await POST("/whisper?pet=" + encodeURIComponent(S.petId));
+      const r = await POST("/whisper?pet=" + encodeURIComponent(S.petId) + "&surface=" + surfaceOf());
       b.disabled = false;
       b.textContent = "让它说句话";
       if (r.ok && r.body && r.body.ok === false) {
@@ -3466,7 +3481,19 @@
       let q = "?pet=" + encodeURIComponent(petId);
       const lk = S.lock;
       if (lk && lk.petId === petId && lk.lockId) q += "&lock=" + encodeURIComponent(lk.lockId);
+      q += "&surface=" + surfaceOf();
       return q;
+    }
+
+    /**
+     * 页面级「显示端」→ `?surface=` 的取值（**必填**，issue #122 第 1 条）。
+     * 动作接口拿它跟宠物的 display 对一下：对不上就回 pet-not-displayed + 实际 display，
+     * 而不是默默受理、然后什么也不发生（见 src/host/surface.ts）。
+     * 默认 any = 哪端都行（只要不是 display:none），与"不校验"最接近但仍会拒掉不显示的宠物。
+     */
+    function surfaceOf() {
+      const el = $("surface-select");
+      return (el && el.value) || "any";
     }
 
     /**
@@ -3551,7 +3578,7 @@
       const ttl = Number($("lk-ttl").value);
       $("lk-result").textContent = "取锁中…";
       $("lk-hint").textContent = "";
-      const r = await POST("/lock?pet=" + encodeURIComponent(petId), {
+      const r = await POST("/lock?pet=" + encodeURIComponent(petId) + "&surface=" + surfaceOf(), {
         body: Number.isFinite(ttl) ? { ttl } : {},
       });
       if (r.status === 200 && r.body && r.body.ok) {
@@ -3576,7 +3603,7 @@
       $("lk-result").textContent = "续期中…";
       const body = { lockId: lk.lockId };
       if (Number.isFinite(ttl)) body.ttl = ttl;
-      const r = await POST("/lock?pet=" + encodeURIComponent(lk.petId), { body });
+      const r = await POST("/lock?pet=" + encodeURIComponent(lk.petId) + "&surface=" + surfaceOf(), { body });
       if (r.status === 200 && r.body && r.body.ok) {
         S.lock = { petId: r.body.petId, lockId: r.body.lockId, expiresAt: r.body.expiresAt };
         lockDone("已续期", r);

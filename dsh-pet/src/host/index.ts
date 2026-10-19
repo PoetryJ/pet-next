@@ -54,6 +54,16 @@
  *                                       `force` = **渲染端**报告用户接管（拖拽、点击、隐藏、关闭）。
  *                                       占用期间 5 个动作端点必须带 `?lock=<lockId>`，否则
  *                                       lock-required（没带）/ lock-lost（带了不匹配，附 cause）
+ *   `?surface=`（**必填**，issue #122 第 1 条）→ 声明"我要**哪一端**的宠物"：web / desktop /
+ *                                       both / any。`pet` 只说明"哪一只"，不说明"哪一端"——一只
+ *                                       `display: desktop` 的宠物被当成网页目标时宿主照旧受理，
+ *                                       但**没有任何渲染端会消费它**（拿到 ok:true 却什么都不会
+ *                                       发生，直到回执超时）。这里把那种"必然不可能"提前变成显式
+ *                                       失败：pet-not-displayed + **该宠物实际的 display**。
+ *                                       **只开在会产生渲染端可见效果的端点上**：/anim、/broadcast、
+ *                                       /bubble/clear、/position、/throw、/lock、/whisper 与
+ *                                       /chat 的 POST；/lock/release（释放必须永远能成功）与
+ *                                       /chat 的 GET（读记忆与显示在哪一端无关）**不开**。见 ./surface
  *   /dsh-pet-7340/playback/<id>        → **播放回执**（GET）：返回那一次点播的真实状态
  *                                       （accepted/playing/ended/failed/cancelled）。带
  *                                       `?wait=<状态[,状态]>` + `?timeout=<ms>`（**成对必填**）时挂起等待：
@@ -104,6 +114,7 @@ import { decideAnim } from './anim';
 import { LockStore } from './lock';
 import { decidePosition, decideThrow, positionLeafData } from './motion-cue';
 import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
+import { SURFACE_TEXT, displayCovers, normalizeSurface, type Surface } from './surface';
 import {
   findPetInstance,
   flattenPetList,
@@ -366,6 +377,59 @@ export function apply(ctx: any): void {
   });
 
   /**
+   * `?surface=` 的**参数级**校验（缺省 / 非法 → `bad-request`）。放在读盘之前：必然失败的请求
+   * 不碰磁盘（与 pet 空串同一处境）。通过则给出收窄后的取值。
+   */
+  const surfaceParam = (params: URLSearchParams): { ok: true; want: Surface } | { ok: false; res: RouteResult } => {
+    const want = normalizeSurface(params.get('surface'));
+    if (want !== null) return { ok: true, want };
+    return {
+      ok: false,
+      res: { kind: 'json', status: 200, obj: { ok: false, reason: 'bad-request', message: SURFACE_TEXT } },
+    };
+  };
+
+  /**
+   * `?surface=` 与该宠物 `display` 的对齐校验（issue #122 第 1 条）：不满足 → `pet-not-displayed`
+   * + **实际 display 原样回给调用方**（调用方据此一眼知道该怎么办），放行回 null。
+   *
+   * 这是**前置校验**，不是按面分发——指令照旧写进同一个叶子、两端内容照旧完全一致
+   * （要"网页播 A、桌面播 B"用两只宠物表达，见 ./surface 的第 1 条边界）。
+   */
+  const surfaceMismatch = (pet: Record<string, unknown>, petId: string, want: Surface): RouteResult | null => {
+    const display = String(pet.display ?? '');
+    if (displayCovers(want, display)) return null;
+    return {
+      kind: 'json',
+      status: 200,
+      obj: {
+        ok: false,
+        reason: 'pet-not-displayed',
+        message: petId + ' 的显示模式是 ' + display + '，不满足 surface=' + want,
+        display,
+      },
+    };
+  };
+
+  /**
+   * 决策函数**之后**的 surface 校验（`/anim`、`/broadcast`、`/bubble/clear`、`/position`、
+   * `/throw` 共用）：这五条的 pet 解析住在各自的决策模块里，所以这里按 `petId` 再查一次实例取
+   * `display`（配置已在手，成本可忽略）。放行回 null。
+   *
+   * 位置与 `lockBlocked` 一致——都在决策函数之后、任何副作用之前，所以校验顺序是
+   * 「body → pet → surface → 锁」。
+   */
+  const surfaceBlocked = (
+    cfg: Record<string, Record<string, unknown>>,
+    petId: string,
+    params: URLSearchParams,
+  ): RouteResult | null => {
+    const p = surfaceParam(params);
+    if (!p.ok) return p.res;
+    return surfaceMismatch(findPetInstance(cfg, petId)?.pet ?? {}, petId, p.want);
+  };
+
+  /**
    * 路由层的 pet 参数解析（`/lock`、`/lock/release`、`/whisper`、`/chat` 用——这四条没有独立决策层；
    * `/anim`、`/broadcast`、`/bubble/clear`、`/position`、`/throw` 的同一套校验住在各自的决策模块里，
    * 口径与这里逐字一致）：**必填**且必须真实存在。
@@ -381,10 +445,15 @@ export function apply(ctx: any): void {
    *
    * `cfg` 传**惰性读取**：pet 空串时不必碰磁盘（与 /broadcast 的 text/duration 同一处境，
    * routes.test.ts 里"配置不可达"那一组断言正是靠这个顺序钉住的）。
+   *
+   * `opts.surface` = 是否同时校验 `?surface=`。**只对会产生渲染端可见效果的端点开**：
+   * `/lock`、`/whisper`、`/chat` 的 POST。`/lock/release` 与 `/chat` 的 GET 不开——
+   * 释放必须永远能成功（否则宠物中途被隐藏就撤不掉锁），读记忆与显示在哪一端无关。
    */
   const requirePet = (
     params: URLSearchParams,
     cfg: () => Record<string, Record<string, unknown>>,
+    opts?: { surface?: boolean },
   ): { ok: true; petId: string; entry: string; conf: Record<string, unknown> } | { ok: false; res: RouteResult } => {
     const fail = (reason: 'pet-required' | 'unknown-pet', message: string): { ok: false; res: RouteResult } => ({
       ok: false,
@@ -392,10 +461,21 @@ export function apply(ctx: any): void {
     });
     const petId = String(params.get('pet') ?? '').trim();
     if (!petId) return fail('pet-required', 'pet 必填：要指定操作哪只桌宠');
+    // surface 分两步：参数级校验在读盘之前（必然失败的请求不碰磁盘），显示模式校验在找到宠物之后。
+    let want: Surface | null = null;
+    if (opts?.surface === true) {
+      const p = surfaceParam(params);
+      if (!p.ok) return { ok: false, res: p.res };
+      want = p.want;
+    }
     // 一次查找同时给出"存在性"与"所属条目"（entry 即素材根，/chat 读记忆分桶要用）+ 条目配置
     // （/chat 取 chatMemoryRounds 要用）——调用方拿到的就是校验时那份快照里的值，不必再查一次。
     const found = findPetInstance(cfg(), petId);
     if (!found) return fail('unknown-pet', '没有这只桌宠：' + petId);
+    if (want !== null) {
+      const mismatch = surfaceMismatch(found.pet, petId, want);
+      if (mismatch) return { ok: false, res: mismatch };
+    }
     return { ok: true, petId, entry: found.entry, conf: found.conf };
   };
 
@@ -1330,7 +1410,8 @@ export function apply(ctx: any): void {
       const o = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
       try {
         // pet **必填**且必须真实存在（与 /anim、/broadcast 同一口径，见 requirePet）
-        const who = requirePet(url.searchParams, () => readAllConfig(configPaths));
+        // surface 只对**取锁**这一支校验：`/lock/release` 必须永远能成功（否则宠物中途被隐藏就撤不掉锁）
+        const who = requirePet(url.searchParams, () => readAllConfig(configPaths), { surface: !isRelease });
         if (!who.ok) return who.res;
         const petId = who.petId;
         if (isRelease) {
@@ -1373,7 +1454,7 @@ export function apply(ctx: any): void {
       try {
         // pet **必填**且必须真实存在：收紧前这里是 `?? ''`——空串会让人设/配图按 main 条目取、
         // 生成结果写进没人消费的 `pets[""].say`，还回 ok:true（钱花了、话丢了、调用方以为成功）。
-        const who = requirePet(url.searchParams, () => readAllConfig(configPaths));
+        const who = requirePet(url.searchParams, () => readAllConfig(configPaths), { surface: true });
         if (!who.ok) return who.res;
         const r = await publishWhisper(who.petId);
         if (r.ok) return { kind: 'json', status: 200, obj: { ok: true } };
@@ -1441,6 +1522,9 @@ export function apply(ctx: any): void {
           memeDirs: memeDirsFor,
         });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        // 显示端对齐：不满足 → pet-not-displayed（+ 实际 display），早于锁门禁
+        const noSurface = surfaceBlocked(cfg, d.petId, url.searchParams);
+        if (noSurface) return noSurface;
         // 占用门禁：有锁时只有持锁者能投喂（无锁恒放行，见 lockBlocked）
         const blocked = lockBlocked(d.petId, url.searchParams);
         if (blocked) return blocked;
@@ -1477,6 +1561,8 @@ export function apply(ctx: any): void {
           requested: String(url.searchParams.get('pet') ?? ''),
         });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        const noSurface = surfaceBlocked(cfg, d.petId, url.searchParams);
+        if (noSurface) return noSurface;
         const blocked = lockBlocked(d.petId, url.searchParams);
         if (blocked) return blocked;
         state.writePet(d.petId, 'say', { clear: true });
@@ -1528,6 +1614,9 @@ export function apply(ctx: any): void {
           facing: o.facing,
         });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        // 显示端对齐：不满足 → pet-not-displayed（+ 实际 display），早于锁门禁
+        const noSurface = surfaceBlocked(cfg, d.petId, url.searchParams);
+        if (noSurface) return noSurface;
         // 占用门禁：持锁者自己的点播照放行（那是它的演出），别人一律拒
         const blocked = lockBlocked(d.petId, url.searchParams);
         if (blocked) return blocked;
@@ -1591,6 +1680,8 @@ export function apply(ctx: any): void {
             duration: o.duration,
           });
           if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+          const noSurface = surfaceBlocked(cfg, d.petId, url.searchParams);
+          if (noSurface) return noSurface;
           const blocked = lockBlocked(d.petId, url.searchParams);
           if (blocked) return blocked;
           // 叶子按模式收敛成最小形状：非 line 模式不带 duration（见 positionLeafData）
@@ -1600,6 +1691,8 @@ export function apply(ctx: any): void {
         }
         const d = decideThrow({ cfg, requested, angle: o.angle, power: o.power });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        const noSurface = surfaceBlocked(cfg, d.petId, url.searchParams);
+        if (noSurface) return noSurface;
         const blocked = lockBlocked(d.petId, url.searchParams);
         if (blocked) return blocked;
         state.writePet(d.petId, 'throw', { angle: d.angle, power: d.power });
@@ -1712,7 +1805,8 @@ export function apply(ctx: any): void {
         // 惰性 + 记忆化：pet 空串时完全不读配置；GET 分支复用同一次读取。
         let cfgCache: Record<string, Record<string, unknown>> | undefined;
         const cfg = (): Record<string, Record<string, unknown>> => (cfgCache ??= readAllConfig(configPaths));
-        const who = requirePet(url.searchParams, cfg);
+        // surface 只对 POST 校验：GET 是读记忆，跟宠物显示在哪一端无关
+        const who = requirePet(url.searchParams, cfg, { surface: method === 'POST' });
         if (!who.ok) return who.res;
         const petId = who.petId;
         if (method === 'GET') {

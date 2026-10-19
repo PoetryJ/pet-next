@@ -8,6 +8,10 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 - **只监听 127.0.0.1，且没有鉴权**：任何能访问本机该端口的进程都能调用，请勿转发到公网
 - **带 `?pet=` 的接口，`pet` 必填**：没给 → `reason: pet-required`，配置里没这只宠物 → `unknown-pet`；
   **没有缺省值**（不会替你落到「当前桌宠」或 `main`），落点不随用户 `/pet` 的选择而变
+- **动作接口还要带 `?surface=`，也必填**（`/lock/release` 与 `GET /chat` 除外）：`web` / `desktop` /
+  `both` / `any`，说明你要**哪一端**的宠物。对不上 → `pet-not-displayed`，并把这只宠物**实际的
+  `display`** 回给你——不会默默受理然后什么也不发生。要「网页播 A、桌面播 B」，用**两只宠物**表达
+  （`display: web` / `display: desktop`），不是靠这个参数
 
 ---
 
