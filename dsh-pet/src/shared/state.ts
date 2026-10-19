@@ -188,17 +188,30 @@ export function readAnim(leaf: StateLeaf): { name: string; playbackId?: string }
 }
 
 /**
- * 类型收窄：位置指令叶子 → `{ x, y, smooth }`（形状非法 → null，消费端跳过这一拍）。
+ * 位置指令的运动模式（三选一）。**与 host/motion-cue.ts 的同名联合体是两份**——宿主不 import
+ * src/shared（同 `Corner` 的处理方式），改动时两边要一起改。
+ */
+export type PositionMode = 'instant' | 'spring' | 'line';
+
+/**
+ * 类型收窄：位置指令叶子 → `{ x, y, mode, duration }`（形状非法 → null，消费端跳过这一拍）。
  * **这是指令不是状态上报**：host 写、前端读来挪宠物，前端不往回写。
  * `x`/`y` 是宠物**中心**的归一化坐标（0~1，host 写入前已夹取）；
- * `smooth` 缺省按 `true` 处理（老 host 不写该字段时按平滑走）。
+ * `mode` 决定走哪条路（instant 一帧到位 / spring 过阻尼弹簧 / line 按 duration 直线走到）；
+ * `duration` **只有 `line` 模式才在叶子里**，其余模式恒为 `0`（它们本来就不用时间）。
  */
-export function readPosition(leaf: StateLeaf): { x: number; y: number; smooth: boolean } | null {
+export function readPosition(leaf: StateLeaf): { x: number; y: number; mode: PositionMode; duration: number } | null {
   if (!leaf.data || typeof leaf.data !== 'object') return null;
-  const d = leaf.data as { x?: unknown; y?: unknown; smooth?: unknown };
+  const d = leaf.data as { x?: unknown; y?: unknown; mode?: unknown; duration?: unknown };
   if (typeof d.x !== 'number' || !Number.isFinite(d.x)) return null;
   if (typeof d.y !== 'number' || !Number.isFinite(d.y)) return null;
-  return { x: d.x, y: d.y, smooth: d.smooth !== false };
+  if (d.mode !== 'instant' && d.mode !== 'spring' && d.mode !== 'line') return null;
+  if (d.mode === 'line') {
+    // line 缺 duration（或非法）就是形状非法：宿主一定会写，写错宁可跳过这一拍，也不替它猜一个时间
+    if (typeof d.duration !== 'number' || !Number.isFinite(d.duration) || d.duration < 0) return null;
+    return { x: d.x, y: d.y, mode: 'line', duration: d.duration };
+  }
+  return { x: d.x, y: d.y, mode: d.mode, duration: 0 };
 }
 
 /**

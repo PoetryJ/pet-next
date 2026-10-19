@@ -90,7 +90,7 @@ import {
   normalizeBroadcastText,
 } from './broadcast';
 import { decideAnim } from './anim';
-import { decidePosition, decideThrow } from './motion-cue';
+import { decidePosition, decideThrow, positionLeafData } from './motion-cue';
 import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
 import {
   findPetInstance,
@@ -1216,7 +1216,7 @@ export function apply(ctx: any): void {
     //   pet 缺省 = 当前桌宠（resolveActivePetId），须真实存在；
     //   image 只认**包内表情包名**（池内命中即用其规范名），杜绝第三方注入外部地址；
     //   duration 可选，气泡显示时长（ms）；缺省 10s，`0` = 字面意思「不显示」，负数/非有限数拒绝；
-    //   anim 可选，是否联动 events.whisper 动画；只有严格 false 才关闭（宽松口径，同 /position 的 smooth）。
+    //   anim 可选，是否联动 events.whisper 动画；只有严格 false 才关闭（宽松口径）。
     if (rest === 'broadcast') {
       if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
       let parsed: unknown;
@@ -1348,8 +1348,9 @@ export function apply(ctx: any): void {
     // 位置与抛掷：/dsh-pet-7340/position 与 /dsh-pet-7340/throw（POST）——两条**运动指令**。
     //
     // 与 /anim 同族：受理后写进 S 的宠物叶子（pets.<id>.position / pets.<id>.throw），由渲染端消费。
-    // 它们**不引入任何新行为**——位置复用渲染端已有的弹簧跟随（目标从指针换成参数），抛掷复用已有的
-    // startThrow（角度/力度换算成初速度），下游的重力/反弹/摩擦/落地 Q 弹/宠物间碰撞一概照旧。
+    // 位置**不引入任何新运动学**：`mode` 三选一（instant 一帧到位 / spring 拖拽那套过阻尼弹簧 /
+    // line 按 duration 毫秒直线走到），三条路都是渲染端已经有的；抛掷复用已有的 startThrow
+    // （角度/力度换算成初速度），下游的重力/反弹/摩擦/落地 Q 弹/宠物间碰撞一概照旧。
     // 所以这里只做校验与夹取（纯逻辑在 ./motion-cue，可离线单测）。
     //
     // 位置：x/y 是宠物**中心**的归一化坐标（0~1），越界**夹取**并把实际生效值回给调用方。
@@ -1373,9 +1374,18 @@ export function apply(ctx: any): void {
         const requested = String(url.searchParams.get('pet') ?? '');
         const active = resolveActivePetId();
         if (isPosition) {
-          const d = decidePosition({ cfg, requested, active, x: o.x, y: o.y, smooth: o.smooth });
+          const d = decidePosition({
+            cfg,
+            requested,
+            active,
+            x: o.x,
+            y: o.y,
+            mode: o.mode,
+            duration: o.duration,
+          });
           if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
-          state.writePet(d.petId, 'position', { x: d.x, y: d.y, smooth: d.smooth });
+          // 叶子按模式收敛成最小形状：非 line 模式不带 duration（见 positionLeafData）
+          state.writePet(d.petId, 'position', positionLeafData(d));
           // 回**夹取后**的实际生效值：调用方不必自己算边界，也不会误以为越界值被照单全收
           return { kind: 'json', status: 200, obj: { ok: true, x: d.x, y: d.y } };
         }

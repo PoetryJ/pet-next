@@ -15,8 +15,8 @@
  * - **不设长度限制，也不限频**：投喂是显式的调用方行为，内容与频率都由调用方自己负责；
  *   宿主只保证"非空就搬运"，不做静默丢弃、截断或排队。
  * - `duration` **不设上限**（调用方自己负责），但必须是 ≥0 的有限数；`0` = 字面意思「不显示」。
- * - `anim` 只有**严格 `false`** 才关闭动画联动（与 /position 的 `smooth` 同一套宽松口径：
- *   `"false"` 字符串之类一律按"要联动"走）。关闭时消费端不查 `events.whisper` 池、不换源。
+ * - `anim` 只有**严格 `false`** 才关闭动画联动（宽松口径：`"false"` 字符串之类一律按"要联动"
+ *   走）。关闭时消费端不查 `events.whisper` 池、不换源。
  * - 配图只认**该桌宠条目表情包池内**的名称（池内命中即取其规范名）：杜绝第三方注入外部地址，
  *   前端也就不会去加载任意 URL。与对话选图共用同一份 matchMeme 校验。
  * - 失败一律返回明确 reason，不抛异常（路由据此回 HTTP 200 + ok:false，与 /chat 口径一致）。
@@ -65,7 +65,7 @@ export function normalizeBroadcastDuration(duration: unknown): number | null {
 
 /**
  * 动画联动开关规范化：**只有严格 `false` 才关闭**，其余（含缺省、`true`、字符串、数字）
- * 一律按"要联动"处理——与 /position 的 `smooth` 同一套宽松口径。
+ * 一律按"要联动"处理。
  * 宽松是有意的：老调用方不会传这个字段，宽松口径保证它们的行为一个字都不变。
  */
 export function normalizeBroadcastAnim(anim: unknown): boolean {

@@ -103,7 +103,7 @@ paths:
             "main": {
               "say":      { "counter": 1755000000003, "data": { "text": "……", "duration": 10000, "anim": true } },
               "anim":     { "counter": 1755000000004, "data": { "name": "东张西望" } },
-              "position": { "counter": 1755000000005, "data": { "x": 0.5, "y": 0.35, "smooth": true } },
+              "position": { "counter": 1755000000005, "data": { "x": 0.5, "y": 0.35, "mode": "spring" } },
               "throw":    { "counter": 1755000000006, "data": { "angle": 45, "power": 1 } }
             }
           }
@@ -288,9 +288,8 @@ paths:
           「不显示」（请求照常受理，只是不渲染）；负数 / `NaN` / `Infinity` / 非数字 → `bad-request`。
           **不设上限**——和内容、频率一样，由调用方自己负责；
         - `anim` 可选，是否联动一次 `events.whisper` 动画。缺省 `true`（= 老行为）。
-          **只有严格 `false` 才关闭**（与 `POST /position` 的 `smooth` 同一套宽松口径：
-          `"false"` 字符串之类一律按"要联动"处理）。关闭时渲染端**不查动画池、不换源**，
-          因此该宠物配置里没有 `events.whisper` 也不影响"只弹气泡"这条路。
+          **只有严格 `false` 才关闭**（`"false"` 字符串之类一律按"要联动"处理）。关闭时渲染端
+          **不查动画池、不换源**，因此该宠物配置里没有 `events.whisper` 也不影响"只弹气泡"这条路。
 
         两个新参数**互相独立**，各管一件事：
 
@@ -564,7 +563,16 @@ paths:
         此时本端点**依然回 `ok: true`**——动作端点只表示"受理了"，不表示"生效了"（与 `POST /anim`
         同一契约）。这种丢弃不改变叶子，调用方从 `/state` 也观察不到。
 
-        **`smooth` 的语义**：`true` 走拖拽跟手那套过阻尼弹簧（`springStep`）；`false` 直接落位。
+        **`mode` 必填，三种运动模式**（三条路都是渲染端既有的运动学，本接口只负责选路）：
+
+        | `mode` | 怎么动 |
+        | --- | --- |
+        | `instant` | 一帧到位 |
+        | `spring` | 拖拽跟手那套过阻尼弹簧（`springStep`）平滑追过去——**没有行程时间**，靠"足够近且足够慢"自己收尾 |
+        | `line` | 在 `duration` 毫秒里**直线**走完（像素空间插值），到点精确落位 |
+
+        `duration` **只在 `line` 模式下必填**（非负有限数，`0` = 立即到位）；`instant` / `spring`
+        给了也**不看**——调用方常把 body 模板整个复用，为此报错只会逼他们删字段。
       parameters:
         - name: pet
           in: query
@@ -582,7 +590,7 @@ paths:
           application/json:
             schema:
               type: object
-              required: [x, y]
+              required: [x, y, mode]
               properties:
                 x:
                   type: number
@@ -596,23 +604,39 @@ paths:
                     宠物**中心**的纵向归一化坐标，合法 `0~1`。越界、以及桌面端落在多屏空洞里的
                     落点，都会被夹取（见上文「坐标语义」）。
                   example: 0.35
-                smooth:
-                  type: boolean
+                mode:
+                  type: string
+                  enum: [instant, spring, line]
                   description: |
-                    `true`（缺省）= 弹簧平滑过去；`false` = 立即到位。
-                    缺省按 `true` 处理——瞬移看起来像 bug。
+                    运动模式，**必填**；缺失或不是这三个值之一 → `bad-request`。
+                  example: line
+                duration:
+                  type: number
+                  description: |
+                    `line` 模式的行程时间（毫秒）：**该模式下必填**，非负有限数，`0` = 立即到位；
+                    负数 / `NaN` / `Infinity` / 非数字 → `bad-request`。**不设上限**。
+                    `instant` / `spring` 模式下这个字段被忽略。
+                  example: 1200
               examples:
-                smooth:
-                  summary: 平滑挪到屏幕正中偏上
-                  value:
-                    x: 0.5
-                    y: 0.35
                 instant:
                   summary: 立即跳到左下角
                   value:
                     x: 0.05
                     y: 0.9
-                    smooth: false
+                    mode: instant
+                spring:
+                  summary: 弹簧平滑挪到屏幕正中偏上
+                  value:
+                    x: 0.5
+                    y: 0.35
+                    mode: spring
+                line:
+                  summary: 1.2 秒直线走到屏幕正中偏上
+                  value:
+                    x: 0.5
+                    y: 0.35
+                    mode: line
+                    duration: 1200
       responses:
         "200":
           description: |
@@ -1656,7 +1680,7 @@ components:
                   data:
                     x: 0.5
                     y: 0.35
-                    smooth: true
+                    mode: spring
                 throw:
                   counter: 0
                   data: null
@@ -1966,7 +1990,7 @@ components:
 
     PositionCue:
       type: object
-      required: [x, y, smooth]
+      required: [x, y, mode]
       properties:
         x:
           type: number
@@ -1974,9 +1998,16 @@ components:
         y:
           type: number
           description: 宠物**中心**的纵向归一化坐标（`0~1`，宿主写入前已夹取）
-        smooth:
-          type: boolean
-          description: '`true` = 弹簧平滑过去；`false` = 立即到位'
+        mode:
+          type: string
+          enum: [instant, spring, line]
+          description: |
+            运动模式：`instant` 一帧到位 / `spring` 过阻尼弹簧追过去 / `line` 按 `duration` 直线走完。
+        duration:
+          type: number
+          description: |
+            **只有 `mode: line` 才有这个键**（其余模式不带）：行程时间（毫秒），非负有限数，
+            `0` = 立即到位。
 
     ThrowLeaf:
       type: object

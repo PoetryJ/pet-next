@@ -80,11 +80,11 @@ describe('PollStateStore —— 写入与读取', () => {
 
   test('宠物条目的四个槽位一起建好（没写过的槽位是 {counter:0, data:null}）', () => {
     const store = new PollStateStore();
-    store.writePet('main', 'position', { x: 0.5, y: 0.5, smooth: true });
+    store.writePet('main', 'position', { x: 0.5, y: 0.5, mode: 'spring' });
     const entry = store.read().pets.main;
     // 形状恒定：只要被写过任意一个叶子，四个键就都存在（消费端不必判 undefined）
     assert.deepEqual(Object.keys(entry).sort(), ['anim', 'position', 'say', 'throw']);
-    assert.deepEqual(entry.position.data, { x: 0.5, y: 0.5, smooth: true });
+    assert.deepEqual(entry.position.data, { x: 0.5, y: 0.5, mode: 'spring' });
     assert.deepEqual(entry.say, { counter: 0, data: null }, '没写过的槽位保持空叶子');
     assert.deepEqual(entry.anim, { counter: 0, data: null });
     assert.deepEqual(entry.throw, { counter: 0, data: null });
@@ -92,7 +92,7 @@ describe('PollStateStore —— 写入与读取', () => {
 
   test('position 与 throw 各自独立更新 counter（两条指令互不吞掉）', () => {
     const store = new PollStateStore();
-    store.writePet('main', 'position', { x: 0.1, y: 0.2, smooth: true });
+    store.writePet('main', 'position', { x: 0.1, y: 0.2, mode: 'line', duration: 800 });
     const posCounter = store.read().pets.main.position.counter;
     store.writePet('main', 'throw', { angle: 45, power: 1 });
     const s = store.read();

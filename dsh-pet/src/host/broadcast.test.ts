@@ -240,7 +240,7 @@ describe('normalizeBroadcastDuration —— 气泡时长（issue #122 第 5 条�
   });
 });
 
-describe('normalizeBroadcastAnim —— 动画联动开关（宽松口径，同 /position 的 smooth）', () => {
+describe('normalizeBroadcastAnim —— 动画联动开关（只有严格 false 才关闭）', () => {
   test('只有严格 false 才关闭', () => {
     assert.equal(normalizeBroadcastAnim(false), false);
   });

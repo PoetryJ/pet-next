@@ -301,13 +301,13 @@ function applyAnimLeaf(petId, leaf) {
 }
 
 /** 位置指令叶子 → 对应宠物挪过去（其他插件经 POST /position 写进 S）。
- *  复用 sprite.moveToCenter（内部走拖拽那套过阻尼弹簧），与 /anim 同一族：只分发，不重写运动学。
- *  petId 由路径解析出来（pets.<id>.position）；本窗口只装一只宠物，按 id 命中即可。 */
+ *  复用 sprite.moveToCenter（instant / spring / line 三条路都在那儿），与 /anim 同一族：只分发，
+ *  不重写运动学。petId 由路径解析出来（pets.<id>.position）；本窗口只装一只宠物，按 id 命中即可。 */
 function applyPositionLeaf(petId, leaf) {
   const hit = S.readPosition(leaf);
   if (!hit) return;
   for (const s of sprites) {
-    if (s.pet.id === petId) s.moveToCenter(hit.x, hit.y, hit.smooth);
+    if (s.pet.id === petId) s.moveToCenter(hit.x, hit.y, hit.mode, hit.duration);
   }
 }
 

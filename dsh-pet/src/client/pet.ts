@@ -29,6 +29,7 @@ import {
   readWorkStatus,
   takeChanged,
   type PollState,
+  type PositionMode,
   type SayCue,
 } from '../shared/state';
 import { WORK_STATUS_INDEX, type WorkStatusSnapshot } from '../shared/work-status';
@@ -191,8 +192,9 @@ export function makePetUI(rt: {
     animCue?: { name: string; seq: number; playbackId?: string };
     animCueTick: number;
     /** 本宠物的「位置」指令（其他插件经 POST /position 写进 S；容器从 S 分发下来）。
-     *  `x`/`y` 是宠物**中心**的归一化坐标（0~1，host 写入前已夹取）。 */
-    posCue?: { x: number; y: number; smooth: boolean; seq: number };
+     *  `x`/`y` 是宠物**中心**的归一化坐标（0~1，host 写入前已夹取）；
+     *  `mode` 决定走哪条路，`duration` 只有 `line` 模式才有意义（其余模式恒为 0）。 */
+    posCue?: { x: number; y: number; mode: PositionMode; duration: number; seq: number };
     posCueTick: number;
     /** 本宠物的「抛掷」指令（其他插件经 POST /throw 写进 S；容器从 S 分发下来）。
      *  `angle` 单位度（`0` = 正右，逆时针为正）；`power` 是力度倍率。 */
@@ -717,7 +719,7 @@ export function makePetUI(rt: {
     useEffect(() => {
       if (!posCue || posCue.seq === prevPosSeqRef.current) return;
       prevPosSeqRef.current = posCue.seq;
-      applyPositionCue(posCue.x, posCue.y, posCue.smooth);
+      applyPositionCue(posCue.x, posCue.y, posCue.mode, posCue.duration);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [posCueTick]);
 
@@ -1211,9 +1213,9 @@ export function makePetUI(rt: {
 
     // ---- 位置 / 抛掷指令（其他插件经 POST /position、POST /throw 写进 S）----
     // 两条都是**指令**，与上面的 animCue 同族：容器统一轮询后按宠物 id 分发，seq 变化即执行。
-    // 这里不新写运动学——位置复用 springStep（拖拽跟手同一套过阻尼弹簧），抛掷复用 startThrow。
-    /** 位置指令的弹簧跟随 rAF。与拖拽跟手分开：拖拽没有终点（指针一直喂目标），这条有终点，
-     *  收敛后必须自己收掉，否则 rAF 永远转下去。 */
+    // 这里不新写运动学——位置按 mode 走三条既有路径（instant / spring / line），抛掷复用 startThrow。
+    /** 位置指令的跟随 rAF（spring 与 line 共用同一个句柄）。与拖拽跟手分开：拖拽没有终点
+     *  （指针一直喂目标），这条有终点，收敛/到点后必须自己收掉，否则 rAF 永远转下去。 */
     const posFollowRef = useRef<number | null>(null);
     const posFollowTokenRef = useRef(0);
 
@@ -1227,24 +1229,54 @@ export function makePetUI(rt: {
 
     /**
      * 执行一条位置指令：把宠物**中心**挪到归一化坐标 (rx, ry)。
-     * `smooth` 为真走拖拽那套弹簧，为假直接落位并提交 customPos。
+     * `mode` 三选一——`instant` 一帧到位并提交 customPos；`spring` 走拖拽那套过阻尼弹簧；
+     * `line` 在 `duration` 毫秒里**直线**走完（`duration <= 0` 等同 instant）。
      * 用户正按着宠物（`active` 含点击与拖拽）时**整拍丢弃**——手指底下的东西不该跑；
      * 这与动画链的守卫同一语义（见 handleEnded）。丢弃是静默的：接口早已回过 ok。
      */
-    const applyPositionCue = (rx: number, ry: number, smooth: boolean) => {
+    const applyPositionCue = (rx: number, ry: number, mode: PositionMode, duration: number) => {
       if (dragRef.current.active) return; // 用户交互优先
-      stopThrow(); // 先显式接管：停掉飞行与走路（stopMove 顺带停掉上一次的位置弹簧）
+      stopThrow(); // 先显式接管：停掉飞行与走路（stopMove 顺带停掉上一次的位置跟随）
       stopMove();
       // 中心 → 包围盒左上角 px（与下面提交 customPos 时的换算互逆）
       const px = rx * window.innerWidth - halfW;
       const py = ry * window.innerHeight - halfH;
       const rootEl = rootRef.current;
-      if (!smooth || !rootEl) {
+      if (!rootEl || mode === 'instant' || (mode === 'line' && duration <= 0)) {
         boxPxRef.current = { x: px, y: py };
         setCustomPos({ rx, ry });
         return;
       }
       const token = ++posFollowTokenRef.current;
+      /** 落笔：写 ref + 四个 style（弹簧与直线两条路共用；原先是各写一遍） */
+      const paint = (x: number, y: number) => {
+        boxPxRef.current = { x, y };
+        rootEl.style.left = x + 'px';
+        rootEl.style.top = y + 'px';
+        rootEl.style.right = 'auto';
+        rootEl.style.bottom = 'auto';
+      };
+      if (mode === 'line') {
+        // 直线补间：在**像素空间**插值——按归一化比例插值会把斜线走歪（视口非正方时两轴缩放不同）
+        const from = boxPxRef.current ?? { x: px, y: py };
+        const t0 = performance.now();
+        const step = () => {
+          if (posFollowTokenRef.current !== token) return;
+          const p = Math.min((performance.now() - t0) / duration, 1);
+          if (p >= 1) {
+            // 精确落位：终点不留残余偏差（弹簧那条靠收敛阈值收尾，这条靠 p 到 1）
+            paint(px, py);
+            posFollowRef.current = null;
+            setCustomPos({ rx, ry });
+            return;
+          }
+          paint(from.x + (px - from.x) * p, from.y + (py - from.y) * p);
+          posFollowRef.current = requestAnimationFrame(step);
+        };
+        posFollowRef.current = requestAnimationFrame(step);
+        return;
+      }
+      // spring：过阻尼弹簧跟随——没有行程时间，靠收敛判定自己收尾
       let last = performance.now();
       const vel = { vx: 0, vy: 0 };
       const step = () => {
@@ -1258,16 +1290,10 @@ export function makePetUI(rt: {
         vel.vy = springStep(vel.vy, y, py, dt, cfg.physics.throwPower);
         x += vel.vx * dt;
         y += vel.vy * dt;
-        boxPxRef.current = { x, y };
-        rootEl.style.left = x + 'px';
-        rootEl.style.top = y + 'px';
-        rootEl.style.right = 'auto';
-        rootEl.style.bottom = 'auto';
+        paint(x, y);
         // 收敛判定：足够近且足够慢 → 精确落位并提交。拖拽跟手靠指针松手结束，这条得自己判。
         if (Math.abs(px - x) < 0.5 && Math.abs(py - y) < 0.5 && Math.abs(vel.vx) < 1 && Math.abs(vel.vy) < 1) {
-          boxPxRef.current = { x: px, y: py };
-          rootEl.style.left = px + 'px';
-          rootEl.style.top = py + 'px';
+          paint(px, py);
           posFollowRef.current = null;
           setCustomPos({ rx, ry });
           return;
@@ -1980,7 +2006,9 @@ export function makePetUI(rt: {
     const [animCueTick, setAnimCueTick] = useState(0);
     const animCueRef = useRef<Record<string, { name: string; seq: number; playbackId?: string }>>({});
     const [posCueTick, setPosCueTick] = useState(0);
-    const posCueRef = useRef<Record<string, { x: number; y: number; smooth: boolean; seq: number }>>({});
+    const posCueRef = useRef<
+      Record<string, { x: number; y: number; mode: PositionMode; duration: number; seq: number }>
+    >({});
     const [throwCueTick, setThrowCueTick] = useState(0);
     const throwCueRef = useRef<Record<string, { angle: number; power: number; seq: number }>>({});
     useEffect(() => {

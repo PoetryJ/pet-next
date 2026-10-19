@@ -953,8 +953,9 @@
           <div class="card-body">
             <div class="card-desc">
               模拟第三方调用 <span class="mono">POST /position</span> 与 <span class="mono">POST /throw</span>。
-              两条都是<b>运动指令</b>：写进状态后由渲染端执行，<b>不引入任何新物理</b>——位置复用拖拽跟手
-              那套弹簧，抛掷复用已有的重力 / 反弹 / 地面摩擦 / 落地 Q 弹。
+              两条都是<b>运动指令</b>：写进状态后由渲染端执行，<b>不引入任何新物理</b>——位置按
+              <span class="mono">mode</span> 走三条既有路径（直接 / 弹簧 / 直线），抛掷复用已有的
+              重力 / 反弹 / 地面摩擦 / 落地 Q 弹。
               <b>手指正按在宠物身上时会被静默丢弃</b>：接口仍回 <span class="mono">ok</span>，
               但宠物不动，而且轮询也看不出来（这是设计上的已知缺口）。
             </div>
@@ -969,7 +970,8 @@
             <div class="card-desc" style="margin-top:12px;border-top:1px solid rgba(128,128,128,.25);padding-top:10px">
               <b>位置</b>：<span class="mono">x</span> / <span class="mono">y</span> 是宠物<b>中心</b>的归一化坐标
               （合法 <span class="mono">0~1</span>，越界会被夹取）。在下面的框里<b>点一下或拖一下</b>就能设位置——
-              不必手算归一化坐标。
+              不必手算归一化坐标。<span class="mono">mode</span> 三选一：<b>直接</b>一帧到位、<b>弹簧</b>走拖拽
+              那套过阻尼弹簧、<b>直线</b>在指定毫秒里直线走完（只有它用 <span class="mono">ms</span> 那个框）。
             </div>
             <div class="stage" id="mv-stage">
               <div class="stage-dot" id="mv-dot"></div>
@@ -982,7 +984,13 @@
                 <input type="number" id="mv-x" step="0.01" value="0.5" style="width:96px">
                 <span class="hint">y</span>
                 <input type="number" id="mv-y" step="0.01" value="0.5" style="width:96px">
-                <label class="chk"><input type="checkbox" id="mv-smooth" checked> 平滑</label>
+                <select id="mv-mode" style="width:auto">
+                  <option value="spring" selected>弹簧</option>
+                  <option value="line">直线</option>
+                  <option value="instant">直接</option>
+                </select>
+                <span class="hint">ms</span>
+                <input type="number" id="mv-duration" step="100" min="0" value="1200" style="width:96px">
                 <span class="hint" id="mv-note"></span>
               </div>
             </div>
@@ -2980,13 +2988,14 @@
       dial.addEventListener("pointercancel", () => { down = false; });
     })();
 
-    /** 发一条位置指令。smooth 决定走弹簧还是立即到位 */
-    async function mvGo(smooth) {
+    /** 发一条位置指令。mode 三选一；只有 line 模式带 duration（其余模式宿主不看它） */
+    async function mvGo(mode, duration) {
       const petId = $("mv-pet").value || S.petId;
       const { x, y } = mvTarget();
       const res = $("mv-result");
       res.textContent = "发送中…";
-      const r = await POST("/position?pet=" + encodeURIComponent(petId), { body: { x, y, smooth } });
+      const body = mode === "line" ? { x, y, mode, duration } : { x, y, mode };
+      const r = await POST("/position?pet=" + encodeURIComponent(petId), { body });
       if (r.status === 200 && r.body && r.body.ok) {
         const ax = Number(r.body.x);
         const ay = Number(r.body.y);
@@ -3005,8 +3014,8 @@
       }
     }
 
-    $("mv-go").addEventListener("click", () => void mvGo($("mv-smooth").checked));
-    $("mv-snap").addEventListener("click", () => void mvGo(false));
+    $("mv-go").addEventListener("click", () => void mvGo($("mv-mode").value, Number($("mv-duration").value)));
+    $("mv-snap").addEventListener("click", () => void mvGo("instant"));
     $("mv-x").addEventListener("input", mvRender);
     $("mv-y").addEventListener("input", mvRender);
     $("mv-pet").addEventListener("change", mvRender);

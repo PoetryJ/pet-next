@@ -30,7 +30,7 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 | `GET /dsh-pet-7340/playback/{id}` | **播放回执**：查那次点播的真实状态；带 `?wait=&timeout=` 可挂起等待 |
 | `POST /dsh-pet-7340/playback/{id}/report` | 渲染端上报播放状态（**内部通道**，第三方不用调） |
 | `POST /dsh-pet-7340/chat?pet=` | 对桌宠说一句话并生成回复，同时写入对话记忆 |
-| `POST /dsh-pet-7340/position?pet=` | **位置控制**：把桌宠挪到归一化坐标（`x`/`y` 是宠物中心）；不碰动画 |
+| `POST /dsh-pet-7340/position?pet=` | **位置控制**：挪到归一化坐标，`mode` = 直接/弹簧/直线；不碰动画 |
 | `POST /dsh-pet-7340/throw?pet=` | **原生抛掷**：给桌宠一个初速度让它飞出去（`angle` 度、`power` 倍率） |
 | `POST /dsh-pet-7340/balance` | 立即刷新一次余额 |
 | `POST /dsh-pet-7340/reload` | 重载桌面端（重启桌面宠物进程，按最新配置重建窗口） |

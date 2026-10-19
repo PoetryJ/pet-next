@@ -421,7 +421,11 @@ describe('/position + /throw —— 位置与抛掷指令（POST 写入端点）
   });
 
   test('配置不可达时不静默：显式 ok:false/generate-error（不假装已挪位 / 已抛出）', async () => {
-    const pos = await call('/dsh-pet-7340/position?pet=main', 'POST', JSON.stringify({ x: 0.5, y: 0.5 }));
+    const pos = await call(
+      '/dsh-pet-7340/position?pet=main',
+      'POST',
+      JSON.stringify({ x: 0.5, y: 0.5, mode: 'spring' }),
+    );
     assert.equal(pos.status, 200);
     const posBody = JSON.parse(pos.body) as { ok: boolean; reason: string };
     assert.equal(posBody.ok, false, '读不到配置绝不能回 ok:true——否则调用方以为宠物已经挪过去了');

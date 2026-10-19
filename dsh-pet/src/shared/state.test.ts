@@ -254,29 +254,63 @@ describe('readSay —— 说话叶子（弹气泡 / 清空 两种形态）', () 
   });
 });
 
-describe('readPosition —— 位置指令叶子（中心归一化坐标）', () => {
-  test('坐标与 smooth 都取到', () => {
-    const hit = readPosition({ counter: 1, data: { x: 0.5, y: 0.35, smooth: false } });
-    assert.deepEqual(hit, { x: 0.5, y: 0.35, smooth: false });
+describe('readPosition —— 位置指令叶子（中心归一化坐标 + 运动模式）', () => {
+  test('instant / spring：坐标与模式都取到，duration 恒为 0（这两个模式不用时间）', () => {
+    assert.deepEqual(readPosition({ counter: 1, data: { x: 0.5, y: 0.35, mode: 'instant' } }), {
+      x: 0.5,
+      y: 0.35,
+      mode: 'instant',
+      duration: 0,
+    });
+    assert.deepEqual(readPosition({ counter: 1, data: { x: 0.5, y: 0.35, mode: 'spring' } }), {
+      x: 0.5,
+      y: 0.35,
+      mode: 'spring',
+      duration: 0,
+    });
   });
 
-  test('老 host 不写 smooth → 按 true（平滑）处理，不是非法数据', () => {
-    assert.equal(readPosition({ counter: 1, data: { x: 0.1, y: 0.2 } })?.smooth, true);
+  test('line：duration 一起取到（`0` 也合法 = 立即到位）', () => {
+    assert.deepEqual(readPosition({ counter: 1, data: { x: 0.5, y: 0.35, mode: 'line', duration: 1200 } }), {
+      x: 0.5,
+      y: 0.35,
+      mode: 'line',
+      duration: 1200,
+    });
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: 0.35, mode: 'line', duration: 0 } })?.duration, 0);
   });
 
   test('边界值 0 与 1 合法（中心可到屏幕边缘）', () => {
-    const hit = readPosition({ counter: 1, data: { x: 0, y: 1 } });
-    assert.deepEqual(hit, { x: 0, y: 1, smooth: true });
+    assert.deepEqual(readPosition({ counter: 1, data: { x: 0, y: 1, mode: 'spring' } }), {
+      x: 0,
+      y: 1,
+      mode: 'spring',
+      duration: 0,
+    });
+  });
+
+  test('mode 非法 / 缺失 → null（老叶子的 {x,y,smooth} 不再被接受：不替调用方猜模式）', () => {
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: 0.5 } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: 0.5, mode: 'ease' } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: 0.5, mode: 'LINE' } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: 0.5, smooth: true } }), null);
+  });
+
+  test('line 缺 duration（或非法）→ null（宿主一定会写；写错宁可跳过这一拍，也不猜一个时间）', () => {
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: 0.5, mode: 'line' } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: 0.5, mode: 'line', duration: -1 } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: 0.5, mode: 'line', duration: NaN } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: 0.5, mode: 'line', duration: '1200' } }), null);
   });
 
   test('脏数据 → null（缺坐标 / 非数字 / NaN / Infinity 都拒，不把 NaN 送进运动学）', () => {
     assert.equal(readPosition({ counter: 1, data: null }), null);
     assert.equal(readPosition({ counter: 1, data: 'nope' }), null);
-    assert.equal(readPosition({ counter: 1, data: { y: 0.5 } }), null);
-    assert.equal(readPosition({ counter: 1, data: { x: 0.5 } }), null);
-    assert.equal(readPosition({ counter: 1, data: { x: '0.5', y: 0.5 } }), null);
-    assert.equal(readPosition({ counter: 1, data: { x: NaN, y: 0.5 } }), null);
-    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: Infinity } }), null);
+    assert.equal(readPosition({ counter: 1, data: { y: 0.5, mode: 'spring' } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, mode: 'spring' } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: '0.5', y: 0.5, mode: 'spring' } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: NaN, y: 0.5, mode: 'spring' } }), null);
+    assert.equal(readPosition({ counter: 1, data: { x: 0.5, y: Infinity, mode: 'spring' } }), null);
   });
 });
 

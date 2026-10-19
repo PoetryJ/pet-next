@@ -89,8 +89,8 @@ class PetSprite {
     this.dragFollowToken = 0;
     this.throwRef = null; // 抛掷 rAF handle
     this.throwToken = 0;
-    // 位置指令（POST /position）的弹簧跟随 rAF：与拖拽跟手分开——拖拽没有终点（指针一直喂目标），
-    // 这条有终点，收敛后必须自己收掉，否则 rAF 永远转下去
+    // 位置指令（POST /position）的跟随 rAF（spring 与 line 共用同一个句柄）：与拖拽跟手分开——
+    // 拖拽没有终点（指针一直喂目标），这条有终点，收敛/到点后必须自己收掉，否则 rAF 永远转下去
     this.posFollow = null;
     this.posFollowToken = 0;
     this.space = null; // 抛掷空间（逐屏 AABB）缓存；显示器变化时由 relayout() 置空重建
@@ -829,14 +829,15 @@ class PetSprite {
 
   /**
    * 位置指令：把宠物**中心**挪到归一化坐标 (rx, ry)（与 this.customPos 同一套语义）。
-   * `smooth` 为真走拖拽那套过阻尼弹簧（S.springStep），为假直接落位。
+   * `mode` 三选一——`instant` 一帧到位；`spring` 走拖拽那套过阻尼弹簧（S.springStep）；
+   * `line` 在 `duration` 毫秒里**直线**走完（`duration <= 0` 等同 instant）。
    * 用户正按着宠物（`dragState.active` 含点击与拖拽）时**整拍丢弃**——手指底下的东西不该跑；
    * 丢弃是静默的（接口早已回过 ok，与浏览器端同一契约）。
    * 归一化空间 = **全部显示器工作区并集的外接矩形**；落点会被夹到 AREAS 并集（空洞不可达）。
    */
-  moveToCenter(rx, ry, smooth) {
+  moveToCenter(rx, ry, mode, duration) {
     if (this.dragState.active) return; // 用户交互优先
-    this.stopThrow(); // 先显式接管：停掉飞行与走路（stopMove 顺带停掉上一次的位置弹簧）
+    this.stopThrow(); // 先显式接管：停掉飞行与走路（stopMove 顺带停掉上一次的位置跟随）
     this.stopMove();
     // 归一化空间是**外接矩形**（VIEW = AREAS 的 hull），不规则布局里含大片不属于任何屏的空洞
     // （实测右倒 T 双屏：hull 的 23.7% 是空洞）。而 position() 在 customPos 分支**零夹取**
@@ -851,12 +852,34 @@ class PetSprite {
     const fy = c.y / VIEW.h;
     const px = c.x - this.halfW;
     const py = c.y - this.halfH;
-    if (!smooth) {
+    if (mode === 'instant' || (mode === 'line' && duration <= 0)) {
       this.sendBounds(px, py);
       this.customPos = { rx: fx, ry: fy };
       return;
     }
     const token = ++this.posFollowToken;
+    if (mode === 'line') {
+      // 直线补间：在**像素空间**插值——按归一化比例插值会把斜线走歪（外接矩形不是正方形）
+      const fromX = this.pos.x;
+      const fromY = this.pos.y;
+      const t0 = performance.now();
+      const step = () => {
+        if (this.posFollowToken !== token) return;
+        const p = Math.min((performance.now() - t0) / duration, 1);
+        if (p >= 1) {
+          // 精确落位：终点不留残余偏差（弹簧那条靠收敛阈值收尾，这条靠 p 到 1）
+          this.posFollow = null;
+          this.sendBounds(px, py);
+          this.customPos = { rx: fx, ry: fy };
+          return;
+        }
+        this.sendBounds(fromX + (px - fromX) * p, fromY + (py - fromY) * p);
+        this.posFollow = requestAnimationFrame(step);
+      };
+      this.posFollow = requestAnimationFrame(step);
+      return;
+    }
+    // spring：过阻尼弹簧跟随——没有行程时间，靠收敛判定自己收尾
     let last = performance.now();
     const vel = { vx: 0, vy: 0 };
     const step = () => {
