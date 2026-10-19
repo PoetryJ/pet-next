@@ -210,6 +210,35 @@ export function readAnim(leaf: StateLeaf): { name?: string; url?: string; playba
 }
 
 /**
+ * 占用锁叶子（`pets.<id>.lock`）的形态（issue #122 第 4 项）：
+ * `{ locked: true, expiresAt }` = 这只宠物正被第三方占用；`{ locked: false }` = 没有占用。
+ */
+export type LockState = { locked: true; expiresAt: number } | { locked: false };
+
+/**
+ * 类型收窄：占用锁叶子 → `LockState`（形状非法 → null，消费端跳过这一拍）。
+ *
+ * **这是状态，不是指令**（与 anim / position / throw 那三个不同）：宿主写、渲染端读来决定
+ * "要不要冻结自己"——随机链不掷骰、暂停自播动画、忽略**自动**来源的余额与工作状态表现。
+ * 宿主停不掉一段正在播的视频，所以"完全静止"最终是渲染端执行的。
+ *
+ * **宿主不会到点推一次"锁没了"**：`expiresAt` 是唯一真相，渲染端据此**自己**定时解除
+ * （宿主侧的过期是懒判的，见 src/host/lock.ts）。因此读到 `expiresAt` **已经过去**就等于没有锁
+ * ——页面刷新后才读到一份陈旧叶子时，必须按这个判，不能只看 `locked`。
+ *
+ * **不含 `lockId`**：那是持锁者的凭证，不能放进人人可读的 /state。
+ */
+export function readLock(leaf: StateLeaf): LockState | null {
+  if (!leaf.data || typeof leaf.data !== 'object') return null;
+  const d = leaf.data as { locked?: unknown; expiresAt?: unknown };
+  if (d.locked === false) return { locked: false };
+  if (d.locked !== true) return null;
+  // locked:true 却缺 expiresAt（或非法）= 形状非法：宁可不冻结，也不猜一个到期时刻
+  if (typeof d.expiresAt !== 'number' || !Number.isFinite(d.expiresAt)) return null;
+  return { locked: true, expiresAt: d.expiresAt };
+}
+
+/**
  * 位置指令的运动模式（三选一）。**与 host/motion-cue.ts 的同名联合体是两份**——宿主不 import
  * src/shared（同 `Corner` 的处理方式），改动时两边要一起改。
  */

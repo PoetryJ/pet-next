@@ -46,6 +46,14 @@
  *                                       「动作」菜单一致）或 `url`（第三方自带的完整地址，不查池、
  *                                       不走菜单语义）二选一。
  *                                       响应带 playbackId，供 /playback 查**真实回执**
+ *   /dsh-pet-7340/lock                 → **占用锁**（issue #122 第 4 项，POST 动作端点）：联动演出
+ *                                       期间独占这只宠物，除持锁者外全静音。`lockId` 给了 = 续期、
+ *                                       没给 = 新建；回 { lockId, expiresAt }。内存态 + TTL，**无锁时
+ *                                       行为与改造前逐字一致**（见 ./lock）
+ *   /dsh-pet-7340/lock/release         → 释放占用（POST 动作端点）：`lockId` = 持锁者收工 /
+ *                                       `force` = **渲染端**报告用户接管（拖拽、点击、隐藏、关闭）。
+ *                                       占用期间 5 个动作端点必须带 `?lock=<lockId>`，否则
+ *                                       lock-required（没带）/ lock-lost（带了不匹配，附 cause）
  *   /dsh-pet-7340/playback/<id>        → **播放回执**（GET）：返回那一次点播的真实状态
  *                                       （accepted/playing/ended/failed/cancelled）。带
  *                                       `?wait=<状态[,状态]>` + `?timeout=<ms>`（**成对必填**）时挂起等待：
@@ -93,6 +101,7 @@ import {
   normalizeBroadcastText,
 } from './broadcast';
 import { decideAnim } from './anim';
+import { LockStore } from './lock';
 import { decidePosition, decideThrow, positionLeafData } from './motion-cue';
 import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
 import {
@@ -345,6 +354,39 @@ export function apply(ctx: any): void {
     if (key === publishedWork) return;
     publishedWork = key;
     state.writeSection('workStatus', { state: snap.state, task: snap.task });
+  };
+  // 占用锁（issue #122 第 4 项「独立动作/气泡占用」）：**内存态**一把锁 + TTL，第三方联动期间
+  // 独占这只宠物——除持锁者外谁都动不了它（随机链、碎碎念、余额、工作状态一概让路）。
+  //
+  // 它自己**不带定时器**：过期是懒判的，叶子里的 `expiresAt` 是唯一真相，渲染端据此**自己**
+  // 解除静止；这里只负责把状态变化同步进 S 的 `pets.<id>.lock`。见 ./lock 的四条边界
+  // （无锁 = 现状零变化 / 有界 / 续期即心跳 / 无定时器）。
+  const lock = new LockStore({
+    onChange: (petId, data) => state.writePet(petId, 'lock', data),
+  });
+
+  /**
+   * 动作端点的占用门禁（`/anim`、`/broadcast`、`/position`、`/throw`、`/bubble/clear` 共用）：
+   * 放行回 null，否则直接给出路由应答。抽成一个函数，是为了让"哪些接口受占用约束"只有一处可查。
+   *
+   * **无锁时恒为 null**：连 `lock` 参数都不看，既有调用方一个字都不用改——这是
+   * 「无锁 = 现状零变化」（issue #122 最重要的边界）的落点。
+   *
+   * 位置放在决策函数**之后**：`petId` 要先解析出来才知道问哪只宠物的锁，而这时还没有任何副作用
+   * （没写叶子、没建播放记录、没调模型）。所以"先判锁再干活"这个意图是满足的，只是与
+   * body 校验的先后为「body → pet → 锁」——两者都不合法时报的是 body 的错。
+   */
+  const lockBlocked = (petId: string, params: URLSearchParams): RouteResult | null => {
+    const g = lock.gate(petId, String(params.get('lock') ?? ''));
+    if (g.ok) return null;
+    return {
+      kind: 'json',
+      status: 200,
+      obj:
+        g.reason === 'lock-lost'
+          ? { ok: false, reason: g.reason, cause: g.cause, message: g.message }
+          : { ok: false, reason: g.reason, message: g.message },
+    };
   };
   // 系统通知帧：host 监听 DSH 宿主事件生成通知帧（帧契约与 shared/notify.ts 一致），写进 S 的
   // sections.notify，浏览器 1s 轮询 /state 后弹 toast。
@@ -1042,6 +1084,11 @@ export function apply(ctx: any): void {
       // （响应体），桌面端由下面的 syncDesktop() 重启，都不需要这个信号；
       // 而桌面端右键改 display 时浏览器页面**不是发起方**，只能靠它发现「配置被别处改过」。
       state.writeSection('config', {});
+      // 占用锁：改成 `none`（桌面端右键「关闭桌面显示」）＝ 用户主动隐藏/关闭，属于**抢占**——
+      // 撤销本轮占用（cause: preempted）。不做的话宠物会被锁到 TTL 到点，而用户明明已经把它藏了
+      // （issue #122：「用户主动停止、隐藏或关闭时，也应能取消联动，避免宠物被永久锁住」）。
+      // 只认 `none`：web/desktop/both 是换显示位置，不是"用户接管"。
+      if (nextDisplay === 'none') lock.release({ petId, force: true });
       // 不 await：发起者很可能就是**即将被这次重载换掉的**桌面 Helper（与 /reload 同一处境）。
       // 写盘已经落定，重启结果不需要回给调用方。
       void syncDesktop();
@@ -1191,6 +1238,74 @@ export function apply(ctx: any): void {
       return { kind: 'json', status: 200, obj: { ok: true } };
     }
 
+    // 占用锁：/dsh-pet-7340/lock?pet=<id>          （POST = 取锁 / 续期，二合一）
+    //         /dsh-pet-7340/lock/release?pet=<id>  （POST = 释放）
+    //
+    // issue #122 第 4 项「独立动作/气泡占用」。一把锁、**全有全无**：拿锁 → 回 lockId；占用期间
+    // 除持锁者外全静音（5 个动作端点要带 `?lock=`，内部自动来源各自让路）；释放 → 一切复原。
+    //
+    // 与 /playback 的分工：那个是"这一次点播播完没有"的**回执**，这个是"这段时间归谁控制"的**租约**。
+    // 锁自己占一个叶子（`pets.<id>.lock`）：渲染端必须能读到它才能冻结自己——宿主停不掉一段
+    // 正在播的视频，"完全静止"最终是渲染端执行的。
+    //
+    // 取锁 / 续期**二合一**（`lockId` 给了 = 续期）：续期是持锁者每隔几秒就要做一次的**心跳**，
+    // 而这一次调用同时就是"我的锁还在吗"的探测器——丢了会回 lock-lost + cause，所以不需要
+    // 单独的"查锁"端点。真值表与墓碑语义见 ./lock 的 acquire。
+    //
+    // 失败一律 HTTP 200 + ok:false（与其他动作端点口径一致）；只有 405 / 400 不是 200。
+    if (rest === 'lock' || rest === 'lock/release') {
+      const isRelease = rest === 'lock/release';
+      if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body ?? 'null');
+      } catch {
+        return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      }
+      const o = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
+      try {
+        const cfg = readAllConfig(configPaths);
+        // pet 落点与 /anim、/broadcast 同一条口径：指定的 → 当前桌宠 → 兜底 main
+        const petId = String(url.searchParams.get('pet') || resolveActivePetId() || 'main');
+        if (!flattenPetList(cfg).some((p) => String(p.id) === petId)) {
+          return {
+            kind: 'json',
+            status: 200,
+            obj: { ok: false, reason: 'unknown-pet', message: '没有这只桌宠：' + petId },
+          };
+        }
+        if (isRelease) {
+          const d = lock.release({ petId, lockId: o.lockId, force: o.force });
+          if (!d.ok) {
+            const obj: Record<string, unknown> = { ok: false, reason: d.reason, message: d.message };
+            if (d.reason === 'lock-lost') obj.cause = d.cause;
+            return { kind: 'json', status: 200, obj };
+          }
+          // 幂等：当前没有锁同样回 ok（"让锁消失"这个意图在空状态下已经成立）
+          return { kind: 'json', status: 200, obj: { ok: true } };
+        }
+        const d = lock.acquire({ petId, lockId: o.lockId, ttl: o.ttl });
+        if (!d.ok) {
+          const obj: Record<string, unknown> = { ok: false, reason: d.reason, message: d.message };
+          if (d.reason === 'locked') obj.expiresAt = d.expiresAt; // 让对方知道何时能重试
+          if (d.reason === 'lock-lost') obj.cause = d.cause;
+          return { kind: 'json', status: 200, obj };
+        }
+        return {
+          kind: 'json',
+          status: 200,
+          obj: { ok: true, lockId: d.lockId, petId: d.petId, expiresAt: d.expiresAt },
+        };
+      } catch (e) {
+        // 配置读取失败等（安装损坏）→ 显式失败，不静默（与其他动作端点同一口径）
+        return {
+          kind: 'json',
+          status: 200,
+          obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
+        };
+      }
+    }
+
     // 碎碎念：/dsh-pet-7340/whisper?pet=<id>（POST = 立即让桌宠新说一句，返回 {ok}）
     // 动作端点，**不返回文本**——文本走 S 的 pets.<id>.say（碎碎念/命令气泡/对话回复同一个叶子）。
     // 手动语义不受 whisperEnabled 门控：那个字段只关自动周期（与改造前一致）。
@@ -1260,6 +1375,9 @@ export function apply(ctx: any): void {
           memeDirs: memeDirsFor,
         });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        // 占用门禁：有锁时只有持锁者能投喂（无锁恒放行，见 lockBlocked）
+        const blocked = lockBlocked(d.petId, url.searchParams);
+        if (blocked) return blocked;
         // duration / anim 写**解析后的生效值**（缺省也已填成显式值）：/state 里因此能看到
         // 实际生效的时长与联动开关，调用方不用自己猜缺省是多少。
         // 配图两种形态二选一（判定层保证）：url 形态写 url，名称形态写池内规范名，都没有则纯文本。
@@ -1294,6 +1412,8 @@ export function apply(ctx: any): void {
           active: resolveActivePetId(),
         });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        const blocked = lockBlocked(d.petId, url.searchParams);
+        if (blocked) return blocked;
         state.writePet(d.petId, 'say', { clear: true });
         return { kind: 'json', status: 200, obj: { ok: true } };
       } catch (e) {
@@ -1340,6 +1460,9 @@ export function apply(ctx: any): void {
           url: o.url,
         });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        // 占用门禁：持锁者自己的点播照放行（那是它的演出），别人一律拒
+        const blocked = lockBlocked(d.petId, url.searchParams);
+        if (blocked) return blocked;
         // 播放回执：受理时建记录（accepted），并把编号随叶子一起下发——渲染端据此上报。
         // 记录里的标识：name 形态是动画名，url 形态就是那个地址（纯记录，不参与任何判定）。
         // 叶子形状：name 与 url **恰好一个**（判定层保证），消费端按字段名决定走不走菜单语义
@@ -1402,6 +1525,8 @@ export function apply(ctx: any): void {
             duration: o.duration,
           });
           if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+          const blocked = lockBlocked(d.petId, url.searchParams);
+          if (blocked) return blocked;
           // 叶子按模式收敛成最小形状：非 line 模式不带 duration（见 positionLeafData）
           state.writePet(d.petId, 'position', positionLeafData(d));
           // 回**夹取后**的实际生效值：调用方不必自己算边界，也不会误以为越界值被照单全收
@@ -1409,6 +1534,8 @@ export function apply(ctx: any): void {
         }
         const d = decideThrow({ cfg, requested, active, angle: o.angle, power: o.power });
         if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+        const blocked = lockBlocked(d.petId, url.searchParams);
+        if (blocked) return blocked;
         state.writePet(d.petId, 'throw', { angle: d.angle, power: d.power });
         return { kind: 'json', status: 200, obj: { ok: true } };
       } catch (e) {
@@ -1874,6 +2001,12 @@ export function apply(ctx: any): void {
           const sec = whisperPeriodSec(cfg, petId);
           min = Math.min(min, sec);
           if (now - (lastWhisperAt.get(petId) ?? 0) < sec * 1000) continue;
+          // 占用锁：这只宠物被占用时**跳过这一拍**——不生成也不补（碎碎念是瞬时事件，过期即弃）。
+          // 而且**不推进 lastWhisperAt**：锁一放开，下一拍就该照常说。
+          // 宿主侧只挡这一处 **per-pet** 来源；两个**全局段**（balance / workStatus）不在这里挡——
+          // 它们所有宠物共用一份，宿主"跳过写入"会连带静音别的宠物；那两处由渲染端按宠物忽略
+          // （见 src/client/pet.ts 的冻结判定），代价是叶子照常推进、渲染端自己不看。
+          if (lock.locked(petId)) continue;
           lastWhisperAt.set(petId, now);
           // 不 await：生成要几秒，别把调度拍拖住（每只宠物独立生成，互不阻塞）
           void publishWhisper(petId).catch(() => {});
@@ -1986,6 +2119,9 @@ export function apply(ctx: any): void {
   // （回执的与 /state 长轮询的都不结束的话，插件重载会留下一批悬挂的响应，各自要等到超时才收尾）
   ctx.effect(() => () => {
     disposed = true;
+    // 占用锁：卸载时把锁全撤掉并写一次叶子——不写的话渲染端要等 TTL 到点才解除静止
+    // （写叶子必须在 state.cancelAll() **之前**：那之后挂起的等待者已经收尾了）。
+    lock.releaseAll();
     playback.cancelAll();
     state.cancelAll();
     stopHelper('dsh-host-stop');

@@ -135,6 +135,10 @@ class PetSprite {
     this.workState = null; // 最近一次工作状态（互动/事件动画播完恢复档位循环用）
     this.prevWorkState = null; // 上一档状态（气泡只在状态变化时点亮/收起，Bug 2）
     this.prevWorkTick = 0;
+    // 占用锁（issue #122 第 4 项）：frozen = 本宠物此刻正被第三方占用（与浏览器 PetCard.frozenRef 同义）。
+    // lockTimer = 按叶子里的 expiresAt 自己到点解除（宿主侧过期是懒判的，不会推"锁没了"）。
+    this.frozen = false;
+    this.lockTimer = null;
     // 对话弹窗（shared 组件）：当前挂载的 close() 句柄 + 开启标记
     // （chatOpen 是穿透守卫：弹窗是窗口内 DOM，期间整窗保持可交互，与 menuOpen 同语义——否则
     //   光标移到输入框（不在身体命中区）就会被 onMouseMove 翻回穿透，点击全被透传）
@@ -516,8 +520,75 @@ class PetSprite {
     this.playOnce(url, playbackId, url);
   }
 
+  /**
+   * 占用锁（issue #122 第 4 项）：冻结 / 解冻。**与浏览器 PetCard.applyFreeze 同构**。
+   *
+   * 冻结期间只有三件事被挡住，且都在渲染端：① 随机链（playIdle 一句判断）；
+   * ② 当前正在播的自播动画（暂停，定在当前帧）；③ **自动**来源的余额与工作状态表现
+   * （见 events.js 里 onBalanceTick / onWorkTick / showBalanceNotice 的判断）。
+   * 显式指令（say / anim / position / throw 四个叶子）**一概不挡**——那些是持锁者（或用户手动）
+   * 明确要的，正是占用要保护的东西。
+   */
+  applyFreeze(next) {
+    if (this.frozen === next) return;
+    this.frozen = next;
+    const el = this.front === 0 ? this.videoA : this.videoB;
+    const stamp = '[dsh-pet] ' + new Date().toTimeString().slice(0, 8) + ' pet=' + this.pet.id;
+    if (next) {
+      // 停住正在播的那一段：宿主停不掉一段视频，"完全静止"只能由渲染端执行。
+      // 光堵随机链入口不够——那个入口只在动画**播完**时才被调用，不暂停就会把当前这段播完才停。
+      this.stopMove();
+      if (el) el.pause();
+      // 播放回执（issue #122 第 3 项）：冻结**打断了**正在播的那一次第三方点播——如实回
+      // `cancelled`，而不是让回执一直挂着 `playing`（挂 `?wait=ended` 的调用方会白等一个 timeout：
+      // 这一场永远不会 ended）。为什么是"打断"而不是"暂停"：解冻走的是回 idle / 恢复档位
+      // （= 换源顶掉它），**不会把它接回来**，所以它确实不会再播完。
+      // 与浏览器 src/client/pet.ts 的 applyFreeze 同一处、同一 reason。
+      // 先清 this.playback 再上报：免得后续换源又把它当成"被顶掉"再报一次。
+      const interrupted = this.playback;
+      if (interrupted) {
+        this.playback = null;
+        this.reportPlayback(interrupted, 'cancelled', 'frozen');
+      }
+      console.log(stamp + ' 占用锁生效：冻结（随机链停 + 当前动画暂停）');
+      return;
+    }
+    console.log(stamp + ' 占用锁解除：恢复');
+    // 解冻：回到"该播什么就播什么"——非终态工作状态回档位循环，否则回 idle 一次，
+    // 播完由 handleEnded 接回随机链（与浏览器同一语义）。
+    if (this.resumeWorkStatusAnim()) return;
+    if (this.animations.idle.length) this.playOnce(S.pick(this.animations.idle, this.anim));
+  }
+
+  /**
+   * 锁叶子 → 冻结 / 解冻（`pets.<id>.lock`，见 events.js 的 applyLockLeaf）。
+   *
+   * `expiresAt` **已经过去** = 没有锁：窗口重载后才拿到一份陈旧叶子时必须这么判，不能只看 locked。
+   * 宿主不会到点推一次"锁没了"，所以这里自己定时解除——两端的"到点"因此同源（见 src/host/lock.ts）。
+   */
+  setLock(state) {
+    if (this.lockTimer !== null) {
+      window.clearTimeout(this.lockTimer);
+      this.lockTimer = null;
+    }
+    const expiresAt = state && state.locked === true ? state.expiresAt : 0;
+    this.applyFreeze(expiresAt > Date.now());
+    if (expiresAt <= Date.now()) return;
+    this.lockTimer = window.setTimeout(
+      () => {
+        this.lockTimer = null;
+        this.applyFreeze(false);
+      },
+      Math.max(0, expiresAt - Date.now()),
+    );
+  }
+
   // 动画链（与浏览器 pickNext 语义一致，纯逻辑在 shared）
   playIdle() {
+    // 占用锁（issue #122 第 4 项）：锁生效时**不掷骰**。这里是随机链的**唯一**入口（只有动画播完
+    // 才会走到），一句判断就把随机动画、随机转向、自主走位一起停住——宠物停在最后一帧，
+    // 等持锁者的下一条指令（那走 /anim，不经这里）。与浏览器 pickNext 同一处判断。
+    if (this.frozen) return;
     this.stopMove();
     const { animations, animationWeights } = { animations: this.animations, animationWeights: this.weights };
     const roll = Math.random();
@@ -557,6 +628,13 @@ class PetSprite {
       this.reportPlayback(done, 'ended');
     }
     if (this.dragState.active) return;
+    // 占用锁（issue #122 第 4 项）：冻结期间**动画链一律不推进**——事件动画播完就停在最后一帧。
+    // 与浏览器 src/client/pet.ts 的 handleEnded 同一处判断、同一原因：下面四条路都会换源播放，
+    // 而它们读的是**当前工作状态**（this.workState），跟 workTick 无关，所以 onWorkTick 那道门禁
+    // 拦不住它们——③ 事件动画（余额/碎碎念/**说话**）播完恢复档位最容易被撞上：持锁者每投一次
+    // 带 anim 的气泡（默认就是 true），说话动画播完就把工作状态动画点回来，冻结形同虚设。
+    // 播放回执已经在上面上报，不受这一行影响。
+    if (this.frozen) return;
     const { animations } = { animations: this.animations };
     // 事件动画播完：回 idle（与 drag/clicks 同分支，不进随机链）；气泡由定时器自动消失，与动画解耦
     const isEvent = S.isEventAnim(animations.events, this.anim);
@@ -603,6 +681,11 @@ class PetSprite {
   // 互动/事件动画播完后恢复 workStatus 档位循环：非终态 → 按当前状态档位重选动画（多候选档内
   // 随机并避开当前段）；终态/空闲 → false 不接管，调用方走原逻辑（回 idle / 随机池，与浏览器一致）。
   resumeWorkStatusAnim() {
+    // 占用锁：冻结期间不许由这条路把工作状态动画点回来（与浏览器端同名方法同一道自防）。
+    // 它读的是 this.workState（实时状态），跟 workTick 无关——持锁者每投一次带 anim 的气泡，
+    // 说话动画播完就会经 handleEnded 走到这里。解冻路径不受影响：applyFreeze(false) 是先置
+    // this.frozen = false 再调它。
+    if (this.frozen) return false;
     const state = this.workState;
     if (!state || state === 'success' || state === 'error') return false;
     const pool = this.animations.events?.workStatus;
@@ -979,6 +1062,21 @@ class PetSprite {
   onPointerDown(e) {
     // 只认左键：右键进入拖拽判定会与右键菜单打架（右键不拖拽，两端一致）
     if (e.button !== 0) return;
+    // 占用锁（issue #122 第 4 项）：用户**点了或拖了**这只宠物 = 用户接管，立刻撤掉第三方占用。
+    // 这是唯一一处"渲染端 → 宿主"的锁上报——宿主看不见鼠标，而锁在它手里
+    // （/lock/release 的 force 形态；桌面端走 bridge，与播放回执 reportPlayback 同一条路）。
+    // 先本地解冻再上报：叶子回来还有一次往返，等它会让宠物"点了半天才动"；此刻 frozen 为真说明
+    // 确实有锁，所以这次 force 释放必然成功，乐观是安全的。
+    if (this.frozen) {
+      if (this.lockTimer !== null) {
+        window.clearTimeout(this.lockTimer);
+        this.lockTimer = null;
+      }
+      this.applyFreeze(false);
+      S.postAction(BASE + '/lock/release?pet=' + encodeURIComponent(this.pet.id), { force: true }).then((ok) => {
+        if (!ok) console.warn('[dsh-pet] 用户接管上报未送达 pet=' + this.pet.id);
+      });
+    }
     // 抓取速度日志：stopThrow 之前读，否则飞行速度就没了；静止时记录 0（与浏览器同构）
     const grabState = this.throwState;
     console.log(
