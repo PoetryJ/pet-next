@@ -1516,7 +1516,9 @@ class PetSprite {
     this.syncInputRegions(); // mountContextMenu 完成布局后才能读取菜单矩形
   }
 
-  onMenuAction(leaf) {
+  /** `keepFacing` = 调用方已**显式指定**朝向（POST /anim 的 facing）：跳过下面"文字类动画点播前
+   *  强制朝左"那条镜像修正——显式值优先。右键菜单点播不传（保持原语义）。 */
+  onMenuAction(leaf, keepFacing) {
     this.closeMenu();
     if (!leaf || typeof leaf !== 'object') return;
     if (leaf.action === 'open-site') {
@@ -1550,8 +1552,9 @@ class PetSprite {
     if (!leaf.anim) return;
     // 回执归属：这一段动画若来自第三方点播，编号要跟着换源一起走（自播动画传 null）
     const playbackId = typeof leaf.playbackId === 'string' && leaf.playbackId ? leaf.playbackId : null;
-    // 文字类（noMirror）朝右站姿是镜像的：点播前强制朝左，避免文字镜像（与浏览器随机链"朝右不选文字"同语义）
-    if (S.isNoMirrorAnimation(this.animations.categories, leaf.anim) && this.facing === 'right') {
+    // 文字类（noMirror）朝右站姿是镜像的：点播前强制朝左，避免文字镜像（与浏览器随机链"朝右不选文字"同语义）。
+    // `keepFacing` 时跳过：调用方已显式指定朝向，显式值优先（要 right 就给 right，哪怕文字会镜像）。
+    if (!keepFacing && S.isNoMirrorAnimation(this.animations.categories, leaf.anim) && this.facing === 'right') {
       this.facing = 'left';
     }
     // 点播移动动画：走真实移动（与随机游走同一套：边界检查 / 随机距离 / leadSec·tailSec / dir），

@@ -471,7 +471,21 @@ paths:
         - `name` 与 `url` 必须**恰好给一个**：两个都给或都不给 → `bad-request`（意图不明，不替
           调用方猜）；
         - `name` 给了就必须在该宠物的动画池内；`url` 给了就必须是 http/https 的完整地址；
-        - `pet` **必填**，且必须是一只真实存在的桌宠（没给 → `pet-required`，不存在 → `unknown-pet`）。
+        - `pet` **必填**，且必须是一只真实存在的桌宠（没给 → `pet-required`，不存在 → `unknown-pet`）；
+        - `facing` **可选**，给了就必须是 `left` / `right` 之一，否则 → `bad-request`
+          （非法值**不静默忽略**，与 `POST /position` 的 `mode` 同一口径）。
+
+        **朝向（`facing`，可选）**
+
+        `left` = 素材原样，`right` = 镜像（渲染端贴 `scaleX(-1)`）。
+
+        - **不传就不动朝向**：宠物保持它**当前**的朝向——不是"回落 `left`"，`S` 的叶子里连这个
+          字段都不会写（所以"没要求"与"要求 `left`"在形状上可区分）；
+        - 传了就设成它并**一直保持**，直到宠物自己播完一段转向动画（`animations.turn` 池）翻过去，
+          或下一次点播再指定；
+        - `name` 与 `url` 两种形态**都适用**（`url` 形态虽然不走菜单语义，但镜像一样会贴）；
+        - **显式值优先于渲染端"文字类动画（`noMirror` 分类）点播前强制朝左"那条镜像修正**：
+          明确要 `right` 就给 `right`——代价是文字类动画里的文字会跟着镜像。
 
         **跨域不由本插件解决**：两端消费端都是 `fetch` + blob（为了绕开流式加载的 stall），
         所以**跨域地址要求对方自己带 `Access-Control-Allow-Origin`**。插件与第三方插件在同一个
@@ -526,11 +540,25 @@ paths:
                     跨域由浏览器强制、插件绕不过去：外站地址要求对方带 `Access-Control-Allow-Origin`，
                     同源（第三方插件在同一个 DSH 端口上注册自己的路由）则没有这个问题。
                   example: https://cdn.example.com/拉侧栏.webm
+                facing:
+                  type: string
+                  enum: [left, right]
+                  description: |
+                    播放这一段时的**朝向**（可选）。`left` = 素材原样，`right` = 镜像。
+                    **不传就不动朝向**（保持宠物当前朝向，不是回落 `left`）；传了就必须是这两个值
+                    之一，否则 `ok: false` + `reason: bad-request`（非法值不静默忽略）。
+                    显式值优先于"文字类动画点播前强制朝左"那条镜像修正。
+                  example: right
             examples:
               turn:
                 summary: 播一段转向动画（池内名字）
                 value:
                   name: 东张西望
+              facing:
+                summary: 指定朝向（朝右，镜像）
+                value:
+                  name: 东张西望
+                  facing: right
               move:
                 summary: 播一段移动动画（会真的走过去，与菜单一致）
                 value:
@@ -543,7 +571,7 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（名字为空）、`pet-required`（没给 pet）、`unknown-pet`、
+            `bad-request`（名字为空 / `facing` 非法）、`pet-required`（没给 pet）、`unknown-pet`、
             `unknown-animation`、`generate-error`（配置不可读等）。
           content:
             application/json:
@@ -2243,6 +2271,7 @@ components:
       type: object
       description: |
         要播的一段动画。`name` 与 `url` **恰好一个**（由 `POST /anim` 在写入前保证）。
+        `facing` **可选**：字段缺席 = 调用方没指定朝向，消费端**不动朝向**（不是回落 `left`）。
       properties:
         name:
           type: string
@@ -2260,6 +2289,14 @@ components:
             与 `name` 并列、**由字段名区分**（不靠 `startsWith('http')` 嗅探：名字恰好长得像
             地址时会判错）。
           example: https://cdn.example.com/拉侧栏.webm
+        facing:
+          type: string
+          enum: [left, right]
+          description: |
+            调用方**显式指定**的朝向（`POST /anim` 的 `facing`）。**字段缺席 = 没指定** → 消费端
+            **不动朝向**（保持宠物当前朝向，不是回落 `left`）——所以"没要求"与"要求 `left`"在形状上
+            就是可区分的。`name` / `url` 两种形态都可能有这个字段。
+          example: right
 
     PositionLeaf:
       type: object

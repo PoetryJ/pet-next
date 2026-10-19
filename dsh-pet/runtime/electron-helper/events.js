@@ -305,14 +305,20 @@ function applyWorkStatusLeaf(leaf) {
  *    name = 池内名字，复用**右键菜单同一个处理函数** onMenuAction，所以镜像修正 / 移动类走真实
  *      位移 / 其余播一遍的语义与菜单点一下完全一致，这里不重写一遍；
  *    url  = 第三方自带的完整地址，**不走 onMenuAction**（裸地址没有菜单语义），只换源播一次。
+ *  `facing`（可选）= 调用方显式指定的朝向：**换源之前**赋给 sprite——switchTo 是在 onReady 里按
+ *  this.facing 贴 scaleX(-1) 的，晚一步就赶不上这一趟。没给就一个字都不动（保持宠物当前朝向，
+ *  而不是回落 left）；给了就跳过"文字类动画点播前强制朝左"那条修正（显式值优先）。
  *  petId 由路径解析出来（pets.<id>.anim）；本窗口只装一只宠物，按 id 命中即可。 */
 function applyAnimLeaf(petId, leaf) {
   const hit = S.readAnim(leaf);
   if (!hit) return;
   for (const s of sprites) {
     if (s.pet.id !== petId) continue;
+    const explicitFacing = hit.facing !== undefined;
+    if (explicitFacing) s.facing = hit.facing; // 必须在换源前：switchTo 里按它贴 scaleX(-1)
     if (hit.url !== undefined) s.playUrlOnce(hit.url, hit.playbackId);
-    else if (hit.name !== undefined) s.onMenuAction({ label: hit.name, anim: hit.name, playbackId: hit.playbackId });
+    else if (hit.name !== undefined)
+      s.onMenuAction({ label: hit.name, anim: hit.name, playbackId: hit.playbackId }, explicitFacing);
   }
 }
 

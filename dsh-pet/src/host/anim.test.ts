@@ -229,3 +229,48 @@ describe('decideAnim —— url 形态（第三方自带素材，issue #122 第 
     assert.equal(d.ok, true);
   });
 });
+
+describe('decideAnim —— facing（朝向，可选）', () => {
+  test('不传 / null → 通过且 facing 缺席（= 渲染端**不动朝向**，不是回落 left）', () => {
+    for (const over of [{}, { facing: undefined }, { facing: null }]) {
+      const d = decide(over);
+      assert.equal(d.ok, true, JSON.stringify(over) + ' 应通过');
+      assert.equal(d.ok === true && d.facing, undefined);
+    }
+  });
+
+  test('left / right 原样透出', () => {
+    for (const f of ['left', 'right'] as const) {
+      const d = decide({ facing: f });
+      assert.equal(d.ok, true);
+      assert.equal(d.ok === true && d.facing, f);
+    }
+  });
+
+  test('非法值 → bad-request（不静默忽略，与 /position 的 mode 同一口径）', () => {
+    for (const bad of ['LEFT', 'Right', 'up', '', '   ', 42, true, {}, []]) {
+      const d = decide({ facing: bad });
+      assert.equal(d.ok, false, JSON.stringify(bad) + ' 不应通过');
+      assert.equal(d.ok === false && d.reason, 'bad-request');
+      assert.match(d.ok === false ? d.message : '', /facing/);
+    }
+  });
+
+  test('url 形态一样带 facing', () => {
+    const d = decide({ name: undefined, url: 'https://cdn.example.com/x.webm', facing: 'right' });
+    assert.equal(d.ok, true);
+    assert.equal(d.ok === true && d.url, 'https://cdn.example.com/x.webm');
+    assert.equal(d.ok === true && d.facing, 'right');
+  });
+
+  test('facing 非法先于宠物解析报错（参数是调用方的错，先纠它）', () => {
+    const d = decide({ facing: 'up', requested: 'ghost' });
+    assert.equal(d.ok, false);
+    assert.equal(d.ok === false && d.reason, 'bad-request');
+  });
+
+  test('facing 不影响 name / url 二选一那条校验', () => {
+    assert.equal(decide({ name: '东张西望', url: 'https://x/y.webm', facing: 'left' }).ok, false);
+    assert.equal(decide({ name: undefined, url: undefined, facing: 'left' }).ok, false);
+  });
+});

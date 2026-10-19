@@ -189,6 +189,13 @@ export function readWorkStatus(leaf: StateLeaf): WorkStatusSnapshot | null {
 }
 
 /**
+ * 朝向：`left` = 素材原样，`right` = 镜像（渲染端贴 `scaleX(-1)`）。
+ * **与 host/anim.ts 的同名联合体是两份**——宿主不 import src/shared（同 `Corner`、`PositionMode`
+ * 的处理方式），改动时两边要一起改。
+ */
+export type PetFacing = 'left' | 'right';
+
+/**
  * 类型收窄：点播动画叶子 → 动画名**或**地址 + 回执编号（两者都空 → null，消费端跳过这一拍）。
  * **两种形态并列、由字段名区分**（issue #122 第 1 条）：
  *   - `name`：该宠物动画池内的名字，**名字即文件名**，消费端拼 `/thumb/<素材根>/<名>.webm` 换源，
@@ -198,15 +205,26 @@ export function readWorkStatus(leaf: StateLeaf): WorkStatusSnapshot | null {
  * "这个动画是否存在于该宠物"由宿主在写入前保证（播放端对不存在的名字没有兜底）。
  * `playbackId`：宿主受理时生成的回执编号（issue #122），渲染端拿它在播放的四个时机
  * 上报真实状态（见 /playback 路由）。老 host 不写这个字段 → undefined，消费端按"无回执"处理。
+ * `facing`：调用方**显式指定**的朝向（可选）。`undefined` = 没指定 → 消费端**不动朝向**，
+ * 保持宠物当前朝向——**不是**"回落 left"（叶子写端只在显式给了时才写这个字段，所以"没要求"
+ * 与"要求 left"在形状上就是可区分的）。两种形态都适用。
  */
-export function readAnim(leaf: StateLeaf): { name?: string; url?: string; playbackId?: string } | null {
+export function readAnim(
+  leaf: StateLeaf,
+): { name?: string; url?: string; playbackId?: string; facing?: PetFacing } | null {
   if (!leaf.data || typeof leaf.data !== 'object') return null;
-  const d = leaf.data as { name?: unknown; url?: unknown; playbackId?: unknown };
+  const d = leaf.data as { name?: unknown; url?: unknown; playbackId?: unknown; facing?: unknown };
   const name = typeof d.name === 'string' && d.name ? d.name : undefined;
   const url = typeof d.url === 'string' && d.url ? d.url : undefined;
   // 两个都缺席 = 形状非法（宿主写端保证恰好一个，这里不替它猜）
   if (name === undefined && url === undefined) return null;
-  return { name, url, playbackId: typeof d.playbackId === 'string' && d.playbackId ? d.playbackId : undefined };
+  return {
+    name,
+    url,
+    playbackId: typeof d.playbackId === 'string' && d.playbackId ? d.playbackId : undefined,
+    // 朝向：只认两个字面量，其余（含缺省、老 host、脏值）一律 undefined = 不动朝向
+    facing: d.facing === 'left' || d.facing === 'right' ? d.facing : undefined,
+  };
 }
 
 /**

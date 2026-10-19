@@ -54,7 +54,7 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 
 | 接口 | 功能 |
 | --- | --- |
-| `POST /dsh-pet-7340/anim?pet=` | **点播动画**（需锁）：播池内名字（同右键「动作」菜单）或第三方自带的 `url`；回 `playbackId` |
+| `POST /dsh-pet-7340/anim?pet=` | **点播动画**（需锁）：播池内名字（同右键「动作」菜单）或第三方自带的 `url`；`facing` 可选指定朝向（`left`/`right`，不传则不动朝向）；回 `playbackId` |
 | `GET /dsh-pet-7340/playback/{id}` | **播放回执**：查那次点播的真实状态；带 `?wait=&timeout=` 可挂起等待 |
 | `POST /dsh-pet-7340/playback/{id}/report` | 渲染端上报播放状态（**内部通道**，第三方不用调） |
 | `POST /dsh-pet-7340/position?pet=` | **位置控制**（需锁）：挪到归一化坐标，`mode` = 直接/弹簧/直线；不碰动画。额外回**夹取后**的 `x`/`y` |

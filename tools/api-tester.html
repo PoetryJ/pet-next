@@ -1104,6 +1104,21 @@
             </div>
 
             <div class="row">
+              <label for="anim-facing">朝向</label>
+              <div class="ctl">
+                <select id="anim-facing">
+                  <option value="">不指定（不动朝向）</option>
+                  <option value="left">left（素材原样）</option>
+                  <option value="right">right（镜像）</option>
+                </select>
+                <span class="hint">
+                  可选。不指定就<b>不动朝向</b>（保持宠物当前朝向，不是回落 left）；
+                  指定了就设成它，并优先于"文字类动画点播前强制朝左"那条镜像修正。
+                </span>
+              </div>
+            </div>
+
+            <div class="row">
               <label></label>
               <div class="ctl">
                 <button type="button" class="btn primary" id="anim-play">播放</button>
@@ -3006,6 +3021,9 @@
         res.textContent = mode === "url" ? "请填一个动画地址" : "该宠物没有可点播的动画";
         return;
       }
+      // 朝向（可选）：空值 = 不指定，**连字段都不发**——宿主据此区分"没要求"与"要求 left"
+      const facing = $("anim-facing").value;
+      if (facing) body.facing = facing;
       stopPlaybackWatch("重新点播"); // 新的一次点播：先停掉上一次的回执轮询
       res.textContent = "点播中…";
       const r = await POST("/anim" + actQuery(petId), { body });

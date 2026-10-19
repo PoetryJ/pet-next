@@ -23,14 +23,26 @@ import { findPetInstance } from './config';
 /** 点播失败的分类（路由原样透出给调用方） */
 export type AnimFailure = 'bad-request' | 'pet-required' | 'unknown-pet' | 'unknown-animation';
 
-/** 决策结论：通过则给出最终要写进 S 的内容（`name` 与 `url` **恰好一个**），否则给出显式原因 */
+/**
+ * 朝向：`left` = 素材原样，`right` = 镜像（渲染端贴 `scaleX(-1)`）。
+ * **与 shared/state.ts 的同名联合体是两份**——宿主不 import src/shared（同 `Corner`、`PositionMode`
+ * 的处理方式），改动时两边要一起改。
+ */
+export type PetFacing = 'left' | 'right';
+
+/** 决策结论：通过则给出最终要写进 S 的内容（`name` 与 `url` **恰好一个**），否则给出显式原因。
+ *  `facing` **可选**：undefined = 调用方没指定，渲染端**不动朝向**（不是"回落 left"）。 */
 export type AnimDecision =
-  { ok: true; petId: string; name?: string; url?: string } | { ok: false; reason: AnimFailure; message: string };
+  | { ok: true; petId: string; name?: string; url?: string; facing?: PetFacing }
+  | { ok: false; reason: AnimFailure; message: string };
 
 /** 字符串数组收窄（配置里的池子；非数组/空串 → 空数组） */
 function strings(v: unknown): string[] {
   return Array.isArray(v) ? v.filter((x): x is string => typeof x === 'string' && x !== '') : [];
 }
+
+/** 朝向收窄：只认两个字面量（大小写、空白、非字符串一律不算），不认识返回 `null` */
+const petFacing = (v: unknown): PetFacing | null => (v === 'left' || v === 'right' ? v : null);
 
 /**
  * 该条目的 animations 配置 → 可点播的动画名（去重，保持首次出现顺序）。
@@ -119,12 +131,14 @@ export function normalizeHttpUrl(v: unknown): string | null {
  * @param requested `?pet=` 的原值（**必填**：空串 → `pet-required`）
  * @param name 外部给的动画名（未规范化）
  * @param url 外部给的素材地址（未规范化）
+ * @param facing 外部给的朝向（**可选**：没给 → 渲染端不动朝向）
  */
 export function decideAnim(args: {
   cfg: Record<string, Record<string, unknown>>;
   requested: string;
   name: unknown;
   url: unknown;
+  facing?: unknown;
 }): AnimDecision {
   const { cfg, requested } = args;
 
@@ -132,6 +146,16 @@ export function decideAnim(args: {
   const rawUrl = typeof args.url === 'string' ? args.url.trim() : '';
   if (name && rawUrl) return { ok: false, reason: 'bad-request', message: 'name 与 url 只能给一个' };
   if (!name && !rawUrl) return { ok: false, reason: 'bad-request', message: 'name 或 url 必须给一个' };
+
+  // facing **可选**：没给（undefined / null——调用方复用 body 模板时两种都常见）→ **不动朝向**，
+  // 保持宠物当前朝向，而不是"回落 left"。给了就必须合法：非法值不静默忽略（与 /position 的 mode
+  // 同一口径，全插件没有"非法值当没传"的先例）。放在宠物解析之前——参数是调用方的错，先纠它。
+  let facing: PetFacing | undefined;
+  if (args.facing !== undefined && args.facing !== null) {
+    const f = petFacing(args.facing);
+    if (f === null) return { ok: false, reason: 'bad-request', message: 'facing 必须是 left / right' };
+    facing = f;
+  }
 
   // pet **必填**且必须真实存在（与 /broadcast、/position 同一口径）。收紧前这里是
   // `requested || active || 'main'`——`active` 是"当前桌宠" = **有效宠物列表第一只**，
@@ -151,7 +175,7 @@ export function decideAnim(args: {
     if (url === null) {
       return { ok: false, reason: 'bad-request', message: 'url 必须是 http/https 的完整地址' };
     }
-    return { ok: true, petId, url };
+    return { ok: true, petId, url, facing };
   }
 
   // name 形态：名字必须是该宠物菜单里点得到的动画。播放端"名字即文件名"，播不存在的动画只会静默失败，
@@ -161,5 +185,5 @@ export function decideAnim(args: {
     return { ok: false, reason: 'unknown-animation', message: '没有这个动画：' + name };
   }
 
-  return { ok: true, petId, name };
+  return { ok: true, petId, name, facing };
 }

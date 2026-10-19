@@ -33,6 +33,7 @@ import {
   type PositionMode,
   type SayCue,
   type LockState,
+  type PetFacing,
 } from '../shared/state';
 import { WORK_STATUS_INDEX, type WorkStatusSnapshot } from '../shared/work-status';
 import { makeBalanceBubble, makeWhisperBubble } from './bubble';
@@ -195,8 +196,9 @@ export function makePetUI(rt: {
      *  注意与组件内既有的 `anim`（**当前正在播的**动画名）区分：这个只是"要播什么"的指令。
      *  `name` 与 `url` **恰好一个**（host 判定层保证）：`name` = 池内名字，交给菜单动作处理函数
      *  （镜像修正 / 移动类走真实位移）；`url` = 第三方自带的完整地址，直接换源播一次、
-     *  **不走菜单语义**（裸地址没有"是不是文字类 / 是不是移动类"这些属性）。 */
-    animCue?: { name?: string; url?: string; seq: number; playbackId?: string };
+     *  **不走菜单语义**（裸地址没有"是不是文字类 / 是不是移动类"这些属性）。
+     *  `facing` = 调用方**显式指定**的朝向（可选）：undefined = 没指定 → **不动朝向**（不是回落 left）。 */
+    animCue?: { name?: string; url?: string; seq: number; playbackId?: string; facing?: PetFacing };
     animCueTick: number;
     /** 本宠物的「位置」指令（其他插件经 POST /position 写进 S；容器从 S 分发下来）。
      *  `x`/`y` 是宠物**中心**的归一化坐标（0~1，host 写入前已夹取）；
@@ -756,6 +758,16 @@ export function makePetUI(rt: {
     useEffect(() => {
       if (!animCue || animCue.seq === prevAnimSeqRef.current) return;
       prevAnimSeqRef.current = animCue.seq;
+      // 朝向（POST /anim 的 facing，可选）：**必须在换源之前落地**——switchTo 是在 onReady 里按
+      // facingRef.current 贴 scaleX(-1) 的，晚一步就赶不上这一趟。
+      // 且必须连 facingRef **一起立即同步**：setFacing 是异步的，只调它的话本次 switchTo 读到的
+      // 还是旧朝向（与 handleEnded 里 turn 翻转同一个道理）。
+      // **没传 facing 就一个字都不动**：保持宠物当前朝向，而不是回落 left。
+      const explicitFacing = animCue.facing !== undefined;
+      if (animCue.facing !== undefined) {
+        setFacing(animCue.facing);
+        facingRef.current = animCue.facing;
+      }
       // url 形态（issue #122 第 1 条）：第三方自带的素材地址。**不走 handleMenuAction**——
       // 那套是菜单语义（文字类先强制朝左的镜像修正、移动类走真实位移），裸地址没有这些属性。
       // 这里只做"插播一段"：停掉漫游/移动，换源播一次，播完由 handleEnded 回到正常动画链
@@ -770,7 +782,8 @@ export function makePetUI(rt: {
         return;
       }
       if (animCue.name === undefined) return;
-      handleMenuAction({ label: animCue.name, anim: animCue.name }, animCue.playbackId);
+      // keepFacing：显式指定的朝向优先于"文字类强制朝左"那条镜像修正
+      handleMenuAction({ label: animCue.name, anim: animCue.name }, animCue.playbackId, explicitFacing);
       // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [animCueTick]);
 
@@ -1803,7 +1816,9 @@ export function makePetUI(rt: {
     // 注意：菜单是独立浮层，只在宠物命中区拦截右键（preventDefault + stopPropagation），
     // 绝不进入/改动 DSH 页面自己的菜单。浏览器端工具项 = 查看余额 / 碎碎念 / 对话 / 回到初始位置
     // （无「打开网站」——宠物就在网页里；无「重载配置」——刷新页面即可）。
-    const handleMenuAction = (leaf: MenuLeaf, playbackId?: string) => {
+    /** `keepFacing` = 调用方已**显式指定**朝向（POST /anim 的 facing）：跳过下面"文字类动画
+     *  点播前强制朝左"那条镜像修正——显式值优先。右键菜单点播不传（保持原语义）。 */
+    const handleMenuAction = (leaf: MenuLeaf, playbackId?: string, keepFacing = false) => {
       if (leaf.action === 'show-balance') {
         // 查看余额（与桌面菜单同一套语义）：POST 动作端点让 host 立即刷新一次并写入 S（manual 标记随数据一起写）。
         // 结果**这里什么都不用做**：写叶子会让版本号变，挂着的长轮询那一拍立刻返回并展示（0 延迟）。
@@ -1887,8 +1902,9 @@ export function makePetUI(rt: {
       // 回执归属：这一段动画若来自第三方点播，编号要跟着这次换源一起下发（自播动画传 null，
       // 顺带把上一次的编号清掉，避免陈旧编号串到自播动画上）
       const cuePlaybackId = playbackId ?? null;
-      // 文字类（noMirror）朝右站姿是镜像的：点播前强制朝左，避免文字镜像（与随机链"朝右不选文字"同语义）
-      if (isNoMirrorAnimation(petAnims.categories, leaf.anim) && facingRef.current === 'right') {
+      // 文字类（noMirror）朝右站姿是镜像的：点播前强制朝左，避免文字镜像（与随机链"朝右不选文字"同语义）。
+      // `keepFacing` 时跳过：调用方已显式指定朝向，显式值优先（要 right 就给 right，哪怕文字会镜像）。
+      if (!keepFacing && isNoMirrorAnimation(petAnims.categories, leaf.anim) && facingRef.current === 'right') {
         setFacing('left');
       }
       // 点播移动动画：走真实移动（与随机移动同一套：边界检查 / 随机距离 / leadSec·tailSec 时段 / dir 计算），
@@ -2181,7 +2197,9 @@ export function makePetUI(rt: {
     const [sayTick, setSayTick] = useState(0);
     const sayRef = useRef<Record<string, SayCue & { seq: number }>>({});
     const [animCueTick, setAnimCueTick] = useState(0);
-    const animCueRef = useRef<Record<string, { name?: string; url?: string; seq: number; playbackId?: string }>>({});
+    const animCueRef = useRef<
+      Record<string, { name?: string; url?: string; seq: number; playbackId?: string; facing?: PetFacing }>
+    >({});
     const [posCueTick, setPosCueTick] = useState(0);
     const posCueRef = useRef<
       Record<string, { x: number; y: number; mode: PositionMode; duration: number; seq: number }>
@@ -2247,6 +2265,7 @@ export function makePetUI(rt: {
                 name: hit.name,
                 url: hit.url,
                 playbackId: hit.playbackId,
+                facing: hit.facing,
                 seq: (animCueRef.current[petId]?.seq ?? 0) + 1,
               };
               setAnimCueTick((t) => t + 1);
