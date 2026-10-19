@@ -3663,13 +3663,14 @@
       // 只需 id + display：写哪一层（主配置 / 文件宠物）由宿主按 id 反查，
       // 不像保存配置那样需要回传整段 pets。
       const r = await POST("/pet-display", { body: { id: petId, display } });
-      if (r.status === 200) {
+      // 业务失败是 **200 + {ok:false, reason}**（缺 id / display 非法 / 宠物不存在 / 写盘失败）——
+      // 只看状态码会把失败体当成成品聚合喂给 loadPets。
+      if (r.status === 200 && !(r.body && r.body.ok === false)) {
         res.textContent = "已应用 · " + r.ms + "ms（桌面端会按新配置重建窗口）";
         S.cfg = r.body; // 响应体就是改动后的成品聚合，直接采用（与保存配置同一条路）
         await loadPets();
       } else {
-        const why = (r.body && r.body.error) || r.error || "HTTP " + r.status;
-        res.textContent = "被拒：" + why;
+        res.textContent = "被拒：" + whyOf(r);
       }
     });
 
