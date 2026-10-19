@@ -18,10 +18,10 @@
  * 口径自包含实现一份；两边的守卫测试会同时钉住这份口径，任一侧改了池子就会有一边失败。
  */
 
-import { findPetInstance, flattenPetList } from './config';
+import { findPetInstance } from './config';
 
 /** 点播失败的分类（路由原样透出给调用方） */
-export type AnimFailure = 'bad-request' | 'unknown-pet' | 'unknown-animation';
+export type AnimFailure = 'bad-request' | 'pet-required' | 'unknown-pet' | 'unknown-animation';
 
 /** 决策结论：通过则给出最终要写进 S 的内容（`name` 与 `url` **恰好一个**），否则给出显式原因 */
 export type AnimDecision =
@@ -116,30 +116,33 @@ export function normalizeHttpUrl(v: unknown): string | null {
  * 两个都给 / 都不给都是**意图不明**，直接 bad-request，不替调用方猜一个。
  *
  * @param cfg readAllConfig 的合并成品（所有字段已填满，这里不做兜底解析）
- * @param requested `?pet=` 的原值（可为空串）
- * @param active `resolveActivePetId()` 的结果（可为空串；无宠物时为空）
+ * @param requested `?pet=` 的原值（**必填**：空串 → `pet-required`）
  * @param name 外部给的动画名（未规范化）
  * @param url 外部给的素材地址（未规范化）
  */
 export function decideAnim(args: {
   cfg: Record<string, Record<string, unknown>>;
   requested: string;
-  active: string;
   name: unknown;
   url: unknown;
 }): AnimDecision {
-  const { cfg, requested, active } = args;
+  const { cfg, requested } = args;
 
   const name = typeof args.name === 'string' ? args.name.trim() : '';
   const rawUrl = typeof args.url === 'string' ? args.url.trim() : '';
   if (name && rawUrl) return { ok: false, reason: 'bad-request', message: 'name 与 url 只能给一个' };
   if (!name && !rawUrl) return { ok: false, reason: 'bad-request', message: 'name 或 url 必须给一个' };
 
-  // pet 缺省 = 当前桌宠；active 也为空时兜底 main（与 /broadcast 同一口径）
-  const petId = String(requested || active || 'main');
-  if (!flattenPetList(cfg).some((p) => String(p.id) === petId)) {
-    return { ok: false, reason: 'unknown-pet', message: '没有这只桌宠：' + petId };
-  }
+  // pet **必填**且必须真实存在（与 /broadcast、/position 同一口径）。收紧前这里是
+  // `requested || active || 'main'`——`active` 是"当前桌宠" = **有效宠物列表第一只**，
+  // 落点随用户 /pet 操作而变，第三方无从预期，所以整条缺省链已删除（issue #122 第 1 条）。
+  const petId = String(requested ?? '').trim();
+  if (!petId) return { ok: false, reason: 'pet-required', message: 'pet 必填：要指定操作哪只桌宠' };
+  // **一次查找同时给出"存在性"与"所属条目"**（动画池按条目取）：校验与取值用同一份结果，
+  // 后面不必再查一次，也就不留"查不到时兜底 main"那种**不可达分支**（老代码允许 pet 缺省，
+  // 那时确实可能查不到）。
+  const found = findPetInstance(cfg, petId);
+  if (!found) return { ok: false, reason: 'unknown-pet', message: '没有这只桌宠：' + petId };
 
   // url 形态：地址合法即放行。**不查动画池、也不要求素材真的取得到**——播放端对取不到的地址
   // 没有兜底（浏览器 fetch 失败 / 桌面 video error），会经回执如实报 failed，而不是在这里猜。
@@ -153,8 +156,7 @@ export function decideAnim(args: {
 
   // name 形态：名字必须是该宠物菜单里点得到的动画。播放端"名字即文件名"，播不存在的动画只会静默失败，
   // 所以必须在这里拦住，而不是写进 S 让前端白跑一趟。
-  const conf = (findPetInstance(cfg, petId) ?? { conf: cfg.main ?? {} }).conf;
-  const allowed = animationNames(conf.animations);
+  const allowed = animationNames(found.conf.animations);
   if (!allowed.includes(name)) {
     return { ok: false, reason: 'unknown-animation', message: '没有这个动画：' + name };
   }

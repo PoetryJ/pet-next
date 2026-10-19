@@ -256,6 +256,11 @@ paths:
           description: |
             生成结果。注意 HTTP 状态码**恒为 200**（除 405）：失败通过 `ok: false` 表达，
             这样调用方只需解析一层即可，不必区分"HTTP 失败"与"业务失败"。
+
+            `reason` 取值：`provider-missing`（没有可用的模型——独立模式下恒为它）、
+            `generate-error`（生成失败或 IO 失败，带 `message`）、`unknown-pet`（目标宠物在
+            "校验那次读"与生成前那次读之间被删掉了——罕见，但如实报，**不会静默按 `main` 生成**，
+            也不会写下一只已不存在宠物的叶子）。
           content:
             application/json:
               schema:
@@ -284,7 +289,7 @@ paths:
         - `text` 必填，`trim()` 后不得为空；
         - **不设长度限制，也不限频**：投喂是显式的调用方行为，内容与频率都由调用方自己负责，
           宿主不做静默丢弃、截断或排队；
-        - `pet` 必须是一只真实存在的桌宠；缺省时落到当前桌宠，仍为空则兜底 `main`；
+        - `pet` **必填**，且必须是一只真实存在的桌宠（没给 → `pet-required`，不存在 → `unknown-pet`）；
         - **配图两种形态，二选一**（issue #122 第 1 条的"资源注册"）：
           - `image`：只接受**该桌宠条目表情包池内**的名称（即该条目 `memes` 里、且在其表情包目录链
             —— `pet/<素材根>-memes/`（独占）或 `memes/` → 包内 `assets/memes/` ——里真实存在的键）。
@@ -309,15 +314,7 @@ paths:
         写入叶子时 `duration` / `anim` 是**解析后的生效值**（缺省也已填成显式值），
         所以读 `/state` 就能看到实际生效的时长与联动开关，不用自己猜缺省是多少。
       parameters:
-        - name: pet
-          in: query
-          required: false
-          description: |
-            目标桌宠 id。**缺省时落到当前桌宠**（宿主内部按已选/首个有效桌宠解析），
-            仍无法确定时兜底 `main`。指定的 id 不存在 → `ok: false` + `reason: unknown-pet`。
-          schema:
-            type: string
-          example: main
+        - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/LockQuery"
       requestBody:
         required: true
@@ -389,8 +386,8 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（空文本 / 非法 `duration`）、`unknown-pet`、`unknown-image`、
-            `generate-error`（配置不可读等）。
+            `bad-request`（空文本 / 非法 `duration`）、`pet-required`（没给 pet）、
+            `unknown-pet`、`unknown-image`、`generate-error`（配置不可读等）。
           content:
             application/json:
               schema:
@@ -438,8 +435,8 @@ paths:
         "200":
           description: |
             恒为 200（除 405）。失败通过 `ok: false` 表达，`reason` 可能是
-            `unknown-pet`（指定的 id 不存在）、`generate-error`（配置不可读等）。
-            **当前没有气泡不是失败。**
+            `pet-required`（没给 pet）、`unknown-pet`（指定的 id 不存在）、
+            `generate-error`（配置不可读等）。**当前没有气泡不是失败。**
           content:
             application/json:
               schema:
@@ -474,7 +471,7 @@ paths:
         - `name` 与 `url` 必须**恰好给一个**：两个都给或都不给 → `bad-request`（意图不明，不替
           调用方猜）；
         - `name` 给了就必须在该宠物的动画池内；`url` 给了就必须是 http/https 的完整地址；
-        - `pet` 必须是一只真实存在的桌宠；缺省时落到当前桌宠，仍为空则兜底 `main`。
+        - `pet` **必填**，且必须是一只真实存在的桌宠（没给 → `pet-required`，不存在 → `unknown-pet`）。
 
         **跨域不由本插件解决**：两端消费端都是 `fetch` + blob（为了绕开流式加载的 stall），
         所以**跨域地址要求对方自己带 `Access-Control-Allow-Origin`**。插件与第三方插件在同一个
@@ -498,17 +495,7 @@ paths:
         另外同一个动画连续点播两次：`counter` 会递增，正常情况下会重播；但若第二次落在
         播放端上一次切换尚未就绪的窗口内，可能被其防重逻辑吞掉（表现为只播一次）。
       parameters:
-        - name: pet
-          in: query
-          required: false
-          description: |
-            目标桌宠 id。缺省时落到当前桌宠；仍无法确定时兜底 `main`。
-            指定的 id 不存在 → `ok: false` + `reason: unknown-pet`。
-            **多宠物时建议显式传**——缺省落到的是"当前桌宠"，未必是你要点播的那只；
-            而名字必须在**这只宠物所属条目**的动画池内（见上）。
-          schema:
-            type: string
-          example: main
+        - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/LockQuery"
       requestBody:
         required: true
@@ -556,8 +543,8 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（名字为空）、`unknown-pet`、`unknown-animation`、
-            `generate-error`（配置不可读等）。
+            `bad-request`（名字为空）、`pet-required`（没给 pet）、`unknown-pet`、
+            `unknown-animation`、`generate-error`（配置不可读等）。
           content:
             application/json:
               schema:
@@ -631,16 +618,7 @@ paths:
         `duration` **只在 `line` 模式下必填**（非负有限数，`0` = 立即到位）；`instant` / `spring`
         给了也**不看**——调用方常把 body 模板整个复用，为此报错只会逼他们删字段。
       parameters:
-        - name: pet
-          in: query
-          required: false
-          description: |
-            目标桌宠 id。缺省时落到当前桌宠；仍无法确定时兜底 `main`。
-            指定的 id 不存在 → `ok: false` + `reason: unknown-pet`。
-            **多宠物时建议显式传**——缺省落到的是"当前桌宠"，未必是你要挪的那只。
-          schema:
-            type: string
-          example: main
+        - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/LockQuery"
       requestBody:
         required: true
@@ -757,15 +735,7 @@ paths:
 
         **撞上用户拖拽时静默丢弃**：同 `POST /position`，且同样回 `ok: true`。
       parameters:
-        - name: pet
-          in: query
-          required: false
-          description: |
-            目标桌宠 id。缺省时落到当前桌宠；仍无法确定时兜底 `main`。
-            指定的 id 不存在 → `ok: false` + `reason: unknown-pet`。
-          schema:
-            type: string
-          example: main
+        - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/LockQuery"
       requestBody:
         required: true
@@ -803,7 +773,8 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（角度/力度非法）、`unknown-pet`、`generate-error`（配置不可读等）。
+            `bad-request`（角度/力度非法）、`pet-required`（没给 pet）、`unknown-pet`、
+            `generate-error`（配置不可读等）。
           content:
             application/json:
               schema:
@@ -900,8 +871,8 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（`ttl` / `lockId` 非法）、`unknown-pet`、`locked`（带 `expiresAt`）、
-            `lock-lost`（带 `cause`）。
+            `bad-request`（`ttl` / `lockId` 非法）、`pet-required`（没给 pet）、`unknown-pet`、
+            `locked`（带 `expiresAt`）、`lock-lost`（带 `cause`）。
           content:
             application/json:
               schema:
@@ -990,8 +961,8 @@ paths:
         "200":
           description: |
             恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
-            `bad-request`（两个都给 / 都不给 / 类型不对）、`unknown-pet`、
-            `lock-lost`（`lockId` 不匹配，带 `cause`）。**当前没有锁不是失败。**
+            `bad-request`（两个都给 / 都不给 / 类型不对）、`pet-required`（没给 pet）、
+            `unknown-pet`、`lock-lost`（`lockId` 不匹配，带 `cause`）。**当前没有锁不是失败。**
           content:
             application/json:
               schema:
@@ -1221,24 +1192,28 @@ paths:
         - $ref: "#/components/parameters/PetIdQuery"
       responses:
         "200":
-          description: 最近窗口
+          description: |
+            最近窗口。**失败也是 200**（`{ ok: false, reason }`），靠 `ok` 区分：
+            `pet-required`（没给 pet）、`unknown-pet`（没有这只宠物）、`generate-error`（读记忆 / 读配置失败）。
           content:
             application/json:
               schema:
-                type: object
-                required: [ok, messages, rounds]
-                properties:
-                  ok:
-                    type: boolean
-                    const: true
-                  messages:
-                    type: array
-                    description: 按时间正序排列的消息，最多 `rounds * 2` 条
-                    items:
-                      $ref: "#/components/schemas/ChatMemoryMessage"
-                  rounds:
-                    type: integer
-                    description: 该宠物当前生效的轮数（来自配置 `chatMemoryRounds`）
+                oneOf:
+                  - type: object
+                    required: [ok, messages, rounds]
+                    properties:
+                      ok:
+                        type: boolean
+                        const: true
+                      messages:
+                        type: array
+                        description: 按时间正序排列的消息，最多 `rounds * 2` 条
+                        items:
+                          $ref: "#/components/schemas/ChatMemoryMessage"
+                      rounds:
+                        type: integer
+                        description: 该宠物当前生效的轮数（来自配置 `chatMemoryRounds`）
+                  - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
         "500":
@@ -1280,8 +1255,10 @@ paths:
       responses:
         "200":
           description: |
-            恒为 200（除 405）。`reason` 取值：`bad-request`（空/超长消息）、
-            `provider-missing`（没有可用的对话服务商）、`generate-error`（生成/IO 失败）。
+            恒为 200（除 405）。`reason` 取值：`pet-required`（没给 pet）、`unknown-pet`（没有这只宠物，
+            或在排队等记忆锁期间被删掉了——这一支**不写记忆也不写气泡**）、
+            `bad-request`（空/超长消息）、`provider-missing`（没有可用的对话服务商）、
+            `generate-error`（生成/IO 失败）。
           content:
             application/json:
               schema:
@@ -1492,37 +1469,32 @@ paths:
                   display: web
       responses:
         "200":
-          description: 改动成功，返回改动后的成品聚合
+          description: |
+            **改动成功** → 改动后的成品聚合（与 `GET /config` 同一份）；
+            **业务失败** → `{ ok: false, reason, message }`。两者都是 200，靠 body 区分
+            （成功体没有 `ok` 字段，失败体 `ok` 恒为 `false`）——业务错误不用 400/404 表达，
+            否则调用方会把业务结论当成传输层故障。
+
+            `reason` 取值：`pet-required`（缺 `id` / 空串 / 全空白）、`bad-request`（`display`
+            不在枚举内 / 该层宠物配置非法）、`unknown-pet`（找不到这只宠物，含因 id 与其它条目
+            重复而在合并时被跳过的那种）、`generate-error`（配置读取失败 / 写盘失败 / 条目配置
+            文件找不到）。
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  $ref: "#/components/schemas/PetConfigEntry"
+                oneOf:
+                  - type: object
+                    additionalProperties:
+                      $ref: "#/components/schemas/PetConfigEntry"
+                  - $ref: "#/components/schemas/FailureResponse"
         "400":
-          description: |
-            请求体非法：JSON 解析失败（`invalid JSON body`）、缺 `id`（`missing pet id`）、
-            或 `display` 不在枚举内（`invalid display: xxx`）。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: |
-            找不到该宠物（`pet not found: xxx`）。该实例因 `id` 与其它条目重复而在合并时被跳过时
-            也走这里——那种情况下它在成品聚合里根本不存在，宿主不会去猜它属于哪个文件。
+          description: '请求体不是合法 JSON（`{ "error": "invalid JSON body" }`）——协议层错误，只有它是 400'
           content:
             application/json:
               schema:
                 $ref: "#/components/schemas/ErrorResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
-        "500":
-          description: 配置读取失败（安装损坏）或写盘失败
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
 
   /dsh-pet-7340/config/meta:
     get:
@@ -1768,7 +1740,12 @@ components:
       in: query
       required: true
       description: |
-        目标宠物 id（配置里 `pets[].id`，默认 `main`）。
+        目标宠物 id（配置里 `pets[].id`）——**必填**。
+
+        没给 / 空串 / 全空白 → `ok: false` + `reason: pet-required`；
+        给了但配置里没有这只宠物 → `ok: false` + `reason: unknown-pet`。
+        **没有缺省值**：绝不退到"当前桌宠"或列表第一只（issue #122 第 1 条），
+        所以同一句请求的落点不会随用户 `/pet` 的选择而变。
         允许包含点号与中文；**不要**按 `.` 解析由 `/state` 返回的路径键来取它。
       schema:
         type: string
@@ -1837,7 +1814,8 @@ components:
           type: string
           description: |
             失败原因分类。`bad-request` 参数不合法（空文本/超长）、`provider-missing` 没有可用
-            的对话服务商、`generate-error` 生成或 IO 失败、`unknown-pet` 指定的桌宠不存在、
+            的对话服务商、`generate-error` 生成或 IO 失败、`pet-required` 必填的 pet 没给
+            （缺省 / 空串 / 全空白）、`unknown-pet` 指定的桌宠不存在、
             `unknown-image` 配图不在包内表情包池内、`unknown-animation` 动画名不在池内。
 
             占用锁（issue #122 第 4 项）另有三个：`locked` 该宠物已被别人占用（带 `expiresAt`）、
@@ -1848,6 +1826,7 @@ components:
               bad-request,
               provider-missing,
               generate-error,
+              pet-required,
               unknown-pet,
               unknown-image,
               unknown-animation,

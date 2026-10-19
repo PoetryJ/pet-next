@@ -1864,10 +1864,14 @@ export function makePetUI(rt: {
         })
           .then(async (r) => {
             if (!r.ok) throw new Error('pet-display HTTP ' + r.status);
+            const body = (await r.json()) as Record<string, unknown>;
+            // 业务失败是 **HTTP 200 + `{ok:false, reason}`**（缺 id / display 非法 / 宠物不存在 /
+            // 写盘失败全走这一条）——只看状态码会把失败体当成成品聚合喂给 reload。
+            if (body.ok === false) throw new Error('pet-display 被拒：' + String(body.reason ?? ''));
             // 响应体就是改动后的成品聚合（与设置页保存同路），直接交给 reload。
             // **必须传它**：不传参时 reload 会再拉一次 GET /config，那次请求可能拿回陈旧配置，
             // 现场表现就是"浏览器端要刷新才生效"。
-            petBridge.reload((await r.json()) as Record<string, Record<string, unknown>>);
+            petBridge.reload(body as Record<string, Record<string, unknown>>);
           })
           .catch((e: unknown) => console.warn('[dsh-pet] 显示位置切换失败', e));
         return;

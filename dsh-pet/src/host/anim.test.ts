@@ -50,7 +50,7 @@ const cfg = {
 
 /** 决策的便捷调用：只覆盖本次关心的参数 */
 const decide = (over: Partial<Parameters<typeof decideAnim>[0]> = {}) =>
-  decideAnim({ cfg, requested: 'main', active: '', name: '东张西望', url: undefined, ...over });
+  decideAnim({ cfg, requested: 'main', name: '东张西望', url: undefined, ...over });
 
 describe('animationNames —— 与右键菜单同一份动画集合', () => {
   test('七个池全部收到（菜单树取的就是这些）', () => {
@@ -137,16 +137,12 @@ describe('decideAnim —— 宠物选择', () => {
     assert.equal(d.ok === true && d.petId, 'test1');
   });
 
-  test('不指定 pet → 落到当前桌宠（active）', () => {
-    const d = decide({ requested: '', active: 'test1' });
-    assert.equal(d.ok, true);
-    assert.equal(d.ok === true && d.petId, 'test1');
-  });
-
-  test('不指定且没有当前桌宠 → 兜底 main', () => {
-    const d = decide({ requested: '', active: '' });
-    assert.equal(d.ok, true);
-    assert.equal(d.ok === true && d.petId, 'main');
+  test('不指定 pet → pet-required（缺省链已删除：绝不退到"当前桌宠"/列表第一只）', () => {
+    for (const empty of ['', '   ']) {
+      const d = decide({ requested: empty });
+      assert.equal(d.ok, false);
+      assert.equal(d.ok === false && d.reason, 'pet-required');
+    }
   });
 
   test('指定不存在的宠物 → unknown-pet', () => {
