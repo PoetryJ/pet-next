@@ -1136,7 +1136,12 @@ export function makePetUI(rt: {
         : actions[Math.floor(Math.random() * actions.length)];
       if (!chosen) return false;
       const mp = Object.assign({}, moves.default, chosen.params || {});
-      const dir = (facingRef.current === 'right') !== petAnims.turn.includes(animRef.current) ? 1 : -1;
+      // 朝向 → 走路方向：**只看当前 facing**。原式是 `(facingRef.current === 'right') !==
+      // petAnims.turn.includes(animRef.current)`，那个 XOR 是用来补"turn 播完 setFacing 异步、
+      // 紧随的 pickNext 还读到旧 facing"（见 handleEnded）。1ea84ee 起 handleEnded 已立即同步
+      // facingRef，旧朝向不复存在，XOR 反而把方向多翻一次：turn 播完朝右，这里算出 dir=-1，
+      // 于是镜像朝右、人往左走。故删掉。
+      const dir = facingRef.current === 'right' ? 1 : -1;
       const W = window.innerWidth;
       // 移动距离随宠物缩放：config 的 minDist/maxDist 是基准尺寸（462px 宽）下的 px，
       // 按 实际size/基准 等比缩放 —— 小宠物挪小步、大宠物挪大步，与人物自身大小匹配

@@ -716,7 +716,10 @@ class PetSprite {
       : actions[Math.floor(Math.random() * actions.length)];
     if (!chosen) return false;
     const mp = Object.assign({}, moves.default, chosen.params || {});
-    const dir = (this.facing === 'right') !== this.animations.turn.includes(this.anim) ? 1 : -1;
+    // 朝向 → 走路方向：**只看当前 facing**（与浏览器 pet.ts 的 tryMove 同一条）。原式的 XOR 是用来
+    // 补"turn 播完 setFacing 异步、紧随的随机链还读到旧 facing"，双端都改成立即同步之后它反而把方向
+    // 多翻一次：turn 播完朝右，这里算出 dir=-1，于是镜像朝右、人往左走。故删掉。
+    const dir = this.facing === 'right' ? 1 : -1;
     const W = VIEW.w;
     const H = VIEW.h;
     const distScale = this.size / S.PET_REF_WIDTH;
