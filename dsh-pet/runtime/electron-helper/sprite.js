@@ -720,9 +720,17 @@ class PetSprite {
     const W = VIEW.w;
     const H = VIEW.h;
     const distScale = this.size / S.PET_REF_WIDTH;
+    const cx = this.currentCenterX();
+    const cy = this.currentCenterY();
+    // 落点按显示器判定：默认走**并集**——能骑缝跨屏走，但走不进外接矩形里的空洞。
+    // confineToScreen（设置页「锁定在当前屏幕」）开启时改成只按**宠物现在所在那块屏**判定：
+    // 屏缝与空洞一样当墙，越出当前屏的那一步直接取消（planMove 返回 null ⇒ 本次移动不发车）。
+    // 与抛掷锁定的差别：抛掷是逐帧物理边界（撞到屏缝会弹回来），漫游是一次性落点规划、没有反弹语义。
+    // 宠物被拖到屏外（落在空洞里）时 resolveRect 取最近那块屏，所以锁定态下依然走得动。
+    const wanderArea = this.confineToScreen ? S.resolveRect(AREAS, cx, cy) : null;
     const plan = S.planMove({
-      cx: this.currentCenterX(),
-      cy: this.currentCenterY(),
+      cx,
+      cy,
       W,
       H,
       dir,
@@ -731,8 +739,7 @@ class PetSprite {
       margin: mp.margin, // 同 position() 的 marginX/marginY：页面级缩放统一放大，配置值不再乘 scale（§3.5）
       halfW: this.halfW,
       sideAllow: this.sideAllow,
-      // 落点按显示器并集判定：能骑缝跨屏走，但走不进外接矩形里的空洞
-      areas: AREAS,
+      areas: wanderArea ? [wanderArea] : AREAS,
     });
     if (!plan) return false;
     this.pendingMove = { ...plan, dir, leadSec: mp.leadSec, tailSec: mp.tailSec };
