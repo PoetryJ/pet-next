@@ -523,7 +523,7 @@ export function makePetUI(rt: {
     useEffect(() => {
       mountedRef.current = true;
       // 「实况」口子（issue #122 第 1 条）：把这一页里这只宠物的实时位置/朝向注册给 Cordis 只读
-      // 服务 `petPose`（见 ./pose）。**按需读**——消费者每次调用都走这个闭包取当前值，所以走位、
+      // 服务 `petApi7340`（见 ./pose）。**按需读**——消费者每次调用都走这个闭包取当前值，所以走位、
       // 抛掷、拖拽**中途**也能读到，不是快照。
       // 坐标与 POST /position 同一口径：宠物**中心**的归一化 0~1。
       const unregisterPose = registerPose(cfg.id, () => ({

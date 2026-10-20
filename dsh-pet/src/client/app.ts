@@ -75,9 +75,11 @@ export function makeFactory(): (require: (mod: string) => any) => any {
       //
       // 桌面端那条路是 `GET /pose`（宿主快照）；两边**字段名与坐标口径完全一致**，只是取法不同。
       // **只开读**：让它播什么、停什么仍走 HTTP 接口，避免控制出现两条通道（契约分叉）。
-      // 服务名用裸词（与 connection / slots / commandUi 同一风格），消费者用
-      // `ctx.get('petPose')` 探测——拿不到就是老版本，不抛。
-      ctx.provide('petPose', { pose: readPose });
+      // 服务名带 `7340` 后缀，与 HTTP 路由 `/dsh-pet-7340` 同源：DSH 生态里的桌宠插件有几百个，
+      // 裸名（petPose / petApi）撞名概率太高，而 Cordis 里同名服务二次 provide 会**直接抛错**、
+      // 让整个客户端插件加载失败（overlay 与设置页全都不注册）。消费者用
+      // `ctx.get('petApi7340')` 探测——拿不到就是老版本，不抛。
+      ctx.provide('petApi7340', { pose: readPose });
 
       // 系统通知：host 侧监听 DSH 宿主事件生成通知帧，写进 /state 的 sections.notify；
       // 容器的统一轮询发现 counter 变化后调 notifyFromFrame 弹 toast（本引擎不再自己轮询）。

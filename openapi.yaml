@@ -1030,11 +1030,11 @@ paths:
 
         **只有桌面端有这条路。** 网页端的宠物位置**天生每个页面一份**（开两个标签页时两边本来就
         不同），塞进宿主一份快照语义上就是错的（后写者覆盖先写者）——所以网页端走**页面内**的
-        Cordis 只读服务 `petPose`：
+        Cordis 只读服务 `petApi7340`：
 
         ```js
         // 同页的第三方客户端插件；拿不到 = 老版本，不抛
-        const svc = ctx.get('petPose');
+        const svc = ctx.get('petApi7340');
         const pose = svc ? svc.pose('main') : null; // → { x, y, facing } | null
         ```
 

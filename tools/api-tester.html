@@ -1304,7 +1304,7 @@
               <div class="ctl">
                 <button type="button" class="btn" id="mv-pose">读实况</button>
                 <span class="hint" id="mv-pose-result">
-                  桌面端才有；网页端走页面内 Cordis 服务 <span class="mono">petPose</span>
+                  桌面端才有；网页端走页面内 Cordis 服务 <span class="mono">petApi7340</span>
                 </span>
               </div>
             </div>
@@ -3400,7 +3400,7 @@
      * 可见效果的动作端点上。
      *
      * **网页端没有这条路**：它的位置天生每个页面一份（两个标签页本来就不同），走页面内的 Cordis
-     * 只读服务 `ctx.get('petPose').pose(petId)`——字段与坐标口径完全一致，只是"取"的方式不同。
+     * 只读服务 `ctx.get('petApi7340').pose(petId)`——字段与坐标口径完全一致，只是"取"的方式不同。
      */
     $("mv-pose").addEventListener("click", () => {
       void mvReadPose(false);
@@ -3421,7 +3421,7 @@
       const r = await GET("/pose?pet=" + encodeURIComponent(petId));
       if (!(r.body && r.body.ok)) {
         marker.style.display = "none";
-        if (!silent) res.textContent = "被拒：" + whyOf(r) + "（网页端请用 Cordis 服务 petPose）";
+        if (!silent) res.textContent = "被拒：" + whyOf(r) + "（网页端请用 Cordis 服务 petApi7340）";
         return;
       }
       // 夹到框内只是**显示**需要：宠物贴边拖出时中心点可能略出 0~1，接口本身不夹取
