@@ -32,9 +32,7 @@ export function parseAccountBalance(
   // 账号可能同时持有多个币种钱包（例如「USD 0.00 + CNY 有余额」）。旧实现只取 wallets[0]，
   // 会把排在前面的空 USD 钱包当成账户余额，显示成 $0.00。这里改为：先挑余额最大的那个
   // （有余额的才是用户真正关心的），金额相同或全为 0 时 CNY 优先。
-  const candidates = wallets
-    .map((w) => obj(w as unknown))
-    .filter((w): w is Record<string, unknown> => w !== undefined);
+  const candidates = wallets.map((w) => obj(w as unknown)).filter((w): w is Record<string, unknown> => w !== undefined);
   if (candidates.length === 0) throw new Error('dsh-pet: 账号钱包结构非法');
   const walletAmount = (w: Record<string, unknown>): number => {
     const n = Number(w.balance);
