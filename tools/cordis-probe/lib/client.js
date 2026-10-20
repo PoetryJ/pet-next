@@ -296,8 +296,21 @@
           out.textContent = text;
         };
 
+        /**
+         * 当前正在「跟随」的方法的停止函数（`null` = 没在跟随）。
+         *
+         * 跟随 = 每帧调一次。调用按钮只读一次，看不出 `progress` 这类会变的量；跟随才能看到
+         * 数值在动。同一时间只保留一个跟随，再点同一个按钮即停。
+         */
+        let stopFollow = null;
+
         /** 重建服务清单（保留折叠状态靠重扫，不做额外状态机）。 */
         const render = () => {
+          // 重建会把旧按钮一起丢掉，跟随循环必须先停，否则它会继续往输出区写
+          if (stopFollow !== null) {
+            stopFollow();
+            stopFollow = null;
+          }
           list.textContent = '';
           const services = listServices(ctx);
           if (services.length === 0) {
@@ -357,6 +370,50 @@
                     }
                   });
                   line.appendChild(callBtn);
+
+                  // 跟随：每帧调一次，专治 progress 这类"读一次看不出变化"的量
+                  const followBtn = el('button', 'cp-btn', '跟随');
+                  followBtn.addEventListener('click', (event) => {
+                    event.stopPropagation();
+                    if (stopFollow !== null) {
+                      stopFollow();
+                      stopFollow = null;
+                      followBtn.textContent = '跟随';
+                      return;
+                    }
+                    const args = parseArgs(argsInput.value);
+                    followBtn.textContent = '停止';
+                    let handle = 0;
+                    const tick = () => {
+                      try {
+                        const result = member.apply(service.value, args);
+                        write(
+                          service.name +
+                            '.' +
+                            key +
+                            '(' +
+                            args.map((a) => stringify(a)).join(', ') +
+                            ') →\n' +
+                            stringify(result),
+                          false,
+                        );
+                      } catch (error) {
+                        // 出错就自动停，别每帧刷同一条错误
+                        window.cancelAnimationFrame(handle);
+                        stopFollow = null;
+                        followBtn.textContent = '跟随';
+                        write(service.name + '.' + key + '() 抛错：' + describe(error), true);
+                        return;
+                      }
+                      handle = window.requestAnimationFrame(tick);
+                    };
+                    handle = window.requestAnimationFrame(tick);
+                    stopFollow = () => {
+                      window.cancelAnimationFrame(handle);
+                      followBtn.textContent = '跟随';
+                    };
+                  });
+                  line.appendChild(followBtn);
                 }
                 members.appendChild(line);
               }
