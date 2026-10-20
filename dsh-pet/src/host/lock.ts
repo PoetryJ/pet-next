@@ -10,9 +10,10 @@
  *
  * 四条边界（改之前先读完）：
  *
- *   1. **无锁 = 现状零变化**。没有锁时 `gate()` 直接放行、`locked()` 恒 false，所有既有路径一个字
- *      都不变（issue #122：「没有有效联动占用时，接口不改变 pet 原有行为」）。这也是它不会把
- *      代码搞乱的原因：新增的判断在常态下是空转的。
+ *   1. **不传 lock = 现状零变化**。没有锁时 `gate()` 放行、`locked()` 恒 false，所有既有路径一个字
+ *      都不变（issue #122：「没有有效联动占用时，接口不改变 pet 原有行为」）。但**传了编号却查不到
+ *      锁**是另一回事：那说明调用方以为自己还持有，必须回 `lock-lost` —— 否则「你丢了锁」这件事
+ *      会被悄悄抹掉，它会以为演出还在继续，实际早被释放 / 到期 / 抢占。
  *   2. **有界**：内存态 + TTL（缺省 2min、上限 30min），插件卸载 / 宿主重启即全部失效——
  *      调用方崩溃不会把宠物永久锁死（issue #122：「避免宠物被永久锁住」）。
  *   3. **续期就是心跳**：调用方必须定期续期，而**续期那一次调用同时就是「我的锁还在吗」的探测器**
@@ -184,17 +185,25 @@ export class LockStore {
   /**
    * 动作端点的门禁（`/anim`、`/broadcast`、`/position`、`/throw`、`/bubble/clear` 共用）。
    *
-   * **无锁 → 一律放行**（`lock` 参数连看都不看）：这是「无锁 = 现状零变化」那条的落点，
-   * 第三方在没有占用的常态下照旧不传 `lock` 就能用。
+   * 无锁时按「有没有带编号」分两条：
+   *   - **没带 `lock`** → 放行。没有占用的常态下，既有调用方一个字都不用改。
+   *   - **带了 `lock` 但查不到锁** → `lock-lost`。带了编号就说明调用方以为自己还持有；这时放行
+   *     等于把「你把锁丢了」悄悄抹掉，它会以为演出还在继续。`cause` 从墓碑里取，从没建过锁就是
+   *     `unknown`（issue #122 第 4 点：旧租约不能继续执行迟到请求）。
    */
   gate(petId: string, provided: string): LockGate {
     const rec = this.current(petId);
-    if (rec === null) return { ok: true };
-    if (provided && provided === rec.lockId) return { ok: true };
-    if (!provided) {
-      return { ok: false, reason: 'lock-required', message: '这只桌宠正被占用，必须带 lock=<lockId>' };
+    if (rec !== null) {
+      if (provided && provided === rec.lockId) return { ok: true };
+      if (!provided) {
+        return { ok: false, reason: 'lock-required', message: '这只桌宠正被占用，必须带 lock=<lockId>' };
+      }
+      return { ok: false, reason: 'lock-lost', cause: 'unknown', message: CAUSE_TEXT.unknown };
     }
-    return { ok: false, reason: 'lock-lost', cause: 'unknown', message: CAUSE_TEXT.unknown };
+    // 无锁：没带编号照旧放行；带了编号 → 明确告诉他锁已经不在了
+    if (!provided) return { ok: true };
+    const cause = this.causeOf(petId, provided);
+    return { ok: false, reason: 'lock-lost', cause, message: CAUSE_TEXT[cause] };
   }
 
   /**

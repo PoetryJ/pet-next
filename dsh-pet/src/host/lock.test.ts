@@ -1,12 +1,13 @@
 /**
- * 占用锁（issue #122 第 4 项）单元测试 —— 钉住真值表、墓碑与"无锁 = 现状零变化"。
+ * 占用锁（issue #122 第 4 项）单元测试 —— 钉住真值表、墓碑与「无锁时按有无编号分流」。
  *
  * 为什么单独钉这些：锁是**唯一一个会拒绝别人调用**的东西（占用期间 5 个动作端点必须带 lockId），
  * 一旦判错就是"第三方联动演到一半被拒"或"宠物被锁住谁也动不了"。而它的边界又全在时间上
  * （过期、续期、抢占），所以这里注入假时钟——过期语义不用真的等 30 秒。
  *
  * 四条要钉死的口径：
- *   ① 无锁时 gate 恒放行（既有调用方一个字都不用改）；
+ *   ① 无锁 + 没带编号 → 放行（既有调用方一个字都不用改）；无锁 + 带了编号 → `lock-lost`
+ *      （旧租约不能继续执行迟到请求）；
  *   ② 「带 id + 当前无锁」一律报错，**不复活**（否则"我丢了锁"会被悄悄抹掉）；
  *   ③ 释放幂等，但**不许误放别人的锁**（有锁而 id 不匹配 → 报错）；
  *   ④ cause 分得清（过期 / 自己释放 / 被用户抢走 / 认不出），靠墓碑。
@@ -273,10 +274,17 @@ describe('LockStore —— 释放', () => {
 });
 
 describe('LockStore —— 动作端点的门禁（gate）', () => {
-  test('**无锁时恒放行**，连 lock 参数都不看（无锁 = 现状零变化）', () => {
+  test('无锁 + 没带编号 → 放行（既有调用方一个字都不用改）', () => {
     const { store } = makeStore();
     assert.deepEqual(store.gate('main', ''), { ok: true });
-    assert.deepEqual(store.gate('main', 'lk-随便传的'), { ok: true });
+  });
+
+  test('无锁 + 带了编号 → lock-lost（旧租约不能继续执行迟到请求）', () => {
+    const { store } = makeStore();
+    const g = store.gate('main', 'lk-随便传的');
+    assert.equal(g.ok, false);
+    if (g.ok || g.reason !== 'lock-lost') throw new Error('应当是 lock-lost');
+    assert.equal(g.cause, 'unknown', '从没建过锁 → unknown');
   });
 
   test('有锁 + 没带 → lock-required', () => {
@@ -304,11 +312,16 @@ describe('LockStore —— 动作端点的门禁（gate）', () => {
     assert.equal(g.cause, 'unknown');
   });
 
-  test('锁过期后门禁自动放行（懒判过期，不需要谁去清）', () => {
+  test('锁过期后：没带编号放行，带旧编号 → lock-lost / expired', () => {
     const { store, advance } = makeStore();
-    store.acquire({ petId: 'main', ttl: 1_000 });
+    const d = store.acquire({ petId: 'main', ttl: 1_000 });
     advance(1_000);
     assert.deepEqual(store.gate('main', ''), { ok: true });
+    if (!d.ok) return;
+    const g = store.gate('main', d.lockId);
+    assert.equal(g.ok, false);
+    if (g.ok || g.reason !== 'lock-lost') throw new Error('应当是 lock-lost');
+    assert.equal(g.cause, 'expired', '墓碑记着它为什么没了');
   });
 
   test('锁是按宠物分开的：占用 main 不影响 pet-2', () => {
