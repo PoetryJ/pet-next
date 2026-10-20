@@ -1020,6 +1020,144 @@ paths:
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
 
+  /dsh-pet-7340/pose:
+    get:
+      tags: [Action]
+      operationId: getPetPose
+      summary: 读桌面端宠物的实况（位置 + 朝向）
+      description: |
+        返回**桌面端**那只宠物最近一次上报的实况：宠物**中心**的归一化坐标 + 朝向。
+
+        **只有桌面端有这条路。** 网页端的宠物位置**天生每个页面一份**（开两个标签页时两边本来就
+        不同），塞进宿主一份快照语义上就是错的（后写者覆盖先写者）——所以网页端走**页面内**的
+        Cordis 只读服务 `petPose`：
+
+        ```js
+        // 同页的第三方客户端插件；拿不到 = 老版本，不抛
+        const svc = ctx.get('petPose');
+        const pose = svc ? svc.pose('main') : null; // → { x, y, facing } | null
+        ```
+
+        两边**字段名与坐标口径完全一致**，只是"取"的方式不同（网页端按需读、零请求）。
+
+        **不要求 `surface`**：这是**读**端点（`GET /chat`、`GET /playback/{id}` 同样不带），而且它的
+        定义域本身只有一个面。
+
+        坐标与 `POST /position` **同一套**：宠物中心、归一化 0~1，桌面端的基准是**所有屏的并集
+        矩形**——所以读回来的值可以直接喂回 `/position`。宠物被拖出屏幕边缘时中心点可能略出
+        0~1（**不做夹取**：实况要能对得上眼睛）。
+
+        快照是**变化时推 + 节流**（拖拽 / 走位 / 抛掷 / `/position` 指令 / turn 转身）得来的，不是
+        轮询：`updatedAt` 是判断"这份实况有多新"的唯一依据。桌面端没起来或刚重启时回
+        `pose-unavailable`。
+      parameters:
+        - $ref: "#/components/parameters/PetIdQuery"
+      responses:
+        "200":
+          description: |
+            恒为 200（除 405）。失败通过 `ok: false` 表达，`reason` 可能是
+            `pet-required`（没给 pet）、`unknown-pet`（配置里没这只）、
+            `pet-not-displayed`（带 `display`——配置上就不在桌面显示，本端点对它没有意义）、
+            `pose-unavailable`（在桌面显示，但还没收到过上报）、`generate-error`（配置不可读等）。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - allOf:
+                      - $ref: "#/components/schemas/OkResponse"
+                      - type: object
+                        required: [petId, x, y, facing, updatedAt]
+                        properties:
+                          petId:
+                            type: string
+                            description: 这只宠物的 id（回显，便于调用方核对落点）。
+                            example: main
+                          x:
+                            type: number
+                            description: 宠物**中心**的归一化横坐标（与 `POST /position` 同一口径）。
+                            example: 0.42
+                          y:
+                            type: number
+                            description: 宠物**中心**的归一化纵坐标。
+                            example: 0.87
+                          facing:
+                            type: string
+                            enum: [left, right]
+                            description: 朝向（与 `POST /anim` 的 `facing` 同词）。
+                          updatedAt:
+                            type: integer
+                            format: int64
+                            description: 渲染端上报时刻（epoch 毫秒）——判断"有多新"的唯一依据。
+                            example: 1755000000000
+                  - $ref: "#/components/schemas/FailureResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
+  /dsh-pet-7340/pose/report:
+    post:
+      tags: [Action]
+      operationId: reportPetPose
+      summary: 桌面渲染端上报实况（内部通道，第三方不用调）
+      description: |
+        **渲染端 → 宿主**的内部通道：桌面宠物在**变化时**上报自己的实况（拖拽结束 / 走位结束 /
+        抛掷落定 / `/position` 指令完成 / turn 转身）。桌面管道（`dsh-pet-bridge://`）与 HTTP 走
+        同一份实现。
+
+        宿主只存一份**内存快照**，**不写 `/state`**——那是"给渲染端读"的单向通道，写进去只会惊动
+        所有挂着的长轮询。
+
+        **节流在渲染端做**（合并到约 2.5 次/秒，且带 trailing edge 保证停下后补上最终值），调用方
+        不需要自己节流。
+      parameters:
+        - $ref: "#/components/parameters/PetIdQuery"
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [x, y, facing]
+              properties:
+                x:
+                  type: number
+                  description: 宠物中心的归一化横坐标（有限数字；**越界照收**，不做夹取）
+                  example: 0.42
+                y:
+                  type: number
+                  description: 同上，纵坐标
+                  example: 0.87
+                facing:
+                  type: string
+                  enum: [left, right]
+                  description: 朝向（严格两个字面量，大小写不符即 `bad-request`）
+            examples:
+              typical:
+                summary: 一次常规上报
+                value:
+                  x: 0.42
+                  y: 0.87
+                  facing: right
+      responses:
+        "200":
+          description: |
+            恒为 200（除 405/400）。失败通过 `ok: false` 表达，`reason` 可能是
+            `bad-request`（`x`/`y` 非有限数字、`facing` 非法）、`pet-required`、`unknown-pet`、
+            `generate-error`（配置不可读等）。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - $ref: "#/components/schemas/OkResponse"
+                  - $ref: "#/components/schemas/FailureResponse"
+        "400":
+          description: '请求体不是合法 JSON（`{ "error": "invalid JSON body" }`）'
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
   /dsh-pet-7340/playback/{id}:
     get:
       tags: [Action]
@@ -1910,6 +2048,9 @@ components:
 
             显示端对齐（issue #122 第 1 条）另有一个：`pet-not-displayed` 该宠物的 `display`
             不满足请求里的 `surface`（带 `display` = 该宠物**实际**的显示模式）。
+
+            实况（`GET /pose`）另有一个：`pose-unavailable` 配置上在桌面显示，但还没收到过渲染端
+            上报（桌面端没起来 / 刚重启）。
           enum:
             [
               bad-request,
@@ -1923,6 +2064,7 @@ components:
               lock-required,
               lock-lost,
               pet-not-displayed,
+              pose-unavailable,
             ]
         cause:
           type: string

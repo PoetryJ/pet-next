@@ -644,6 +644,37 @@ describe('surface 必填 —— 缺省/非法一律 bad-request，且短路在�
   });
 });
 
+describe('/pose —— 桌面端实况（GET 查询 / POST 上报），与 surface 无关', () => {
+  // 与 /whisper、/chat 的"pet 必填"同一处境：这些断言在"配置不可达"的源码形态下照样成立，
+  // 正好钉住**短路顺序**（pet 先报，surface 根本不参与）。
+  test('/pose：不给 pet → pet-required；方法不对 → 405', async () => {
+    const r = await call('/dsh-pet-7340/pose');
+    assert.equal(r.status, 200);
+    assert.equal((JSON.parse(r.body) as { reason: string }).reason, 'pet-required');
+    assert.equal((await call('/dsh-pet-7340/pose?pet=main', 'POST')).status, 405);
+  });
+
+  test('/pose/report：方法不对 → 405；非法 JSON → 400（协议层错误先于业务）', async () => {
+    assert.equal((await call('/dsh-pet-7340/pose/report?pet=main')).status, 405);
+    assert.equal((await call('/dsh-pet-7340/pose/report?pet=main', 'POST', '{ 不是 json')).status, 400);
+  });
+
+  test('两条都**不校验** surface：连非法值也照旧走到读配置那一步', async () => {
+    // 它们是**读 / 内部**端点（同 GET /chat、GET /playback）——surface 只加在会产生渲染端可见效果
+    // 的动作端点上。这条同时钉住"以后别顺手把 surface 加进来"。
+    const g = await call('/dsh-pet-7340/pose?pet=main&surface=nope');
+    assert.equal(g.status, 200);
+    assert.equal((JSON.parse(g.body) as { reason: string }).reason, 'generate-error');
+    const p = await call(
+      '/dsh-pet-7340/pose/report?pet=main&surface=nope',
+      'POST',
+      JSON.stringify({ x: 0.5, y: 0.5, facing: 'left' }),
+    );
+    assert.equal(p.status, 200);
+    assert.equal((JSON.parse(p.body) as { reason: string }).reason, 'generate-error');
+  });
+});
+
 describe('?rounds= —— 非法值 bad-request，合法值不误杀（issue #141）', () => {
   // 源码形态下配置不可达：能报 bad-request 就证明校验抢在读盘之前（否则会是 generate-error）。
   test('非法 → bad-request（负数 / 小数 / 非数字 / 超上限）', async () => {

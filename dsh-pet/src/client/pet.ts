@@ -53,6 +53,7 @@ import {
 import { TOOLTIP_CLASS, TOOLTIP_CSS, TOOLTIP_GAP_RATIO, tooltipPlacement } from '../shared/tooltip';
 // 对话弹窗：与桌面共用同一份组件（数据经 host /chat 读写同一份记忆）
 import { mountChatDialog } from '../shared/chat';
+import { registerPose } from './pose';
 // 字体（全局配置 font）：种类 → CSS 字体栈、字号 → 最终 px。换算只在 shared 一处，
 // 与桌面端共用同一份（fontStackOf / resolveFontPx），避免两端各算一套后漂移。
 import { fontStackOf, resolveFontPx } from '../shared/fonts';
@@ -521,10 +522,20 @@ export function makePetUI(rt: {
     }, [anim, once, seq, cuePlayback]);
     useEffect(() => {
       mountedRef.current = true;
+      // 「实况」口子（issue #122 第 1 条）：把这一页里这只宠物的实时位置/朝向注册给 Cordis 只读
+      // 服务 `petPose`（见 ./pose）。**按需读**——消费者每次调用都走这个闭包取当前值，所以走位、
+      // 抛掷、拖拽**中途**也能读到，不是快照。
+      // 坐标与 POST /position 同一口径：宠物**中心**的归一化 0~1。
+      const unregisterPose = registerPose(cfg.id, () => ({
+        x: currentCenterX() / window.innerWidth,
+        y: currentCenterY() / window.innerHeight,
+        facing: facingRef.current,
+      }));
       const bu = blobUrlRef.current;
       const inflight = inflightRef.current;
       return () => {
         mountedRef.current = false;
+        unregisterPose(); // 卸载即摘除：口子静默失效比读到陈旧值安全
         for (const c of inflight) c.abort();
         inflight.length = 0;
         stopMove();
@@ -534,6 +545,7 @@ export function makePetUI(rt: {
         if (bu.a) URL.revokeObjectURL(bu.a);
         if (bu.b) URL.revokeObjectURL(bu.b);
       };
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- 挂载/卸载各跑一次：闭包读的是 refs 与稳定 props
     }, []);
     useEffect(
       () => () => {

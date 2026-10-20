@@ -6,12 +6,6 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 
 - **基址**：`http://127.0.0.1:<port>/dsh-pet-7340`，`<port>` 是 DSH Web 服务实际监听的端口
 - **只监听 127.0.0.1，且没有鉴权**：任何能访问本机该端口的进程都能调用，请勿转发到公网
-- **带 `?pet=` 的接口，`pet` 必填**：没给 → `reason: pet-required`，配置里没这只宠物 → `unknown-pet`；
-  **没有缺省值**（不会替你落到「当前桌宠」或 `main`），落点不随用户 `/pet` 的选择而变
-- **动作接口还要带 `?surface=`，也必填**（`/lock/release` 与 `GET /chat` 除外）：`web` / `desktop` /
-  `both` / `any`，说明你要**哪一端**的宠物。对不上 → `pet-not-displayed`，并把这只宠物**实际的
-  `display`** 回给你——不会默默受理然后什么也不发生。要「网页播 A、桌面播 B」，用**两只宠物**表达
-  （`display: web` / `display: desktop`），不是靠这个参数
 
 ---
 
@@ -24,6 +18,7 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 | `GET /dsh-pet-7340/config/meta` | 配置文件路径、各类数据落盘位置、卸载该用哪个 profile |
 | `GET /dsh-pet-7340/models` | 可用服务商与模型清单（与 DSH 自己的模型选择器同源） |
 | `GET /dsh-pet-7340/chat?pet=` | 读某只桌宠最近的对话记忆窗口；带 `?rounds=` 可指定本次读取的轮数（0–200，不传用配置的 `chatMemoryRounds`） |
+| `GET /dsh-pet-7340/pose?pet=` | 读**桌面端**宠物的实况（位置 + 朝向）；网页端用客户端服务 `petPose`，不走这条路 |
 
 ## 二、占用锁
 
@@ -61,6 +56,7 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 | `POST /dsh-pet-7340/anim?pet=` | **点播动画**（需锁）：播池内名字（同右键「动作」菜单）或第三方自带的 `url`；`facing` 可选指定朝向（`left`/`right`，不传则不动朝向）；回 `playbackId` |
 | `GET /dsh-pet-7340/playback/{id}` | **播放回执**：查那次点播的真实状态；带 `?wait=&timeout=` 可挂起等待 |
 | `POST /dsh-pet-7340/playback/{id}/report` | 渲染端上报播放状态（**内部通道**，第三方不用调） |
+| `POST /dsh-pet-7340/pose/report?pet=` | 桌面渲染端上报实况（**内部通道**，第三方不用调） |
 | `POST /dsh-pet-7340/position?pet=` | **位置控制**（需锁）：挪到归一化坐标，`mode` = 直接/弹簧/直线；不碰动画。额外回**夹取后**的 `x`/`y` |
 | `POST /dsh-pet-7340/throw?pet=` | **原生抛掷**（需锁）：给桌宠一个初速度让它飞出去（`angle` 度、`power` 倍率） |
 

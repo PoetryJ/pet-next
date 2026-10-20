@@ -600,6 +600,25 @@
       transition: left .08s linear, top .08s linear;
     }
 
+    /* 实况标记：绿色圆环 + 箭头方向 = 朝向（宠物**实际**在哪，不是目标）。
+       填充刻意半透明、直径比目标点大一圈——两者重合时蓝点仍能透出来。 */
+    .stage-actual {
+      position: absolute;
+      width: 26px; height: 26px;
+      margin: -13px 0 0 -13px;
+      box-sizing: border-box;
+      line-height: 22px;
+      text-align: center;
+      font-size: 11px;
+      color: var(--ok);
+      background: rgba(21, 128, 61, .14);
+      border: 2px solid var(--ok);
+      border-radius: 50%;
+      pointer-events: none;
+      display: none;
+      transition: left .12s linear, top .12s linear;
+    }
+
     .stage-tip {
       position: absolute; left: 9px; bottom: 6px;
       font-size: 11.5px; color: var(--faint);
@@ -1217,7 +1236,7 @@
         <div class="card">
           <div class="card-head">
             <h2>位置与抛掷</h2>
-            <span class="hint">POST /position · POST /throw</span>
+            <span class="hint">POST /position · POST /throw · GET /pose</span>
           </div>
           <div class="card-body">
             <details class="desc">
@@ -1244,11 +1263,16 @@
             <!-- ── 位置 ── -->
             <div class="sub">
               位置
-              <span class="hint">x / y = 宠物中心的归一化坐标（0~1，越界会被夹取）</span>
+              <span class="hint">
+                x / y = 宠物中心的归一化坐标（0~1，越界会被夹取）；<b>蓝点</b> = 你要它去的目标，
+                <b style="color:var(--ok)">绿箭头</b> = 它现在实际在哪、朝哪边（点「读实况」后显示）
+              </span>
             </div>
             <div class="stage" id="mv-stage">
               <div class="stage-dot" id="mv-dot"></div>
+              <div class="stage-actual" id="mv-actual"></div>
               <div class="stage-tip">点或拖这里设定宠物中心</div>
+              <div class="stage-tip" style="left:auto;right:9px">绿箭头 = 实况</div>
             </div>
             <div class="row" style="margin-top:9px">
               <label>目标位置</label>
@@ -1273,6 +1297,15 @@
                 <button type="button" class="btn primary" id="mv-go">挪过去</button>
                 <button type="button" class="btn" id="mv-snap">立即到位</button>
                 <span class="hint" id="mv-result"></span>
+              </div>
+            </div>
+            <div class="row">
+              <label>实际位置</label>
+              <div class="ctl">
+                <button type="button" class="btn" id="mv-pose">读实况</button>
+                <span class="hint" id="mv-pose-result">
+                  桌面端才有；网页端走页面内 Cordis 服务 <span class="mono">petPose</span>
+                </span>
               </div>
             </div>
 
@@ -3359,6 +3392,57 @@
       });
       stage.addEventListener("pointercancel", () => { down = false; });
     })();
+
+    /**
+     * 读实况（**桌面端**）：`GET /pose` —— 把宠物**实际**中心画进预览框（绿箭头，箭头方向 = 朝向）。
+     *
+     * **不要求 `surface`**：它是读端点（同 GET /chat、GET /playback），surface 只加在会产生渲染端
+     * 可见效果的动作端点上。
+     *
+     * **网页端没有这条路**：它的位置天生每个页面一份（两个标签页本来就不同），走页面内的 Cordis
+     * 只读服务 `ctx.get('petPose').pose(petId)`——字段与坐标口径完全一致，只是"取"的方式不同。
+     */
+    $("mv-pose").addEventListener("click", () => {
+      void mvReadPose(false);
+    });
+
+    // 进页面自动读一次（**失败静默**：保留默认提示，不把"还没起来"刷成一行红字）——
+    // 否则绿箭头默认隐藏，用户根本不知道有这个标记
+    window.setTimeout(() => {
+      void mvReadPose(true);
+    }, 900);
+
+    async function mvReadPose(silent) {
+      const petId = $("mv-pet").value || S.petId;
+      const res = $("mv-pose-result");
+      const marker = $("mv-actual");
+      // silent 时**完全不碰这句提示**（保留 HTML 里的 mono 标记，也不把"还没起来"刷成红字）
+      if (!silent) res.textContent = "读取中…";
+      const r = await GET("/pose?pet=" + encodeURIComponent(petId));
+      if (!(r.body && r.body.ok)) {
+        marker.style.display = "none";
+        if (!silent) res.textContent = "被拒：" + whyOf(r) + "（网页端请用 Cordis 服务 petPose）";
+        return;
+      }
+      // 夹到框内只是**显示**需要：宠物贴边拖出时中心点可能略出 0~1，接口本身不夹取
+      marker.style.left = Math.max(0, Math.min(1, Number(r.body.x))) * 100 + "%";
+      marker.style.top = Math.max(0, Math.min(1, Number(r.body.y))) * 100 + "%";
+      marker.textContent = r.body.facing === "right" ? "▶" : "◀";
+      // 必须写 "block"：`.stage-actual` 的 `display:none` 写在 CSS 里，置空字符串会**回落**到它，
+      // 于是又藏起来（这是踩过的坑）
+      marker.style.display = "block";
+      const age = Math.max(0, Date.now() - Number(r.body.updatedAt));
+      res.textContent =
+        "x=" +
+        Number(r.body.x).toFixed(3) +
+        " y=" +
+        Number(r.body.y).toFixed(3) +
+        " facing=" +
+        r.body.facing +
+        " · " +
+        age +
+        "ms 前上报";
+    }
 
     // ── 抛掷：角度拨盘 + 力度 ────────────────────────────────────────
 

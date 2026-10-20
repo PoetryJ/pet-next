@@ -114,6 +114,7 @@ import { decideAnim } from './anim';
 import { LockStore } from './lock';
 import { decidePosition, decideThrow, positionLeafData } from './motion-cue';
 import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
+import { PoseStore, normalizePoseInput } from './pose';
 import { SURFACE_TEXT, displayCovers, normalizeSurface, type Surface } from './surface';
 import {
   findPetInstance,
@@ -376,6 +377,10 @@ export function apply(ctx: any): void {
     onChange: (petId, data) => state.writePet(petId, 'lock', data),
   });
 
+  // 实况快照（issue #122 第 1 条）：桌面渲染端变化时上报，第三方用 GET /pose 读。
+  // 网页端不走这里——它的位置**天生每个页面一份**，走页面内的 Cordis 服务 `petPose`。
+  const pose = new PoseStore();
+
   /**
    * `?surface=` 的**参数级**校验（缺省 / 非法 → `bad-request`）。放在读盘之前：必然失败的请求
    * 不碰磁盘（与 pet 空串同一处境）。通过则给出收窄后的取值。
@@ -454,7 +459,9 @@ export function apply(ctx: any): void {
     params: URLSearchParams,
     cfg: () => Record<string, Record<string, unknown>>,
     opts?: { surface?: boolean },
-  ): { ok: true; petId: string; entry: string; conf: Record<string, unknown> } | { ok: false; res: RouteResult } => {
+  ):
+    | { ok: true; petId: string; entry: string; conf: Record<string, unknown>; pet: Record<string, unknown> }
+    | { ok: false; res: RouteResult } => {
     const fail = (reason: 'pet-required' | 'unknown-pet', message: string): { ok: false; res: RouteResult } => ({
       ok: false,
       res: { kind: 'json', status: 200, obj: { ok: false, reason, message } },
@@ -476,7 +483,7 @@ export function apply(ctx: any): void {
       const mismatch = surfaceMismatch(found.pet, petId, want);
       if (mismatch) return { ok: false, res: mismatch };
     }
-    return { ok: true, petId, entry: found.entry, conf: found.conf };
+    return { ok: true, petId, entry: found.entry, conf: found.conf, pet: found.pet };
   };
 
   /**
@@ -1699,6 +1706,78 @@ export function apply(ctx: any): void {
         return { kind: 'json', status: 200, obj: { ok: true } };
       } catch (e) {
         // 配置读取失败等（安装损坏）→ 显式失败，不静默（与 /anim 同一口径）
+        return {
+          kind: 'json',
+          status: 200,
+          obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
+        };
+      }
+    }
+
+    // 实况：/dsh-pet-7340/pose?pet=<id>        （GET  = 第三方读**桌面端**的实况快照）
+    //       /dsh-pet-7340/pose/report?pet=<id> （POST = **桌面渲染端**上报，内部通道）
+    //
+    // 为什么只有桌面端走这条路：桌面宠物**一窗一只**，位置全局唯一一份 → 宿主快照语义干净；
+    // 而网页端的位置**天生每个页面一份**（开两个标签页时两边本来就不同），塞进宿主快照必然是
+    // 错的（后写者覆盖先写者）。所以网页端走**页面内**的 Cordis 只读服务 `petPose`
+    // （src/client/pose.ts）——两边**字段名与坐标口径完全一致**（中心点归一化 0~1，与 /position
+    // 同源），只是"取"的方式不同。
+    //
+    // 上报是**变化时推 + 节流**（拖拽 / 走位 / 抛掷 / position 指令 / turn 转身），不是轮询。
+    //
+    // 本端点**不要求 `surface`**：它是**读**端点（`GET /chat`、`GET /playback` 同样不带），而且它
+    // 的定义域本身只有一个面。宠物配置上就不在桌面显示时用 `pet-not-displayed` 明说。
+    if (rest === 'pose' || rest === 'pose/report') {
+      const isReport = rest === 'pose/report';
+      if (isReport && method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      if (!isReport && method !== 'GET') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      // 协议层错误（非法 JSON）先报：与 /anim 同一顺序
+      let parsedPose: unknown;
+      if (isReport) {
+        try {
+          parsedPose = JSON.parse(body ?? 'null');
+        } catch {
+          return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+        }
+      }
+      try {
+        const who = requirePet(url.searchParams, () => readAllConfig(configPaths));
+        if (!who.ok) return who.res;
+        if (isReport) {
+          const p = normalizePoseInput(parsedPose);
+          if (!p.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: p.reason, message: p.message } };
+          pose.set(who.petId, p.pose);
+          return { kind: 'json', status: 200, obj: { ok: true } };
+        }
+        // 桌面端实况只对"显示在桌面"的宠物有意义：配置上就不在桌面 → 明确不可用（附实际 display）
+        const display = String(who.pet.display ?? '');
+        if (!displayCovers('desktop', display)) {
+          return {
+            kind: 'json',
+            status: 200,
+            obj: {
+              ok: false,
+              reason: 'pet-not-displayed',
+              message: who.petId + ' 的显示模式是 ' + display + '；桌面端实况只对 display 含 desktop 的宠物有',
+              display,
+            },
+          };
+        }
+        const snap = pose.get(who.petId);
+        if (snap === undefined) {
+          return {
+            kind: 'json',
+            status: 200,
+            obj: {
+              ok: false,
+              reason: 'pose-unavailable',
+              message: '还没收到过这只宠物的桌面端实况（桌面端没起来，或刚重启还没来得及上报）',
+            },
+          };
+        }
+        return { kind: 'json', status: 200, obj: { ok: true, petId: who.petId, ...snap } };
+      } catch (e) {
+        // 配置读取失败等（安装损坏）→ 显式失败，不静默（与其他端点同一口径）
         return {
           kind: 'json',
           status: 200,

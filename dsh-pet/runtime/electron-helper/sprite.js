@@ -74,7 +74,10 @@ class PetSprite {
     // 为什么要单独一个字段：this.anim 只是动画名，右键菜单点播与第三方 /anim 可以播同名动画，
     // 光看名字分不出"这一段该不该上报回执"。
     this.playback = null;
-    this.facing = 'left';
+    // 朝向走 accessor（见下方 get/set facing）：赋值即标记实况脏，交给节流上报。
+    // 构造函数里**直接写 `_facing`**，避免在其它字段就绪前就触发一次上报。
+    this._facing = 'left';
+    this.poseTimer = null; // 实况上报的节流定时器（见 markPoseDirty）
     // 交互/移动
     this.dragState = { active: false, dragging: false, sx: 0, sy: 0, petX: 0, petY: 0 };
     this.justDragged = false;
@@ -293,6 +296,58 @@ class PetSprite {
   // setContentBounds 要**屏幕**坐标：pos 是视口（桌面外接矩形）相对坐标，先加 VIEW.x/y
   // 再统一 ×scale 回物理像素（§3.5 IPC 收口）——主进程收到的数字与线性化旧行为逐位一致，
   // 主进程侧（bounds/去重/碰撞 broker）完全不用改。
+  // ---- 实况（位置 + 朝向）上报（issue #122 第 1 条：取得有效实例及其位置、朝向）----
+  //
+  // 第三方用 `GET /pose` 读桌面端这一份快照。**网页端不走这条路**——它的位置天生每个页面一份
+  // （两个标签页本来就不同），走页面内的 Cordis 只读服务 `petPose`（见 src/client/pose.ts）；
+  // 两边字段名与坐标口径**完全一致**，只是取法不同。
+  //
+  // 收口设计（0 个额外调用点）：
+  //   - 位移：全仓**只有 sendBounds 会调 petBridge.setBounds**，所以只要在它末尾标脏，就覆盖了
+  //     全部位移场景（重排/回角落、自主走位、拖拽跟手、抛掷逐帧、/position 三种模式）。
+  //   - 朝向：变化**不一定伴随位移**（原地转身），所以用 accessor 让赋值自动标脏。
+  //
+  // 节流：见 constants.js 的 POSE_THROTTLE_MS（trailing edge，到点读**当前值**推一次）。
+
+  get facing() {
+    return this._facing;
+  }
+
+  set facing(next) {
+    const value = next === 'right' ? 'right' : 'left';
+    if (this._facing === value) return;
+    this._facing = value;
+    this.markPoseDirty();
+  }
+
+  /** 实况变了 → 交给节流器（连续变化被合并成一次冲刷） */
+  markPoseDirty() {
+    if (this.poseTimer !== null) return;
+    this.poseTimer = window.setTimeout(() => {
+      this.poseTimer = null;
+      this.reportPose();
+    }, POSE_THROTTLE_MS);
+  }
+
+  /**
+   * 把当前实况推给宿主（`POST /pose/report`）。**读的是当前值**，所以节流窗口内的连续变化只留下
+   * 最后一帧——这正是要的：第三方要的是"现在在哪"，不是中间过程。
+   *
+   * 坐标与 `POST /position` 同一口径：宠物**中心**的归一化 0~1；桌面端的基准是**所有屏的并集矩形**
+   * （VIEW，与 position() 算窗口位置用的是同一套）——不这样读回来的值就喂不回 /position。
+   */
+  reportPose() {
+    if (!this.pos) return; // 还没摆过位（position() 首次调用前）：不报，免得推 0,0
+    const body = {
+      x: (this.pos.x + this.halfW) / VIEW.w,
+      y: (this.pos.y + this.halfH) / VIEW.h,
+      facing: this._facing,
+    };
+    void S.postAction(POSE_REPORT_URL + '?pet=' + encodeURIComponent(this.pet.id), body).then((ok) => {
+      if (!ok) console.warn('[dsh-pet] 实况上报未送达 pet=' + this.pet.id);
+    });
+  }
+
   sendBounds(px, py) {
     this.pos = { x: Math.round(px), y: Math.round(py) };
     window.__dshPetDebug.dragPos = { x: this.pos.x, y: this.pos.y };
@@ -322,6 +377,8 @@ class PetSprite {
     // 而光标存的是视口坐标，窗口一移，光标相对窗口的位置就变了，不重摆提示会跟着窗口漂走。
     // 只在显示时重摆：漫游逐帧调本函数，没显示提示时不做无谓的 DOM 写入。
     if (this.tipOn) this.renderTip();
+    // 实况标脏（节流上报，见 markPoseDirty）：所有位移都收口在本函数，所以这里一处就够
+    this.markPoseDirty();
   }
 
   // 角落/边距 → 窗口位置；拖拽后按会话内位置（比例）还原——**松手无任何边界夹取**，
