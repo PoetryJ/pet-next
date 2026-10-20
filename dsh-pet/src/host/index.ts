@@ -101,6 +101,7 @@ import { resolveDshHome } from '@deepseek-ai/dsh-home-paths';
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
 import { queryBalance } from './balance/index';
 import { generateWhisper } from './whisper';
+import { automaticWhisperSchedule } from './whisper-policy';
 import { generateChat, type ChatMemoryMessage } from './chat';
 import { configuredModel } from './model-selection';
 import { limitPool, pickMeme, readMemePool } from './memes';
@@ -2278,12 +2279,18 @@ export function apply(ctx: any): void {
         let min = Infinity;
         for (const pet of flattenPetList(cfg)) {
           const petId = String(pet.id ?? '');
-          if (!petId || pet.whisperEnabled !== true) continue;
+          if (!petId) continue;
           // petId 就是从**同一份 cfg** 拍平出来的，所以必然命中（findPetInstance 与 flattenPetList
           // 搜索同一集合）；查不到只可能是两者口径漂移——跳过这一拍，**不猜也不兜底 main**。
           const found = findPetInstance(cfg, petId);
           if (!found) continue;
-          const sec = whisperPeriodSec(found.conf);
+          const schedule = automaticWhisperSchedule(
+            ctx.standaloneAi,
+            pet.whisperEnabled === true,
+            whisperPeriodSec(found.conf),
+          );
+          if (!schedule.enabled) continue;
+          const sec = schedule.periodSec;
           min = Math.min(min, sec);
           if (now - (lastWhisperAt.get(petId) ?? 0) < sec * 1000) continue;
           // 占用锁：这只宠物被占用时**跳过这一拍**——不生成也不补（碎碎念是瞬时事件，过期即弃）。
