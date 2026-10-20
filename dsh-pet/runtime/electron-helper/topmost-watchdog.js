@@ -114,6 +114,11 @@ const TOPMOST_WATCHDOG_TICK_MS = 1000;
 /** 重新置顶的最小间隔（ms）：真正的 SetWindowPos 至多这么频繁（低频，避免和别的置顶窗抢带） */
 const TOPMOST_REASSERT_MS = 5000;
 
+/** macOS 使用普通悬浮层，为更高层级的截图窗口让位；其它平台保持原行为 */
+function topmostLevel(platform) {
+  return platform === 'darwin' ? 'floating' : 'screen-saver';
+}
+
 /**
  * 置顶看门狗总开关 —— 整个看门狗只有这一个开关。
  *
@@ -154,4 +159,5 @@ module.exports = {
   TOPMOST_REASSERT_MS,
   TOPMOST_WATCHDOG_ENABLED,
   shouldReassertTopmost,
+  topmostLevel,
 };

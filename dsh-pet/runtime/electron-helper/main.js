@@ -53,7 +53,12 @@ const fsPromises = require('node:fs/promises');
 // 点击穿透兜底通道的纯判定（不依赖 Electron 的 forward 鼠标钩子；见文件头注释）
 const { decideWindowIgnore, pointerZone } = require('./pointer-target.js');
 // 置顶看门狗：WS_EX_TOPMOST 只是样式位，不等于窗口真的在置顶带（见 topmost-watchdog.js 头部）
-const { TOPMOST_WATCHDOG_TICK_MS, TOPMOST_WATCHDOG_ENABLED, shouldReassertTopmost } = require('./topmost-watchdog.js');
+const {
+  TOPMOST_WATCHDOG_TICK_MS,
+  TOPMOST_WATCHDOG_ENABLED,
+  shouldReassertTopmost,
+  topmostLevel,
+} = require('./topmost-watchdog.js');
 // 宿主存活判定（issue #56：宿主退出 → 管道断开 → 自己退，绝不弹框、绝不留僵尸）
 const { HOST_POLL_MS, hostIsGone, isBrokenPipeError, parseHostPid } = require('./host-liveness.js');
 // 全局 DPI 线性化的纯判定与换算（含平台例外：macOS 的 DIP 已是「点」，无需补偿；见该文件头）
@@ -439,7 +444,7 @@ function createPetWindows() {
         spellcheck: false,
       },
     });
-    win.setAlwaysOnTop(true, 'screen-saver');
+    win.setAlwaysOnTop(true, topmostLevel(process.platform));
     win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
     // 窗口被其他窗口（另一只宠物）完全遮挡时，Chromium 默认会暂停本窗口渲染，
     // 导致大宠物移动盖过小宠物时小宠物显示为"消失"。关闭后台节流，让被遮挡
@@ -513,7 +518,7 @@ function createPetWindows() {
       );
       if (!due) return;
       lastTopmostAssertMs = nowMs;
-      win.setAlwaysOnTop(true, 'screen-saver');
+      win.setAlwaysOnTop(true, topmostLevel(process.platform));
     }, TOPMOST_WATCHDOG_TICK_MS);
     win.on('closed', () => {
       clearInterval(pointerTimer);

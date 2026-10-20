@@ -28,15 +28,25 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const helper = '../../runtime/electron-helper/';
-const { TOPMOST_WATCHDOG_TICK_MS, TOPMOST_REASSERT_MS, TOPMOST_WATCHDOG_ENABLED, shouldReassertTopmost } = require(
-  helper + 'topmost-watchdog.js',
-);
+const {
+  TOPMOST_WATCHDOG_TICK_MS,
+  TOPMOST_REASSERT_MS,
+  TOPMOST_WATCHDOG_ENABLED,
+  shouldReassertTopmost,
+  topmostLevel,
+} = require(helper + 'topmost-watchdog.js');
 
 /** 包内文件源码（守卫用；相对 src/host/ 解析） */
 const readSource = (rel: string): string => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
 /** 一份"窗口健在、可见、没被挂起"的基准状态 */
 const alive = { destroyed: false, visible: true, paused: false };
+
+test('macOS 为截图浮层让位，其它平台保持原有置顶层级', () => {
+  assert.equal(topmostLevel('darwin'), 'floating');
+  assert.equal(topmostLevel('win32'), 'screen-saver');
+  assert.equal(topmostLevel('linux'), 'screen-saver');
+});
 
 describe('shouldReassertTopmost —— 到点才重钉，每拍都问一次', () => {
   test('未到点不钉，到点钉', () => {
@@ -110,13 +120,13 @@ describe('源码守卫 —— 置顶看门狗必须在 main.js 里按这套规�
     return m[1];
   };
 
-  test('建窗时那次置顶不能删，且看门狗走的是同一个 API（screen-saver 档）', () => {
+  test('建窗时那次置顶不能删，且看门狗使用相同的平台层级', () => {
     assert.ok(
-      /win\.setAlwaysOnTop\(true, 'screen-saver'\);/.test(main),
+      /win\.setAlwaysOnTop\(true, topmostLevel\(process\.platform\)\);/.test(main),
       '建窗时必须先置顶一次（看门狗只负责复查，不能当成唯一置顶来源）',
     );
     assert.ok(
-      (main.match(/win\.setAlwaysOnTop\(true, 'screen-saver'\)/g) ?? []).length >= 2,
+      (main.match(/win\.setAlwaysOnTop\(true, topmostLevel\(process\.platform\)\)/g) ?? []).length >= 2,
       '看门狗必须再钉一次同档位（HWND_TOPMOST 落带靠它；moveTop 的 HWND_TOP 对已沉底窗口无效）',
     );
     assert.ok(
