@@ -6,12 +6,13 @@
 // 交互语义（与碎碎念同一显示效果，只多一步用户输入）：
 //    右键菜单「对话」→ 极简输入框 + 确认 → 点确认后弹窗消失 →
 //    桌宠把回复用碎碎念同款方式展示（说话动画 + 白色气泡 10s 消失）。
-//  **回复不再由本组件带回**：POST /chat 是动作端点，只回 {ok}，回复写进 S 的
-//    pets.<id>.say，由调用方（容器/桌面外壳）的 /state 轮询展示——onSent 只用来
-//    叫醒一拍，让结果 0 延迟可见（见各端实现）。
+//  **回复由 S 的 pets.<id>.say 带回展示**：POST /chat 成功时响应里也有正文
+//    （`{ok,text,image?}`，与写进叶子的同一份），但本组件**不用**它——回复统一走
+//    /state 轮询展示，onSent 只用来叫醒一拍，让结果 0 延迟可见（见各端实现）。
 // 记忆语义：memory.json 全存不删；host 每次请求只截尾部 chatMemoryRounds 轮进上下文。
 
-/** POST /dsh-pet-7340/chat?pet=<id> {text}：只回是否受理（回复走 /state 的 pets.<id>.say） */
+/** POST /dsh-pet-7340/chat?pet=<id> {text}：回执为 `{ok,text,image?}`；本类型只声明消费方
+ *  用到的 `ok`（正文展示一律走 /state 的 pets.<id>.say） */
 export type ChatSendState =
   | { ok: true }
   | { ok: false; reason: 'provider-missing' | 'generate-error' | 'config-error' | 'bad-request'; message?: string };

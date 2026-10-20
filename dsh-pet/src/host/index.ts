@@ -37,7 +37,8 @@
  *                                       每个叶子 = { counter, data }；counter 变了前端才渲染。
  *                                       只读、纯内存、零副作用（绝不在这里触发外部调用/模型生成）。
  *   /dsh-pet-7340/balance              → 余额刷新（POST 动作端点，写 S；数据从 /state 读）
- *   /dsh-pet-7340/whisper              → 让某只宠物立即说一句（POST 动作端点，写 S 的 pets.<id>.say）
+ *   /dsh-pet-7340/whisper              → 让某只宠物立即说一句（POST 动作端点，写 S 的 pets.<id>.say；
+ *                                       响应带生成的 text，配图时带 image）
  *   /dsh-pet-7340/broadcast            → 第三方投喂：把外部给定的文本写进气泡（POST 动作端点，写 S 的
  *                                       pets.<id>.say；不生成、只搬运，供宿主侧其他插件集成）。
  *                                       配图给 `image`（池内名）或 `url`（第三方自带的完整地址）二选一
@@ -73,7 +74,7 @@
  *                                       渲染进程 → host）。这是回执的**地基**——没有它，记录永远停在
  *                                       accepted（host 只知道"受理了"，不知道播没播完）。见 ./playback
  *   /dsh-pet-7340/chat                 → 对话与记忆（GET 最近窗口 / POST 对话并写 memory.json；
- *                                       POST 只回 {ok}，回复同样写 S 的 pets.<id>.say）
+ *                                       POST 回 {ok,text,image?}，回复同样写 S 的 pets.<id>.say）
  *   /dsh-pet-7340/font|pic             → 字体 / 通知图标素材
  *
  * 系统通知不属于宠物行为、不在这里的旧实现是：浏览器半侧 notify.ts 经 connection 事件流
@@ -675,11 +676,13 @@ export function apply(ctx: any): void {
    *  调度侧的 lastWhisperAt 保证，不再需要一份 whisperCache（多端共享也由 S 天然保证）。
    *  配图（whisperImageEnabled 开启时）：从表情包池**随机抽 1 张**，把描述注入指令并随文本一起写。
    *
-   *  失败**带回真实 reason**（含 `unknown-pet`：目标宠物在"校验那次读"与这里之间被删掉了）。 */
+   *  失败**带回真实 reason**（含 `unknown-pet`：目标宠物在"校验那次读"与这里之间被删掉了）。
+   *  成功**带回生成的文本**（与同时写进叶子的那份完全相同）——调用方拿到就不必再拉一拍 /state。 */
   const publishWhisper = async (
     petId: string,
   ): Promise<
-    { ok: true } | { ok: false; reason: 'provider-missing' | 'generate-error' | 'unknown-pet'; message?: string }
+    | { ok: true; text: string; image?: string }
+    | { ok: false; reason: 'provider-missing' | 'generate-error' | 'unknown-pet'; message?: string }
   > => {
     const cfg = readAllConfig(configPaths);
     const found = findPetInstance(cfg, petId);
@@ -710,17 +713,20 @@ export function apply(ctx: any): void {
       return result;
     }
     state.writePet(petId, 'say', result.image ? { text: result.text, image: result.image } : { text: result.text });
-    return { ok: true };
+    // 文本随返回值带出，且与刚写进叶子的**是同一个变量**：两条出口给同一份文本，不是一个真相两个版本
+    return { ok: true, text: result.text, ...(result.image ? { image: result.image } : {}) };
   };
 
   /** 与某只宠物对话：截取最近记忆 → 生成回复 → 写入记忆 → 把回复写进 S 的 pets.<id>.say。
    *  供 POST /chat（动作端点）与 /chat 命令共用同一条路径（锁内读写，防两端交错写盘）。
-   *  配图（chatImageEnabled 开启时）：把表情包清单交给模型按语境选一张，命中池内才随回复写回。 */
+   *  配图（chatImageEnabled 开启时）：把表情包清单交给模型按语境选一张，命中池内才随回复写回。
+   *  成功**带回回复文本**（与同时写进叶子的那份完全相同）——调用方拿到就不必再拉一拍 /state。 */
   const chatWithPet = async (
     petId: string,
     text: string,
   ): Promise<
-    { ok: true } | { ok: false; reason: 'provider-missing' | 'generate-error' | 'unknown-pet'; message?: string }
+    | { ok: true; text: string; image?: string }
+    | { ok: false; reason: 'provider-missing' | 'generate-error' | 'unknown-pet'; message?: string }
   > =>
     withMemoryLock(async () => {
       const cfg = readAllConfig(configPaths);
@@ -759,7 +765,8 @@ export function apply(ctx: any): void {
         'say',
         generated.image ? { text: generated.text, image: generated.image } : { text: generated.text },
       );
-      return { ok: true as const };
+      // 同一份文本随返回值带出（叶子照写，不是二选一）
+      return { ok: true as const, text: generated.text, ...(generated.image ? { image: generated.image } : {}) };
     });
 
   /**
@@ -1453,8 +1460,9 @@ export function apply(ctx: any): void {
       }
     }
 
-    // 碎碎念：/dsh-pet-7340/whisper?pet=<id>（POST = 立即让桌宠新说一句，返回 {ok}）
-    // 动作端点，**不返回文本**——文本走 S 的 pets.<id>.say（碎碎念/命令气泡/对话回复同一个叶子）。
+    // 碎碎念：/dsh-pet-7340/whisper?pet=<id>（POST = 立即让桌宠新说一句，返回 {ok,text,image?}）
+    // 文本**照旧**写进 S 的 pets.<id>.say（碎碎念/命令气泡/对话回复同一个叶子），同时随响应带回——
+    // 两条出口给的是同一份文本；其它消费端（网页/桌面/第三方监听）仍从 /state 读。
     // 手动语义不受 whisperEnabled 门控：那个字段只关自动周期（与改造前一致）。
     if (rest === 'whisper') {
       if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
@@ -1464,7 +1472,13 @@ export function apply(ctx: any): void {
         const who = requirePet(url.searchParams, () => readAllConfig(configPaths), { surface: true });
         if (!who.ok) return who.res;
         const r = await publishWhisper(who.petId);
-        if (r.ok) return { kind: 'json', status: 200, obj: { ok: true } };
+        if (r.ok) {
+          return {
+            kind: 'json',
+            status: 200,
+            obj: { ok: true, text: r.text, ...(r.image ? { image: r.image } : {}) },
+          };
+        }
         // 真实 reason 原样透出（独立模式是 `provider-missing`，见 ./whisper 的联合体）——
         // 不再把一切失败糊成 generate-error，调用方据此能分清"没配模型"与"生成炸了"。
         const obj: Record<string, unknown> = { ok: false, reason: r.reason };
@@ -1870,7 +1884,7 @@ export function apply(ctx: any): void {
 
     // 对话：/dsh-pet-7340/chat?pet=<id>
     //   GET  —— 最近记忆窗口（截尾 chatMemoryRounds 轮），弹窗打开时展示（一次性读，不是轮询）
-    //   POST —— 携带历史生成回复并写入记忆；**只回 {ok}**，回复走 S 的 pets.<id>.say
+    //   POST —— 携带历史生成回复并写入记忆；回 {ok,text,image?}，回复同样写 S 的 pets.<id>.say
     // 记忆唯一读写方 = host（memory.json；浏览器/桌面两端都只是客户端）→
     // 同一实例的浏览器与桌面天然共享同一份记忆；文件全存不删，
     // 请求只截尾部 chatMemoryRounds 轮（1 轮 = 1 问 1 答；合并器已按条目填默认）。
