@@ -70,6 +70,27 @@ export const NOTIFY_ICONS = {
 /** 当前生效的总开关（运行中可被 reloadNotifications 更新——设置页保存后即时生效，无需刷新） */
 let notifyEnabled = true;
 
+/**
+ * 点通知 → 关通知 + 聚焦页面 + 请桌面壳把主窗口叫回前台。
+ *
+ * 页面只能聚焦自己这一层，恢复不了**最小化**的宿主窗口（那是 Electron 主进程的事）。所以用一个
+ * 隐藏 iframe 导航到 DSH 自己注册的 `dsh://open`：协议 → 第二实例锁 → `focusPrimaryWindow()`。
+ * 零子进程、零新接口。只在 Electron 宿主里发——浏览器里导航 `dsh://` 会弹拦截框，而浏览器点通知
+ * 本来就会自己把页签带到前台。
+ */
+export function wireNotificationClick(n: Notification): void {
+  n.onclick = () => {
+    n.close();
+    window.focus();
+    if (!/electron/i.test(navigator.userAgent)) return;
+    const frame = document.createElement('iframe');
+    frame.style.display = 'none';
+    frame.src = 'dsh://open';
+    document.body.append(frame);
+    setTimeout(() => frame.remove(), 1000);
+  };
+}
+
 /** 发一条系统通知；总开关关闭 / 环境不支持 / 未授权 / 聚焦本页 时静默跳过。
  * 日志（【弹窗】类型：内容）在门之后记录——只有真正发出通知时才记，被门拦下的触发不产生日志。 */
 function toast(title: string, body?: string, icon?: string): void {
@@ -81,12 +102,9 @@ function toast(title: string, body?: string, icon?: string): void {
     const opts: NotificationOptions = {};
     if (body) opts.body = truncate(body);
     if (icon) opts.icon = icon;
-    // 点击通知：聚焦回 DSH 页面并关闭该通知（图标加载失败只降级为无图标，绝不关闭弹窗）
+    // 点击通知：聚焦回 DSH 页面 + 把桌面宿主窗口叫回前台（图标加载失败只降级为无图标，绝不关闭弹窗）
     const n = new Notification(title, opts);
-    n.onclick = () => {
-      window.focus();
-      n.close();
-    };
+    wireNotificationClick(n);
   } catch {
     /* 个别环境（e.g. 部分桌面壳）可能在构造时抛错：忽略，不打断业务 */
   }
