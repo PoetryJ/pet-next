@@ -2426,6 +2426,8 @@ components:
         type:
           type: string
           const: session/event
+        sessionId:
+          $ref: "#/components/schemas/NotifySessionId"
         event:
           type: object
           required: [type, data]
@@ -2456,6 +2458,8 @@ components:
         type:
           type: string
           const: approval/requested
+        sessionId:
+          $ref: "#/components/schemas/NotifySessionId"
         toolName:
           type: string
           description: 申请权限的工具名（可选）
@@ -2471,6 +2475,8 @@ components:
         type:
           type: string
           const: question/requested
+        sessionId:
+          $ref: "#/components/schemas/NotifySessionId"
         questions:
           type: array
           minItems: 1
@@ -2483,13 +2489,22 @@ components:
     AgentErrorFrame:
       type: object
       required: [type, message]
-      description: 无回合位置的生成失败（DSH 0.1.5+ 的 `agent/error` 事件）
+      description: |
+        无回合位置的生成失败（DSH 0.1.5+ 的 `agent/error` 事件）。
+        **不带 `sessionId`**：该事件载荷里没有会话标识，因此点击这类通知只叫窗口、不跳会话。
       properties:
         type:
           type: string
           const: host/agent-error
         message:
           type: string
+
+    NotifySessionId:
+      type: string
+      description: |
+        发出这条通知的会话 id（宿主从 `session/event` 的会话参数上取；取不到真 id 时该字段缺失）。
+        点击通知时网页据此跳到该会话（客户端 `uiWorkspace.openSession`）；
+        缺失（旧版宿主 / 拿不到会话位置的事件）= 只把窗口叫回前台，不做任何猜测。
 
     AnimLeaf:
       type: object

@@ -147,6 +147,7 @@ import {
   reduceNotifyFrame,
   sessionIdOf,
   shouldNotifySession,
+  withSessionId,
   type HostNotifyFrame,
 } from './notify-events';
 import { profileNameFrom, storageEntries } from './storage-paths';
@@ -585,7 +586,8 @@ export function apply(ctx: any): void {
         void (async () => {
           if (await sessionHasRunningWork(sessionId)) return; // 还有活：等真正的收尾轮再弹
           const frame = reduceNotifyFrame(event as Parameters<typeof reduceNotifyFrame>[0]);
-          if (frame) pushNotifyFrame(frame);
+          // 这条延迟路径（活动门等 1.5s 确认没活了才推的「对话完成」）最常被点，同样要带会话 id
+          if (frame) pushNotifyFrame(withSessionId(frame, sessionId));
         })();
       }, NOTIFY_ACTIVITY_DELAY_MS),
     );
@@ -2187,7 +2189,8 @@ export function apply(ctx: any): void {
           return;
         }
         const frame = reduceNotifyFrame(event as Parameters<typeof reduceNotifyFrame>[0]);
-        if (frame) pushNotifyFrame(frame);
+        // 帧带上"这条通知是哪条会话发出的"：点击时网页据此跳到那条会话（见 withSessionId）
+        if (frame) pushNotifyFrame(withSessionId(frame, sessionIdOf(session)));
       },
     );
     // agent/error（agent-loop dispatch.emit）：无回合位置的生成失败；0.1.5 新增，
