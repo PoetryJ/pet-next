@@ -1229,14 +1229,23 @@ paths:
 
         记忆的唯一读写方是宿主（落盘在 `memory.json`），浏览器与桌面两端都只是客户端，
         因此同一 DSH 实例下的两端**天然共享同一份记忆**。文件全量保留、不删除，
-        只是响应时按 `chatMemoryRounds`（默认 5 轮，1 轮 = 1 问 1 答）截取尾部。
+        只是响应时按 `chatMemoryRounds`（默认 5 轮，1 轮 = 1 问 1 答）截取尾部；
+        传了 `?rounds=` 则按传入值截取（只影响本次读取，不改变后续对话的上下文轮数）。
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
+        - name: rounds
+          in: query
+          description: 本次读取的轮数（0–200）；不传用配置的 `chatMemoryRounds`。非法值 → `bad-request`。
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 200
       responses:
         "200":
           description: |
             最近窗口。**失败也是 200**（`{ ok: false, reason }`），靠 `ok` 区分：
-            `pet-required`（没给 pet）、`unknown-pet`（没有这只宠物）、`generate-error`（读记忆 / 读配置失败）。
+            `pet-required`（没给 pet）、`unknown-pet`（没有这只宠物）、`bad-request`（rounds 非法）、
+            `generate-error`（读记忆 / 读配置失败）。
           content:
             application/json:
               schema:
@@ -1254,7 +1263,7 @@ paths:
                           $ref: "#/components/schemas/ChatMemoryMessage"
                       rounds:
                         type: integer
-                        description: 该宠物当前生效的轮数（来自配置 `chatMemoryRounds`）
+                        description: 本次生效的轮数（传了 `?rounds=` 用传入值，否则来自配置 `chatMemoryRounds`）
                   - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"

@@ -644,6 +644,25 @@ describe('surface 必填 —— 缺省/非法一律 bad-request，且短路在�
   });
 });
 
+describe('?rounds= —— 非法值 bad-request，合法值不误杀（issue #141）', () => {
+  // 源码形态下配置不可达：能报 bad-request 就证明校验抢在读盘之前（否则会是 generate-error）。
+  test('非法 → bad-request（负数 / 小数 / 非数字 / 超上限）', async () => {
+    for (const bad of ['-1', '1.5', 'abc', '201']) {
+      const r = await call(`/dsh-pet-7340/chat?pet=main&rounds=${bad}`);
+      const body = JSON.parse(r.body) as { ok: boolean; reason: string };
+      assert.equal(body.ok, false, bad);
+      assert.equal(body.reason, 'bad-request', bad);
+    }
+  });
+
+  test('合法 / 空串 / 不传 → 不报 bad-request（本文件里走到 generate-error）', async () => {
+    for (const q of ['&rounds=0', '&rounds=3', '&rounds=', '']) {
+      const r = await call(`/dsh-pet-7340/chat?pet=main${q}`);
+      assert.equal((JSON.parse(r.body) as { reason: string }).reason, 'generate-error', q);
+    }
+  });
+});
+
 describe('/pet-display —— 业务失败一律 200 + ok:false（不用 400/404 表达业务结论）', () => {
   test('GET → 405（写端点；方法错是协议层错误，照旧不是 200）', async () => {
     assert.equal((await call('/dsh-pet-7340/pet-display')).status, 405);

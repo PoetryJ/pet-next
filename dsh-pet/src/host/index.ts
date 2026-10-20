@@ -1800,6 +1800,21 @@ export function apply(ctx: any): void {
         return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
       }
       try {
+        // `?rounds=`：GET 专属的查看参数——只决定这次读多少轮（不写记忆，也不改变后续对话
+        // 往上下文里带多少，所以 POST 不认它）。与 surface 同一处境：参数级校验放在读盘之前。
+        const roundsRaw = method === 'GET' ? url.searchParams.get('rounds') : null;
+        let roundsOverride: number | null = null;
+        if (roundsRaw !== null && roundsRaw.trim() !== '') {
+          const n = Number(roundsRaw);
+          if (!Number.isInteger(n) || n < 0 || n > 200) {
+            return {
+              kind: 'json',
+              status: 200,
+              obj: { ok: false, reason: 'bad-request', message: 'rounds 必须是 0–200 的整数（不传则用配置）' },
+            };
+          }
+          roundsOverride = n;
+        }
         // pet **必填**且必须真实存在：收紧前这里是 `?? ''`——人设/配图按 main 条目取，记忆会以那个
         // （不存在的）id 新建一个分桶，回复写进没人消费的 `pets[""].say`，还回 ok:true。
         // 惰性 + 记忆化：pet 空串时完全不读配置；GET 分支复用同一次读取。
@@ -1813,7 +1828,8 @@ export function apply(ctx: any): void {
           const mem = await readMemory();
           const bucket = mem[who.entry] ?? {};
           const list = (bucket[petId]?.messages ?? []).slice();
-          const rounds = memoryRounds(who.conf);
+          // 传了 ?rounds= 就用传的（含 0 = 空历史），没传才回落到配置
+          const rounds = roundsOverride ?? memoryRounds(who.conf);
           // 与 chatWithPet 同一语义：rounds = 0 → 空历史（slice(-0) 会返回整个数组，见上）
           const messages = sliceMemoryRounds(list, rounds);
           return { kind: 'json', status: 200, obj: { ok: true, messages, rounds } };
