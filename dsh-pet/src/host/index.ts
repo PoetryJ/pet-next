@@ -153,7 +153,7 @@ import {
 } from './notify-events';
 import { profileNameFrom, storageEntries } from './storage-paths';
 import { parseStateWaitQuery, PollStateStore } from './state';
-import { timeContextOf } from './time-context';
+import { composeSystemPrompt, petPersona } from './persona';
 import {
   HelperProcess,
   defaultElectronExe,
@@ -689,22 +689,21 @@ export function apply(ctx: any): void {
 
   // ---- 配置消费：唯一入口 readAllConfig（./config）——返回值绝对正确，这里只读字段，零校验 ----
 
-  /** 某宠物的最终人设 system：所属条目（写在该条目 `pets` 里的实例 → 那个条目；主配置的实例 → `main`）
-   *  的 whisperPrompt（合并器已填默认）+ 无条件追加一句名字声明（name，缺失已按 id）——碎碎念与对话共用同一拼装。
-   *  + 末尾追加一行**时间背景**（time-context.ts：日期/星期/时刻/时段/工作日或周末）：
-   *    碎碎念与对话各自每次生成都会重新走这里，所以拿到的永远是**当前**时刻，不需要额外的刷新机制；
-   *    非法 Date 时它为空串，此时整行不加（宁可没有时间信息，也不把 NaN 拼进提示词）。
+  /** 某宠物的最终人设 system：**实例级** `pets[].whisperPrompt` 优先，没写回落到所属条目
+   *  （写在该条目 `pets` 里的实例 → 那个条目；主配置的实例 → `main`）的 whisperPrompt（合并器已填默认）。
+   *  拼装本身在 ./persona（纯函数、有单测）：人设正文 + 一句名字声明（name，缺失已按 id）+ 一行时间背景
+   *  （日期/星期/时刻/时段/工作日或周末/节日）——碎碎念与对话共用同一份拼装。
+   *  时间每次现算（这里传 new Date()），所以拿到的永远是**当前**时刻，不需要额外的刷新机制。
    *
    *  收 `findPetInstance` 的**命中结果**而不是 `(petId, cfg)`：两个调用方都已经解析过了，这里再查一次
    *  只会多出一处"查不到就兜底 main"的不可达分支。 */
-  const petSystemPrompt = (found: { conf: Record<string, unknown>; pet: Record<string, unknown> }): string => {
-    const prompt = typeof found.conf.whisperPrompt === 'string' ? found.conf.whisperPrompt : '';
-    const name = String(found.pet.name || found.pet.id);
-    const nameLine = '你的名字是“' + name + '”。';
-    const base = prompt ? prompt + '\n' + nameLine : nameLine;
-    const time = timeContextOf(new Date());
-    return time ? base + '\n' + time : base;
-  };
+  const petSystemPrompt = (found: { conf: Record<string, unknown>; pet: Record<string, unknown> }): string =>
+    composeSystemPrompt({
+      prompt: petPersona(found.conf, found.pet),
+      name: String(found.pet.name ?? ''),
+      id: String(found.pet.id ?? ''),
+      now: new Date(),
+    });
 
   /** 对话记忆轮数（1 轮 = 1 问 1 答）：该宠物**所属条目**的 chatMemoryRounds（合并器已填默认非负数字）。
    *  同样收**已解析的条目配置**：两个调用方都已经拿到 `findPetInstance` 的结果。 */
@@ -714,7 +713,7 @@ export function apply(ctx: any): void {
   };
 
   /** 生成/返回某宠物的一句碎碎念（周期 GET 与菜单手动触发共用的同一逻辑）：
-   *  每只宠物独立生成（所属条目的人设）。生成成功就写进 S 的 pets.<id>.say——
+   *  每只宠物独立生成（人设 = 它自己的 whisperPrompt，没写回落到所属条目）。生成成功就写进 S 的 pets.<id>.say——
    *  碎碎念 / 命令气泡 / 对话回复在前端本来就是**同一条展示链路**（同一个 triggerWhisper、
    *  同一个气泡槽、同一批 events.whisper 动画），所以合并成同一个叶子；"周期内不重复"由
    *  调度侧的 lastWhisperAt 保证，不再需要一份 whisperCache（多端共享也由 S 天然保证）。
@@ -781,7 +780,7 @@ export function apply(ctx: any): void {
       // 分桶，外加一只幽灵叶子（/state 里常驻到进程重启）。
       if (!found) return { ok: false, reason: 'unknown-pet', message: '没有这只桌宠：' + petId };
       const rounds = memoryRounds(found.conf);
-      // 人设：所属条目的 whisperPrompt（合并器已填默认）+ 名字声明（与碎碎念同一拼装）
+      // 人设：实例级 whisperPrompt 优先，没写回落所属条目（与碎碎念同一拼装）
       const system = petSystemPrompt(found);
       // 配图：开关关闭 → 空池（指令与解析都不介入，与旧行为逐字一致）；目录链按所属条目取。
       // 张数上限（chatImageLimit，0 = 不限制）：整张清单每条消息都要附，截断后费用上限可控。

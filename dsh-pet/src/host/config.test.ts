@@ -448,6 +448,90 @@ describe('saveUserConfig —— 宠物固定 fixedEnabled（per-pet 白名单）
   });
 });
 
+describe('readAllConfig —— 实例级人设 whisperPrompt（实例覆盖 / 不填生效值）', () => {
+  const petAt = (merged: Record<string, Record<string, unknown>>, n = 0): Record<string, unknown> =>
+    (merged.main.pets as Record<string, unknown>[])[n];
+
+  test('实例写了 → 原样带出（消费端据此取代条目人设）', () => {
+    const merged = readAllConfig(withBase({}, { pets: [{ ...BASE.pets[0], whisperPrompt: '我是猫娘' }] }));
+    assert.equal(petAt(merged).whisperPrompt, '我是猫娘');
+    // 条目级那份仍在：两者靠 petPersona 二选一，合并器不做合并
+    assert.equal(merged.main.whisperPrompt, BASE.whisperPrompt);
+  });
+
+  test('没写 → 结果里**没有**该键（回落条目由消费端做，合并器不填生效值）', () => {
+    // 合并器一旦把条目人设填进每只实例，/pet-display（拿合并结果回调 saveUserConfig 写盘）
+    // 就会把"跟随条目"固化成显式覆盖，之后改条目人设这些实例不再跟着变——这条钉住它。
+    const pet = petAt(readAllConfig(withBase({})));
+    assert.equal('whisperPrompt' in pet, false);
+  });
+
+  test('空串 / 纯空白 → 当没写（设置页清空输入框后提交的就是空串）', () => {
+    for (const value of ['', '   \n\t ']) {
+      const pet = petAt(readAllConfig(withBase({}, { pets: [{ ...BASE.pets[0], whisperPrompt: value }] })));
+      assert.equal('whisperPrompt' in pet, false, `${JSON.stringify(value)} 应被当作没写`);
+    }
+  });
+
+  test('显式写了非字符串 → 当没写，不抛错（脏值绝不进渲染层）', () => {
+    for (const value of [42, { a: 1 }, ['x'], true]) {
+      const pet = petAt(readAllConfig(withBase({}, { pets: [{ ...BASE.pets[0], whisperPrompt: value }] })));
+      assert.equal('whisperPrompt' in pet, false, `${JSON.stringify(value)} 应被忽略`);
+    }
+  });
+
+  test('逐实例独立：两只宠物各写各的，不互相传染', () => {
+    const merged = readAllConfig(
+      withBase(
+        {},
+        {
+          pets: [
+            { ...BASE.pets[0], id: 'a', whisperPrompt: 'A 的人设' },
+            { ...BASE.pets[0], id: 'b' },
+          ],
+        },
+      ),
+    );
+    const pets = merged.main.pets as Record<string, unknown>[];
+    assert.equal(pets.find((p) => p.id === 'a')?.whisperPrompt, 'A 的人设');
+    assert.equal('whisperPrompt' in (pets.find((p) => p.id === 'b') as Record<string, unknown>), false);
+  });
+});
+
+describe('saveUserConfig —— 实例级人设 whisperPrompt（白名单 + 清空 = 删除覆盖）', () => {
+  const petAt = (out: Record<string, unknown> | null, n = 0): Record<string, unknown> =>
+    (out?.pets as Record<string, unknown>[])[n];
+
+  test('非空字符串 → trim 后落盘（不在白名单就会被保存悄悄丢掉——physics 的老 bug 同款）', () => {
+    const out = saveOnce({ pets: [{ ...PETS[0], whisperPrompt: '  我是猫娘\n' }] });
+    assert.equal(petAt(out).whisperPrompt, '我是猫娘', 'whisperPrompt 必须在 saveUserConfig 的白名单里');
+  });
+
+  test('空串 / 纯空白 → 不写该键（= 删除这只宠物的覆盖、回落条目）', () => {
+    for (const value of ['', '   ']) {
+      assert.equal(
+        'whisperPrompt' in petAt(saveOnce({ pets: [{ ...PETS[0], whisperPrompt: value }] })),
+        false,
+        `${JSON.stringify(value)} 不该落盘`,
+      );
+    }
+  });
+
+  test('未传 → 不凭空造字段（旧客户端 / 设置页不传时不得写一个空人设）', () => {
+    assert.equal('whisperPrompt' in petAt(saveOnce({ pets: [{ ...PETS[0] }] })), false);
+  });
+
+  test('传了非字符串 → 整体拒绝（宿主回 400，不静默丢用户输入）', () => {
+    assert.equal(saveOnce({ pets: [{ ...PETS[0], whisperPrompt: 42 }] }), null);
+  });
+
+  test('/pet-display 式往返：合并结果直接喂回 save，人设不丢（也不会被写成空串）', () => {
+    const merged = readAllConfig(withBase({}, { pets: [{ ...BASE.pets[0], whisperPrompt: '我是猫娘' }] }));
+    const layerPets = merged.main.pets as Record<string, unknown>[];
+    assert.equal(petAt(saveOnce({ pets: layerPets })).whisperPrompt, '我是猫娘');
+  });
+});
+
 describe('saveUserConfig —— 物理参数 physics（白名单 + 透传保留）', () => {
   const PHYS: Record<string, unknown> = BASE.physics;
 

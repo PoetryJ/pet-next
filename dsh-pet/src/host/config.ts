@@ -89,6 +89,10 @@ export const ID_FORBIDDEN = /[\\/:\x00-\x1f]/;
  * 不在名单里的顶层字段基座仍是**内置默认**：`whisperPrompt`（人设）、`memes`（表情包）、
  * `animations` / `animationWeights`（与素材根绑定）、`workStatusTexts`（文案）——一个种类一份
  * 动画池 / 一份人设 / 一个表情包目录，各写一份才是 pet pack 的意义。
+ *
+ * 例外：**人设有实例级覆盖**。`pets[].whisperPrompt`（可选）写了就取代所属条目顶层那一份，
+ * 没写则回落条目——回落本身由消费端做（./persona 的 petPersona），合并不填生效值（见 petPersonaField 注释）。
+ * 其余实例级字段仍是固定白名单（id/name/size/4 个开关/display/position + whisperPrompt）。
  */
 const GLOBAL_DEFAULT_KEYS = [
   'physics',
@@ -565,7 +569,29 @@ function mergePet(
       marginX: petNumber(ownPos.marginX, basePos.marginX, -Infinity, label, 'position.marginX', id),
       marginY: petNumber(ownPos.marginY, basePos.marginY, -Infinity, label, 'position.marginY', id),
     },
+    // 实例级人设（可选）：只放行**非空字符串**；没写 / 空串 / 纯空白 / null → 该键不出现在结果里
+    // （回落由消费端做：./persona 的 petPersona 取不到实例级就取条目顶层）；非字符串 → 告警 + 忽略。
+    //
+    // **这里刻意不填"生效值"**：合并器的契约是"拍平用户写了什么"，而人设的默认值是**所属条目那一份**，
+    // 不是某个常量。一旦在这里把条目人设填进每只实例，/pet-display（拿合并结果 → saveUserConfig 写回）
+    // 就会把"跟随条目"固化成每只实例的显式覆盖——之后用户改条目人设，这些实例不再跟着变。
+    ...petPersonaField(p.whisperPrompt, label, id),
   };
+}
+
+/**
+ * 实例级 whisperPrompt 的合并：写了非空字符串 → 原样带出；否则返回空对象（该键不出现）。
+ * 显式写了非字符串（数字/对象/布尔）才算配置错误 → 告警一次并忽略（回落条目），与 petNumber 同口径。
+ */
+function petPersonaField(own: unknown, label: string, id: string): { whisperPrompt?: string } {
+  if (typeof own === 'string') {
+    // 空串 / 纯空白 = 没写（设置页把输入框清空后提交的就是 ''，这是合法状态，不告警）
+    return own.trim() === '' ? {} : { whisperPrompt: own };
+  }
+  if (own !== undefined && own !== null) {
+    warnOnce(`${label}:whisperPrompt:${id}`, `宠物「${id}」的 whisperPrompt 非法，已忽略（回落所属条目人设）`);
+  }
+  return {};
 }
 
 /**
@@ -612,7 +638,8 @@ export function flattenPetList(merged: Record<string, Record<string, unknown>>):
 }
 
 /** 在完成品聚合里按实例 id 定位宠物及其所属条目（host 内部消费索引）：
- *  条目 key 即素材根（assetRoot）；条目级字段（whisperPrompt/chatMemoryRounds/animations）随条目取。 */
+ *  条目 key 即素材根（assetRoot）；条目级字段（whisperPrompt/chatMemoryRounds/animations）随条目取
+ *  （唯一例外：whisperPrompt 可被实例覆盖——调用方要生效值请走 ./persona 的 petPersona，别直接读 conf）。 */
 export function findPetInstance(
   merged: Record<string, Record<string, unknown>>,
   petId: string,
@@ -629,6 +656,8 @@ export function findPetInstance(
  * 保存用户层（PUT /config）：更新 main-config.jsonc，接受可编辑字段（pets + 全局开关：
  * notificationsEnabled / whisperImageEnabled / chatImageEnabled / confineToScreen + physics
  * + whisperModel / chatModel + chatMemoryRounds + chatImageLimit）。
+ * pets 内除 id/name/size/四个开关/display/position 外，还接可选的 `whisperPrompt`（实例级人设；
+ * 空串 = 删除覆盖，回落条目）。
  * 编辑语义：**非白名单顶层字段（whisperPrompt / eventsRefreshSec / memes 等）从
  * `existing`（当前磁盘上的用户文件原对象）原样透传保留**——
  * 用户手动编辑的精调配置不会被设置页保存抹掉（旧实现是纯白名单重建，会整体覆盖丢失）。
@@ -675,7 +704,14 @@ export function saveUserConfig(
     const marginX = Number(pos.marginX);
     const marginY = Number(pos.marginY);
     if (!Number.isFinite(marginX) || !Number.isFinite(marginY)) return null;
-    out.push({
+    // 实例级人设（可选）：非空字符串才落盘（trim 后写）；空串/纯空白 = 不写该键——
+    // 落盘结果是"这只宠物没有自己的覆盖"，读取侧（./persona 的 petPersona）自动回落到所属条目。
+    // 也就是说：清空输入框 + 保存 = 删除覆盖，而不是写一个空人设。
+    // 非字符串（且非 undefined/null）与其他字段同口径：整包 400，不静默丢用户输入。
+    const rawPersona = pp.whisperPrompt;
+    if (rawPersona !== undefined && rawPersona !== null && typeof rawPersona !== 'string') return null;
+    const persona = typeof rawPersona === 'string' ? rawPersona.trim() : '';
+    const pet: Record<string, unknown> = {
       id,
       name,
       size,
@@ -685,7 +721,9 @@ export function saveUserConfig(
       fixedEnabled,
       display,
       position: { corner, marginX, marginY },
-    });
+    };
+    if (persona) pet.whisperPrompt = persona;
+    out.push(pet);
   }
   const ne = o.notificationsEnabled;
   if (ne !== undefined && typeof ne !== 'boolean') return null;

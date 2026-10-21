@@ -79,6 +79,8 @@ export interface Animations {
  *    （main-config.jsonc），即"设置页改一次，所有宠物（含 pet pack）都生效"；种类文件仍可在自己
  *    顶层覆盖（见 host/config.ts 的 GLOBAL_DEFAULT_KEYS）。其余条目级字段（animations /
  *    whisperPrompt / memes / workStatusTexts …）的基座是**内置默认**，与用户层无关；
+ *    **例外：whisperPrompt 有实例级覆盖**（`pets[].whisperPrompt`，见字段注释）——它是唯一
+ *    允许写在实例上的条目级字段，写了就取代条目的那份；
  *  - extra: true 标记该宠物由 pet/ 目录文件定义：设置页不可编辑、保存时排除，
  *    由拍平逻辑统一打标，**永不出现在持久化配置里**；
  *  - assetRoot: 素材目录名（= 配置文件前缀 `<名>`，即 `pet/<名>-animation/`）；素材 URL
@@ -109,6 +111,13 @@ export interface Pet {
   /** 显示位置（web/desktop/both/none，必填）：缺失即配置错误，代码不做兜底 */
   display: PetDisplay;
   position: { corner: Corner; marginX: number; marginY: number };
+  /** **实例级人设**（可选，`pets[].whisperPrompt`）：碎碎念与对话共用的系统提示词正文。
+   *  写了就**取代**所属条目顶层那一份（替换，不是拼接）；没写/空串 = 回落条目。回落发生在
+   *  host 消费端（src/host/persona.ts 的 petPersona），合并器不填生效值——所以这里 undefined
+   *  就是"跟随条目"，不是错误。
+   *  **无长度上限**（与条目级 whisperPrompt 同一口径：只要求非空字符串）。
+   *  只写正文：名字（`你的名字是“X”`）与时间背景由 host 无条件追加，不要在这里重复写。 */
+  whisperPrompt?: string;
   animations?: Animations;
   animationWeights?: Weights;
   extra?: boolean;

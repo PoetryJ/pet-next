@@ -3,7 +3,8 @@
 //       （结构性缺失静默、显式写错告警），返回给消费端的永远是填满的成品。
 // 字段归属（三层，改配置前先看这里）：
 //   · 实例级（写在 pets[] 里，每只独立）：name / id / size / balanceEnabled / whisperEnabled /
-//     workStatusEnabled / fixedEnabled / display / position
+//     workStatusEnabled / fixedEnabled / display / position，外加可选的 whisperPrompt（人设）——
+//     写了就取代所属条目顶层那一份，留空则跟随条目（设置页有输入框）
 //   · 全局默认（本文件是默认值；用户在 main-config.jsonc 里写一次就对**所有宠物**生效，
 //     含 pet/<名>-config.json 定义的种类；种类文件自己写了则覆盖自己那份）：
 //     physics / font / confineToScreen / whisperImageEnabled / chatImageEnabled /
@@ -14,9 +15,15 @@
 // 合并口径：所有顶层字段都是**整段替换**——写了就整段用自己的，缺的子键不会从本文件补回来
 //   （消费端各自兜底：余额周期读不到按 1800、碎碎念按 300）。
 {
-  // ===================== 碎碎念（系统提示词人设，条目级——每个种类一份；种类文件 pet/<名>-config.json 顶层可覆盖） =====================
+  // ===================== 碎碎念 / 对话的人设（系统提示词，条目级——每个种类一份；种类文件 pet/<名>-config.json 顶层可覆盖） =====================
   // 宠物开启碎碎念（pets[].whisperEnabled = true）时，按 eventsRefreshSec.whisper 周期
   // 用此提示词调用当前服务商生成一句话，气泡显示。说人话、不啰嗦、不解释自己、不提 AI。
+  // 这是**条目级默认值**：想让某只宠物有自己的性格，在它的 pets[] 条目里加一行
+  //   "whisperPrompt": "……"
+  // 写了就**取代**这里（不是拼接）；留空/不写则跟随本条目的这份。设置页「桌宠配置」里每只宠物
+  // 都有「人设」输入框，改那里等价（写的是用户层 main-config.jsonc 的 pets[].whisperPrompt）。
+  // 只写正文：实际发给模型的 system = 这段 + 自动追加的「你的名字是“<宠物名>”。」+ 当前时间背景
+  // （日期/星期/时刻/时段/工作日或周末/节日）——所以别在这里再写名字和日期。人设**没有长度上限**。
   "whisperPrompt": "你是主人桌面上的Q版蓝发小女仆，会时不时碎碎念一句。说话要自然随意、短短一句（20字以内），温柔乖巧带点俏皮，说人话不啰嗦，不要解释你自己，不要提你是AI。",
   // ===================== 对话记忆轮数（全局默认；种类文件 pet/<名>-config.json 顶层可覆盖） =====================
   // 右键菜单「对话」弹窗与桌宠聊天时，每次请求携带的最近历史轮数（1 轮 = 1 问 1 答）。
@@ -165,7 +172,8 @@
   //   web=仅浏览器 overlay / desktop=仅桌面模式（Electron 透明窗）/ both=两者/ none=都不显示。
   //   缺失按默认 both 处理并告警（兼容 ≤0.2.0 旧配置），写了非法值即配置错误；桌面模式渲染
   //   display 含 desktop/both 的全部宠物，每只一个局部小窗）、
-  // position（corner: 四角之一；marginX/marginY: 距所属角落偏移 px）
+  // position（corner: 四角之一；marginX/marginY: 距所属角落偏移 px）、
+  // whisperPrompt（可选：这只宠物自己的人设，写了取代条目顶层那份；不写/留空 = 跟随条目）
   "pets": [
     {
       "name": "蓝毛小女仆",
@@ -192,6 +200,8 @@
         "marginX": 24,
         "marginY": 100
       }
+      // 想让这只宠物有自己的性格，就取消下面这行的注释（留空/不写 = 跟随文件顶层的 whisperPrompt）
+      // "whisperPrompt": "你是主人桌面上的猫娘，说话简短、爱吐槽，20 字以内。"
     }
   ],
 

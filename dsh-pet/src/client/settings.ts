@@ -115,6 +115,12 @@ const SETTINGS_CSS = [
   '.dsh-pet-cfg__inp:focus{border-color:var(--dsw-alias-state-business-primary)}',
   '.dsh-pet-cfg__inp:disabled{color:var(--dsw-alias-label-tertiary);cursor:default}',
 
+  // 人设（多行输入）：复用 __inp 的边框/字号，只补高度与纵向拖拽缩放；
+  // 右下角一行纯展示字数（人设**没有**长度上限，与条目级 whisperPrompt 同一口径，故不阻断输入）
+  '.dsh-pet-cfg__persona{display:flex;flex-direction:column;gap:2px;min-width:0}',
+  '.dsh-pet-cfg__area{min-height:66px;resize:vertical;line-height:18px}',
+  '.dsh-pet-cfg__count{font-size:11px;color:var(--dsw-alias-label-tertiary);text-align:right}',
+
   // 开关（勾选框 + 标题 + 问号）
   '.dsh-pet-cfg__toggle{display:flex;align-items:center;gap:6px;min-width:0;font-size:13px;color:var(--dsw-alias-label-primary)}',
   '.dsh-pet-cfg__toggle>label{display:inline-flex;align-items:center;gap:6px;cursor:pointer;min-width:0}',
@@ -217,10 +223,14 @@ export const zh = {
   sizeHint: '高度自动 = 宽度 × 9/16。',
   nameLabel: '名字',
   nameHint: '显示名：鼠标悬浮宠物时弹出，也会加进 AI 人设（你的名字是 X）。可重复，留空按宠物 id 处理。',
+  personaLabel: '人设（可选）',
+  personaHint:
+    '只影响这只宠物。留空 = 跟随所属条目的人设——输入框里的灰色文字就是那份内容。实际发给模型的 system = 这段 + 自动追加的「你的名字是“<名字>”」+ 当前时间背景，所以别在这里再写名字和日期。',
+  personaCount: '{n} 字',
   balanceEnabled: '余额功能',
   balanceEnabledHint: '启用后该宠物触发余额动画并显示余额气泡。',
   whisperEnabled: '碎碎念',
-  whisperEnabledHint: '启用后该宠物按周期用 AI 生成一句话并播碎碎念动画（人设与周期在配置文件顶层）。',
+  whisperEnabledHint: '启用后该宠物按周期用 AI 生成一句话并播碎碎念动画（人设见下方「人设」框，留空跟随条目）。',
   workStatusEnabled: '工作状态联动',
   workStatusEnabledHint:
     '启用后该宠物跟随 DSH 工作状态：思考/工作中/等待确认/完成/出错时自动切对应动画并弹气泡（动画池在配置顶层，仅监听不调用模型）。',
@@ -390,11 +400,15 @@ export const en = {
   nameLabel: 'Name',
   nameHint:
     'Shown on hover and added to AI personas ("your name is X"). Duplicates allowed; empty falls back to the pet id.',
+  personaLabel: 'Persona (optional)',
+  personaHint:
+    'Applies to this pet only. Leave empty to follow the entry persona — the grey text inside the box is exactly that. The system prompt actually sent = this text + an appended 「your name is "<name>"」 line + the current time context, so do not repeat the name or the date here.',
+  personaCount: '{n} chars',
   balanceEnabled: 'Balance',
   balanceEnabledHint: 'When enabled, this pet plays balance animations and shows the balance bubble.',
   whisperEnabled: 'Whisper',
   whisperEnabledHint:
-    'When enabled, this pet periodically generates a line via AI and plays the whisper animation (persona & interval live in the top-level config).',
+    'When enabled, this pet periodically generates a line via AI and plays the whisper animation (persona = the field below; empty follows the entry).',
   workStatusEnabled: 'Work status',
   workStatusEnabledHint:
     'When enabled, this pet follows DSH work state: thinking / working / waiting / done / error switch animations and show bubbles (pool in top-level config; listening only, no model calls).',
@@ -1025,6 +1039,9 @@ export function makePetConfigSection(rt: {
     // 同上：只改本地状态，随「保存」整包写入。初值 10 = 内置默认（砍掉整张清单的约 2/3 开销）；
     // 加载效应会用成品 main.chatImageLimit 覆盖。
     const [chatImageLimit, setChatImageLimit] = useState(10);
+    // 条目级人设（main 那一份 whisperPrompt）：设置页只编辑**实例级**覆盖（pets[].whisperPrompt），
+    // 这个值只用于"留空时跟随什么"的预览（输入框占位符 + 问号说明），不参与提交。
+    const [entryPrompt, setEntryPrompt] = useState('');
     // 候选清单（GET /models：宿主 llm 服务的实时服务商 + 各自模型，与 DSH 的模型选择器同源）。
     // null = 还没拉到（下拉框只剩「跟随当前对话」）；拉失败置 catalogErr 显示一行提示。
     const [catalog, setCatalog] = useState<ModelCatalogGroup[] | null>(null);
@@ -1037,6 +1054,8 @@ export function makePetConfigSection(rt: {
       if (!m || !Array.isArray(m.pets)) throw new Error('Invalid config response');
       const loadedPets = m.pets as Pet[];
       setPets(loadedPets.map((p) => ({ ...p, position: { ...p.position } })));
+      // 条目人设：实例级没写的宠物就是用它（合并器保证 main 条目一定有非空字符串）
+      setEntryPrompt(typeof m.whisperPrompt === 'string' ? m.whisperPrompt : '');
       setSelId((id) => (loadedPets.some((p) => p.id === id) ? id : (loadedPets[0]?.id ?? '')));
       if (typeof m.notificationsEnabled === 'boolean') setNotifyEnabled(m.notificationsEnabled);
       if (typeof m.whisperImageEnabled === 'boolean') setWhisperImage(m.whisperImageEnabled);
@@ -1627,6 +1646,34 @@ export function makePetConfigSection(rt: {
                     toggleCell('fixedEnabled', !!cur.fixedEnabled, busy, (v) => updateSel({ fixedEnabled: v }), true),
                   ],
                 }),
+
+                // 人设（可选，**实例级**）：写在这只宠物上的 whisperPrompt，空 = 跟随所属条目的人设。
+                // 只做存储/回显，不在这里拼 system——拼装（名字声明 + 时间背景）在宿主侧
+                // （src/host/persona.ts），所以占位符只解释"最终会追加什么"，不复制那段逻辑。
+                // **占位符 = 条目人设正文**（entryPrompt）：空着的时候直接看到"跟随的是什么"，
+                // 比一句「留空 = 跟随条目」有用得多（设置页只编辑 main 条目的宠物，故恒为 main 那份）。
+                // 无 maxLength：人设没有长度上限（与条目级 whisperPrompt 同一口径），右下角只显示字数。
+                field(
+                  t('personaLabel'),
+                  h('div', {
+                    className: 'dsh-pet-cfg__persona',
+                    children: [
+                      h('textarea', {
+                        className: inputClass + ' dsh-pet-cfg__area',
+                        rows: 3,
+                        value: String(cur.whisperPrompt ?? ''),
+                        disabled: busy,
+                        placeholder: entryPrompt,
+                        onChange: (e: ChangeEvent<HTMLTextAreaElement>) => updateSel({ whisperPrompt: e.target.value }),
+                      }),
+                      h('span', {
+                        className: 'dsh-pet-cfg__count',
+                        children: t('personaCount').replace('{n}', String(String(cur.whisperPrompt ?? '').length)),
+                      }),
+                    ],
+                  }),
+                  t('personaHint'),
+                ),
               ],
             })
           : h('p', {
