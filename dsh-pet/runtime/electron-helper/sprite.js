@@ -84,8 +84,9 @@ class PetSprite {
     // 交互/移动
     this.dragState = { active: false, dragging: false, sx: 0, sy: 0, petX: 0, petY: 0 };
     this.justDragged = false;
-    // 上一次「点一下」的时刻（双击窗口的唯一依据）：只记点击、不记拖拽，见 onPointerDown
-    this.lastClickAt = 0;
+    // 上一次**按下**的时刻（0 = 还没记过）：弹弓的判定依据是「两次按下之间隔了多久」。
+    // 按下记、按下比——这次按了多久、什么时候松手都不参与判定（见 onPointerDown）。
+    this.lastPressAt = 0;
     this._interactive = null; // 已上报的可交互状态（setInteractive 去重用）
     this._inputBusy = null; // 已上报的"正在用输入"状态（syncInputBusy 去重用）
     // 拖拽抛掷物理（与浏览器 pet.ts 同构；纯计算在 shared-core S.*）：
@@ -1215,10 +1216,12 @@ class PetSprite {
     this.stopDragFollow();
     this.stopMove();
     this.dragTrail = [];
-    // 弹弓（双击第二下按住拖）：上一次是「点一下」且未超过双击窗口 → 本次拖拽按拉距算力度。
-    // 只认紧邻的一次点击：判定就是一个布尔，没有「待拉」状态、没有超时清理（见 shared-core 的弹弓换算）。
-    const sling = performance.now() - this.lastClickAt < S.SLINGSHOT_DOUBLE_MS;
-    if (sling) this.lastClickAt = 0; // 一次双击只够一次拉弓
+    // 弹弓：**按下时**记时刻、**按下时**比对——间隔 = 两次按下之间的距离，
+    // 因此这次拖了多久、什么时候松手都不影响判定（拖十分钟也早已超出窗口）。
+    // 没有「待拉」状态、没有超时清理（见 shared-core 的弹弓换算）。
+    const pressNow = performance.now();
+    const sling = pressNow - this.lastPressAt < S.SLINGSHOT_DOUBLE_MS;
+    this.lastPressAt = sling ? 0 : pressNow; // 命中就清掉，免得连点三下弹两次
     this.hit.classList.add('dragging');
     // 收起悬浮提示：拖拽期间窗口逐帧跟随光标，指针始终在身体内、onMouseMove 的 inBody 恒为真，
     // 不主动收就会让提示跟着宠物一路飘（松开后由 onPointerUp 按指针位置复位）
@@ -1303,8 +1306,6 @@ class PetSprite {
       };
       this.setTip(px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h);
     }
-    // 双击窗口以「点一下」为准：只有没拖成就松开的按压才更新它（与浏览器同构）
-    if (!wasDragging) this.lastClickAt = performance.now();
     if (wasDragging) {
       this.justDragged = true;
       setTimeout(() => {

@@ -372,9 +372,9 @@ export function makePetUI(rt: {
     const throwStateRef = useRef<ThrowState | null>(null);
     // 按下瞬间已触发过积分（pointerdown 即触发；防止松开的 click 再触发一次/再播点击动画）
     const pressScoreFiredRef = useRef(false);
-    // 上一次「点一下」（按下后没拖动就松开）的时刻：双击窗口的唯一依据。
-    // 只记点击不记拖拽——否则「拖一下、再快速按住拖」会被误判成双击（见 handlePointerDown）
-    const lastClickAtRef = useRef(0);
+    // 上一次**按下**的时刻（0 = 还没记过）：弹弓的判定依据是「两次按下之间隔了多久」。
+    // 按下记、按下比——这次按了多久、什么时候松手都不参与判定（见 handlePointerDown）。
+    const lastPressAtRef = useRef(0);
     // Q 弹挤压（点击回应 / 抛掷落地）：rAF + 待压标记（等新动画真正成为前台再压，压的是新首帧）
     const squashRef = useRef<number | null>(null);
     const squashTokenRef = useRef(0);
@@ -1757,9 +1757,12 @@ export function makePetUI(rt: {
         offY = e.clientY - (rr.top + rr.height / 2);
         boxPxRef.current = { x: rr.left, y: rr.top };
       }
-      // 弹弓（双击第二下按住拖）：上一次是「点一下」且距现在不超过双击窗口，本次拖拽就把力度换成拉距。
-      // 只认紧邻的一次点击——没有模式、没有待拉状态，判定完全落在这一个布尔上（见 shared/physics.ts）。
-      const sling = performance.now() - lastClickAtRef.current < SLINGSHOT_DOUBLE_MS;
+      // 弹弓：**按下时**记时刻、**按下时**比对——间隔 = 两次按下之间的距离，
+      // 因此这次拖了多久、什么时候松手都不影响判定（拖十分钟也早已超出窗口）。
+      // 没有模式、没有待拉状态，判定就落在这一句上（见 shared/physics.ts 的弹弓换算）。
+      const pressNow = performance.now();
+      const sling = pressNow - lastPressAtRef.current < SLINGSHOT_DOUBLE_MS;
+      lastPressAtRef.current = sling ? 0 : pressNow; // 命中就清掉，免得连点三下弹两次
       const anchor = boxPxRef.current;
       dragRef.current = {
         active: true,
@@ -1773,7 +1776,6 @@ export function makePetUI(rt: {
         anchorX: anchor ? anchor.x + halfW : e.clientX,
         anchorY: anchor ? anchor.y + halfH : e.clientY,
       };
-      if (sling) lastClickAtRef.current = 0; // 一次双击只够一次拉弓，免得第三下又接到同一个窗口
       // 触屏长按 500ms 打开右键菜单：复用同一套按下判定。手指移动超过 8px 即取消；
       // 鼠标与笔不走这条分支（它们本来就有右键，无需长按替代）。
       if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') {
@@ -1917,8 +1919,6 @@ export function makePetUI(rt: {
           }
         }
       }
-      // 双击窗口以「点一下」为准：只有没拖成就松开的按压才更新它（拖拽之后的那一下不算双击的第一下）
-      if (!wasDragging) lastClickAtRef.current = performance.now();
       // 提示复位：点击/拖拽期间收起的悬浮提示，指针仍在命中区内就恢复——指针捕获期间
       // pointerleave 不触发，不复位就得把鼠标移出去再移回来才重现（与桌面 onPointerUp 同一处理）。
       // 先按松手位置摆好再显示，否则会重现上一次的位置。
