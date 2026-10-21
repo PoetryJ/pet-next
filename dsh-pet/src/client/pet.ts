@@ -38,7 +38,15 @@ import {
 import { WORK_STATUS_INDEX, type WorkStatusSnapshot } from '../shared/work-status';
 import { makeBalanceBubble, makeWhisperBubble } from './bubble';
 import { clickScore, SCORE_MIN_SPEED, mountScorePopup, spawnScoreBurst } from '../shared/score-popup';
-import { CANVAS_H, FEET_Y, HIT_BOX, DRAG_THRESHOLD, PET_REF_WIDTH, ANIMATION_EXT } from '../shared/constants';
+import {
+  CANVAS_H,
+  FEET_Y,
+  HIT_BOX,
+  DRAG_THRESHOLD,
+  PET_REF_WIDTH,
+  ANIMATION_EXT,
+  SLINGSHOT_DOUBLE_MS,
+} from '../shared/constants';
 // 统一右键菜单：与桌面共用同一份组件（树 + 渲染 + 样式，src/shared/menu.ts）
 import {
   buildMenuTree,
@@ -70,6 +78,7 @@ import {
   springStep,
   throwBounds,
   throwStep,
+  throwSubsteps,
   trimTrail,
   collidePet,
   bodyPixelBox,
@@ -79,6 +88,9 @@ import {
   squashScale,
   landingSquash,
   throwVelocity,
+  pullAngle,
+  slingshotPower,
+  slingshotVelocity,
   type DragSample,
   type PetCollisionSlot,
   type ThrowState,
@@ -341,6 +353,10 @@ export function makePetUI(rt: {
       offY: 0,
       // 触屏长按定时器（只有触摸/笔走这条路径，见 handlePointerDown）；null = 当前没有待触发的长按
       lpTimer: null as ReturnType<typeof setTimeout> | null,
+      // 弹弓：本次拖拽按「拉距」算力度（双击的第二下按住拖）。anchorX/Y = 按下时的宠物**中心**
+      sling: false,
+      anchorX: 0,
+      anchorY: 0,
     });
     const justDraggedRef = useRef(false);
     // 拖拽抛掷物理状态：轨迹样本 / 包围盒左上角实时 px / 弹簧目标与速度 / 弹簧跟随 rAF / 抛掷 rAF
@@ -356,6 +372,9 @@ export function makePetUI(rt: {
     const throwStateRef = useRef<ThrowState | null>(null);
     // 按下瞬间已触发过积分（pointerdown 即触发；防止松开的 click 再触发一次/再播点击动画）
     const pressScoreFiredRef = useRef(false);
+    // 上一次「点一下」（按下后没拖动就松开）的时刻：双击窗口的唯一依据。
+    // 只记点击不记拖拽——否则「拖一下、再快速按住拖」会被误判成双击（见 handlePointerDown）
+    const lastClickAtRef = useRef(0);
     // Q 弹挤压（点击回应 / 抛掷落地）：rAF + 待压标记（等新动画真正成为前台再压，压的是新首帧）
     const squashRef = useRef<number | null>(null);
     const squashTokenRef = useRef(0);
@@ -1319,7 +1338,14 @@ export function makePetUI(rt: {
         const dt = (now - last) / 1000;
         last = now;
         const fallingVy = state.vy; // 本帧积分前的竖直速度（正=下落）：即落地冲击速度
-        const res = throwStep(state, dt, bounds, cfg.physics);
+        // 细分积分：弹弓没有速度上限，一帧可能跨过上百 px——不拆会跳过「落地/反弹」那几帧，
+        // Q 弹、地面摩擦与 atRest 判定都会漏。普通甩抛每帧位移远小于 SUBSTEP_PX，
+        // 这里算出 1 步，与旧实现的单步积分逐位相同。
+        const substeps = throwSubsteps(state.vx, state.vy, dt);
+        let res = throwStep(state, dt / substeps, bounds, cfg.physics);
+        for (let i = 1; i < substeps && !res.atRest; i++) {
+          res = throwStep(res, dt / substeps, bounds, cfg.physics);
+        }
         state = { x: res.x, y: res.y, vx: res.vx, vy: res.vy };
         throwStateRef.current = state;
         // ---- 宠物间碰撞（仅 petCollision 开启）：飞行中的自己被甩出时撞到其它宠物 ----
@@ -1731,7 +1757,23 @@ export function makePetUI(rt: {
         offY = e.clientY - (rr.top + rr.height / 2);
         boxPxRef.current = { x: rr.left, y: rr.top };
       }
-      dragRef.current = { active: true, dragging: false, sx: e.clientX, sy: e.clientY, offX, offY, lpTimer: null };
+      // 弹弓（双击第二下按住拖）：上一次是「点一下」且距现在不超过双击窗口，本次拖拽就把力度换成拉距。
+      // 只认紧邻的一次点击——没有模式、没有待拉状态，判定完全落在这一个布尔上（见 shared/physics.ts）。
+      const sling = performance.now() - lastClickAtRef.current < SLINGSHOT_DOUBLE_MS;
+      const anchor = boxPxRef.current;
+      dragRef.current = {
+        active: true,
+        dragging: false,
+        sx: e.clientX,
+        sy: e.clientY,
+        offX,
+        offY,
+        lpTimer: null,
+        sling,
+        anchorX: anchor ? anchor.x + halfW : e.clientX,
+        anchorY: anchor ? anchor.y + halfH : e.clientY,
+      };
+      if (sling) lastClickAtRef.current = 0; // 一次双击只够一次拉弓，免得第三下又接到同一个窗口
       // 触屏长按 500ms 打开右键菜单：复用同一套按下判定。手指移动超过 8px 即取消；
       // 鼠标与笔不走这条分支（它们本来就有右键，无需长按替代）。
       if (e.pointerType !== 'mouse' && e.pointerType !== 'pen') {
@@ -1825,29 +1867,58 @@ export function makePetUI(rt: {
         const bx = boxPxRef.current;
         const px = bx ? bx.x : e.clientX - d.offX - halfW;
         const py = bx ? bx.y : e.clientY - d.offY - halfH;
-        // 初速估算：够快就抛掷（重力+边缘反弹+落地摩擦），否则原地放下
-        const vel = estimateReleaseVelocity(dragTrailRef.current, performance.now(), cfg.physics);
-        dragTrailRef.current = [];
-        if (vel) {
+        if (d.sling) {
+          // 弹弓：力度 = **拉距**（与手速无关），方向 = 拉的**反方向**。
+          // 拉向量用宠物实际中心算（不是指针）——弹簧跟手有滞后，用户看到的是宠物拉出去多远。
+          // 之后与甩抛走同一条 startThrow：重力/反弹/摩擦/落地 Q 弹/宠物互撞/多屏完全复用。
+          const pullX = px + halfW - d.anchorX;
+          const pullY = py + halfH - d.anchorY;
+          const dist = Math.hypot(pullX, pullY);
+          const power = slingshotPower(dist, size);
+          const v = slingshotVelocity(pullAngle(pullX, pullY), power, cfg.physics.throwPower);
+          dragTrailRef.current = [];
           console.log(
             '[dsh-pet] ' +
               new Date().toTimeString().slice(0, 8) +
               ' pet=' +
               cfg.id +
-              ' release vx=' +
-              Math.round(vel.vx) +
+              ' sling dist=' +
+              Math.round(dist) +
+              ' power=' +
+              power.toFixed(2) +
+              ' vx=' +
+              Math.round(v.vx) +
               ' vy=' +
-              Math.round(vel.vy) +
-              ' |v|=' +
-              Math.round(Math.hypot(vel.vx, vel.vy)),
+              Math.round(v.vy),
           );
-          // 抛掷：飞行期间由 startThrow 的 rAF 直接写 left/top，落定后才提交 customPos
-          startThrow(px, py, vel.vx, vel.vy);
+          startThrow(px, py, v.vx, v.vy);
         } else {
-          // 原地放下：提交 customPos → React 按 rootStyle（含边界夹取）重排位置
-          setCustomPos({ rx: (px + halfW) / window.innerWidth, ry: (py + halfH) / window.innerHeight });
+          // 初速估算：够快就抛掷（重力+边缘反弹+落地摩擦），否则原地放下
+          const vel = estimateReleaseVelocity(dragTrailRef.current, performance.now(), cfg.physics);
+          dragTrailRef.current = [];
+          if (vel) {
+            console.log(
+              '[dsh-pet] ' +
+                new Date().toTimeString().slice(0, 8) +
+                ' pet=' +
+                cfg.id +
+                ' release vx=' +
+                Math.round(vel.vx) +
+                ' vy=' +
+                Math.round(vel.vy) +
+                ' |v|=' +
+                Math.round(Math.hypot(vel.vx, vel.vy)),
+            );
+            // 抛掷：飞行期间由 startThrow 的 rAF 直接写 left/top，落定后才提交 customPos
+            startThrow(px, py, vel.vx, vel.vy);
+          } else {
+            // 原地放下：提交 customPos → React 按 rootStyle（含边界夹取）重排位置
+            setCustomPos({ rx: (px + halfW) / window.innerWidth, ry: (py + halfH) / window.innerHeight });
+          }
         }
       }
+      // 双击窗口以「点一下」为准：只有没拖成就松开的按压才更新它（拖拽之后的那一下不算双击的第一下）
+      if (!wasDragging) lastClickAtRef.current = performance.now();
       // 提示复位：点击/拖拽期间收起的悬浮提示，指针仍在命中区内就恢复——指针捕获期间
       // pointerleave 不触发，不复位就得把鼠标移出去再移回来才重现（与桌面 onPointerUp 同一处理）。
       // 先按松手位置摆好再显示，否则会重现上一次的位置。

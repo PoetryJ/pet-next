@@ -84,6 +84,8 @@ class PetSprite {
     // 交互/移动
     this.dragState = { active: false, dragging: false, sx: 0, sy: 0, petX: 0, petY: 0 };
     this.justDragged = false;
+    // 上一次「点一下」的时刻（双击窗口的唯一依据）：只记点击、不记拖拽，见 onPointerDown
+    this.lastClickAt = 0;
     this._interactive = null; // 已上报的可交互状态（setInteractive 去重用）
     this._inputBusy = null; // 已上报的"正在用输入"状态（syncInputBusy 去重用）
     // 拖拽抛掷物理（与浏览器 pet.ts 同构；纯计算在 shared-core S.*）：
@@ -935,7 +937,14 @@ class PetSprite {
       const fallingVy = state.vy; // 本帧积分前的竖直速度（正=下落）：即落地冲击速度
       // 每帧重取：显示器变化时 relayout() 会让缓存失效，res.screen 必须与这一份对应
       const sp = this.throwSpaceOf();
-      const res = S.throwStepRegion(state, dt, sp, this.physics, lockScreen);
+      // 细分积分：弹弓没有速度上限，一帧可能跨过上百 px——不拆会跳过「落地/反弹」那几帧，
+      // Q 弹、地面摩擦与 atRest 判定都会漏。普通甩抛每帧位移远小于 SUBSTEP_PX，
+      // 这里算出 1 步，与旧实现的单步积分逐位相同。
+      const substeps = S.throwSubsteps(state.vx, state.vy, dt);
+      let res = S.throwStepRegion(state, dt / substeps, sp, this.physics, lockScreen);
+      for (let i = 1; i < substeps && !res.atRest; i++) {
+        res = S.throwStepRegion(res, dt / substeps, sp, this.physics, lockScreen);
+      }
       state = { x: res.x, y: res.y, vx: res.vx, vy: res.vy };
       this.throwState = state;
       // 上报飞行状态（节流 ~30ms）：主进程 broker 汇聚后广播，其它窗口用它做跨窗碰撞检测；
@@ -1206,6 +1215,10 @@ class PetSprite {
     this.stopDragFollow();
     this.stopMove();
     this.dragTrail = [];
+    // 弹弓（双击第二下按住拖）：上一次是「点一下」且未超过双击窗口 → 本次拖拽按拉距算力度。
+    // 只认紧邻的一次点击：判定就是一个布尔，没有「待拉」状态、没有超时清理（见 shared-core 的弹弓换算）。
+    const sling = performance.now() - this.lastClickAt < S.SLINGSHOT_DOUBLE_MS;
+    if (sling) this.lastClickAt = 0; // 一次双击只够一次拉弓
     this.hit.classList.add('dragging');
     // 收起悬浮提示：拖拽期间窗口逐帧跟随光标，指针始终在身体内、onMouseMove 的 inBody 恒为真，
     // 不主动收就会让提示跟着宠物一路飘（松开后由 onPointerUp 按指针位置复位）
@@ -1231,6 +1244,11 @@ class PetSprite {
     // 拖拽中宠物滞后于光标，光标可能跑到窗口外→窗口翻回穿透→本窗口收不到 pointermove/pointerup
     // （宠物"飞"出去，见 pointer-target.js）。这里上报"我正在用输入"，主进程据此绝不翻回穿透。
     this.syncInputBusy();
+    // 弹弓：把「本次是否拉弓」与按下时的宠物中心（anchorX/Y）补进同一次拖拽状态。
+    // 放在上报之后是为了不稀释上面那条源码守卫（它要求 busy 必须在建立状态后紧跟着上报）。
+    this.dragState.sling = sling;
+    this.dragState.anchorX = this.pos.x + this.halfW;
+    this.dragState.anchorY = this.pos.y + this.halfH;
     // 注意：舞台「拍平」（去掉 translateY(bottomPad)）不能在这里做——
     // 纯点击（按下即松开）会让人物瞬移上移再落下。与浏览器一致：只有拖拽超过阈值才拍平。
   }
@@ -1285,6 +1303,8 @@ class PetSprite {
       };
       this.setTip(px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h);
     }
+    // 双击窗口以「点一下」为准：只有没拖成就松开的按压才更新它（与浏览器同构）
+    if (!wasDragging) this.lastClickAt = performance.now();
     if (wasDragging) {
       this.justDragged = true;
       setTimeout(() => {
@@ -1311,30 +1331,57 @@ class PetSprite {
       // 跟手滞后时落点跟随宠物实际位置，与浏览器 boxPx 同语义）
       const px = this.pos.x;
       const py = this.pos.y;
-      // 初速估算：够快就抛掷（重力+边缘反弹+落地摩擦），否则原地放下
-      const vel = S.estimateReleaseVelocity(this.dragTrail, performance.now(), this.physics);
-      this.dragTrail = [];
-      if (vel) {
+      if (d.sling) {
+        // 弹弓：力度 = **拉距**（与手速无关），方向 = 拉的**反方向**。
+        // 拉向量用宠物实际中心算（弹簧跟随有滞后，用户看到的是宠物被拉出去多远）。
+        // 之后与甩抛走同一条 startThrow：重力/反弹/摩擦/落地 Q 弹/跨窗互撞/多屏完全复用。
+        const pullX = px + this.halfW - d.anchorX;
+        const pullY = py + this.halfH - d.anchorY;
+        const dist = Math.hypot(pullX, pullY);
+        const rawPower = S.slingshotPower(dist, this.size);
+        const v = S.slingshotVelocity(S.pullAngle(pullX, pullY), rawPower, this.physics.throwPower);
+        this.dragTrail = [];
         console.log(
           '[dsh-pet] ' +
             new Date().toTimeString().slice(0, 8) +
             ' pet=' +
             this.pet.id +
-            ' release vx=' +
-            Math.round(vel.vx) +
+            ' sling dist=' +
+            Math.round(dist) +
+            ' power=' +
+            rawPower.toFixed(2) +
+            ' vx=' +
+            Math.round(v.vx) +
             ' vy=' +
-            Math.round(vel.vy) +
-            ' |v|=' +
-            Math.round(Math.hypot(vel.vx, vel.vy)),
+            Math.round(v.vy),
         );
-        this.startThrow(px, py, vel.vx, vel.vy);
+        this.startThrow(px, py, v.vx, v.vy);
       } else {
-        // customPos 语义 = 宠物**中心**比例（position() 用 rx*W - halfW 还原左上角；
-        // startThrow 落定也按同一公式存），松手无边界夹取
-        this.customPos = { rx: (px + this.halfW) / VIEW.w, ry: (py + this.halfH) / VIEW.h };
-        this.position();
-        // 释放后的最终窗口位置（position() 换算后，松手无夹取），冒烟断言"释放不位移"用
-        window.__dshPetDebug.lastDragRelease = { x: this.pos.x, y: this.pos.y };
+        // 初速估算：够快就抛掷（重力+边缘反弹+落地摩擦），否则原地放下
+        const vel = S.estimateReleaseVelocity(this.dragTrail, performance.now(), this.physics);
+        this.dragTrail = [];
+        if (vel) {
+          console.log(
+            '[dsh-pet] ' +
+              new Date().toTimeString().slice(0, 8) +
+              ' pet=' +
+              this.pet.id +
+              ' release vx=' +
+              Math.round(vel.vx) +
+              ' vy=' +
+              Math.round(vel.vy) +
+              ' |v|=' +
+              Math.round(Math.hypot(vel.vx, vel.vy)),
+          );
+          this.startThrow(px, py, vel.vx, vel.vy);
+        } else {
+          // customPos 语义 = 宠物**中心**比例（position() 用 rx*W - halfW 还原左上角；
+          // startThrow 落定也按同一公式存），松手无边界夹取
+          this.customPos = { rx: (px + this.halfW) / VIEW.w, ry: (py + this.halfH) / VIEW.h };
+          this.position();
+          // 释放后的最终窗口位置（position() 换算后，松手无夹取），冒烟断言"释放不位移"用
+          window.__dshPetDebug.lastDragRelease = { x: this.pos.x, y: this.pos.y };
+        }
       }
     }
   }
