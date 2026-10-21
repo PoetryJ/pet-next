@@ -789,7 +789,7 @@
           <span class="ico">🎛️</span><span>动作</span>
         </button>
         <button type="button" data-view="menu">
-          <span class="ico">📑</span><span>第三方菜单</span>
+          <span class="ico">🧪</span><span>其他</span>
         </button>
         <button type="button" data-view="state">
           <span class="ico">📋</span><span>实时状态</span>
@@ -1403,11 +1403,100 @@
 
       </section>
 
-      <!-- ── 第三方菜单：注册菜单项；点击只记一笔，动作由本页取走后自己调 ── -->
-      <section class="view" id="view-menu">
+      <!-- ── 任务状态：外部写入 /work-status 的自定义输入与完整任务流；下方保留原第三方菜单演示 ── -->
+      <section class="view view-action" id="view-menu">
         <div class="card">
           <div class="card-head">
-            <h2>注册菜单项</h2>
+            <h2>自定义输入</h2>
+            <span class="hint">POST /work-status</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>以外部程序身份写入一档状态；任务文案可省略或清空</summary>
+              <div class="desc-body">
+                模拟 Codex 之类的外部调用方：<span class="mono">POST /dsh-pet-7340/work-status</span>，
+                body <span class="mono">{ state, task? }</span>。写入后桌宠按现有档位播动画，
+                本卡片同时显示宿主回报与 <span class="mono">/state</span> 里的当前快照。
+              </div>
+            </details>
+
+            <div class="row">
+              <label for="ws-state">状态</label>
+              <div class="ctl">
+                <select id="ws-state">
+                  <option value="thinking">thinking · 思考中</option>
+                  <option value="working" selected>working · 工作中</option>
+                  <option value="result">result · 整理中</option>
+                  <option value="waiting">waiting · 等待你</option>
+                  <option value="success">success · 完成</option>
+                  <option value="error">error · 出错</option>
+                </select>
+                <span class="hint">6 档，与动画池索引一致</span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label for="ws-task">任务文案</label>
+              <div class="ctl">
+                <input id="ws-task" class="grow" type="text" maxlength="40" value="正在处理你的请求">
+                <label class="chk"><input type="checkbox" id="ws-task-keep"> 省略 task（保留上一次）</label>
+              </div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="ws-send">写入</button>
+                <button type="button" class="btn" id="ws-clear">清空（DELETE）</button>
+                <span class="hint" id="ws-result"></span>
+              </div>
+            </div>
+            <div class="hint-indent" id="ws-current">当前快照：—</div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>完整任务流模拟</h2>
+            <span class="hint">thinking → working → result → success</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>按回合顺序连续写入 4 档，每步间隔可调；可中途停止</summary>
+              <div class="desc-body">
+                模拟一次完整任务：思考 → 工具执行 → 整理结果 → 完成。每一步都走真实的
+                <span class="mono">POST /work-status</span>，可在桌宠上看到动画与气泡依次变化。
+                <span class="mono">success</span> 会保留在状态里（气泡 10 秒后自动收起），
+                需要回空闲时点「清空」。
+              </div>
+            </details>
+
+            <div class="row">
+              <label for="ws-flow-gap">每步间隔</label>
+              <div class="ctl">
+                <input id="ws-flow-gap" type="number" min="200" step="100" value="1200" style="width:110px">
+                <span class="hint">ms · 200–5000</span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="ws-flow-start">开始模拟</button>
+                <button type="button" class="btn" id="ws-flow-stop">停止</button>
+                <button type="button" class="btn" id="ws-flow-clear">清空</button>
+                <span class="hint" id="ws-flow-status">未开始</span>
+              </div>
+            </div>
+            <pre class="code" id="ws-flow-log" style="margin-top:9px">等待开始…</pre>
+          </div>
+        </div>
+
+        <div class="hint-indent" style="margin:18px 0 8px">以下为原有「第三方菜单」演示，保留未动。</div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>第三方菜单 · 注册菜单项</h2>
             <span class="hint">POST /menu/item</span>
           </div>
           <div class="card-body">
@@ -1445,7 +1534,7 @@
 
         <div class="card">
           <div class="card-head">
-            <h2>事件</h2>
+            <h2>第三方菜单 · 事件</h2>
             <span class="hint">GET /menu/events?owner=测试&amp;wait=10000</span>
           </div>
           <div class="card-body">
@@ -1983,6 +2072,8 @@
       const task = data && typeof data.task === "string" && data.task ? data.task : "";
       $("work-task").textContent = task || "—";
       $("work-task").style.color = task ? "" : "var(--faint)";
+      const current = $("ws-current");
+      if (current) current.textContent = "当前快照：" + (data ? JSON.stringify(data) : "—");
     }
 
     // ═══════════════════════════════════════════════════════════════
@@ -2920,7 +3011,7 @@
     // 视图切换
     // ═══════════════════════════════════════════════════════════════
 
-    const TITLES = { overview: "桌宠总览", action: "动作", menu: "第三方菜单", state: "实时状态", chat: "对话", settings: "设置" };
+    const TITLES = { overview: "桌宠总览", action: "动作", menu: "其他", state: "实时状态", chat: "对话", settings: "设置" };
 
     async function showView(v) {
       document.querySelectorAll(".nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
@@ -2929,12 +3020,11 @@
       $("view-sub").textContent =
         v === "overview" ? "这些数据来自宿主每秒发布的状态" :
         v === "action" ? "以“外部插件”身份让桌宠做事——每个动作都会真的发出去" :
-        v === "menu" ? "注册菜单项；点击事件由本页取走后自己调接口" :
+        v === "menu" ? "外部写入工作状态的两种测试；下方保留原有第三方菜单演示" :
         v === "state" ? "宿主每秒发布的每个状态位（叶子），以及原始 JSON" :
         v === "chat" ? "回复会同时出现在桌宠气泡里" :
         v === "settings" ? "改动会写入用户配置文件" : "";
       if (v === "chat") { await loadChat(); $("chat-input").focus(); }
-      if (v === "menu") void mnEnter();
       if (v === "settings") { if (!draft) renderSettingsPets(); }
     }
 
@@ -4086,6 +4176,99 @@
     });
     $("mn-start").addEventListener("click", () => { if (!mnRunning) void mnLoop(); });
     $("mn-stop").addEventListener("click", () => { mnRunning = false; mnStatus("已停止"); });
+
+    // ═══════════════════════════════════════════════════════════════
+    // 任务状态（/work-status）：自定义输入 + 完整任务流
+    // ═══════════════════════════════════════════════════════════════
+
+    let wsFlowRunning = false;
+    let wsFlowToken = 0;
+    const wsSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const wsErr = (r) => (r.body && r.body.error) || whyOf(r);
+
+    function wsLog(line) {
+      const box = $("ws-flow-log");
+      if (!box) return;
+      if (box.textContent === "等待开始…") box.textContent = "";
+      box.textContent += line + "\n";
+      box.scrollTop = box.scrollHeight;
+    }
+
+    async function wsWrite(state, task, omitTask = false) {
+      const body = omitTask ? { state } : { state, task };
+      return POST("/work-status", { body });
+    }
+
+    $("ws-send").addEventListener("click", async () => {
+      const omit = $("ws-task-keep").checked;
+      $("ws-result").textContent = "写入中…";
+      const r = await wsWrite($("ws-state").value, $("ws-task").value, omit);
+      const ok = r.status === 200 && r.body && r.body.state;
+      $("ws-result").textContent = ok
+        ? "已写入 " + r.body.state + (r.body.task ? " · " + r.body.task : "") + " · " + r.ms + "ms"
+        : "失败：" + wsErr(r);
+      await poll();
+    });
+
+    $("ws-clear").addEventListener("click", async () => {
+      $("ws-result").textContent = "清空中…";
+      const r = await api("DELETE", "/work-status");
+      $("ws-result").textContent = r.status === 204 ? "已清空（204）" : "失败：" + wsErr(r);
+      await poll();
+    });
+
+    const WS_FLOW = [
+      ["thinking", "理解任务…"],
+      ["working", "执行工具调用…"],
+      ["result", "整理工具结果…"],
+      ["success", "任务完成"],
+    ];
+
+    async function wsRunFlow() {
+      if (wsFlowRunning) return;
+      wsFlowRunning = true;
+      const token = ++wsFlowToken;
+      const gap = Math.max(200, Math.min(5000, Number($("ws-flow-gap").value) || 1200));
+      $("ws-flow-log").textContent = "";
+      $("ws-flow-status").textContent = "运行中…";
+      try {
+        for (const [state, task] of WS_FLOW) {
+          if (!wsFlowRunning || token !== wsFlowToken) break;
+          const r = await wsWrite(state, task);
+          const ok = r.status === 200 && r.body && r.body.state;
+          wsLog(hhmmss(Date.now()) + "  " + state.padEnd(9) + "  " + (ok ? "200" : "失败 " + wsErr(r)) + "  · " + task);
+          $("ws-flow-status").textContent = state + " · " + r.ms + "ms";
+          await poll();
+          if (!ok) break;
+          await wsSleep(gap);
+        }
+        if (token === wsFlowToken) {
+          wsFlowRunning = false;
+          $("ws-flow-status").textContent = "已完成（success 保留，需手动清空）";
+        }
+      } catch (e) {
+        wsFlowRunning = false;
+        wsLog("异常：" + e.message);
+        $("ws-flow-status").textContent = "异常停止";
+      }
+    }
+
+    $("ws-flow-start").addEventListener("click", () => void wsRunFlow());
+    $("ws-flow-stop").addEventListener("click", () => {
+      if (!wsFlowRunning) return;
+      wsFlowRunning = false;
+      wsFlowToken += 1;
+      $("ws-flow-status").textContent = "已停止";
+      wsLog("— 手动停止 —");
+    });
+    $("ws-flow-clear").addEventListener("click", async () => {
+      wsFlowRunning = false;
+      wsFlowToken += 1;
+      $("ws-flow-log").textContent = "";
+      const r = await api("DELETE", "/work-status");
+      $("ws-flow-status").textContent = r.status === 204 ? "已清空" : "清空失败：" + wsErr(r);
+      await poll();
+    });
 
     // ═══════════════════════════════════════════════════════════════
     // 启动

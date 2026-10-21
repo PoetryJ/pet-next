@@ -36,6 +36,8 @@
  *                                       { sections: { balance, workStatus, notify }, pets: { <id>: { say } } }，
  *                                       每个叶子 = { counter, data }；counter 变了前端才渲染。
  *                                       只读、纯内存、零副作用（绝不在这里触发外部调用/模型生成）。
+ *   /dsh-pet-7340/work-status          → 外部写入工作状态（POST = 设置固定外部槽的档位/文案；
+ *                                       DELETE = 清空回空闲。不做多写者仲裁/租约/会话管理）
  *   /dsh-pet-7340/balance              → 余额刷新（POST 动作端点，写 S；数据从 /state 读）
  *   /dsh-pet-7340/whisper              → 让某只宠物立即说一句（POST 动作端点，写 S 的 pets.<id>.say；
  *                                       响应带生成的 text，配图时带 image）
@@ -136,10 +138,13 @@ import {
 } from './config';
 import {
   GOAL_UPDATE_TOOL,
+  HOST_WORK_STATUS_STATES,
+  TASK_TEXT_MAX,
   reduceWorkStatus,
   currentTaskFromTodo,
   goalUpdateAction,
   WorkStatusStore,
+  type HostWorkStatusState,
   type WorkStatusTurnContext,
 } from './work-status';
 import {
@@ -361,6 +366,9 @@ export function apply(ctx: any): void {
   // 会话存**——task 曾是全局单值，写过一次就跟着此后所有会话活动一直显示（issue #59）。
   // 进程内内存态：重启回空闲；每次会话事件有实际状态变化才更新（签名比对防刷屏）。
   const workStatus = new WorkStatusStore();
+  /** 外部写入槽：固定会话 id，最后写入者生效；不做多写者仲裁/租约/会话管理 */
+  const EXTERNAL_WORK_SESSION = 'api';
+  let externalWorkSeq = 0;
   // 工作状态快照 → 写进 S（前端 1s 轮询 /state 后按 counter 变化渲染）。
   // **只在内容真的变了时才写**：每次写都会推进 counter，前端据此重播档位动画——
   // 会话事件很密（每个 tool/call 都来），无条件写会把动画刷成幻灯片。
@@ -1496,6 +1504,66 @@ export function apply(ctx: any): void {
         }
         signal?.addEventListener('abort', onAbort, { once: true });
       });
+    }
+
+    // 外部写入工作状态：/dsh-pet-7340/work-status
+    //   POST   = 设置固定外部槽 `api` 的档位（可选任务文案）；任务文案省略 = 保留原值，null = 清空
+    //   DELETE = 清空外部槽回空闲（幂等）
+    // 只解决"外部程序把状态告诉桌宠"，不做多写者仲裁/租约/会话管理；
+    // 外部槽与 DSH 会话一起参与现有优先级（waiting > error > working > thinking > result > success）。
+    if (rest === 'work-status') {
+      if (method === 'DELETE') {
+        if (workStatus.clear(EXTERNAL_WORK_SESSION)) publishWorkStatus();
+        return { kind: 'text', status: 204, body: '' };
+      }
+      if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      if (Buffer.byteLength(body ?? '', 'utf8') > 8 * 1024)
+        return { kind: 'json', status: 413, obj: { error: 'body too large' } };
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body ?? '');
+      } catch {
+        return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      }
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
+        return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      const payload = parsed as { state?: unknown; task?: unknown };
+      const state = payload.state;
+      if (typeof state !== 'string' || !(HOST_WORK_STATUS_STATES as readonly string[]).includes(state))
+        return { kind: 'json', status: 400, obj: { error: 'invalid state' } };
+      let task: string | null | undefined;
+      if (Object.prototype.hasOwnProperty.call(payload, 'task')) {
+        if (payload.task === null) {
+          task = null;
+        } else if (typeof payload.task === 'string') {
+          const trimmed = payload.task.trim();
+          if (trimmed === '') {
+            task = null;
+          } else if (Array.from(trimmed).length > TASK_TEXT_MAX) {
+            return {
+              kind: 'json',
+              status: 400,
+              obj: { error: `task too long (max ${TASK_TEXT_MAX} code points)` },
+            };
+          } else {
+            task = trimmed;
+          }
+        } else {
+          return { kind: 'json', status: 400, obj: { error: 'invalid task' } };
+        }
+      }
+      externalWorkSeq += 1;
+      workStatus.setState(EXTERNAL_WORK_SESSION, state as HostWorkStatusState, externalWorkSeq);
+      if (task !== undefined) workStatus.setTask(EXTERNAL_WORK_SESSION, task);
+      publishWorkStatus();
+      return {
+        kind: 'json',
+        status: 200,
+        obj: {
+          state: workStatus.stateOf(EXTERNAL_WORK_SESSION) ?? state,
+          task: workStatus.taskOf(EXTERNAL_WORK_SESSION),
+        },
+      };
     }
 
     // 余额：/dsh-pet-7340/balance（POST = 立即刷新一次并写入 S，返回 {ok}）

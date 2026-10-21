@@ -89,6 +89,13 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 | `GET /dsh-pet-7340/font/{file}` | 字体文件 |
 | `GET /dsh-pet-7340/pic/{file}` | 通知图标（`pic/`）与表情包（`pic/memes/{素材根}/`，按宠物归属） |
 
+## 八、工作状态（外部写入）
+
+| 接口 | 功能 |
+| --- | --- |
+| `POST /dsh-pet-7340/work-status` | **外部写入工作状态**：`{ state, task? }`，固定外部槽，最后写入者生效 |
+| `DELETE /dsh-pet-7340/work-status` | **清空外部槽**回空闲（幂等，204） |
+
 ---
 
 ## state 详解
