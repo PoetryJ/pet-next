@@ -70,7 +70,18 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 | `POST /dsh-pet-7340/pet-display` | **改单只宠物的显示位置**（`web` / `desktop` / `both` / `none`），只传 `{ id, display }` |
 | `POST /dsh-pet-7340/reload` | 重载桌面端（重启桌面宠物进程，按最新配置重建窗口） |
 
-## 六、素材
+## 六、第三方菜单项
+
+| 接口 | 功能 |
+| --- | --- |
+| `POST /dsh-pet-7340/menu/item` | **注册菜单项**（该 `owner` 的菜单项整体覆盖）：`{ owner, labels: ["弹弓","钓鱼"] }` |
+| `DELETE /dsh-pet-7340/menu/item?owner=` | **清除菜单项**（该 `owner` 的全部项，幂等）：回 `{ ok: true, removed: 2 }` |
+| `GET /dsh-pet-7340/menu/events?owner=&wait=` | **查询触发**（读取即清空，`wait` = 长轮询毫秒数）：回 `{ 弹弓: "main", 钓鱼: null }` |
+| `POST /dsh-pet-7340/menu/click` | 渲染端上报点击（**内部通道**，第三方不用调） |
+
+第三方菜单项统一收在右键菜单的**「更多」**下；只有一项时不显示 `owner` 那层。
+
+## 七、素材
 
 | 接口 | 功能 |
 | --- | --- |

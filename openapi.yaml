@@ -1932,6 +1932,219 @@ paths:
               schema:
                 type: string
 
+  /dsh-pet-7340/menu/item:
+    post:
+      tags: [Action]
+      operationId: registerMenuItems
+      summary: 注册第三方右键菜单项（该 owner 的菜单项整体覆盖）
+      description: |
+        别的插件想在桌宠右键菜单里加自己的入口时用它。所有第三方菜单项统一收在**「更多」**这个
+        一级菜单下；某个 owner 只有一项时跳过 owner 那层直接平铺（`更多 / 弹弓`），两项及以上才
+        分组（`更多 / 小游戏 / 弹弓`）。0 项时「更多」不出现。
+
+        **注册 = 整体覆盖**：该 owner 当前的全部菜单项 = 本次 `labels`（不在列表里的项连同触发
+        标记一起丢弃）。每次调用都用一份完整列表描述"我现在有什么"，所以不会留下僵尸项，调用方
+        也不必关心上次注册了什么；不想留了就用 `DELETE /menu/item?owner=` 清掉。
+
+        **`owner` 有两个身份**：既是分区键（事件流按它隔离），也是一级分组名（直接显示给用户），
+        因此允许中文。菜单文案由注册方负责，宿主**不做去重、编号或来源标注**——两个插件都叫
+        「弹弓」就显示两个「弹弓」，点了各回各的 owner。
+
+        限额：`owner` ≤ 64 字符、`label` ≤ 32 字符（均 trim 后非空、禁控制字符）、每 owner ≤ 20 项、
+        全局 ≤ 32 个 owner。数据在进程内存，DSH 重启即清空（插件重新加载时应重新注册）。
+
+        注册后立刻写 `/state` 的 `sections.menu`，浏览器与桌面端下一拍就拿到——**不用重启桌面
+        Helper**。
+
+        **业务失败仍是 200**（与 `/anim`、`/lock` 同一口径）：看 `ok`，`reason` 说明是哪一种。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner, labels]
+              properties:
+                owner:
+                  type: string
+                  maxLength: 64
+                  description: 分区键 + 一级分组名。允许中文。
+                  example: 小游戏
+                labels:
+                  type: array
+                  minItems: 1
+                  maxItems: 20
+                  description: 菜单项文案（同一 owner 内重复项自动去重，保留首次出现的位置）。
+                  items:
+                    type: string
+                    maxLength: 32
+                  example: [弹弓, 钓鱼]
+      responses:
+        "200":
+          description: "成功 `{ ok: true }`；失败 `{ ok: false, reason, message }`"
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                  reason:
+                    type: string
+                    description: "失败原因：`bad-request` / `invalid-owner` / `invalid-labels` / `invalid-label` / `too-many-items` / `too-many-owners`"
+                  message:
+                    type: string
+        "400":
+          description: "请求体不是合法 JSON（`invalid JSON body`）"
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  error:
+                    type: string
+        "405":
+          description: 方法不允许（只接受 POST / DELETE）
+    delete:
+      tags: [Action]
+      operationId: clearMenuOwner
+      summary: 清除某个 owner 的全部菜单项
+      description: |
+        把该 owner 的菜单项（含还没被取走的触发标记）整份丢掉。**幂等**：owner 本来就不存在 →
+        `removed: 0`，仍算成功，重试注销时不会看到错误。
+
+        清掉之后该 owner 上的长轮询会被叫醒，醒来查不到 owner → `{ ok:false, reason:
+        "unknown-owner" }`，调用方看到它重新注册即可。其他 owner 不受影响。
+      parameters:
+        - name: owner
+          in: query
+          required: true
+          description: 要清掉的 owner（URL 编码，中文必须 `encodeURIComponent`）
+          schema:
+            type: string
+            maxLength: 64
+      responses:
+        "200":
+          description: "成功 `{ ok: true, removed: 2 }`；失败 `{ ok: false, reason, message }`"
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                  removed:
+                    type: integer
+                    description: 删掉的菜单项数（owner 不存在时 0）
+                  reason:
+                    type: string
+                    description: "失败原因：`invalid-owner`"
+                  message:
+                    type: string
+        "405":
+          description: 方法不允许（只接受 POST / DELETE）
+
+  /dsh-pet-7340/menu/events:
+    get:
+      tags: [State]
+      operationId: pollMenuEvents
+      summary: 查询第三方菜单项被点的情况（读取即消费）
+      description: |
+        返回该 owner 的**全量映射** `label → petId | null`（null = 没被点过），同时把这些标记
+        全部清空。**返回即消费、不重投**：没处理完就崩溃的那次触发会丢，这是有意的取舍
+        （用户点了一下菜单 = 一次性触发，不是消息队列）。
+
+        同一项连点两次只算一次（闩锁语义，不计数、不排序）；`petId` 表示是哪只宠物上点的——
+        多开时同一条菜单项可能在不同宠物上被点到。
+
+        `wait` 给了就长轮询：当下没有任何触发时挂起，被点 / 超时 / 该 owner 被重新注册都会返回。
+        超时后照常返回全 `null` 的映射（不是错误）。
+
+        **一个 owner 只该有一个消费者**：两个进程同时查会互抢（谁先返回谁拿到标记）。
+      parameters:
+        - name: owner
+          in: query
+          required: true
+          description: 注册时用的 owner（URL 编码，中文必须 `encodeURIComponent`）
+          schema:
+            type: string
+        - name: wait
+          in: query
+          required: false
+          description: 长轮询毫秒数；缺省 0 = 立即返回
+          schema:
+            type: integer
+            minimum: 0
+            maximum: 10000
+            default: 0
+      responses:
+        "200":
+          description: '成功 `{ ok: true, events }`；owner 不存在 `{ ok: false, reason: "unknown-owner" }`'
+          content:
+            application/json:
+              schema:
+                type: object
+                required: [ok]
+                properties:
+                  ok:
+                    type: boolean
+                  events:
+                    type: object
+                    description: label → 触发它的 petId；null = 未触发（读取后已清空）
+                    additionalProperties:
+                      type: [string, "null"]
+                  reason:
+                    type: string
+                    description: "失败原因：`unknown-owner`（没注册过 / 被清除了 / 宿主重启过）"
+                  message:
+                    type: string
+        "405":
+          description: 方法不允许（只接受 GET）
+
+  /dsh-pet-7340/menu/click:
+    post:
+      tags: [Action]
+      operationId: reportMenuClick
+      summary: 渲染端上报菜单点击（内部通道，第三方不调）
+      description: |
+        浏览器与桌面端在用户点击第三方菜单项时调用，把该项标成"被这只宠物点了"并唤醒该 owner
+        挂着的长轮询。`delivered: false`（项已不在，渲染端拿的是上一拍快照）属正常竞态，仍回 200。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [owner, label, pet]
+              properties:
+                owner:
+                  type: string
+                  example: 小游戏
+                label:
+                  type: string
+                  example: 弹弓
+                pet:
+                  type: string
+                  description: 在哪只宠物上点的（多开时用于区分）
+                  example: main
+      responses:
+        "200":
+          description: 上报结果
+          content:
+            application/json:
+              schema:
+                type: object
+                properties:
+                  ok:
+                    type: boolean
+                  delivered:
+                    type: boolean
+                    description: false = 该项已不存在（正常竞态，不是错误）
+        "405":
+          description: 方法不允许（只接受 POST）
+
 components:
   parameters:
     PetIdQuery:

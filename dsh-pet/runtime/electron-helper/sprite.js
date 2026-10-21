@@ -53,6 +53,9 @@ class PetSprite {
     // main 等常规宠物（无 anims 段）用全局 cfg.animations（与浏览器 pet.ts 同一语义）。
     this.animations = pet.animations || cfg.animations;
     this.weights = pet.animationWeights || cfg.animationWeights;
+    // 第三方菜单项（/state 的 sections.menu 快照，由 events.js 的 applyMenuLeaf 灌进来）：
+    // 只在右键那一刻拼进菜单，不参与渲染。空数组 = 没有第三方项，菜单里不出现「更多」。
+    this.menuItems = [];
     // 拖拽抛掷物理参数（顶层全局；拍平已吹入实例，兜底回全局/默认）
     this.physics = pet.physics || config.physics || S.DEFAULT_PHYSICS;
     // 字体（全局一份；拍平已吹入实例，兜底回主条目/默认）：字号按本宠物尺寸算（resolveFontPx），
@@ -1576,7 +1579,11 @@ class PetSprite {
       // 放在最后：它是"重新加载"这类维护动作，与上面几个宠物互动项语义不同。
       { label: '重载配置', action: 'reload' },
     );
-    const tree = tools.concat(S.buildMenuTree(this.animations));
+    // 第三方菜单项统一收在「更多」下（与浏览器端同一份拼装函数）：0 项不出现；
+    // 某个 owner 只有 1 项时跳过 owner 那层直接平铺（规则见 shared/menu 的 buildMoreBranch）。
+    // 放在整棵动作树之后——「更多」是"别的东西"，不插在工具项和动作之间。
+    const more = S.buildMoreBranch(this.menuItems);
+    const tree = tools.concat(S.buildMenuTree(this.animations), more ? [more] : []);
     if (!tree.length) return;
     this.menuOpen = true;
     this.setInteractive(true); // 菜单是窗口内 DOM：悬停期间整窗保持可交互，关闭后恢复命中区穿透
@@ -1606,6 +1613,16 @@ class PetSprite {
   onMenuAction(leaf, keepFacing) {
     this.closeMenu();
     if (!leaf || typeof leaf !== 'object') return;
+    if (leaf.action === 'third-party') {
+      // 第三方菜单项：只把 (owner, label) 交给宿主，具体做什么由注册方自己去查 /menu/events。
+      // 带上本窗口的宠物 id——同一条菜单项在不同宠物上被点，注册方要能分辨是哪只。
+      if (leaf.owner) {
+        S.postAction(BASE + '/menu/click', { owner: leaf.owner, label: leaf.label, pet: this.pet.id }).catch(() => {
+          /* 上报失败不影响本地：注册方下次轮询自然拿不到这次触发 */
+        });
+      }
+      return;
+    }
     if (leaf.action === 'open-site') {
       if (window.petBridge) window.petBridge.openDshSite(ORIGIN); // 系统默认浏览器打开（等效 Ctrl+点击链接）
       return;

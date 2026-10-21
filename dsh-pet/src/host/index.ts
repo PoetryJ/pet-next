@@ -114,6 +114,7 @@ import {
 } from './broadcast';
 import { decideAnim } from './anim';
 import { LockStore } from './lock';
+import { MENU_WAIT_MAX_MS, MenuRegistry } from './menu';
 import { decidePosition, decideThrow, positionLeafData } from './motion-cue';
 import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
 import { PoseStore, normalizePoseInput } from './pose';
@@ -345,6 +346,10 @@ export function apply(ctx: any): void {
   // 轮询统一状态（S）：前端 1s 轮询的**唯一**数据源（余额 / 工作状态 / 通知 / 宠物说话）。
   // 所有写入走 state.writeSection / writePet（由它统一更新 counter），见 ./state 的说明。
   const state = new PollStateStore();
+  // 第三方右键菜单注册表（issue：第三方菜单项）：**进程内存态**，不落盘，重启即空。
+  // 与 S 的关系：注册表本身写进 S 的 sections.menu（两端据此拼「更多」）；点击事件**不进 S**——
+  // 它是触发不是状态，走 /menu/events 的读取即消费，只给注册它的那个 owner 看。见 ./menu 的说明。
+  const menuRegistry = new MenuRegistry();
   // 播放记录表（issue #122 第 3 项「播放与完成回执」）：**由渲染端上报驱动**的状态机 + 等待者。
   // 与 S 无关：播放记录是 per-caller 资源（只有发起那次点播的调用方关心、有生命周期、数量随
   // 第三方调用方增长），塞进 1s 全局广播会让每个窗口为每个功能付流量。见 ./playback 的说明。
@@ -1333,6 +1338,70 @@ export function apply(ctx: any): void {
           profile: profileNameFrom(PACKAGE_ROOT) ?? '',
         },
       };
+    }
+
+    // 第三方右键菜单（供别的插件注册自己的菜单项）。四个方法：
+    //   POST   /menu/item    注册（该 owner 的菜单项**整体覆盖**）
+    //   DELETE /menu/item    清除该 owner 的全部菜单项（幂等）
+    //   GET    /menu/events  查询触发（读取即消费；?wait= 长轮询）
+    //   POST   /menu/click   渲染端点击上报（内部通道，第三方不调）
+    // 业务失败一律 200 + { ok:false, reason, message }（与 /anim、/lock 等同口径）；
+    // 400 只留给「JSON 坏了」，405 只留给方法错。
+    // 注册表在进程内存（./menu），快照写进 S 的 sections.menu：两端右键菜单据此拼「更多」，
+    // 因此注册后**不用重启桌面 Helper**，下一拍 /state 就到了（长轮询下几乎是立即）。
+    if (rest === 'menu/item') {
+      if (method === 'DELETE') {
+        const result = menuRegistry.clear(url.searchParams.get('owner') ?? '');
+        if (!result.ok) {
+          return { kind: 'json', status: 200, obj: { ok: false, reason: result.reason, message: result.message } };
+        }
+        state.writeSection('menu', { items: menuRegistry.snapshot() });
+        return { kind: 'json', status: 200, obj: { ok: true, removed: result.removed } };
+      }
+      if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body ?? '');
+      } catch {
+        return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      }
+      const result = menuRegistry.register(parsed);
+      if (!result.ok) {
+        return { kind: 'json', status: 200, obj: { ok: false, reason: result.reason, message: result.message } };
+      }
+      // 写入会唤醒所有挂起的长轮询；两端拿到新 counter 就重拼菜单（下一次右键即生效）
+      state.writeSection('menu', { items: menuRegistry.snapshot() });
+      return { kind: 'json', status: 200, obj: { ok: true } };
+    }
+
+    if (rest === 'menu/events') {
+      if (method !== 'GET') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      const owner = url.searchParams.get('owner') ?? '';
+      const rawWait = Number(url.searchParams.get('wait') ?? '0');
+      const waitMs = Number.isFinite(rawWait) && rawWait > 0 ? Math.min(rawWait, MENU_WAIT_MAX_MS) : 0;
+      // 挂起等待期间调用方断开：不额外处理（最多白挂 MENU_WAIT_MAX_MS，无状态残留）
+      const events = await menuRegistry.poll(owner, waitMs);
+      // owner 不存在（没注册过 / 被清除了 / 宿主重启过）：业务失败，仍是 200
+      if (events === null) {
+        return {
+          kind: 'json',
+          status: 200,
+          obj: { ok: false, reason: 'unknown-owner', message: '这个 owner 没有注册，重新注册即可' },
+        };
+      }
+      return { kind: 'json', status: 200, obj: { ok: true, events } };
+    }
+
+    if (rest === 'menu/click') {
+      if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      let parsed: unknown;
+      try {
+        parsed = JSON.parse(body ?? '');
+      } catch {
+        return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      }
+      // delivered=false（项已不在）= 正常竞态：渲染端拿的是上一拍快照，仍回 200
+      return { kind: 'json', status: 200, obj: menuRegistry.click(parsed) };
     }
 
     // 可选模型清单（设置页「AI 模型」两个下拉框的数据源）：与 DSH 自己的模型选择器**同源**——

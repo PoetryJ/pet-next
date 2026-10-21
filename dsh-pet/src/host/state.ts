@@ -45,7 +45,7 @@ export interface StateLeaf {
  *  当前只有 `POST /pet-display` 写它：那是唯一一个**不是发起页面自己**的配置改动
  *  （桌面端右键改显示位置），浏览器端只能靠这个信号知道。
  *  保存 / 同步配置（PUT / POST /config）**不写**——它们的调用方自己就拿到了成品聚合。 */
-export type SectionName = 'balance' | 'workStatus' | 'notify' | 'config';
+export type SectionName = 'balance' | 'workStatus' | 'notify' | 'config' | 'menu';
 
 /** 每宠物段（say = 要说的话；anim = 要播的动画名；position = 要挪到的位置；throw = 要给的初速度；
  *  lock = 占用锁状态）。
@@ -131,7 +131,15 @@ export class PollStateStore {
 
   constructor() {
     this.last = 0;
-    this.sections = { balance: emptyLeaf(), workStatus: emptyLeaf(), notify: emptyLeaf(), config: emptyLeaf() };
+    this.sections = {
+      balance: emptyLeaf(),
+      workStatus: emptyLeaf(),
+      notify: emptyLeaf(),
+      config: emptyLeaf(),
+      // 第三方右键菜单项（src/host/menu 的注册表快照）：第三方菜单注册/覆盖时写它，
+      // 浏览器与桌面两端据此在右键菜单里拼出「更多」。data 形状见 shared/menu 的 readMenuItems。
+      menu: emptyLeaf(),
+    };
     this.pets = new Map();
     this.waiters = new Set();
   }

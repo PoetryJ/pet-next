@@ -42,11 +42,14 @@ import { CANVAS_H, FEET_Y, HIT_BOX, DRAG_THRESHOLD, PET_REF_WIDTH, ANIMATION_EXT
 // 统一右键菜单：与桌面共用同一份组件（树 + 渲染 + 样式，src/shared/menu.ts）
 import {
   buildMenuTree,
+  buildMoreBranch,
   displayMenuBranch,
   mountContextMenu,
   isNoMirrorAnimation,
+  readMenuItems,
   MENU_CSS,
   type MenuLeaf,
+  type MenuMoreItem,
   type MenuNode,
 } from '../shared/menu';
 // 悬浮提示：与桌面共用同一份样式与摆位判据（替代原先挂在命中层上的原生 title 提示）
@@ -201,6 +204,7 @@ export function makePetUI(rt: {
     throwCueTick,
     lock,
     lockTick,
+    menuItemsRef,
     arena,
   }: {
     cfg: RuntimePet;
@@ -239,6 +243,9 @@ export function makePetUI(rt: {
      *  这里自己定时解除（见 shared/state.ts 的 readLock）。 */
     lock?: LockState;
     lockTick: number;
+    /** 第三方菜单项（/state 的 sections.menu 快照）。传 ref 而不是值：**只在右键那一刻**读，
+     *  注册表变化不需要重渲染任何宠物（菜单本来就是打开时现拼的）。 */
+    menuItemsRef: ReactNS.MutableRefObject<MenuMoreItem[]>;
     arena: ReactNS.MutableRefObject<{ slots: Record<string, PetCollisionSlot> }>;
   }) {
     // ---- 尺寸（由配置传入；容器/设置页更新后即时跟随）----
@@ -1886,6 +1893,17 @@ export function makePetUI(rt: {
     /** `keepFacing` = 调用方已**显式指定**朝向（POST /anim 的 facing）：跳过下面"文字类动画
      *  点播前强制朝左"那条镜像修正——显式值优先。右键菜单点播不传（保持原语义）。 */
     const handleMenuAction = (leaf: MenuLeaf, playbackId?: string, keepFacing = false) => {
+      if (leaf.action === 'third-party') {
+        // 第三方菜单项：只把 (owner, label) 交给宿主，具体做什么由注册方自己去查 /menu/events。
+        // 带上当前宠物的 id——同一条菜单项在不同宠物上被点，注册方要能分辨是哪只。
+        const owner = leaf.owner ?? '';
+        if (owner !== '') {
+          postAction('/dsh-pet-7340/menu/click', { owner, label: leaf.label, pet: cfg.id }).catch((e: unknown) =>
+            console.warn('[dsh-pet] 第三方菜单点击上报失败', e),
+          );
+        }
+        return;
+      }
       if (leaf.action === 'show-balance') {
         // 查看余额（与桌面菜单同一套语义）：POST 动作端点让 host 立即刷新一次并写入 S（manual 标记随数据一起写）。
         // 结果**这里什么都不用做**：写叶子会让版本号变，挂着的长轮询那一拍立刻返回并展示（0 延迟）。
@@ -2000,7 +2018,10 @@ export function makePetUI(rt: {
       // 工具项（查看余额 / 碎碎念 / 对话 / 回到初始位置，与桌面端同一套）+ 动作树（动作→分类→具体动画）。
       // 「查看余额」**无条件显示**（与桌面端一致）：即使该宠物关了 balanceEnabled 也能点——手动请求不受开关限制
       //（该开关只关自动轮询与档位动画），与碎碎念「手动触发不受 whisperEnabled 限制」同一条原则。
-      const tree: MenuNode[] = [
+      // 第三方菜单项（别的插件注册的）统一收在「更多」下：0 项不出现；某个 owner 只有 1 项时
+      // 跳过 owner 那层直接平铺（规则见 shared/menu 的 buildMoreBranch）。位置在整棵动作树之后。
+      const more = buildMoreBranch(menuItemsRef.current);
+      const tools: MenuNode[] = [
         { label: '查看余额', action: 'show-balance' },
         { label: '碎碎念', action: 'whisper' },
         { label: '对话', action: 'chat' },
@@ -2008,8 +2029,8 @@ export function makePetUI(rt: {
         // 显示位置（仅网页/仅桌面/两者/都不）：与桌面端注入**同一份**子菜单。
         // 改成不含 web 的值（仅桌面/都不）后，本宠物会随即从 visiblePets 里消失——字面意义上的"自己走掉"。
         displayMenuBranch(),
-        ...buildMenuTree(petAnims),
       ];
+      const tree: MenuNode[] = [...tools, ...buildMenuTree(petAnims), ...(more ? [more] : [])];
       if (!tree.length) return;
       e.preventDefault();
       e.stopPropagation(); // 不触碰 DSH 页面任何菜单/右键处理
@@ -2292,6 +2313,9 @@ export function makePetUI(rt: {
     // 忽略自动来源），并自己按 expiresAt 定时解除——宿主不会到点推一次"锁没了"。
     const [lockTick, setLockTick] = useState(0);
     const lockRef = useRef<Record<string, LockState>>({});
+    // 第三方菜单项（/state 的 sections.menu）：只在**打开右键菜单那一刻**被读一次，
+    // 不参与任何渲染 → 存 ref 就够，不需要 tick（也不需要重渲染整个宠物）。
+    const menuItemsRef = useRef<MenuMoreItem[]>([]);
     useEffect(() => {
       if (!ready) return;
       let alive = true;
@@ -2305,6 +2329,9 @@ export function makePetUI(rt: {
       const applyState = (s: PollState) => {
         if (baseline === null) {
           baseline = flattenCounters(s); // 首拉：只记基线，不渲染
+          // 菜单项是**当前状态**不是"事件"，首拉必须装上：否则刷新页面后第三方菜单会一直是空的，
+          // 要等下一次注册（写 sections.menu）才出现。
+          menuItemsRef.current = readMenuItems(s.sections.menu?.data);
           return;
         }
         for (const { path, leaf } of takeChanged(s, baseline)) {
@@ -2327,6 +2354,9 @@ export function makePetUI(rt: {
           } else if (path === 'sections.notify') {
             // 系统通知（单槽：同一秒多条只留最后一条，由 host 决定）→ 弹 toast（内部有开关/聚焦/权限门）
             notifyFromFrame(leaf.data);
+          } else if (path === 'sections.menu') {
+            // 第三方菜单注册表快照：只更新 ref（菜单在右键那一刻现拼），不触发任何渲染
+            menuItemsRef.current = readMenuItems(leaf.data);
           } else if (path.startsWith('pets.') && path.endsWith('.say')) {
             // 说话叶子：路径形如 pets.<id>.say。宠物 id **允许含点号**，所以按前缀/后缀切片，
             // 绝不 split('.')（那会把 id 切碎、派发给不存在的宠物）。
@@ -2432,6 +2462,7 @@ export function makePetUI(rt: {
             throwCueTick,
             lock: lockRef.current[p.id],
             lockTick,
+            menuItemsRef,
             arena: arenaRef,
           }),
         )

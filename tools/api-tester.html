@@ -788,6 +788,9 @@
         <button type="button" data-view="action">
           <span class="ico">🎛️</span><span>动作</span>
         </button>
+        <button type="button" data-view="menu">
+          <span class="ico">📑</span><span>第三方菜单</span>
+        </button>
         <button type="button" data-view="state">
           <span class="ico">📋</span><span>实时状态</span>
         </button>
@@ -1398,6 +1401,72 @@
           </div>
         </div>
 
+      </section>
+
+      <!-- ── 第三方菜单：注册菜单项；点击只记一笔，动作由本页取走后自己调 ── -->
+      <section class="view" id="view-menu">
+        <div class="card">
+          <div class="card-head">
+            <h2>注册菜单项</h2>
+            <span class="hint">POST /menu/item</span>
+          </div>
+          <div class="card-body">
+            <details class="desc">
+              <summary>注册后右键桌宠多出「更多」，点一下不会执行任何动作</summary>
+              <div class="desc-body">
+                宿主只记下“这一项被点了、在哪只宠物上”，要做什么由本页取走事件后自己调
+                （见下面的「事件」）。<span class="mono">owner</span> 既是身份也是分组名，
+                同名的项收在同一组。
+              </div>
+            </details>
+
+            <div class="row">
+              <label>owner</label>
+              <div class="ctl">
+                <span class="mono" id="mn-owner">测试</span>
+              </div>
+            </div>
+
+            <div class="row">
+              <label>菜单项</label>
+              <div class="ctl"><span class="mono">发射 · 漫游</span></div>
+            </div>
+
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn primary" id="mn-register">注册</button>
+                <button type="button" class="btn" id="mn-clear">清除</button>
+                <span class="hint" id="mn-result"></span>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>事件</h2>
+            <span class="hint">GET /menu/events?owner=测试&amp;wait=10000</span>
+          </div>
+          <div class="card-body">
+            <div class="row">
+              <label>状态</label>
+              <div class="ctl"><span class="mono" id="mn-status">未开始</span></div>
+            </div>
+            <div class="row">
+              <label>最近一次</label>
+              <div class="ctl"><span class="mono" id="mn-last">（还没有）</span></div>
+            </div>
+            <div class="row">
+              <label></label>
+              <div class="ctl">
+                <button type="button" class="btn" id="mn-start">开始轮询</button>
+                <button type="button" class="btn" id="mn-stop">停止</button>
+                <span class="hint">读到即清空</span>
+              </div>
+            </div>
+          </div>
+        </div>
       </section>
 
       <!-- ── 实时状态：轮询到的每个状态位（叶子）与原始 JSON ── -->
@@ -2851,7 +2920,7 @@
     // 视图切换
     // ═══════════════════════════════════════════════════════════════
 
-    const TITLES = { overview: "桌宠总览", action: "动作", state: "实时状态", chat: "对话", settings: "设置" };
+    const TITLES = { overview: "桌宠总览", action: "动作", menu: "第三方菜单", state: "实时状态", chat: "对话", settings: "设置" };
 
     async function showView(v) {
       document.querySelectorAll(".nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
@@ -2860,10 +2929,12 @@
       $("view-sub").textContent =
         v === "overview" ? "这些数据来自宿主每秒发布的状态" :
         v === "action" ? "以“外部插件”身份让桌宠做事——每个动作都会真的发出去" :
+        v === "menu" ? "注册菜单项；点击事件由本页取走后自己调接口" :
         v === "state" ? "宿主每秒发布的每个状态位（叶子），以及原始 JSON" :
         v === "chat" ? "回复会同时出现在桌宠气泡里" :
         v === "settings" ? "改动会写入用户配置文件" : "";
       if (v === "chat") { await loadChat(); $("chat-input").focus(); }
+      if (v === "menu") void mnEnter();
       if (v === "settings") { if (!draft) renderSettingsPets(); }
     }
 
@@ -3870,6 +3941,151 @@
 
     $("models-load").addEventListener("click", () => void loadModels());
     $("meta-load").addEventListener("click", () => void loadMeta());
+
+    // ═══════════════════════════════════════════════════════════════
+    // 第三方菜单（/menu/*）：以外部插件身份收自己菜单项的点击
+    // ═══════════════════════════════════════════════════════════════
+
+    /** 本页扮演的第三方：owner 既是身份键，也是菜单里显示的一级分组名 */
+    const MN_OWNER = "测试";
+    /** 长轮询毫秒数（宿主上限 10s） */
+    const MN_WAIT = 10000;
+
+    let mnRunning = false;            // 事件轮询是否在跑
+    let mnRegistered = false;         // 本次页面生命周期内是否注册过
+    let mnChain = Promise.resolve();  // 串行队列：发射/漫游不并发，免得两种演出抢同一把锁
+
+    const mnSleep = (ms) => new Promise((r) => setTimeout(r, ms));
+    const mnStatus = (t) => { $("mn-status").textContent = t; };
+
+    /** 注册两项。业务失败也是 HTTP 200，所以要判 body.ok（原因见 whyOf 里的 reason/message） */
+    async function mnRegister() {
+      const r = await POST("/menu/item", { body: { owner: MN_OWNER, labels: ["发射", "漫游"] } });
+      const ok = r.status === 200 && !!(r.body && r.body.ok);
+      mnRegistered = ok;
+      $("mn-result").textContent = ok
+        ? "已注册 · " + r.ms + "ms（右键桌宠 → 更多）"
+        : "失败：" + whyOf(r);
+      return ok;
+    }
+
+    /**
+     * 取占用锁。发射/漫游都算"演出"：不拿锁也能调（接口不拦），但宠物自己的随机动画随时会把
+     * 它抢走，效果看着就像没生效——所以先拿锁，演完再放。
+     */
+    async function mnLock(petId) {
+      if (S.lock && S.lock.petId === petId && S.lock.lockId) return true;
+      const r = await POST("/lock?pet=" + encodeURIComponent(petId) + "&surface=" + surfaceOf(), {
+        body: { ttl: 120000 },
+      });
+      if (!(r.status === 200 && r.body && r.body.ok)) {
+        $("mn-last").textContent = "取锁失败：" + whyOf(r);
+        return false;
+      }
+      S.lock = { petId: r.body.petId, lockId: r.body.lockId, expiresAt: r.body.expiresAt };
+      await poll();
+      return true;
+    }
+
+    /** 放开本页手里的锁（别人拿着的锁不碰） */
+    async function mnUnlock() {
+      const lk = S.lock;
+      if (!lk) return;
+      await POST("/lock/release?pet=" + encodeURIComponent(lk.petId), { body: { lockId: lk.lockId } });
+      S.lock = null;
+      await poll();
+    }
+
+    /** 发射：随机方向 + 随机力度 */
+    async function mnThrow(petId) {
+      if (!(await mnLock(petId))) return;
+      const angle = Math.round(Math.random() * 140 - 70);            // -70° ~ 70°
+      const power = Number((0.6 + Math.random() * 1.2).toFixed(2));  // 0.6 ~ 1.8 倍
+      const r = await POST("/throw" + actQuery(petId), { body: { angle, power } });
+      $("mn-last").textContent =
+        r.status === 200 && r.body && r.body.ok
+          ? "发射 · " + petId + " · " + angle + "° / " + power + "× · " + r.ms + "ms"
+          : "发射被拒：" + whyOf(r);
+      await mnSleep(2500); // 等它飞完落地再放锁，否则半空解冻会被随机动画接走
+      await mnUnlock();
+    }
+
+    /** 漫游：连发几次 position，让宠物沿直线走过去 */
+    async function mnRoam(petId) {
+      if (!(await mnLock(petId))) return;
+      for (let i = 0; i < 4; i++) {
+        const x = Number((0.15 + Math.random() * 0.7).toFixed(3));
+        const y = Number((0.2 + Math.random() * 0.55).toFixed(3));
+        const r = await POST("/position" + actQuery(petId), { body: { x, y, mode: "line", duration: 1200 } });
+        if (!(r.status === 200 && r.body && r.body.ok)) {
+          $("mn-last").textContent = "漫游被拒：" + whyOf(r);
+          break;
+        }
+        $("mn-last").textContent = "漫游 · " + petId + " → (" + x + ", " + y + ")";
+        await mnSleep(1300);
+      }
+      await mnUnlock();
+    }
+
+    /** 事件分发：宿主只说"哪一项被点了、在哪只宠物上"，动作由本页替它调 */
+    function mnDispatch(events) {
+      for (const label of Object.keys(events || {})) {
+        const petId = events[label];
+        if (!petId) continue; // null = 没被点过
+        $("mn-last").textContent = label + " · " + petId;
+        mnChain = mnChain.then(() => (label === "发射" ? mnThrow(petId) : mnRoam(petId))).catch(() => {});
+      }
+    }
+
+    /** 长轮询循环：读到即消费；unknown-owner = 宿主重启过（注册表是内存态），重新注册再来 */
+    async function mnLoop() {
+      if (mnRunning) return;
+      mnRunning = true;
+      mnStatus("轮询中…");
+      while (mnRunning) {
+        const r = await GET("/menu/events?owner=" + encodeURIComponent(MN_OWNER) + "&wait=" + MN_WAIT);
+        if (!mnRunning) break;
+        const body = (r.body || {});
+        if (r.status === 200 && body.ok === false && body.reason === "unknown-owner") {
+          mnRegistered = false;
+          mnStatus("owner 不存在（宿主重启过），重新注册…");
+          if (await mnRegister()) mnStatus("轮询中…");
+          else { mnRunning = false; break; }
+          continue;
+        }
+        if (r.status !== 200 || body.ok !== true) {
+          mnStatus("查询失败：" + whyOf(r));
+          await mnSleep(1500);
+          continue;
+        }
+        mnStatus("轮询中… " + new Date().toLocaleTimeString());
+        mnDispatch(body.events);
+      }
+      mnStatus("已停止");
+    }
+
+    async function mnEnter() {
+      if (!mnRegistered) await mnRegister();
+      if (!mnRunning) void mnLoop();
+    }
+
+    $("mn-register").addEventListener("click", async () => {
+      $("mn-result").textContent = "注册中…";
+      await mnRegister();
+      await poll();
+    });
+    $("mn-clear").addEventListener("click", async () => {
+      // 先停轮询：否则清掉之后循环会当成「宿主重启过」，立刻又自动注册回来
+      mnRunning = false;
+      mnRegistered = false;
+      const r = await api("DELETE", "/menu/item?owner=" + encodeURIComponent(MN_OWNER));
+      const ok = r.status === 200 && !!(r.body && r.body.ok);
+      $("mn-result").textContent = ok ? "已清除 " + r.body.removed + " 项" : "清除失败：" + whyOf(r);
+      mnStatus("已停止");
+      await poll();
+    });
+    $("mn-start").addEventListener("click", () => { if (!mnRunning) void mnLoop(); });
+    $("mn-stop").addEventListener("click", () => { mnRunning = false; mnStatus("已停止"); });
 
     // ═══════════════════════════════════════════════════════════════
     // 启动
