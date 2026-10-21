@@ -28,7 +28,7 @@ import { createRequire } from 'node:module';
 
 const require = createRequire(import.meta.url);
 const helper = '../../runtime/electron-helper/';
-const { TOPMOST_WATCHDOG_TICK_MS, TOPMOST_REASSERT_MS, shouldReassertTopmost } = require(
+const { TOPMOST_WATCHDOG_TICK_MS, TOPMOST_REASSERT_MS, TOPMOST_WATCHDOG_ENABLED, shouldReassertTopmost } = require(
   helper + 'topmost-watchdog.js',
 );
 
@@ -84,6 +84,21 @@ describe('shouldReassertTopmost —— 到点才重钉，每拍都问一次', ()
     assert.ok(TOPMOST_WATCHDOG_TICK_MS > 0, '节拍必须是正数');
     assert.ok(TOPMOST_WATCHDOG_TICK_MS < TOPMOST_REASSERT_MS, '节拍 >= 重钉间隔时判定退化成每拍都钉，纯函数也就白写了');
   });
+
+  test('总开关关闭时，哪怕早就到点也一次都不钉', () => {
+    const longDue = { ...alive, nowMs: 1000 + TOPMOST_REASSERT_MS * 10, lastAssertMs: 1000 };
+    assert.equal(
+      shouldReassertTopmost(longDue, false),
+      false,
+      '总开关是全看门狗唯一的停用入口，关掉后不得再调 SetWindowPos',
+    );
+    assert.equal(shouldReassertTopmost(longDue, true), true, '显式开启时照常判定（到点就钉）');
+    assert.equal(
+      typeof TOPMOST_WATCHDOG_ENABLED,
+      'boolean',
+      '总开关必须是布尔值（不能是 undefined/字符串，否则早退判断会放行）',
+    );
+  });
 });
 
 describe('源码守卫 —— 置顶看门狗必须在 main.js 里按这套规则接线', () => {
@@ -113,6 +128,7 @@ describe('源码守卫 —— 置顶看门狗必须在 main.js 里按这套规�
 
   test('看门狗按判定函数 + 命名节拍运行，并在窗口关闭时停掉', () => {
     assert.ok(/shouldReassertTopmost\(/.test(main), '必须调用纯判定');
+    assert.ok(/TOPMOST_WATCHDOG_ENABLED/.test(watchdogBody()), '判定必须显式传入总开关，否则开关改了也不生效');
     const body = watchdogBody();
     assert.ok(/win\.isDestroyed\(\)/.test(body), '判定必须带上"窗口已销毁"');
     assert.ok(/win\.isVisible\(\)/.test(body), '判定必须带上"窗口可见"（未 show 时不钉）');
