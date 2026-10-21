@@ -28,7 +28,7 @@ dsh plugin --profile web add dsh-pet
 
 装完**重开桌面应用**（`dsh web` 用户则重启 `dsh web`）才生效。宠物出现在界面右上角（默认配置角落，可在设置页修改）——全部透明动画开箱即用，无需任何生成流程。
 
-> 💡 单一格式（默认 `.webm`）：浏览器 Chrome/Edge/Firefox 与桌面模式（Electron=Chromium）直接透明播放；Safari 不认 webm alpha（黑底），macOS 需要改用 `.mov`，见下方「🖥️ macOS 使用 mov」。
+> 💡 格式自动适配：Chrome/Edge/Firefox 与桌面模式（Electron=Chromium）播 `.webm`（VP9-alpha）；macOS Safari/WKWebView 会自动改用 `.mov`（HEVC-with-Alpha）。把 mov 素材放进目录即生效，没放时自动退回 webm（黑底但动画正常播，不会白屏）。见下方「🖥️ macOS 使用 mov」。
 
 > 💡 想自己造一只专属宠物？克隆 [PC2005-cloud/dsh-pet](https://github.com/PC2005-cloud/dsh-pet) 仓库，用内置素材链（AI 提示词 → 绿幕视频 → 透明动画，素材由豆包生成）从零生成，全流程可复现。
 
@@ -47,15 +47,16 @@ dsh plugin --profile web add dsh-pet
 
 ## 🖥️ macOS 使用 mov（Safari 透明播放）
 
-macOS 的 Safari/WKWebView 下透明动画需用 `.mov` 素材，三步：
+macOS 的 Safari/WKWebView 不认 webm 的 alpha 通道（会渲染黑底），需要用 `.mov`（HEVC-with-Alpha）。客户端会**自动识别 macOS Safari** 并优先请求 `.mov`，所以只需两步：
 
 1. **下载 mov 素材**：<https://github.com/PC2005-cloud/dsh-pet/releases/tag/assets-mov>（保持最新，zip 解压后文件名与 webm 一一对应）
 2. **放入素材目录**：把 `.mov` 文件放进 `$DSH_HOME/dsh-pet/main-animation/mov/`（pet pack 宠物则是 `pet/<种类名>-animation/mov/`）
-3. **改变量**：搜 `ANIMATION_EXT`，把 `.webm` 改为 `.mov`：
-   - npm 包用户改产物 `lib/client.js`（桌面端如需再改 `runtime/electron-helper/shared-core.js`）
-   - 自构建用户改源码 `src/shared/constants.ts` 后重新构建
 
-改完重启 `dsh web`（或重新加载页面）即生效，其余平台不受影响。
+放好后刷新页面即生效，不用重启 `dsh web`。
+
+- **有 mov**：Safari 播 HEVC（真透明）；其他浏览器照旧用 webm，互不影响
+- **没有 mov**：Safari 退回 webm（黑底，动画正常播，不会白屏）
+- **桌面模式**（Electron=Chromium）始终用 webm，不受影响
 
 ## ✨ 功能特性
 
@@ -79,7 +80,7 @@ macOS 的 Safari/WKWebView 下透明动画需用 `.mov` 素材，三步：
 - **桌面模式（可选）**：可脱离浏览器住上桌面——透明置顶局部小窗，与浏览器严格同行为（见下节）
 - **余额展示**：实时显示余额/额度，按档位播动画 + 头顶联想气泡，每只宠物可独立开关
 - **额外宠物种类（pet pack）**：在 `pet/` 自建「种类」（独立动画池 + 自己的素材），多实例共享，与主宠物严格隔离（见配置节）
-- **自定义动画**：`main-animation/webm/` 放 VP9-Alpha `.webm` 即作为新动画，优先于包内素材
+- **自定义动画**：`main-animation/webm/` 放 VP9-Alpha `.webm` 即作为新动画，优先于包内素材（macOS Safari 可再放一份同名 `.mov` 到 `main-animation/mov/`，会被自动优先使用）
 
 ## 🪟 桌面模式（脱离浏览器，可选）
 
@@ -154,17 +155,17 @@ npm run build && npm run standalone   # 仓库里（先构建）
 
 用户数据统一收敛在 `$DSH_HOME/dsh-pet/`：
 
-| 层                   | 路径                                  | 作用                                                                                                  |
-| -------------------- | ------------------------------------- | ----------------------------------------------------------------------------------------------------- |
-| 默认配置（只读）     | 包内 `assets/config.jsonc`            | 完整结构参考：宠物列表 / 动画池（idle/turn/drag/clicks/moves/categories）/ 播放权重                   |
-| 用户配置             | `$DSH_HOME/dsh-pet/main-config.jsonc` | 覆盖片段：可整体覆盖 `pets` / `animations` / `animationWeights`，缺省字段回落默认                     |
-| 对话记忆（自动生成） | `$DSH_HOME/dsh-pet/memory.json`       | 对话历史（user/assistant 正文，**全存不删**；每次请求只取最近 `chatMemoryRounds` 轮）。删掉即清空记忆 |
-| 用户动画（可选）     | `$DSH_HOME/dsh-pet/main-animation/`   | 放入 `.webm`（VP9-Alpha）即可作为动画播放，**优先于包内素材**（放 `main-animation/webm/` 子目录）     |
-| 用户表情包（可选）   | `$DSH_HOME/dsh-pet/memes/`            | 放入 `.png` 即可作为配图，**优先于包内素材**；键（文件名去扩展名）与描述仍需写进配置的 `memes`        |
+| 层                   | 路径                                  | 作用                                                                                                                                                   |
+| -------------------- | ------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 默认配置（只读）     | 包内 `assets/config.jsonc`            | 完整结构参考：宠物列表 / 动画池（idle/turn/drag/clicks/moves/categories）/ 播放权重                                                                    |
+| 用户配置             | `$DSH_HOME/dsh-pet/main-config.jsonc` | 覆盖片段：可整体覆盖 `pets` / `animations` / `animationWeights`，缺省字段回落默认                                                                      |
+| 对话记忆（自动生成） | `$DSH_HOME/dsh-pet/memory.json`       | 对话历史（user/assistant 正文，**全存不删**；每次请求只取最近 `chatMemoryRounds` 轮）。删掉即清空记忆                                                  |
+| 用户动画（可选）     | `$DSH_HOME/dsh-pet/main-animation/`   | 放入 `.webm`（VP9-Alpha）即可作为动画播放，**优先于包内素材**（`main-animation/webm/` 子目录；macOS Safari 的 `.mov` 放 `main-animation/mov/` 子目录） |
+| 用户表情包（可选）   | `$DSH_HOME/dsh-pet/memes/`            | 放入 `.png` 即可作为配图，**优先于包内素材**；键（文件名去扩展名）与描述仍需写进配置的 `memes`                                                         |
 
 - 设置页底部「高级配置」显示这些路径；「卸载与存储」列出插件的全部存储位置与卸载命令
 - 自定义动画：把 `xxx.webm` 放进 `main-animation/webm/`，在动画池/分类里写 `"xxx"`，**刷新页面**即可（无需重启 DSH）
-- 格式：`.webm` 需 **VP9 Alpha** 编码（Chrome/Edge/Firefox），与包内素材同规范，普通编码会有黑底
+- 格式：`.webm` 需 **VP9 Alpha** 编码（Chrome/Edge/Firefox），与包内素材同规范，普通编码会有黑底。macOS Safari 用的同名 `.mov`（HEVC-with-Alpha）放 `main-animation/mov/`，会被**自动优先**使用；缺 mov 时自动退回 webm（黑底，不会白屏）
 - 修改用户配置后同样**刷新页面**生效
 - 动画名请对照默认配置填写，避免引用不存在的动画
 - 表情包图片按**素材归属**查找（与动画同一套）：`pet/<前缀>-memes/`（种类独占，见下节）→ 用户目录 `$DSH_HOME/dsh-pet/memes/` → 包内 `assets/memes/`。往用户目录放 `xxx.png`，再在 config 的 `memes` 里写 `"xxx": "这张图的描述"`，**刷新页面**即可用（加图/换图不必再改包内目录，也就不会被 `add`/更新覆盖）；只想去掉某张图，删 config 里对应的键即可（不用动图片文件）
@@ -279,7 +280,7 @@ dsh plugin --profile web remove dsh-pet
   <img src="https://raw.githubusercontent.com/PC2005-cloud/dsh-pet/main/dsh-pet/assets/preview/beishubiao-tuozhuai-xuankong-fankui.gif" width="160" alt="被鼠标拖拽悬空反馈" title="被鼠标拖拽悬空反馈">
 </p>
 
-全部动画见仓库：`dsh-pet/assets/webm/`（VP9-alpha，唯一发布格式）。
+全部动画见仓库：`dsh-pet/assets/webm/`（VP9-alpha，包内唯一发布的格式）。macOS 的 HEVC-alpha `.mov` 单独发布在 [assets-mov](https://github.com/PC2005-cloud/dsh-pet/releases/tag/assets-mov)，按「🖥️ macOS 使用 mov」两步放好即自动生效。
 
 ## 📚 完整项目（不止是插件）
 

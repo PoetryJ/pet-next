@@ -2069,18 +2069,34 @@ export function apply(ctx: any): void {
     }
     // 素材归属（按是否存在该宠物的独立素材目录判定，绝不静默混用）：
     //   - 存在 `pet/<petId>-animation/`（pet pack 宠物，URL 段 = 素材根 assetRoot）：
-    //     只查自己的目录，查不到即 404 显式报错——绝不回落别的素材
+    //     只查自己的目录，查不到即 404 显式报错——绝不回落**别的素材**
+    //     （唯一例外：同名的 webm/mov 互换，即下方 mov 缺失时退回 webm）
     //   - 不存在（**所有主配置宠物**：main 及用户添加的任意多只，共用全局动画池）：
     //     主素材链——用户 main-animation/<ext 子目录> 优先，其次包内 assets/<ext 子目录>
     // extraAnimDir 必须先过 resolveAsset：petId 是解码后的 URL 段，Windows 上 %5C 解出的
     // 反斜杠不会被 rest.split('/') 切开，直接 join 会让 `..\..\x` 逃出用户根读盘。
     const extraAnimDir = resolveAsset(petConfigDir, petId + '-animation');
-    const file =
-      extraAnimDir !== undefined && existsSync(extraAnimDir)
-        ? resolveExisting(extraAnimDir, fileName)
-        : (resolveExisting(userRootFor(ext), fileName) ?? resolveExisting(assetRootFor(ext), fileName));
+    /** 按扩展名查同名素材（专属目录优先；否则用户根 → 包内根） */
+    const findAnim = (e: string): string | undefined => {
+      const name = fileName.replace(/\.(webm|mov)$/i, '') + e;
+      return extraAnimDir !== undefined && existsSync(extraAnimDir)
+        ? resolveExisting(extraAnimDir, name)
+        : (resolveExisting(userRootFor(e), name) ?? resolveExisting(assetRootFor(e), name));
+    };
+    let file = findAnim(ext);
+    let servedExt = ext;
+    // mov（HEVC-with-Alpha，macOS 定制）不随包发布：缺失时退回同名 webm。
+    // 宿主是唯一知道素材在不在的一方——宁可让 Safari 播黑底（webm 的 alpha 被丢弃），
+    // 也不能让整段动画 404（表现就是宠物完全不显示）。
+    if (file === undefined && ext === '.mov') {
+      const fb = findAnim('.webm');
+      if (fb !== undefined) {
+        file = fb;
+        servedExt = '.webm';
+      }
+    }
     if (file === undefined) return { kind: 'text', status: 404, body: 'dsh-pet: asset not found' };
-    return { kind: 'file', file, contentType: MIME[ext] ?? 'application/octet-stream' };
+    return { kind: 'file', file, contentType: MIME[servedExt] ?? 'application/octet-stream' };
   };
 
   ctx.effect(

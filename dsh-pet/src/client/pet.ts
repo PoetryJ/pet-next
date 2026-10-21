@@ -93,9 +93,31 @@ export type RuntimePet = Pet & {
   physics: PhysicsParams;
 };
 
-/** 播放动画扩展名 = 共享常量（src/shared/constants.ts 的 ANIMATION_EXT，默认 .webm）。
- *  macOS Safari/WKWebView 需改共享常量/产物为 .mov（HEVC-with-Alpha）后自构建。 */
-const THUMB_EXT = ANIMATION_EXT;
+/** 本次会话已定论的动画扩展名（null = 尚未判断）。模块级：一次判断，整页复用。 */
+let resolvedExt: string | null = null;
+
+/** 是否该先要 mov：只有 macOS 上的 WebKit（Safari / WKWebView）需要 HEVC-with-Alpha。
+ *  **不能用 canPlayType 判断**——Safari 能播 VP9 webm 却会丢弃 alpha（表现为黑底），
+ *  「能解码」与「透明还在」是两件事，后者没有任何 Web API 可查询。 */
+const prefersMov = (): boolean => {
+  const ua = navigator.userAgent;
+  // Chromium 系（含 Electron 桌面端）与 Firefox 原生支持 VP9-alpha，不需要 mov
+  if (/Chrome|Chromium|Edg|OPR|Firefox|FxiOS/i.test(ua)) return false;
+  return /Mac/i.test(navigator.platform || ua); // 余下按 WebKit 处理，且限定 macOS
+};
+
+/** 解析本次要用的扩展名：显式常量（用户按 README 改成 .mov）优先，否则按渲染端判断。
+ *  宿主侧对缺失的 .mov 会退回同名 .webm（src/host/index.ts 的 thumb 分支），
+ *  所以这里只管「要哪一种」，无需探测素材是否真的存在。 */
+const thumbExt = (): string => {
+  if (resolvedExt === null) {
+    // ANIMATION_EXT 的静态类型被窄化成字面量 ".webm"（其默认值），但它本来就是给人改的：
+    // 按 string 读，才表达得出「用户把它改成 .mov」这条显式意图（否则 TS 判为恒不相等）。
+    const explicit: string = ANIMATION_EXT;
+    resolvedExt = explicit === '.mov' || prefersMov() ? '.mov' : '.webm';
+  }
+  return resolvedExt;
+};
 
 /** 余额气泡展示时长（ms）：定时自动消失，与动画生命周期解耦 */
 const BUBBLE_DURATION_MS = 10 * 1000;
@@ -415,7 +437,7 @@ export function makePetUI(rt: {
           encodeURIComponent(cfg.assetRoot ?? cfg.id) +
           '/' +
           encodeURIComponent(next) +
-          THUMB_EXT;
+          thumbExt();
       el.loop = !nextOnce;
       el.muted = true;
       el.autoplay = true;
