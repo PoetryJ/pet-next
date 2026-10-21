@@ -2,7 +2,7 @@
 // 自身不发起请求；工厂形态与 pet.ts 一致（react 由 DSH 运行时注入）。
 // 内容（文案/档位/数学）来自 src/shared/balance.ts 的 balanceBubbleView ——
 // 与桌面模式共用同一份行数据，本文件只负责把行数据映射成 React 节点。
-import { balanceBubbleView, type BalanceBubbleRow, type BalanceState } from '../shared/balance';
+import { balanceBubbleView, balanceDetailView, type BalanceBubbleRow, type BalanceState } from '../shared/balance';
 import {
   MEME_BUBBLE_CLASS,
   MEME_IMG_CLASS,
@@ -10,7 +10,8 @@ import {
   memeImageUrl,
   whisperBubbleView,
 } from '../shared/whisper';
-import type { ReactNode } from 'react';
+import type { Dispatch, ReactNode, SetStateAction } from 'react';
+import type * as ReactNS from 'react';
 import type { jsx } from 'react/jsx-runtime';
 
 /** 气泡内联样式：白色半透明圆润泡 + 底部小尾巴指向宠物；字体用上首软糖体（本地打包，稳定）。
@@ -41,7 +42,7 @@ const bubbleCss = [
     'padding:calc(var(--f)*0.4835) calc(var(--f)*0.6593);' +
     'border-radius:calc(var(--f)*0.7692);' +
     'background:rgba(255,255,255,.92);' +
-    '--f:var(--dsh-pet-font-bubble,calc(var(--dsh-pet-size)*0.0455));' +
+    '--f0:var(--dsh-pet-font-bubble,calc(var(--dsh-pet-size)*0.0455));--f:var(--f0);' +
     'color:#2b2b2b;font-family:var(--dsh-pet-font-family,"ShangshouSoftCandy","Yuanti SC","YouYuan","幼圆","Comic Sans MS","PingFang SC","Microsoft YaHei",sans-serif);' +
     'font-size:var(--f);line-height:1.6;z-index:3;pointer-events:none;' +
     'box-shadow:0 calc(var(--f)*0.1978) calc(var(--f)*0.7692) rgba(0,0,0,.14),0 1px 3px rgba(0,0,0,.08);' +
@@ -69,6 +70,23 @@ const bubbleCss = [
   '.dsh-pet-bubble .pet-bub-tier{font-weight:700}',
   '.dsh-pet-bubble .pet-bub-tier-peak{color:#e53935}',
   '.dsh-pet-bubble .pet-bub-tier-idle{color:#2e9e4f}',
+  // ---- 展开态（点余额气泡后的完整额度）：每窗口一行，进度条长度 = 已用百分比 ----
+  // 可点：气泡默认 pointer-events:none（不挡宿主页面），只有这张可展开的余额气泡才开命中
+  '.dsh-pet-bubble.is-clickable{pointer-events:auto;cursor:pointer}',
+  // 收起态宽度上限 10.989em 排不下「窗口名 + 条 + 百分比 + 重置」四列，展开态单独给一档更宽的：
+  // 21em（60% 字号下 ≈265px），仍以包含块 100% 收口。
+  // 整体缩到收起字号的 60%：--f 是盒内所有尺寸的锚点（字号/内边距/圆角/进度条高度全都跟着它缩）。
+  '.dsh-pet-bubble.is-expanded{--f:calc(var(--f0)*0.6);width:min(calc(var(--f)*21),100%);max-width:100%}',
+  // 淡出：换内容前先降到透明（.25s，复用 opacity 那条过渡曲线），换完去掉这个类再淡入
+  '.dsh-pet-bubble.is-on.is-fading{opacity:0}',
+  '.dsh-pet-bubble .pet-bub-quota{display:flex;align-items:center;gap:calc(var(--f)*0.4);margin:calc(var(--f)*0.13) 0}',
+  '.dsh-pet-bubble .pet-bub-quota-label{flex:none;min-width:calc(var(--f)*1.9);font-size:calc(var(--f)*0.7692);color:rgba(43,43,43,.6)}',
+  '.dsh-pet-bubble .pet-bub-quota-bar{flex:1 1 auto;height:calc(var(--f)*0.5);border-radius:calc(var(--f)*0.25);background:rgba(43,43,43,.12);overflow:hidden}',
+  '.dsh-pet-bubble .pet-bub-quota-fill{display:block;height:100%;border-radius:inherit;background:#2e9e4f}',
+  '.dsh-pet-bubble .pet-bub-quota-fill.pet-bub-quota-warn{background:#e8952f}',
+  '.dsh-pet-bubble .pet-bub-quota-fill.pet-bub-quota-crit{background:#e53935}',
+  '.dsh-pet-bubble .pet-bub-quota-used{flex:none;min-width:calc(var(--f)*2.2);text-align:right;font-variant-numeric:tabular-nums;font-weight:650;color:#1f1f1f}',
+  '.dsh-pet-bubble .pet-bub-quota-reset{flex:none;min-width:calc(var(--f)*2.6);text-align:right;font-size:calc(var(--f)*0.7692);color:rgba(43,43,43,.6)}',
 ].join('\n');
 
 /** 只注入一次 */
@@ -89,6 +107,8 @@ function rowsToNodes(h: typeof jsx, rows: BalanceBubbleRow[]): ReactNode {
     return h('div', {
       className: 'pet-bub-row',
       children: rows.map((r, i) => {
+        // 进度条行不会与档位段同现（档位段只属于 money 形态，quota 只属于 windows 展开态）
+        if (r.role === 'quota') return null;
         if (r.role === 'tier') {
           return h('span', {
             key: i,
@@ -100,30 +120,110 @@ function rowsToNodes(h: typeof jsx, rows: BalanceBubbleRow[]): ReactNode {
       }),
     });
   }
-  // 其余：每行一个块（label 主行 / sub 次要行 / error 错误行）
+  // 其余：每行一个块（label 主行 / sub 次要行 / error 错误行 / quota 进度条行）
   return rows.map((r, i) => {
+    // 展开态一行 = 一个窗口：窗口名 + 进度条 + 已用百分比 + 重置倒计时
+    // （四段都用 flex 同一行排，进度条吃剩余宽度，故条长 = 已用比例）
+    if (r.role === 'quota') {
+      return h('div', {
+        key: i,
+        className: 'pet-bub-quota',
+        children: [
+          h('span', { key: 'label', className: 'pet-bub-quota-label', children: r.label }),
+          h('span', {
+            key: 'bar',
+            className: 'pet-bub-quota-bar',
+            children: h('i', {
+              className: 'pet-bub-quota-fill pet-bub-quota-' + r.tone,
+              style: { width: Math.max(0, Math.min(100, r.percent)) + '%' },
+            }),
+          }),
+          h('span', { key: 'used', className: 'pet-bub-quota-used', children: r.usedText }),
+          h('span', { key: 'reset', className: 'pet-bub-quota-reset', children: r.resetText }),
+        ],
+      });
+    }
     if (r.role === 'error') return h('div', { key: i, className: 'pet-bub-err', children: r.text });
     if (r.role === 'sub') return h('div', { key: i, className: 'pet-bub-row pet-bub-sub', children: r.text });
     return h('div', { key: i, className: 'pet-bub-row', children: r.text });
   });
 }
 
+/** 展开/收起时换内容的等待时长（ms）：与 .dsh-pet-bubble 的 opacity 过渡同为 .25s，
+ *  淡出走完后才换内容，否则内容会在半透明时被替换 = 看得见的硬切 */
+const BALANCE_FADE_MS = 250;
+
 /**
  * 制造余额气泡（工厂）。
- * 工厂内注入样式一次（与 pet.ts 的 injectCss 同模式）；组件为哑组件，props = { state, on }。
- * 内容来自 src/shared 的 balanceBubbleView（与桌面模式完全一致）。
+ * 工厂内注入样式一次（与 pet.ts 的 injectCss 同模式）；组件为哑组件，props = { state, on, expanded, onToggle }。
+ * 内容来自 src/shared 的 balanceBubbleView / balanceDetailView（与桌面模式完全一致）。
+ *
+ * 两种形态：
+ *  - 收起（默认，/balance 与自动轮询出来的就是它）：两行 —— 最紧迫窗口的「已用 N%」+ 重置倒计时；
+ *  - 展开（点气泡）：三个窗口各一行 —— 窗口名 + 进度条 + 已用百分比 + 重置倒计时。
+ * 切换是淡出 → 换内容 → 淡入，不是硬切。显隐与 10s 计时仍归上层（pet.ts）管，本组件只管内容。
  */
-export function makeBalanceBubble(rt: { h: typeof jsx }): (props: { state: BalanceState; on: boolean }) => ReactNode {
-  const { h } = rt;
+export function makeBalanceBubble(rt: {
+  h: typeof jsx;
+  useState: <T>(init: T) => [T, Dispatch<SetStateAction<T>>];
+  // 用 React 命名空间类型而非 typeof（同 pet.ts：type-only import 的 hook 无法进入声明导出）
+  useEffect: (effect: ReactNS.EffectCallback, deps?: ReactNS.DependencyList) => void;
+}): (props: {
+  state: BalanceState;
+  on: boolean;
+  /** 目标形态（点一下切换） */
+  expanded: boolean;
+  /** 点击气泡：上层据此切换 expanded 并重置 10s 计时器 */
+  onToggle: () => void;
+}) => ReactNode {
+  const { h, useState, useEffect } = rt;
   injectBubbleCss();
 
-  return function BalanceBubble({ state, on }: { state: BalanceState; on: boolean }) {
-    const rows = balanceBubbleView(state);
+  return function BalanceBubble({
+    state,
+    on,
+    expanded,
+    onToggle,
+  }: {
+    state: BalanceState;
+    on: boolean;
+    expanded: boolean;
+    onToggle: () => void;
+  }) {
+    // 目标是 expanded，实际显示的是 full —— 两者分开是为了留出「先淡出、再换内容」的那 250ms。
+    const [full, setFull] = useState(false);
+    const [fading, setFading] = useState(false);
+    useEffect(() => {
+      if (expanded === full) return;
+      setFading(true);
+      const timer = window.setTimeout(() => {
+        setFull(expanded);
+        setFading(false);
+      }, BALANCE_FADE_MS);
+      return () => window.clearTimeout(timer);
+    }, [expanded, full]);
+
+    const rows = full ? balanceDetailView(state) : balanceBubbleView(state);
+    // 只有 windows 形态有三窗口读数可展开；money（账户余额）与不可用状态点开也没别的内容
+    const clickable = state.ok && state.shape === 'windows';
     // 不可用状态（不支持/缺凭证/抓取失败）是**多行文字说明**：套用碎碎念的换行变体
     // （字号缩到 0.75、宽度下限更窄，多行说明更紧凑；折行现在已是气泡的通用行为）
     const wrap = state.ok ? '' : ' dsh-pet-whisper';
     return h('div', {
-      className: 'dsh-pet-bubble' + wrap + (on ? ' is-on' : ''),
+      className:
+        'dsh-pet-bubble' +
+        wrap +
+        (on ? ' is-on' : '') +
+        (clickable ? ' is-clickable' : '') +
+        (full ? ' is-expanded' : '') +
+        (fading ? ' is-fading' : ''),
+      // 就地吞掉：宠物本体（.dsh-pet-hit）的点击/拖拽不能被这次点击碰到
+      onClick: clickable
+        ? (e: ReactNS.MouseEvent<HTMLDivElement>) => {
+            e.stopPropagation();
+            onToggle();
+          }
+        : undefined,
       children: rowsToNodes(h, rows),
     });
   };

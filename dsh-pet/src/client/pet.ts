@@ -155,8 +155,8 @@ export function makePetUI(rt: {
   const { h, useState, useEffect, useRef } = rt;
   injectCss();
 
-  /** 余额气泡（哑组件：数据与显隐由 PetCard 传入） */
-  const BalanceBubble = makeBalanceBubble({ h });
+  /** 余额气泡（哑组件：数据与显隐由 PetCard 传入；展开态的两个 hook 由这里注入） */
+  const BalanceBubble = makeBalanceBubble({ h, useState, useEffect });
   /** 碎碎念气泡（哑组件：文本与显隐由 PetCard 传入） */
   const WhisperBubble = makeWhisperBubble({ h });
 
@@ -247,6 +247,9 @@ export function makePetUI(rt: {
     const [margin, setMargin] = useState({ x: cfg.position.marginX, y: cfg.position.marginY });
     // 余额气泡显隐（事件触发时显示，10s 后定时自动消失）
     const [bubbleOn, setBubbleOn] = useState(false);
+    // 余额气泡的展开态（点气泡 → 三窗口完整读数）。每次重新弹出都归位到收起态，
+    // 否则上一次展开过，下一轮自动轮询一冒头就是展开的样子。
+    const [balanceExpanded, setBalanceExpanded] = useState(false);
     const bubbleTimerRef = useRef<number | null>(null);
     // 碎碎念气泡（显隐定时器与余额气泡各自独立：10s 各自计时互不干扰；渲染走单槽优先级）
     const [whisperBubbleOn, setWhisperBubbleOn] = useState(false);
@@ -610,6 +613,7 @@ export function makePetUI(rt: {
       if (!cfg.balanceEnabled && !balanceManual) return; // 自动轮询受开关门控；手动无条件通过
       const p = balancePercent(balance);
       if (balanceManual || p !== undefined) {
+        setBalanceExpanded(false); // 新一轮查询一律从收起态开始（上次展开过也不延续）
         setBubbleOn(true);
         // 气泡 10s 定时消失（与动画解耦：即使动画被点击/拖拽打断，气泡也按时收起；重复触发先清旧定时器）
         if (bubbleTimerRef.current !== null) window.clearTimeout(bubbleTimerRef.current);
@@ -2028,6 +2032,13 @@ export function makePetUI(rt: {
     // 优先级：终态任务 > 碎碎念/对话 > 余额 > 非终态任务。
     // 为什么终态任务不让位：完成/失败气泡只活 10s，被事件顶掉就彻底看不到了；非终态任务气泡
     // 常驻（不设自动收起），让位 10s 零损失。与桌面端 sprite.js 的 renderBubble 同一套优先级。
+    /** 点余额气泡：切换展开/收起，并把 10s 计时器重置一次
+     *  （不重置的话，第 8 秒才点开就只剩 2 秒，"看完整信息"这个目的就落空了） */
+    const toggleBalanceDetail = () => {
+      setBalanceExpanded((v) => !v);
+      if (bubbleTimerRef.current !== null) window.clearTimeout(bubbleTimerRef.current);
+      bubbleTimerRef.current = window.setTimeout(() => setBubbleOn(false), BUBBLE_DURATION_MS);
+    };
     const workTerminal = workStatus?.state === 'success' || workStatus?.state === 'error';
     const bubbleNode = (() => {
       if (workTerminal && workBubbleOn && workText && cfg.workStatusEnabled) {
@@ -2045,7 +2056,12 @@ export function makePetUI(rt: {
         });
       }
       if (bubbleOn && balance && (cfg.balanceEnabled || balanceManual)) {
-        return h(BalanceBubble, { state: balance, on: bubbleOn });
+        return h(BalanceBubble, {
+          state: balance,
+          on: bubbleOn,
+          expanded: balanceExpanded,
+          onToggle: toggleBalanceDetail,
+        });
       }
       if (workBubbleOn && workText && cfg.workStatusEnabled) {
         return h(WhisperBubble, { text: workText, on: workBubbleOn });

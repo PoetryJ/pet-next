@@ -323,12 +323,34 @@ export function resetInText(iso?: string): string {
 
 // ---------- 富余额气泡展示视图（浏览器与桌面共用同一份内容/文案/数学） ----------
 
+/** 进度条配色档位：<70 正常 / 70–90 预警 / ≥90 危急（阈值只此一份，两端共用，不各写一套） */
+export type QuotaTone = 'ok' | 'warn' | 'crit';
+export const QUOTA_WARN_PERCENT = 70;
+export const QUOTA_CRIT_PERCENT = 90;
+export function quotaTone(percent: number): QuotaTone {
+  if (percent >= QUOTA_CRIT_PERCENT) return 'crit';
+  if (percent >= QUOTA_WARN_PERCENT) return 'warn';
+  return 'ok';
+}
+
 /** 气泡行数据：role 决定两端的样式类（浏览器 React span；桌面 DOM div）；tier 用于峰谷着色 */
 export type BalanceBubbleRow =
   | { role: 'label'; text: string }
   | { role: 'sub'; text: string }
   | { role: 'error'; text: string }
-  | { role: 'tier'; tier: PricingTier; text: string };
+  | { role: 'tier'; tier: PricingTier; text: string }
+  | {
+      /** 展开态一行 = 一个窗口：窗口名 + 进度条 + 已用百分比 + 重置倒计时 */
+      role: 'quota';
+      /** 纯文本兜底（不认识本 role 的消费方也能原样显示这一行） */
+      text: string;
+      label: string;
+      /** 进度条长度 = 已用百分比（0-100） */
+      percent: number;
+      tone: QuotaTone;
+      usedText: string;
+      resetText: string;
+    };
 
 /** 不可用状态的气泡行（显式说明原因，绝不伪造数字）：
  *  - unsupported：服务商未登记查询接口（配置事实，不是故障）→ 报出 provider id，便于自查"当前到底是谁"
@@ -353,7 +375,7 @@ function unavailableRows(state: BalanceUnavailable): BalanceBubbleRow[] {
             { role: 'error', text: '余额查询失败' },
             { role: 'sub', text: state.message ?? '' },
           ];
-  return rows.filter((r) => r.text !== '');
+  return rows.filter((r) => r.role !== 'quota' && r.text !== '');
 }
 
 /**
@@ -394,6 +416,42 @@ export function balanceBubbleView(state: BalanceState): BalanceBubbleRow[] {
     ];
   }
   return unavailableRows(state);
+}
+
+/**
+ * 展开态行数据（点余额气泡后显示）：三个窗口各一行 —— 窗口名 + 进度条 + 已用百分比 + 重置倒计时。
+ *
+ * 只列**存在**的窗口：`rolling` / `weekly` 缺省 = 该服务商没有这个窗口，不补 0、不画空条。
+ * money 形态没有"窗口"这个概念（只有账户余额），点开也没有别的读数 → 回落到收起态视图，
+ * 于是展开前后内容一致，不会出现"点了一下却什么都没变"的空交互。
+ */
+export function balanceDetailView(state: BalanceState): BalanceBubbleRow[] {
+  if (!state.ok) return unavailableRows(state);
+  if (state.shape === 'money') return balanceBubbleView(state);
+  const resets: Record<WindowKey, string | undefined> = {
+    rolling: state.rollingResetsAt,
+    weekly: state.weeklyResetsAt,
+    monthly: state.monthlyResetsAt,
+  };
+  const rows: BalanceBubbleRow[] = [];
+  for (const w of ['rolling', 'weekly', 'monthly'] as WindowKey[]) {
+    const percent = state[w];
+    if (percent === undefined) continue;
+    // 与收起态同一套重置文案（"已重置" / "N.x 小时重置"），两端直接原样渲染
+    const reset = resetInText(resets[w]);
+    const usedText = Math.round(percent) + '%';
+    const resetText = reset === '' ? '已重置' : reset + '重置';
+    rows.push({
+      role: 'quota',
+      text: windowLabel(state, w) + ' ' + usedText + ' ' + resetText,
+      label: windowLabel(state, w),
+      percent,
+      tone: quotaTone(percent),
+      usedText,
+      resetText,
+    });
+  }
+  return rows.length > 0 ? rows : balanceBubbleView(state);
 }
 
 /** 非 ok 状态「弹不弹文字说明气泡」的判定结果 */

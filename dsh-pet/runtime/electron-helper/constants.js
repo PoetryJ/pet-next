@@ -152,6 +152,9 @@ const POSE_REPORT_URL = BASE + '/pose/report';
 // 丢掉，第三方读到的永远是中途值，而且没有任何报错。
 const POSE_THROTTLE_MS = 400;
 const BUBBLE_DURATION_MS = 10 * 1000; // 余额/碎碎念气泡展示时长（与浏览器一致：定时自动消失，与动画解耦）
+// 余额气泡展开/收起换内容前的等待（ms）：与 .pet-bubble 的 opacity 过渡同为 .25s，
+// 淡出走完再换内容，否则内容会在半透明时被替换 = 看得见的硬切（与浏览器 bubble.ts 同值）
+const BALANCE_FADE_MS = 250;
 // /state 长轮询的挂起时长（与浏览器端同值）：宿主在"版本没变"时最多挂这么久。
 // 1s 是前端自己定的下限——空闲时请求率与改造前一致（1 req/s），叶子一变宿主立刻返回。
 const STATE_WAIT_MS = 1000;

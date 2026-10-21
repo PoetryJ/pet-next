@@ -117,6 +117,9 @@ class PetSprite {
     this.tipCursor = null;
     this.balanceView = null;
     this.balanceWrap = false; // true = 当前余额气泡是不可用的「文字说明」（多行，需换行变体）
+    this.balanceState = null; // 最近一次余额读数（展开态要用它算三窗口行；balanceView 只是收起态的行）
+    this.balanceExpanded = false; // 展开态：点一下气泡看三窗口完整读数（每次重新弹出都归位）
+    this.balanceFadeTimer = null; // 展开/收起的淡出等待（250ms 后才换内容，避免硬切）
     this.prevTick = 0;
     // 说话（碎碎念 / 命令气泡 / 对话回复三合一）：文本/配图由容器统一轮询 /state 后经
     // showWhisper 送进来，本精灵不再自己轮询（改造前的 whisperLoopTimer / broadcastLoopTimer 已删）
@@ -182,6 +185,14 @@ class PetSprite {
     this.hit.setAttribute('aria-label', this.pet.name);
     this.bubble = document.createElement('div');
     this.bubble.className = 'pet-bubble';
+    // 余额气泡可点时：点一下切换展开/收起。内容与显隐都归 renderBubble，这里只做两件事——
+    // 就地吞掉事件（别让这次点击落到下面的本体命中层），以及交给 events.js 的 toggleBalanceDetail。
+    this.bubble.addEventListener('click', (e) => {
+      if (!this.balanceClickable()) return;
+      e.stopPropagation();
+      e.preventDefault();
+      this.toggleBalanceDetail();
+    });
     // 悬浮提示：与气泡同处 this.el 内的绝对定位浮层，位置/翻转由 renderTip 决定，
     // 样式走 shared 的 TOOLTIP_CSS（renderer.js 注入，与浏览器端同一份）
     this.tip = document.createElement('div');
@@ -1329,15 +1340,27 @@ class PetSprite {
   /**
    * 本窗口是否**必须保持可交互**（= "我正在用这个窗口的鼠标输入"）。
    *
-   * 三个来源：拖拽中 / 右键菜单开着 / 对话弹窗开着——它们都是"窗口内的 DOM 或事件链正在被使用"，
-   * 而它们的输入全部来自**窗口级鼠标事件**（pointermove/pointerup/click）：窗口一旦变回穿透，
-   * 输入链就断了（拖拽会定格在最后一次采样上，松手也没人报 pointerup → 宠物按旧速度飞出去）。
+   * 三个来源：拖拽中 / 右键菜单开着 / 对话弹窗开着（外加可点的余额气泡，见下）——它们都是
+   * "窗口内的 DOM 或事件链正在被使用"，而它们的输入全部来自**窗口级鼠标事件**
+   * （pointermove/pointerup/click）：窗口一旦变回穿透，输入链就断了（拖拽会定格在最后一次采样上，
+   * 松手也没人报 pointerup → 宠物按旧速度飞出去）。
    *
    * 这个信号是**渲染端专有的知识**：只有它知道"我正在用输入"，主进程无从推断（光看光标位置和窗口
    * 位移分不清"拖拽跟手"和"漫游/抛掷"）。同时上报控件矩形：菜单/聊天框外的透明区域继续穿透。
    */
   inputBusy() {
-    return this.dragState.active || this.menuOpen || this.chatOpen;
+    // 可点的余额气泡是第四个来源：它同样长在窗口里、同样靠窗口级 click 触发，而它悬在宠物头顶的
+    // 余量区——那一块平时是穿透的，正需要借 busy + 控件矩形把它"圈"出来（见 syncInputRegions）。
+    return this.dragState.active || this.menuOpen || this.chatOpen || this.balanceClickable();
+  }
+
+  /**
+   * 余额气泡此刻是否可点可展开：只有 windows 形态（三窗口读数）才有可展开的内容；
+   * money（账户余额）与不可用状态的文字说明点开也没有别的东西，保持不可点、继续穿透。
+   */
+  balanceClickable() {
+    const s = this.balanceState;
+    return !!(this.bubbleOn && s && s.ok && s.shape === 'windows' && !this.balanceWrap);
   }
 
   /**
@@ -1357,7 +1380,9 @@ class PetSprite {
   syncInputRegions() {
     if (!window.petBridge || !window.petBridge.setInputRegions) return;
     const rects = [];
-    const controls = [...document.querySelectorAll('.dsh-pet-menu-column, .dsh-pet-chat')];
+    // 控件矩形 = 主进程允许接收点击的区域（矩形外的余量区继续穿透）。
+    // .pet-bubble.is-clickable 是余额气泡的展开态：它悬在宠物头顶的余量区，不登记就点不到。
+    const controls = [...document.querySelectorAll('.dsh-pet-menu-column, .dsh-pet-chat, .pet-bubble.is-clickable')];
     for (const el of this.inputRegionElements) {
       if (!controls.includes(el)) {
         this.inputRegionResize.unobserve(el);
@@ -1777,10 +1802,15 @@ class PetSprite {
       slot === 'whisper' || slot === 'work' || (slot === 'balance' && this.balanceWrap),
     );
     this.bubble.classList.toggle(S.MEME_BUBBLE_CLASS, !!whisperImg);
+    // 可点/展开两个状态类：可点 → 气泡参与命中区（见 syncInputRegions）；展开 → 三窗口排版与更宽的盒
+    const clickable = slot === 'balance' && this.balanceClickable();
+    this.bubble.classList.toggle('is-clickable', clickable);
+    this.bubble.classList.toggle('is-expanded', clickable && this.balanceExpanded);
     if (slot === 'none') {
       // 三者都没有可显示的内容：隐藏（不占位，也就不会挡住任何一层）
       this.bubble.classList.remove('is-on');
       window.__dshPetDebug.lastBubbleTitle = '';
+      this.syncInputBusy(); // 气泡没了 → 撤销它的控件矩形与 busy 标记（否则整窗还留着可点区域）
       return;
     }
     this.bubble.innerHTML = '';
@@ -1797,7 +1827,11 @@ class PetSprite {
       line.textContent = this.whisperView[0]?.text ?? '';
       this.bubble.appendChild(line);
     } else {
-      const rows = this.balanceView;
+      // 展开态的行在这里现算：renderBubble 是只读渲染路径，不缓存（余额每轮都在变，缓存反而要同步失效）
+      const rows =
+        clickable && this.balanceExpanded && this.balanceState
+          ? S.balanceDetailView(this.balanceState)
+          : this.balanceView;
       const hasTier = rows.some((r) => r.role === 'tier');
       if (hasTier) {
         // deepseek 余额单行：余额（峰/谷）¥x — 档位字着色
@@ -1812,6 +1846,30 @@ class PetSprite {
         this.bubble.appendChild(line);
       } else {
         for (const r of rows) {
+          // 展开态一行 = 一个窗口：窗口名 + 进度条 + 已用百分比 + 重置倒计时（四段 flex 同行，
+          // 条吃剩余宽度，故条长 = 已用比例）。与浏览器 bubble.ts 的 DOM 结构一一对应。
+          if (r.role === 'quota') {
+            const row = document.createElement('div');
+            row.className = 'pet-bub-quota';
+            const label = document.createElement('span');
+            label.className = 'pet-bub-quota-label';
+            label.textContent = r.label;
+            const bar = document.createElement('span');
+            bar.className = 'pet-bub-quota-bar';
+            const fill = document.createElement('i');
+            fill.className = 'pet-bub-quota-fill pet-bub-quota-' + r.tone;
+            fill.style.width = Math.max(0, Math.min(100, r.percent)) + '%';
+            bar.appendChild(fill);
+            const used = document.createElement('span');
+            used.className = 'pet-bub-quota-used';
+            used.textContent = r.usedText;
+            const reset = document.createElement('span');
+            reset.className = 'pet-bub-quota-reset';
+            reset.textContent = r.resetText;
+            row.append(label, bar, used, reset);
+            this.bubble.appendChild(row);
+            continue;
+          }
           const div = document.createElement('div');
           if (r.role === 'error') div.className = 'pet-bub-err';
           else if (r.role === 'sub') div.className = 'pet-bub-row pet-bub-sub';
@@ -1823,5 +1881,8 @@ class PetSprite {
     }
     this.bubble.classList.add('is-on');
     window.__dshPetDebug.lastBubbleTitle = this.bubble.textContent.slice(0, 60);
+    // 气泡内容/尺寸变了 → 重报控件矩形（可点的余额气泡要靠它拿点击），并同步 busy 标记。
+    // 这里是所有显隐/换内容的汇聚点，放在这里就不会漏掉任何一条路径。
+    this.syncInputBusy();
   }
 }

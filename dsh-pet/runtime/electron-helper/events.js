@@ -125,6 +125,8 @@ PetSprite.prototype.showBalanceNotice = function showBalanceNotice(state, manual
   this.bubbleOn = true;
   this.balanceWrap = true; // 文字说明可能多行：renderBubble 据此套用紧凑变体（字号缩到 0.75、宽度下限更窄）
   this.balanceView = S.balanceBubbleView(state);
+  this.balanceState = state; // 留着：不可用状态不可展开，但要防止上一次的余额读数残留在字段里
+  this.balanceExpanded = false; // 文字说明没有展开态
   this.renderBubble();
   if (this.bubbleTimer !== null) window.clearTimeout(this.bubbleTimer);
   this.bubbleTimer = window.setTimeout(() => {
@@ -214,6 +216,8 @@ PetSprite.prototype.showBalanceNow = function showBalanceNow(state, manual) {
   this.bubbleOn = true;
   this.balanceWrap = false; // 正常余额气泡用常规尺寸，别继承上一次文字说明的紧凑变体
   this.balanceView = S.balanceBubbleView(state);
+  this.balanceState = state; // 展开态要拿完整读数现算三窗口行（balanceView 只是收起态那两行）
+  this.balanceExpanded = false; // 新一轮查询一律从收起态开始（与浏览器一致）
   this.renderBubble();
   // 气泡 10s 定时消失（与动画解耦：即使动画被点击/拖拽打断，气泡也按时收起；重复触发先清旧定时器）
   if (this.bubbleTimer !== null) window.clearTimeout(this.bubbleTimer);
@@ -238,6 +242,29 @@ PetSprite.prototype.showBalanceNow = function showBalanceNow(state, manual) {
   const name = S.pickSlot(slot, this.anim); // 数组槽位档内随机抽 1，且避开当前正播动画（避免连续重复，与浏览器一致）
   this.stopMove();
   this.playOnce(name);
+};
+
+// 点余额气泡：展开/收起三窗口完整读数（与浏览器 src/client/bubble.ts 同一套语义）。
+// 两件事一起做：
+//  - 淡出 → 换内容 → 淡入：先在 .is-fading 里把 opacity 降到 0，250ms 后才重绘内容，
+//    否则内容会在半透明时被替换 = 看得见的硬切；
+//  - 重置 10s 气泡定时器：不重置的话，第 8 秒才点开就只剩 2 秒，"看完整信息"这个目的就落空了。
+// 命中区由 renderBubble 末尾的 syncInputBusy() 重报（is-clickable 变化会连带控件矩形变化）。
+PetSprite.prototype.toggleBalanceDetail = function toggleBalanceDetail() {
+  if (!this.balanceClickable()) return;
+  this.balanceExpanded = !this.balanceExpanded;
+  this.bubble.classList.add('is-fading');
+  if (this.balanceFadeTimer !== null) window.clearTimeout(this.balanceFadeTimer);
+  this.balanceFadeTimer = window.setTimeout(() => {
+    this.balanceFadeTimer = null;
+    this.bubble.classList.remove('is-fading');
+    this.renderBubble(); // 重绘内容 + 重报控件矩形（展开态宽度变了，矩形也得跟着变）
+  }, BALANCE_FADE_MS);
+  if (this.bubbleTimer !== null) window.clearTimeout(this.bubbleTimer);
+  this.bubbleTimer = window.setTimeout(() => {
+    this.bubbleOn = false;
+    this.renderBubble();
+  }, BUBBLE_DURATION_MS);
 };
 
 // ---------- 轮询组装（容器统一拉取/触发，与浏览器 PetMulti 同一套路径；boot 成功后调用） ----------
