@@ -17,12 +17,7 @@
 import { BUILTIN_PROVIDERS, matchBalanceProvider } from './registry';
 import type { AccountBalanceSnapshot, BalanceResult } from './types';
 
-export {
-  BUILTIN_PROVIDERS,
-  listBalanceProviders,
-  matchBalanceProvider,
-  registerBalanceProvider,
-} from './registry';
+export { BUILTIN_PROVIDERS, listBalanceProviders, matchBalanceProvider, registerBalanceProvider } from './registry';
 
 /** 已登记的内置服务商（保持旧导出名：测试与既有调用方不受影响） */
 export const BALANCE_PROVIDERS = BUILTIN_PROVIDERS;

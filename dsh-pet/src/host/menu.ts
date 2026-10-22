@@ -98,7 +98,11 @@ export class MenuRegistry {
     for (const rawLabel of rawLabels) {
       const label = displayText(rawLabel, LABEL_MAX);
       if (label === null) {
-        return { ok: false, reason: 'invalid-label', message: `每个 label 必须是 1–${LABEL_MAX} 字符的字符串（禁控制字符）` };
+        return {
+          ok: false,
+          reason: 'invalid-label',
+          message: `每个 label 必须是 1–${LABEL_MAX} 字符的字符串（禁控制字符）`,
+        };
       }
       if (!labels.includes(label)) labels.push(label); // 同 owner 内去重（保留首次出现的位置）
     }

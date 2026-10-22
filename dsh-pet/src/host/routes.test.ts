@@ -794,10 +794,7 @@ describe('/work-status —— 外部写入工作状态', () => {
 
 describe('对外 Cordis 服务 —— 第三方注册余额查询', () => {
   interface BalanceApi {
-    register: (def: {
-      id: string;
-      fetch: (ctx: { provider: string }) => Promise<unknown>;
-    }) => () => void;
+    register: (def: { id: string; fetch: (ctx: { provider: string }) => Promise<unknown> }) => () => void;
     list: () => { builtin: string[]; external: string[] };
   }
   const api = (): BalanceApi => {

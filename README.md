@@ -149,7 +149,7 @@ dsh plugin --profile web add file:D:/path/to/dsh-pet/dsh-pet
 
 - **操作系统**：Windows / Linux / macOS 三端均可运行——浏览器 overlay 与桌面模式（Electron 透明置顶窗）行为完全一致；Electron 按平台自动探测/下载（`electron.exe` / `Electron.app` / linux 单文件），无需手动安装
 - **无头 / 无桌面环境**：支持 Linux headless 等无图形会话——桌面模式自动检测显示环境（Linux 无 `DISPLAY` / `WAYLAND_DISPLAY` 时判定无显示、跳过桌面窗口，仅日志告警），浏览器 overlay 不受影响
-- **浏览器**：浏览器 overlay 兼容 **Chromium 内核（Chrome / Edge 等）与 Firefox**——透明动画依赖 VP9-Alpha webm，三者均已实测透明确认；**不支持 Safari**（macOS 不认 webm alpha，透明渲染为黑底）——macOS 用 `.mov` 素材（GitHub Release `assets-mov`），下载放入 + 改 `ANIMATION_EXT` 变量即可（见「②.5 Safari/HEVC 兼容素材」）
+- **浏览器**：浏览器 overlay 兼容 **Chromium 内核（Chrome / Edge 等）与 Firefox**——透明动画依赖 VP9-Alpha webm，三者均已实测透明确认；**不支持 Safari**（macOS 不认 webm alpha，透明渲染为黑底）——macOS 用 `.mov` 素材（GitHub Release `assets-mov`），下载放入即可（见「②.5 Safari/HEVC 兼容素材」）
 - **多显示器**：支持多屏环境——跨屏漫游/抛掷以各屏工作区为界，异构缩放（各屏 DPI 不同）、任务栏条带、屏幕之间空洞均正确判定（横屏 / 竖屏 / 上下叠放皆可）；设置页「锁定在当前屏幕」可让宠物（抛掷与漫游）只在当前所在那块屏内活动
 
 ## 🪟 桌面模式（可选，脱离浏览器）
@@ -532,13 +532,10 @@ python encode_thumbs.py      # 转码 640×360 播放变体 → step04/
 
 ### ②.5 🍎 Safari/HEVC 兼容素材（macOS 专用 mov）
 
-插件默认只发布 `.webm`（VP9-alpha），Safari/WKWebView 不认 webm alpha（黑底），macOS 需要在 GitHub Release 下载官方转码的 **HEVC-with-Alpha `.mov`** 素材使用，三步：
+插件默认只发布 `.webm`（VP9-alpha），Safari/WKWebView 不认 webm alpha（黑底），macOS 需要在 GitHub Release 下载官方转码的 **HEVC-with-Alpha `.mov`** 素材使用，两步：
 
 1. **下载**：<https://github.com/PC2005-cloud/dsh-pet/releases/tag/assets-mov>（固定 tag，保持最新；zip 解压后文件名与 webm 一一对应）
 2. **放入**：`.mov` 文件放进 `$DSH_HOME/dsh-pet/main-animation/mov/`（pet pack 宠物则是 `pet/<种类名>-animation/mov/`）
-3. **改变量**：搜 `ANIMATION_EXT`，把 `.webm` 改为 `.mov`——npm 包改产物 `lib/client.js`（桌面端如需再改 `runtime/electron-helper/shared-core.js`）；自构建改源码 `src/shared/constants.ts` 后重新构建
-
-宿主路由已固定双扩展名兜底（白名单 `webm|mov`、MIME、素材根按扩展名分派），无需改宿主。详情见插件 README「macOS 使用 mov」。
 
 ### ③ 动画 → 插件
 
@@ -563,29 +560,30 @@ cd dsh-pet
 npm publish --tag latest   # prepack 自动执行构建（完整产物 + 收敛 files），无需手动构建
 ```
 
-- client 端不做运行时浏览器判断——唯一播放格式 webm 在源码写死，无发布期注入
-- 需要 Safari/HEVC 版（macOS）：mov 素材官方发布在 GitHub Release `assets-mov`，下载解压进 `main-animation/mov/`，再把集中播放扩展名常量 `ANIMATION_EXT` 改为 `.mov`（见上方 ②.5）
+- client 端按运行时判断播放扩展名：macOS WebKit（Safari/WKWebView）自动用 `.mov`，其余用 `.webm`
+- 需要 Safari/HEVC 版（macOS）：mov 素材官方发布在 GitHub Release `assets-mov`，下载解压进 `main-animation/mov/` 即可
 
 ### 项目结构
 
-三件套按 ①②③ 分块（gitignore 的本地目录不列）：
+只列代码与发布相关目录；素材链的 video / scripts / step / pr 见 ② 章节（gitignore 的本地目录不列）：
 
 ```
+├── README.md  API.md  CORDIS.md  openapi.yaml   # 说明 / HTTP 接口 / Cordis 服务 / OpenAPI 规范
 ├── prompts/           # ① 动画生成提示词配方（绿幕规范 + 按秒分解）
-├── video/             # ② 素材源视频（绿幕 mp4；不入库，Releases 提供压缩包）
-├── scripts/           # ② 素材生成链（Python/ffmpeg：水印 → 抠像 → 归一化 → 转码 → GIF 预览）
-├── step01~04/         # ② 素材链中间产物（不入库）
-├── pr/  prproj/       # ② 路线 B：PR 手工抠像输入与工程（本地工作数据，不入库）
-├── tools/             # 开发小工具（素材链各阶段预览等）
 ├── assets/            # 仓库展示用截图
+├── tools/             # 开发工具：API 调试页、cordis-probe mock 服务商、DPI 探针
 ├── .github/workflows/ # CI：Safari/HEVC 转码流水线（macOS runner，手动触发 → 发布 assets-mov Release）
 ├── dsh-pet/           # ③ 插件（可独立 npm 发布）
-│   ├── src/           #   TS 源码：host（配置/路由/工作状态）、client（动画链）、shared（双端共用纯逻辑）
-│   ├── lib/           #   构建产物（npm run build 生成，不入库）
-│   ├── runtime/       #   桌面模式运行壳（Electron 透明窗）
-│   ├── assets/        #   webm 动画 / preview GIF / 字体 / 图标 / config.jsonc 默认配置
-│   └── scripts/       #   构建与发布脚本（prepare.js / prepack-check / ensure-electron 等）
-└── LICENSE            # MIT
+│   ├── src/
+│   │   ├── host/       # 宿主半侧：配置 / 路由 / 余额 / 工作状态
+│   │   ├── client/     # 浏览器半侧：宠物渲染 / 动画链 / 设置页
+│   │   ├── shared/     # 双端共用纯逻辑（物理 / 菜单 / 取数）
+│   │   └── standalone/ # 独立模式 CLI（不依赖 DSH 直接跑桌宠）
+│   ├── lib/            # 构建产物（npm run build 生成，不入库）
+│   ├── runtime/        # 桌面模式运行壳（Electron 透明窗）
+│   ├── assets/         # webm 动画 / preview GIF / 字体 / 图标 / config.jsonc 默认配置
+│   └── scripts/        # 构建、发布与开发脚本
+└── LICENSE             # MIT
 ```
 
 ## 许可
