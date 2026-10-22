@@ -16,7 +16,8 @@ import { existsSync, mkdirSync } from 'node:fs';
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
-import { downloadArtifact } from '@electron/get';
+// `@electron/get` 只在**真的要下载** Electron 时才用到，因此按需动态加载（见 ensureElectronDownload）：
+// 静态 import 会把它连同 got/fs-extra 一串依赖钉进每个产物的启动路径，而独立应用模式下这条路径永远不执行。
 
 const require = createRequire(import.meta.url);
 const here = dirname(fileURLToPath(import.meta.url));
@@ -201,6 +202,8 @@ export async function ensureElectronDownload(options: EnsureElectronOptions = {}
     timer.unref?.();
     let nextLogAt = Date.now() + 3000;
     try {
+      // 按需加载（见文件头的 import 注释）：只有走到「确实要下载」这一步才会解析这个包
+      const { downloadArtifact } = await import('@electron/get');
       const zipPath = await downloadArtifact({
         version: `v${version}`,
         artifactName: 'electron',

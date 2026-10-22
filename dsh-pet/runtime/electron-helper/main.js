@@ -73,7 +73,16 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // 显式定名：Helper 是被 `electron.exe <main.js>` 直接拉起的，Electron 取不到 app 名会回落成
 // "Electron"，userData 便落到 %APPDATA%\Electron —— 那是所有这么跑的 Electron 脚本的公共目录，
 // 我们的 DPI 缓存与 Chromium profile 都会和别人混在一起。必须赶在任何 getPath('userData') 之前设。
+// 应用模式：本文件被 `src/app/main.ts` 直接 import 进同一进程（独立应用，不 spawn 子进程）。
+// 双击启动的用户没有终端可按 Ctrl+C，托盘上必须有一个「退出」，否则只能去任务管理器杀进程。
+// DSH 内的桌面模式不设这个变量，托盘形态与 userData 目录都保持原样。
+const APP_MODE = process.env.DSH_PET_APP_MODE === '1';
+// 名字必须与 src/host/storage-paths.ts 的 DESKTOP_APP_NAME 逐字一致
+// （storage-paths.test.ts 会直接读本文件比对，改名不同步测试就红）。
 app.setName('dsh-pet-electron-helper');
+// 应用模式只改**数据目录**，不改应用名：独立应用与 DSH 内的 helper 若共用同一个 userData，
+// 两个 Chromium 进程会抢同一份 profile（单例锁）互相踢。名字不动也就不会触发上面那个防漂移测试。
+if (APP_MODE) app.setPath('userData', path.join(app.getPath('appData'), 'dsh-pet'));
 
 /** DPI 探测子进程模式：不建窗口，只把主屏 scaleFactor 打到 stdout 就退出（见 probePrimaryScale） */
 const DPI_PROBE = process.env.DSH_PET_DPI_PROBE === '1';
@@ -532,7 +541,9 @@ function createPetWindows() {
       offBodyMs.delete(win.id);
     });
     win
-      .loadFile('index.html', {
+      // 绝对路径：本文件现在有两条运行方式（被宿主 spawn / 被 lib/app.js 同进程 require），
+      // 相对路径会按 Electron 的 app 路径解析——同进程时那是 lib/，必然 ERR_FILE_NOT_FOUND。
+      .loadFile(path.join(__dirname, 'index.html'), {
         query: {
           configUrl,
           bridge: BRIDGE ? '1' : '0',
@@ -742,14 +753,15 @@ async function startTray() {
     tray = new Tray(trayIcon());
     tray.setToolTip('dsh-pet 桌面宠物');
     tray.setContextMenu(
-      Menu.buildFromTemplate(
-        pets.map((pet) => ({
+      Menu.buildFromTemplate([
+        ...pets.map((pet) => ({
           label: pet.name || pet.id,
           type: 'checkbox',
           checked: isDesktopDisplay(pet.display),
           click: () => traySetPetDisplay(pet.id, toggleDisplay(pet.display)),
         })),
-      ),
+        ...(APP_MODE ? [{ type: 'separator' }, { label: '退出', click: () => app.quit() }] : []),
+      ]),
     );
     // Windows 上 setContextMenu 只接管右键，左键默认什么都不做（macOS 相反：左键即弹菜单）
     if (TRAY_PLATFORM.leftClickPopsMenu) tray.on('click', () => tray.popUpContextMenu());

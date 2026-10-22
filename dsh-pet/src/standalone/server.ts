@@ -59,7 +59,11 @@ function fail(res: ServerResponse, _error: unknown, logger: StandaloneLogger): v
   else sendJson(res, 500, { error: '本机服务暂时无法处理请求' });
 }
 
-function settingsHandler(
+/**
+ * AI 设置读写处理器（GET 读 / POST 存）。
+ * 导出给单进程应用入口复用：应用与 CLI 共用同一份「校验 + 限流 + 原子写」逻辑，不复制。
+ */
+export function settingsHandler(
   ai: StandaloneSettingsService | undefined,
 ): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
   let windowStart = Date.now();
@@ -105,7 +109,8 @@ function settingsHandler(
   };
 }
 
-function testHandler(
+/** 连通性测试处理器（POST）。同样导出给应用入口复用。 */
+export function testHandler(
   ai: StandaloneSettingsService | undefined,
 ): (req: IncomingMessage, res: ServerResponse) => Promise<void> {
   return async (req, res) => {

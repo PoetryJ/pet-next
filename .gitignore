@@ -39,6 +39,9 @@ temp/
 dsh-pet/lib/
 dsh-pet/runtime/electron-helper/shared-core.js
 
+# ── dsh-pet 桌宠应用打包产物（electron-builder 输出，`node scripts/dist.mjs` 可重生）──
+dsh-pet/dist-app/
+
 # ── IDE / 编辑器 ──
 .idea/
 .vscode/
