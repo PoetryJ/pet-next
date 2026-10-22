@@ -1,19 +1,18 @@
 # dsh-pet 对外 Cordis 服务
 
-客户端半侧在 DSH web 页面内提供一个服务入口，只在该页面内有效：
+同名服务 `petApi7340` 在两半各有一份，分属不同容器（宿主进程 / DSH web 页面），互不可见。
 
 ```js
-const pet = ctx.get('petApi7340'); // 拿不到 = dsh-pet 未启用或版本过旧
+ctx.get('petApi7340')
 ```
 
-下面每个方法都从这个入口取。
+拿不到对应分组 = 你在另一半，或 dsh-pet 未启用 / 版本过旧。
 
-| 方法 | 说明 |
-| --- | --- |
-| `pose(petId)` | 读网页端宠物的实况（位置 + 朝向） |
-| `progress(petId)` | 读网页端宠物的播放进度（位置 / 总长 / 暂停 / 缓冲） |
+## 客户端半侧（DSH web 页面内，只在该页面内有效）
 
-## pose
+入口返回 `{ pose, progress }`。
+
+### pose
 
 **参数**
 
@@ -32,11 +31,11 @@ const pet = ctx.get('petApi7340'); // 拿不到 = dsh-pet 未启用或版本过�
 `null`：这一页没有这只宠物。
 
 ```js
-pet.pose('main');
+ctx.get('petApi7340').pose('main');
 // { x: 0.8467, y: 0.2438, facing: 'left' }
 ```
 
-## progress
+### progress
 
 **参数**
 
@@ -58,7 +57,69 @@ pet.pose('main');
 `null`：这一页没有这只宠物。
 
 ```js
-pet.progress('main');
+ctx.get('petApi7340').progress('main');
 // { playbackId: 'pb_1755...', anim: 'walk', currentTime: 3.42, duration: 10.09, paused: false, buffering: false }
 ```
 
+## 宿主半侧（宿主插件进程内）
+
+入口返回 `{ balance }`。
+
+### balance.register
+
+第三方插件注册自己的余额查询。宿主不再为每家服务商改代码。
+
+**参数**
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `id` | string | 服务商 id，必须与 DSH 报告的 provider 一致 |
+| `fetch` | function | 取数；入参只有 `{ provider }`（没有 key、没有 resolveAccount） |
+
+**返回**：`() => void`，注销函数。配合 `ctx.effect` 使用，插件卸载时自动注销。
+
+**抛错**：`id` 为空、`fetch` 不是函数、与内置 id 冲突、已被其他第三方注册。
+
+**`fetch` 返回**：`ok` 恒为 `true`，失败一律 `throw`（宿主统一落成 `fetch-error`）。
+
+| shape | data |
+| --- | --- |
+| `windows` | `{ monthly, rolling?, weekly?, *CapUsd?, *ResetsAt?, rollingLabel? }` |
+| `money` | `{ wallets: [{ currency, total, granted, toppedUp, fullBalance? }], tier? }` |
+| `points` | `{ unit, total, full? }` |
+
+```js
+export const inject = ['petApi7340'];
+
+export function apply(ctx) {
+  ctx.effect(() =>
+    ctx.get('petApi7340').balance.register({
+      id: 'my-gateway',
+      async fetch({ provider }) {
+        const res = await fetch('http://127.0.0.1:8080/v1/credits', { signal: AbortSignal.timeout(20_000) });
+        if (!res.ok) throw new Error('HTTP ' + res.status);
+        const j = await res.json();
+        return { ok: true, provider, shape: 'points', data: { unit: '积分', total: String(j.remaining), full: String(j.limit) } };
+      },
+    }),
+  );
+}
+```
+
+宿主不替 `fetch` 加超时或重试。
+
+### balance.list
+
+**参数**：无。
+
+**返回**：`{ builtin, external }`
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `builtin` | string[] | 内置服务商 id |
+| `external` | string[] | 第三方已注册 id |
+
+```js
+ctx.get('petApi7340').balance.list();
+// { builtin: ['opencode-go', 'commandcode', 'deepseek-official', 'deepseek-account'], external: ['my-gateway'] }
+```
