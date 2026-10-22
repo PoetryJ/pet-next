@@ -147,6 +147,7 @@ import {
   type HostWorkStatusState,
   type WorkStatusTurnContext,
 } from './work-status';
+import { toolDetailFromEvent } from './tool-detail';
 import {
   agentErrorFrame,
   hasBlockingActivity,
@@ -389,15 +390,16 @@ export function apply(ctx: any): void {
   // **忙碌档抖动抑制（滞回）**：工具秒回时 `tool/call` 报 working、`tool/result` 报 result，
   // 一次回复里能来回切十几次；每切一次前端就把 10s 的片段从第 0 帧重播，观感即"一秒一刀"
   // （实测 6 次快工具调用 → 13 次换片，working 每次只活 1~2 秒）。
-  // 这里只压 **working ↔ result 这对忙碌档之间的互切**：距上次写入不足 WORK_STATE_GAP_MS
-  // 就先不写，**但不丢**——挂一个 trailing 定时器，到点重新取快照补写，所以最终状态一定落地，
-  // 只是最多晚 GAP。
+  // 判据**只看档位与时间**：距上次写入不足 WORK_STATE_GAP_MS 的 working ↔ result 互切
+  // **整条不写**（档位与文案一起压住），挂一个 trailing 定时器到点重新取快照补写，
+  // 所以最终状态一定落地，只是最多晚 GAP。
+  // 不把「文案没变」当条件：现在每个 tool/call 都会换文案，那个条件会恒为假、一次都压不住；
+  // 文案随这次写入一起被压住，是这条规则的必然结果（不是遗漏）。
   //
   // 刻意**不压**的对象（"写完立刻可见"是既有契约，动它会把一串宿主回归测试打翻）：
   //   - 回空闲 / 终态（success、error）：反馈不能迟到；
   //   - 任何进/出忙碌档以外的变化（thinking、waiting、…）；
-  //   - 任务文案变化（todo/write 的 task）：气泡文字优先于动画平滑，而且它可能伴随
-  //     "展示会话切到另一只"（同档但 task 不同），那不是抖动。
+  //   - **同档位内**的文案更新（working 期间换一句工具详情）：那不是档位切换，不参与节流。
   // 为什么压在这里而不是两个前端：网页 overlay 与桌面 helper 消费的是同一个叶子，
   // 一处压住两端同时生效，也不必在前端各维护一份状态机。
   const WORK_STATE_GAP_MS = 5000;
@@ -405,18 +407,18 @@ export function apply(ctx: any): void {
   const isBusyTier = (s: string | null): boolean => s === 'working' || s === 'result';
   let publishedWork = '\u0000';
   let publishedState: string | null = null;
-  let publishedTask: string | null = null;
   let publishedWorkAt = 0;
   let workFlushTimer: ReturnType<typeof setTimeout> | null = null;
   const publishWorkStatus = (): void => {
     const snap = workStatus.snapshot();
     const key = String(snap.state) + '\u0000' + String(snap.task);
     if (key === publishedWork) return;
-    // 抖动判定：文案没变、且前后都是忙碌档（同档已被上面的 key 短路掉，这里必是互切）
-    const churn = snap.task === publishedTask && isBusyTier(publishedState) && isBusyTier(snap.state);
+    // 抖动判定：前后都在忙碌档、且档位确实换了（同档只换文案不算抖动，照常立即写）
+    const busyFlip = isBusyTier(publishedState) && isBusyTier(snap.state) && snap.state !== publishedState;
     const wait = WORK_STATE_GAP_MS - (Date.now() - publishedWorkAt);
-    if (churn && wait > 0) {
-      // 压住这一拍：到点再取**最新**快照补写（不要在这里缓存 snap——期间可能又变了）
+    if (busyFlip && wait > 0) {
+      // 整条不写（档位与文案一起压住）：到点再取**最新**快照补写
+      // （不要在这里缓存 snap——期间可能又变了）
       workFlushTimer ??= setTimeout(() => {
         workFlushTimer = null;
         publishWorkStatus();
@@ -429,7 +431,6 @@ export function apply(ctx: any): void {
     }
     publishedWork = key;
     publishedState = snap.state;
-    publishedTask = snap.task;
     publishedWorkAt = Date.now();
     state.writeSection('workStatus', { state: snap.state, task: snap.task });
   };
@@ -620,6 +621,24 @@ export function apply(ctx: any): void {
   /** 终态（success/error）展示窗口定时器：约 60s 后清掉该会话条目，陈旧完成态不再浮上来（Bug 2/3） */
   const terminalTimers = new Map<string, ReturnType<typeof setTimeout>>();
   const TERMINAL_KEEP_MS = 60 * 1000;
+  /**
+   * 每会话最近一条 todo 文案（就是 issue #59 那份）：工具跑完要把气泡「还」给它。
+   * 没有这份缓存，`tool/result` 写 null 就只能回落到通用档位文案（「这一步处理好啦」），
+   * 用户刚看到的清单进度会被抹掉。
+   */
+  const lastTodoText = new Map<string, string | null>();
+  /**
+   * 每会话「正在跑、且气泡上有具体描述」的工具数（不是布尔）：并行工具调用时，先返回的那个
+   * 不该把仍在中途的另一个的具体描述顶掉——归零才恢复 todo 文案。
+   * 只统计**拿到了目标**的调用（`toolDetailFromEvent` 返回非 null）：没写出描述就不该占位，
+   * 否则一次没带参数的 `read` 会平白挡住 todo 文案。
+   */
+  const toolsInFlight = new Map<string, number>();
+  const bumpToolsInFlight = (sessionId: string, delta: number): void => {
+    const next = (toolsInFlight.get(sessionId) ?? 0) + delta;
+    if (next > 0) toolsInFlight.set(sessionId, next);
+    else toolsInFlight.delete(sessionId);
+  };
   /** 取消某会话待执行的终态清理：会话已回到非终态，那次清理到点后既不清理也不重排，留着只会误导 */
   const cancelTerminalCleanup = (sessionId: string): void => {
     const t = terminalTimers.get(sessionId);
@@ -636,6 +655,8 @@ export function apply(ctx: any): void {
       if (sessionState === 'success' || sessionState === 'error') {
         workStatus.clear(sessionId); // 条目连同它的任务详情文案一起消失，不残留到后续活动
         turnFlags.delete(sessionId);
+        lastTodoText.delete(sessionId); // 会话都没了，这两份按会话记的缓存也一起清（防泄漏）
+        toolsInFlight.delete(sessionId);
         publishWorkStatus(); // 清完要写 S：否则前端一直挂着那条陈旧完成态
       }
     }, TERMINAL_KEEP_MS);
@@ -2381,11 +2402,13 @@ export function apply(ctx: any): void {
         // 会话没有活动条目（已空闲/已清理）→ 不动：它不会被展示，写进去只会成为一条"幽灵文案"。
         // 清单里再无 in_progress/pending 时 currentTaskFromTodo 返回 null，等于把旧文案清掉、
         // 气泡回落到档位文案（issue #59 缺陷 3：档位文案不该被一条历史记录永久屏蔽）。
+        const text = currentTaskFromTodo(event as { data?: { todos?: Array<{ status?: string; content?: string }> } });
+        // 缓存无条件更新：工具跑完要靠它把气泡恢复回来（见下方 tool/call 的接线）
+        lastTodoText.set(sessionId, text);
+        // 工具正在执行时不覆盖气泡：「修改 index.ts」比清单里那句更能说明此刻在动什么
+        if ((toolsInFlight.get(sessionId) ?? 0) > 0) return;
         if (workStatus.has(sessionId)) {
-          workStatus.setTask(
-            sessionId,
-            currentTaskFromTodo(event as { data?: { todos?: Array<{ status?: string; content?: string }> } }),
-          );
+          workStatus.setTask(sessionId, text);
           publishWorkStatus(); // 任务文案变化也要写 S（气泡内容靠它更新）
         }
         return;
@@ -2407,6 +2430,8 @@ export function apply(ctx: any): void {
         // 代价：goal 续跑这类多轮任务，每轮开头会回落一瞬档位文案，直到本轮（通常在开头几步内）
         // 再写一次 todo 清单。
         workStatus.setTask(sessionId, null);
+        lastTodoText.delete(sessionId); // 上一轮的清单文案，不该被下一轮的工具跑完时「恢复」回来
+        toolsInFlight.delete(sessionId); // 上一轮若有工具没等到 tool/result（被打断），别拖累这一轮
         publishWorkStatus(); // 清掉上一轮任务文案也要写 S
       }
       if (
@@ -2431,15 +2456,35 @@ export function apply(ctx: any): void {
         if (type === 'turn/end') {
           turnFlags.delete(sessionId);
           cancelTerminalCleanup(sessionId); // 条目都要清了，别留一个到点后无事可做的定时器
+          lastTodoText.delete(sessionId); // 按会话记的两份缓存跟着会话一起消失（防泄漏）
+          toolsInFlight.delete(sessionId);
           workStatus.clear(sessionId); // 条目连同任务详情文案一起消失（clear 内部会重算展示）
           publishWorkStatus(); // 回合被打断 → 回到空闲：前端据此收起常驻气泡
         }
         return;
       }
       const seq = Number((event as { seq?: unknown }).seq ?? 0);
-      // 同会话同状态不重复更新（防刷屏）；不同状态才改写并重算展示
-      if (!workStatus.setState(sessionId, next, seq)) return;
-      publishWorkStatus(); // 档位变了 → 写 S（前端据此切动画 + 气泡）
+      // 工具详情（「修改 index.ts」这类具体描述）：比通用档位文案有用得多，workStatusEnabled
+      // 的宠物直接把它当气泡文本。
+      // **必须在 setState 之后写**：`setTask` 要求会话条目已存在（work-status.ts:229），而条目
+      // 正是 setState 建出来的——顺序反了这一句会被静默丢弃（不报错，最难查的那种）。
+      const detail =
+        type === 'tool/call' ? toolDetailFromEvent(event as { data?: { name?: unknown; arguments?: unknown } }) : null;
+      const changed = workStatus.setState(sessionId, next, seq);
+      if (detail !== null) {
+        // 有具体描述才「占位」：占位期间 todo/write 不覆盖它（见 todo/write 分支）
+        bumpToolsInFlight(sessionId, 1);
+        workStatus.setTask(sessionId, detail);
+      } else if (type === 'tool/result') {
+        if ((toolsInFlight.get(sessionId) ?? 0) > 0) bumpToolsInFlight(sessionId, -1);
+        // 占位全清空：把气泡还给最近一条 todo 文案（没有就 null → 回落档位文案）
+        if ((toolsInFlight.get(sessionId) ?? 0) === 0) {
+          workStatus.setTask(sessionId, lastTodoText.get(sessionId) ?? null);
+        }
+      }
+      publishWorkStatus(); // 档位或文案变了 → 写 S（内容没变时它自己会短路，不产生多余写入）
+      // 同会话同状态不重复更新（防刷屏）：写已经落定，这里只负责跳过终态清理的重排
+      if (!changed) return;
       // 终态只展示短暂窗口后自动清理：陈旧完成态不再浮上来（Bug 3 的一环，顺带缓解 Bug 2 残留）。
       // 回到非终态则取消那次待执行的清理——否则它到点时会话已非终态，既不清也不重排，
       // 条目（连同旧任务文案）就永久留下了。
