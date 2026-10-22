@@ -603,9 +603,11 @@ class PetSprite {
   /**
    * 占用锁（issue #122 第 4 项）：冻结 / 解冻。**与浏览器 PetCard.applyFreeze 同构**。
    *
-   * 冻结期间只有三件事被挡住，且都在渲染端：① 随机链（playIdle 一句判断）；
+   * 冻结期间只有四件事被挡住，且都在渲染端：① 随机链（playIdle 一句判断）；
    * ② 当前正在播的自播动画（暂停，定在当前帧）；③ **自动**来源的余额与工作状态表现
-   * （见 events.js 里 onBalanceTick / onWorkTick / showBalanceNotice 的判断）。
+   * （见 events.js 里 onBalanceTick / onWorkTick / showBalanceNotice 的判断）；
+   * ④ **屏上的任务状态气泡**：锁一生效就收掉（见下 applyFreeze）。解冻不补亮——只在下次档位
+   * 变化时重新出现（与浏览器 src/client/pet.ts 同一取舍）。
    * 显式指令（say / anim / position / throw 四个叶子）**一概不挡**——那些是持锁者（或用户手动）
    * 明确要的，正是占用要保护的东西。
    */
@@ -630,7 +632,12 @@ class PetSprite {
         this.playback = null;
         this.reportPlayback(interrupted, 'cancelled', 'frozen');
       }
-      console.log(stamp + ' 占用锁生效：冻结（随机链停 + 当前动画暂停）');
+      // 任务状态气泡：锁一生效就收掉。解冻不补亮——只在下次档位变化时重新出现（与浏览器同一取舍）。
+      if (this.workTimer !== null) window.clearTimeout(this.workTimer);
+      this.workTimer = null;
+      this.workOn = false;
+      this.renderBubble();
+      console.log(stamp + ' 占用锁生效：冻结（随机链停 + 当前动画暂停 + 任务状态气泡收起）');
       return;
     }
     console.log(stamp + ' 占用锁解除：恢复');

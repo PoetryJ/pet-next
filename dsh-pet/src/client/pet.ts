@@ -1616,10 +1616,12 @@ export function makePetUI(rt: {
     // 锁在宿主内存里，渲染端靠 S 的 `pets.<id>.lock` 叶子知道它。**宿主不会到点推一次"锁没了"**
     // （它那一侧的过期是懒判的），所以这里按叶子里的 `expiresAt` 自己定时解除——两端的"到点"因此同源。
     //
-    // 冻结期间**只有三件事被挡住**，且都在渲染端：
+    // 冻结期间**只有四件事被挡住**，且都在渲染端：
     //   ① 随机链（pickNext 一句判断，随机动画/随机转向/自主走位全在它后面）；
     //   ② 当前正在播的自播动画（暂停，定在当前帧）；
-    //   ③ **自动**来源的余额与工作状态表现（见各自 effect 里的判断；手动请求与显式指令照常）。
+    //   ③ **自动**来源的余额与工作状态表现（见各自 effect 里的判断；手动请求与显式指令照常）；
+    //   ④ **屏上的任务状态气泡**：锁一生效就收掉（见下 applyFreeze）。解冻不补亮——只在下次档位
+    //      变化时重新出现（宁可丢一次提示，也不让锁期间的气泡与静止的动画对不上）。
     // 显式指令（say / anim / position / throw 四个叶子）**一概不挡**——那些是持锁者（或用户手动）
     // 明确要的，正是占用要保护的东西。
     /** 冻结 / 解冻的**实际动作**（只在真的翻转时做事：挂载那一次不动作，否则平白补播一段 idle） */
@@ -1644,7 +1646,11 @@ export function makePetUI(rt: {
           playingPlaybackRef.current = null;
           reportPlayback(interrupted, 'cancelled', 'frozen');
         }
-        console.log(stamp + ' 占用锁生效：冻结（随机链停 + 当前动画暂停）');
+        // 任务状态气泡：锁一生效就收掉。解冻不补亮——只在下次档位变化时重新出现。
+        if (workBubbleTimerRef.current !== null) window.clearTimeout(workBubbleTimerRef.current);
+        workBubbleTimerRef.current = null;
+        setWorkBubbleOn(false);
+        console.log(stamp + ' 占用锁生效：冻结（随机链停 + 当前动画暂停 + 任务状态气泡收起）');
         return;
       }
       console.log(stamp + ' 占用锁解除：恢复');
