@@ -7,6 +7,12 @@
  */
 'use strict';
 
+// 左键 + 修饰键 = 「呼出 DSH」的快捷键。Windows / Linux 用 Ctrl；macOS 上 Ctrl+左键是系统右键
+//（先触发 contextmenu、拿不到 click），所以改用 Cmd（⌘）。快捷键文案按平台取，判定统一走 isOpenShortcut。
+const OPEN_SHORTCUT_HINT = /Mac/i.test(navigator.platform || navigator.userAgent) ? 'Cmd+左键' : 'Ctrl+左键';
+/** 本次点击是否按住了「呼出 DSH」的修饰键（Ctrl / Cmd） */
+const isOpenShortcut = (e) => !!(e && (e.ctrlKey || e.metaKey));
+
 // ---------- 单只宠物（行为与浏览器 PetCard 一致；纯逻辑来自 src/shared） ----------
 class PetSprite {
   constructor(pet) {
@@ -224,7 +230,7 @@ class PetSprite {
     this.inputRegionMutation.observe(document.body, { childList: true, subtree: true });
     this.hit.addEventListener('pointerdown', (e) => this.onPointerDown(e), { signal: ac.signal });
     this.hit.addEventListener('pointermove', (e) => this.onPointerMove(e), { signal: ac.signal });
-    this.hit.addEventListener('click', () => this.onClick(), { signal: ac.signal });
+    this.hit.addEventListener('click', (e) => this.onClick(e), { signal: ac.signal });
     this.hit.addEventListener('contextmenu', (e) => this.onContextMenu(e), { signal: ac.signal });
     window.addEventListener('pointerup', (e) => this.onPointerUp(e), { signal: ac.signal });
     window.addEventListener('pointercancel', (e) => this.onPointerUp(e), { signal: ac.signal });
@@ -1186,7 +1192,8 @@ class PetSprite {
     // 在飞行中且达标 → 立即粒子爆发 + 积分弹窗；pressScoreFired 标记本次按下已触发，
     // 松开的 click 据此不再重复弹、也不再播普通点击动画（与浏览器同构）。
     this.pressScoreFired = false;
-    if (grabState) {
+    // 修饰键+点击是「呼出 DSH」快捷键（见 onClick）：不弹积分，避免快捷键顺手刷分
+    if (grabState && !isOpenShortcut(e)) {
       const grabSpeed = Math.hypot(grabState.vx, grabState.vy);
       if (grabSpeed >= S.SCORE_MIN_SPEED) {
         this.pressScoreFired = true;
@@ -1555,9 +1562,17 @@ class PetSprite {
     if (this.tipOn) this.renderTip();
   }
 
-  onClick() {
+  onClick(e) {
     const d = this.dragState;
     if (d.active || d.dragging || this.justDragged) return;
+    // Ctrl（macOS 为 Cmd）+ 左键 = 呼出 DSH：与右键菜单「打开网站 / 打开软件」同一动作
+    //（open-site），只是它的快捷键——不播点击动画、也不参与积分，避免"摸一下宠物"变成"开窗口"。
+    if (isOpenShortcut(e)) {
+      this.stopThrow();
+      this.stopMove();
+      if (window.petBridge) window.petBridge.openDshSite(ORIGIN);
+      return;
+    }
     // 积分判定已在 onPointerDown（按下即触发）完成：
     // 本次按下已触发过积分 → 只收手停住、**不**再播普通点击动画（粒子+弹窗即反馈，与浏览器同构）
     if (this.pressScoreFired) {
@@ -1610,7 +1625,13 @@ class PetSprite {
     // 桌面专属工具根项（打开网站 / 查看余额 / 碎碎念 / 对话 / 回到初始位置 / 重载配置）+ 共享菜单树（动作→分类→具体动画）
     // 碎碎念/对话项无条件显示：手动触发不受 whisperEnabled 限制（该字段只影响自动周期轮询）
     // 首项文案随宿主形态变（OPEN_TARGET）：宿主是 DSH 桌面应用时点是"唤起桌面应用窗口"，仍叫「打开网站」会误导
-    const tools = [{ label: OPEN_TARGET === 'desktop' ? '打开 DeepSeek Harness' : '打开网站', action: 'open-site' }];
+    const tools = [
+      {
+        label: OPEN_TARGET === 'desktop' ? '打开软件' : '打开网站',
+        action: 'open-site',
+        hint: OPEN_SHORTCUT_HINT,
+      },
+    ];
     // 「查看余额」无条件显示（与浏览器端一致）：关了 balanceEnabled 的宠物也能点——手动请求不受开关限制
     //（该开关只关自动轮询与档位动画），点了一定给答复。
     tools.push({ label: '查看余额', action: 'show-balance' });

@@ -32,7 +32,7 @@ function toLocal(v) {
 // 绕开 DSH Desktop 2.0.3+ 的浏览器访问闸门（只放行带令牌的请求，插件自拉进程的裸 HTTP 全 403）
 const BRIDGE = params.get('bridge') === '1';
 // 工具项「打开网站」的去向（主进程按宿主形态经 query 注入，见 main.js 的 OPEN_TARGET）：
-// desktop = 宿主是 DSH 桌面应用，菜单项改叫「打开 DeepSeek Harness」并唤起桌面应用主窗口；site = 打开站点。
+// desktop = 宿主是 DSH 桌面应用，菜单项改叫「打开软件」并唤起桌面应用主窗口；site = 打开站点。
 const OPEN_TARGET = params.get('openTarget') === 'desktop' ? 'desktop' : 'site';
 // 视口 = 全部显示器工作区的外接矩形（多显示器时即整个桌面；窗口只是宠物的一块局部画布）。
 // 它只是**坐标系原点与比例换算基准**：位置比例（customPos）、漫游 ratio 都按它算。

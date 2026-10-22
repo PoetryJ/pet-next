@@ -7,7 +7,7 @@
 // 菜单数据单一事实来源 = 合并后的 animations 配置（用户覆盖层自动生效）。
 //
 // 菜单层级（与产品定义一致）：
-//   一级 = 工具项 + 动作：打开网站（宿主是 DSH 桌面应用时，同一项的文案与去向变成「打开 DeepSeek Harness」——见 runtime/electron-helper/main.js 的 OPEN_TARGET）/ 查看余额 / 重载配置（桌面端专属）与 回到初始位置（两端共用），由各壳注入；
+//   一级 = 工具项 + 动作：打开网站（宿主是 DSH 桌面应用时，同一项的文案与去向变成「打开软件」——见 runtime/electron-helper/main.js 的 OPEN_TARGET）/ 查看余额 / 重载配置（桌面端专属）与 回到初始位置（两端共用），由各壳注入；
 //   二级（动作的子级）= 分类：待机 / 转向 / 拖拽 / 点击回应 / 移动 / config 随机动作分类 / 事件档位
 //   三级 = 具体动画名
 //
@@ -43,6 +43,9 @@ export interface MenuLeaf {
   /** third-party：注册它的 owner（身份键，**只用于回传，不显示**）。同一个 owner 的项收在同一个
    *  分组下；只有一项时跳过这层、直接平铺（见 buildMoreBranch）。 */
   owner?: string;
+  /** 项目右侧的灰色小字（如快捷键「Ctrl+左键」）：纯视觉提示，不参与显示文本匹配，也不影响
+   *  动作分发。缺省不占位（不显示任何东西）。 */
+  hint?: string;
 }
 
 /** 分支：带子菜单的项 */
@@ -200,7 +203,7 @@ export const MENU_CSS = [
   '.dsh-pet-menu{position:fixed;left:0;top:0;z-index:2147483000;color:#2b2b2b;font-size:13px;line-height:1.5;',
   "font-family:'Microsoft YaHei UI','Segoe UI','PingFang SC',sans-serif;user-select:none;pointer-events:auto}",
   '.dsh-pet-menu,.dsh-pet-menu *{box-sizing:border-box}',
-  '.dsh-pet-menu-column{position:absolute;min-width:150px;max-width:240px;padding:4px;',
+  '.dsh-pet-menu-column{position:absolute;min-width:150px;max-width:300px;padding:4px;',
   'background:rgba(255,255,255,.98);border:1px solid rgba(0,0,0,.12);border-radius:8px;',
   'box-shadow:0 8px 28px rgba(0,0,0,.2);max-height:min(62vh,460px);overflow-y:auto;',
   // 自定义滚动条：细圆角半透明条（Chromium 系 Chrome/Edge/Electron 走 ::-webkit-scrollbar；
@@ -218,6 +221,8 @@ export const MENU_CSS = [
   'gap:14px;padding:5px 12px;border-radius:6px;white-space:nowrap;cursor:default}',
   '.dsh-pet-menu-item:hover{background:rgba(43,99,255,.14)}',
   '.dsh-pet-menu-item>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}',
+  // 右侧快捷键提示（菜单项的 hint 字段）：灰色小字、不收缩、不换行；有它时该项宽到 300px 仍放得下长文案
+  '.dsh-pet-menu-hint{color:#9aa0a6;font-size:12px;flex:none;white-space:nowrap}',
   '.dsh-pet-menu-arrow{color:#9aa0a6;font-size:12px;flex:none}',
 ].join('');
 
@@ -335,6 +340,13 @@ export function mountContextMenu(opts: {
         const label = document.createElement('span');
         label.textContent = node.label;
         item.appendChild(label);
+        // 右侧灰色提示（如快捷键）：与 label 同一 flex 行，space-between 自动贴右
+        if (node.hint) {
+          const hint = document.createElement('span');
+          hint.className = 'dsh-pet-menu-hint';
+          hint.textContent = node.hint;
+          item.appendChild(hint);
+        }
         item.addEventListener('click', (e) => {
           e.preventDefault();
           e.stopPropagation();
