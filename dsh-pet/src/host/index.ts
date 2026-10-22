@@ -163,6 +163,7 @@ import { composeSystemPrompt, petPersona } from './persona';
 import {
   HelperProcess,
   defaultElectronExe,
+  dshHomeDir,
   electronLandingDir,
   ensureElectronDownload,
   hasGraphicalDisplay,
@@ -431,6 +432,37 @@ export function apply(ctx: any): void {
     publishedTask = snap.task;
     publishedWorkAt = Date.now();
     state.writeSection('workStatus', { state: snap.state, task: snap.task });
+  };
+  /** Electron 下载日志的收尾槽位保留时长（ms）：够看清「就绪 / 失败」，又不让这条日志一直盖住
+   *  随后真实的工作状态（终态档在渲染端本来也会 10s 自动收起气泡）。 */
+  const DOWNLOAD_SLOT_CLEAR_MS = 12 * 1000;
+  let downloadSlotTimer: ReturnType<typeof setTimeout> | null = null;
+  /**
+   * 写一条 Electron 下载日志进工作状态（前端当普通工作状态消费，**不改 /state 的 JSON 形状**）：
+   * 桌面版用户没有控制台，这是他们唯一能看到「后台在下什么」的地方。
+   *
+   * 借外部写入槽 `api`（与 `POST /work-status` 同一个槽位）：不新增 section、不新增槽位常量。
+   * 三个必须照做的细节：
+   *   1. **先 setState 再 setTask**——`setTask` 在条目不存在时直接返回 false，文本会被吞掉；
+   *   2. `seq` 必须递增——`setState` 在「同档位且 seq 不更新」时短路，而下载大部分时间都停在
+   *      `working` 一档，不推进 seq 就什么都不会发生；
+   *   3. 文案按 TASK_TEXT_MAX 截断（与 currentTaskFromTodo 同口径），否则气泡会被撑爆。
+   * `terminal` = 这次是收尾（就绪 / 失败）：留一小会儿再清槽，让用户看得见。
+   */
+  const reportDownload = (text: string, state: HostWorkStatusState, terminal = false): void => {
+    const points = Array.from(text);
+    const task = points.length > TASK_TEXT_MAX ? `${points.slice(0, TASK_TEXT_MAX).join('')}…` : text;
+    externalWorkSeq += 1;
+    workStatus.setState(EXTERNAL_WORK_SESSION, state, externalWorkSeq);
+    workStatus.setTask(EXTERNAL_WORK_SESSION, task);
+    publishWorkStatus();
+    if (!terminal) return;
+    if (downloadSlotTimer !== null) clearTimeout(downloadSlotTimer);
+    downloadSlotTimer = setTimeout(() => {
+      downloadSlotTimer = null;
+      if (workStatus.clear(EXTERNAL_WORK_SESSION)) publishWorkStatus();
+    }, DOWNLOAD_SLOT_CLEAR_MS);
+    downloadSlotTimer.unref?.(); // 别把这个定时器钉进宿主的事件循环（退出时不该等它）
   };
   // 占用锁（issue #122 第 4 项「独立动作/气泡占用」）：**内存态**一把锁 + TTL，第三方联动期间
   // 独占这只宠物——除持锁者外谁都动不了它（随机链、碎碎念、余额、工作状态一概让路）。
@@ -951,7 +983,15 @@ export function apply(ctx: any): void {
   const refreshDesktop = (): void => {
     hasDesktopPet = false;
     try {
-      hasDesktopPet = effectivePetList().some((p) => isDesktopVisible(p.display));
+      const pets = effectivePetList();
+      const desktopPets = pets.filter((p) => isDesktopVisible(p.display));
+      hasDesktopPet = desktopPets.length > 0;
+      // 诊断日志（issue #168）：设置页显示「仅桌面」却始终没有 helper 进程时，这一行能立刻
+      // 分辨「宿主读到的 display 就是 web」还是「读到了 desktop」——此前这个判定完全不可见。
+      ctx.logger?.info?.(
+        `[dsh-pet] 桌面判定：pets=${pets.length}，桌面可见=${desktopPets.length}` +
+          `（${desktopPets.map((p) => String(p.id)).join(',') || '无'}）→ hasDesktopPet=${hasDesktopPet}`,
+      );
     } catch (e) {
       ctx.logger?.warn?.(`[dsh-pet] 宠物配置非法，桌面模式已跳过：${e instanceof Error ? e.message : String(e)}`);
     }
@@ -975,6 +1015,10 @@ export function apply(ctx: any): void {
   let disposed = false;
   /** 「无图形环境」提示只在进程生命周期内打一次，避免守护循环刷屏 */
   let displayWarned = false;
+  /** 「无桌面宠物 → 跳过」的 info 只打一次：纯网页用户每次启动都会走这条短路，不该刷屏 */
+  let noDesktopSkipped = false;
+  /** webServer 端口等待次数：只用于日志节流，不改变重试行为 */
+  let portWaitAttempts = 0;
   /**
    * 宿主即应用（`src/app/main.ts`）：本进程**自己就是** Electron 主进程，窗口由它直接建。
    *
@@ -995,6 +1039,17 @@ export function apply(ctx: any): void {
     const port = typeof ctx.webServer?.port === 'number' ? ctx.webServer.port : 0;
     if (!port || port <= 0) {
       // webServer 可能尚未完成监听（OS 分配端口时 port 短暂为 0）：延迟重试。
+      // 诊断日志（issue #168）：这条重试以前完全静默——端口长期不就绪时，桌面宠物
+      // 「连尝试都没有」且没有任何线索。这里只加可见性，重试节奏与次数保持原样。
+      portWaitAttempts += 1;
+      if (portWaitAttempts === 1) {
+        ctx.logger?.info?.(`[dsh-pet] webServer 端口尚未就绪（port=${String(port)}），每 500ms 重试拉起桌面 Helper`);
+      } else if (portWaitAttempts % 20 === 0) {
+        ctx.logger?.warn?.(
+          `[dsh-pet] 已等待 webServer 端口 ${(portWaitAttempts * 500) / 1000}s 仍未就绪` +
+            `（port=${String(port)}），桌面 Helper 尚未拉起`,
+        );
+      }
       if (!startRetryTimer) {
         startRetryTimer = setTimeout(() => {
           startRetryTimer = undefined;
@@ -1004,6 +1059,7 @@ export function apply(ctx: any): void {
       }
       return;
     }
+    portWaitAttempts = 0;
     const origin = `http://127.0.0.1:${port}`;
     // 右键「打开网站」交出去的是裸 origin：DSH 只在 `GET /` 接受本进程的启动令牌，换发绑定 authority 的
     // 签名 Cookie，其余请求一律 401 —— 默认浏览器没有该 authority 的 Cookie 时必然打不开（#87）。
@@ -1070,7 +1126,15 @@ export function apply(ctx: any): void {
   const startHelper = (): void => {
     if (inProcessHost) return; // 应用模式：不探测、不下载 Electron
     if (helper || electronEnsure || disposed) return;
-    if (!hasDesktopPet && !desktopModeEverActive) return; // 无桌面宠物且桌面模式从未启用过：不启动
+    if (!hasDesktopPet && !desktopModeEverActive) {
+      // 诊断日志（issue #168）：这条短路以前完全静默，是「桌面模式凭空消失：无进程、无目录、
+      // 无提示」的直接成因。用 info 而非 warn——纯网页用户这是正常状态；只打一次避免刷屏。
+      if (!noDesktopSkipped) {
+        noDesktopSkipped = true;
+        ctx.logger?.info?.('[dsh-pet] 无桌面宠物（display 均为 web/none），已跳过桌面 Helper 启动');
+      }
+      return; // 无桌面宠物且桌面模式从未启用过：不启动
+    }
     // 无图形显示环境（Linux 服务器 / 容器）：直接放弃，不探测、不下载、不拉起。
     // 否则 Electron 会「拉起即崩」，被守护循环反复重启并刷满 core dump。
     if (!hasGraphicalDisplay()) {
@@ -1088,13 +1152,23 @@ export function apply(ctx: any): void {
       launchHelper(found);
       return;
     }
-    console.warn(`[dsh-pet] Electron not found, downloading to ${defaultElectronExe()} ...`);
-    electronEnsure = ensureElectronDownload()
+    // 诊断日志（issue #168）：只报「没找到」不够用——最常见的情形是「文件明明存在」，
+    // 但不在实际查询的路径上（DSH_HOME 不一致）。把真正查的路径一起打出来。
+    ctx.logger?.warn?.(
+      `[dsh-pet] 未找到 Electron 可执行文件：DSH_HOME=${dshHomeDir()}，查找路径=${defaultElectronExe()}` +
+        `，DSH_PET_ELECTRON_PATH=${process.env.DSH_PET_ELECTRON_PATH ?? '(未设置)'}`,
+    );
+    ctx.logger?.warn?.(`[dsh-pet] 开始下载 Electron 到 ${defaultElectronExe()} ...`);
+    electronEnsure = ensureElectronDownload({
+      // 下载全过程写进工作状态气泡（用户没有控制台，只能靠它看进度与失败原因）
+      onLog: ({ text, level, done }) =>
+        reportDownload(text, level === 'warn' ? 'error' : done ? 'success' : 'working', done),
+    })
       .then((path) => {
         if (path) {
           launchHelper(path);
         } else {
-          console.warn(
+          ctx.logger?.warn?.(
             '[dsh-pet] Electron download failed; desktop pet unavailable. Set DSH_PET_ELECTRON_PATH and restart, or retry later.',
           );
         }
@@ -2629,6 +2703,11 @@ export function apply(ctx: any): void {
     if (workFlushTimer !== null) {
       clearTimeout(workFlushTimer);
       workFlushTimer = null;
+    }
+    // 下载日志的「清槽」定时器：同上，卸载后它到点已经没有意义
+    if (downloadSlotTimer !== null) {
+      clearTimeout(downloadSlotTimer);
+      downloadSlotTimer = null;
     }
     // 占用锁：卸载时把锁全撤掉并写一次叶子——不写的话渲染端要等 TTL 到点才解除静止
     // （写叶子必须在 state.cancelAll() **之前**：那之后挂起的等待者已经收尾了）。

@@ -166,6 +166,19 @@ export interface EnsureElectronOptions {
   mirror?: string;
   /** 单次下载超时（默认 10 分钟）。 */
   timeoutMs?: number;
+  /**
+   * 面向用户的日志出口（进桌宠工作气泡）。
+   * **与 console 分开**：console 留英文原文给终端 / CLI 排障，这里产出给「没有控制台的
+   * DSH 桌面版用户」看的一句短话。宿主负责截断与投递，本函数只产出文本——它不认识 state。
+   */
+  onLog?: (event: ElectronDownloadLog) => void;
+}
+
+/** 一条下载日志：`text` 给用户看；`level='warn'` = 失败路径；`done` = 本次下载已收尾（成功或失败） */
+export interface ElectronDownloadLog {
+  text: string;
+  level: 'info' | 'warn';
+  done: boolean;
 }
 
 /**
@@ -185,9 +198,19 @@ export async function ensureElectronDownload(options: EnsureElectronOptions = {}
   // 下载日志用 console 直出（ctx.logger 在部分宿主不映射到终端，排障时看不到）。
   const log = (message: string): void => console.log(`[dsh-pet] ${message}`);
   const warn = (message: string): void => console.warn(`[dsh-pet] ${message}`);
+  // 同一件事两个出口（见 EnsureElectronOptions.onLog）：console 原文 + 给用户看的一句。
+  // 文案刻意分成两套——版本号 / 路径 / 耗时对开发者有用，对用户是噪音，不合并成同一句。
+  const info = (consoleText: string, text: string, done = false): void => {
+    log(consoleText);
+    options.onLog?.({ text, level: 'info', done });
+  };
+  const fail = (consoleText: string, text: string): void => {
+    warn(consoleText);
+    options.onLog?.({ text, level: 'warn', done: true });
+  };
   const startedAt = Date.now();
 
-  log(`Electron not found, downloading v${version} (${PLAT}-${process.arch}) ...`);
+  info(`Electron not found, downloading v${version} (${PLAT}-${process.arch}) ...`, `正在下载 Electron ${version}`);
 
   try {
     // 目录创建也可能失败（权限不足、同名文件等），与下载失败一样降级到浏览器宠物。
@@ -217,14 +240,15 @@ export async function ensureElectronDownload(options: EnsureElectronOptions = {}
             const now = Date.now();
             if (!progress.total || now < nextLogAt) return;
             nextLogAt = now + 3000;
-            log(
-              `downloading ${(progress.transferred / 1024 / 1024).toFixed(1)}MB / ${(progress.total / 1024 / 1024).toFixed(1)}MB`,
-            );
+            const doneMb = (progress.transferred / 1024 / 1024).toFixed(1);
+            const totalMb = (progress.total / 1024 / 1024).toFixed(1);
+            const percent = Math.min(100, Math.floor((progress.transferred / progress.total) * 100));
+            info(`downloading ${doneMb}MB / ${totalMb}MB`, `Electron 下载 ${percent}% · ${doneMb}/${totalMb}MB`);
           },
         },
       });
       const seconds = ((Date.now() - startedAt) / 1000).toFixed(1);
-      log(`download complete (${seconds}s), extracting to ${targetDir} ...`);
+      info(`download complete (${seconds}s), extracting to ${targetDir} ...`, `下载完成（${seconds}s），正在解压`);
       // 官方 @electron-internal/extract-zip 解压（electron 43 官方安装同款）：
       // 纯 Node + native binding，跨平台一致，正确处理 symlink 与文件权限，
       // 不需要系统 unzip/tar/powershell，也没有我们手写的平台适配链。
@@ -241,13 +265,14 @@ export async function ensureElectronDownload(options: EnsureElectronOptions = {}
         throw new Error(`Electron zip extracted, but ${ELECTRON_REL} not found`);
       }
       const readySeconds = ((Date.now() - startedAt) / 1000).toFixed(1);
-      log(`ready in ${readySeconds}s: ${exe}`);
+      info(`ready in ${readySeconds}s: ${exe}`, `Electron 就绪（${readySeconds}s），正在启动桌宠`, true);
       return exe;
     } finally {
       clearTimeout(timer);
     }
   } catch (error) {
-    warn(`ensure failed: ${error instanceof Error ? error.message : String(error)}`);
+    const reason = error instanceof Error ? error.message : String(error);
+    fail(`ensure failed: ${reason}`, `Electron 下载失败：${reason}`);
     warn('desktop pet unavailable. Set DSH_PET_ELECTRON_PATH to an existing Electron, or retry later.');
     return undefined;
   }
