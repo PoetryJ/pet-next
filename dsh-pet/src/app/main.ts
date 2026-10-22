@@ -15,17 +15,15 @@
  *   POST /standalone-ai/test    连通性测试
  *   *    /dsh-pet-7340/...      插件路由（桌面窗口用，因此额外放行 CORS）
  *
- * 与 CLI 的一处差异：插件路由要服务 `file://` 页面，浏览器请求不带令牌，所以这一组只按
- * Origin 判定（允许空 / null，拒绝网页来源），不套令牌；配置页那组仍然严格校验令牌与 Host。
+ * 插件路由也检查令牌与 Host；本地 file 页面由主进程给请求附加访问凭证，
+ * null 来源本身不授予权限。凭证不写入页面地址、渲染脚本或日志。
  *
  * 环境变量（应用自身用，不影响 DSH 内运行）：
  *   DSH_PET_IN_PROCESS=1  交给宿主半边：不 spawn helper、不下载 Electron（见 src/host/index.ts）
  *   DSH_PET_APP_MODE=1    交给 helper：托盘加「退出」、userData 独立
  *   DSH_PET_SITE_URL      交给 helper：右键「打开网站」用它（这里指向带令牌的配置页）
  */
-import { createServer } from 'node:http';
-import type { ServerResponse } from 'node:http';
-import type { AddressInfo } from 'node:net';
+
 import { createRequire } from 'node:module';
 import { dirname, join, resolve } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -37,11 +35,10 @@ import { createStandaloneAi } from '../standalone/ai-provider';
 import { packageVersion } from '../standalone/check';
 import { createStandaloneContext, createStandaloneLogger, type RegisteredRoute } from '../standalone/context';
 import { configPathsFor } from '../standalone/options';
-import { createRequestSecurity, rejectRequest } from '../standalone/request-security';
-import type { RequestSecurity } from '../standalone/request-security';
-import { settingsHandler, testHandler } from '../standalone/server';
-import { settingsPage, settingsScript, settingsStyle } from '../standalone/settings-page';
-import type { StandaloneAiService } from '../standalone/ai-provider';
+import { createRequestSecurity } from '../standalone/request-security';
+
+import { installDesktopAuth, type DesktopSession } from './desktop-auth';
+import { startRouter } from './router';
 
 /**
  * `electron` 由 Electron 运行时提供，**不是本包的依赖**。只声明实际用到的成员：
@@ -54,13 +51,17 @@ interface WebContentsLike {
   ): void;
 }
 interface ElectronApp {
+  whenReady(): Promise<void>;
   requestSingleInstanceLock(): boolean;
   exit(code?: number): void;
   on(event: 'web-contents-created', listener: (event: unknown, contents: WebContentsLike) => void): void;
   on(event: 'second-instance', listener: () => void): void;
   on(event: 'will-quit', listener: () => void): void;
 }
-const { app } = createRequire(import.meta.url)('electron') as { app: ElectronApp };
+const { app, session } = createRequire(import.meta.url)('electron') as {
+  app: ElectronApp;
+  session: { defaultSession: DesktopSession };
+};
 
 /** lib/app.js → 包根（与 helper-process.ts 的 packageRoot 同一口径：模块所在目录的上一级） */
 const here = dirname(fileURLToPath(import.meta.url));
@@ -98,7 +99,7 @@ async function boot(): Promise<void> {
     authenticatedUrl: security.authenticatedUrl,
   });
 
-  const server = await startRouter(routes, { security, ai });
+  const server = await startRouter(routes, { security, ai, log, status, landingPage });
   port = server.port;
   const origin = `http://127.0.0.1:${port}`;
   log(`本机服务 ${origin}`);
@@ -127,7 +128,21 @@ async function boot(): Promise<void> {
       log(`渲染端[${level}] ${message} (${source}:${line})`);
     });
   });
-  createRequire(import.meta.url)(helperMain);
+  // Register before helper's whenReady callback creates any file renderer.
+  void app.whenReady().then(() => {
+    installDesktopAuth(
+      session.defaultSession,
+      origin,
+      join(packageRoot, 'runtime/electron-helper/index.html'),
+      security.token,
+    );
+  });
+  process.env.DSH_PET_APP_TOKEN = security.token;
+  try {
+    createRequire(import.meta.url)(helperMain);
+  } finally {
+    delete process.env.DSH_PET_APP_TOKEN;
+  }
 
   app.on('second-instance', () => log('已有一个实例在运行，忽略本次启动'));
   app.on('will-quit', () => {
@@ -155,111 +170,6 @@ function desktopPets(): Array<{ id: string; size: number }> {
   }
 }
 
-interface RouterDeps {
-  security: RequestSecurity;
-  ai: StandaloneAiService;
-}
-
-/**
- * 本机 HTTP 面：插件路由 + 独立模式那套「状态 / 配置页」。
- *
- * 为什么不能直接把 `listenStandaloneServer` 搬来用：它的 `authorize()` 要求请求带 Host 校验
- * 与同源 Origin，而桌面窗口是 `file://` 页面（Origin 为 `null`、Sec-Fetch-Site 为 cross-site），
- * 会被它整组拒掉。所以这里按**两类请求分开**处理：配置页走完整的安全模型，插件路由只做
- * 「拒绝网页来源」这一条（否则本机任意网页都能调 /whisper、/chat 花掉模型额度）。
- */
-function startRouter(
-  routes: RegisteredRoute[],
-  deps: RouterDeps,
-): Promise<{ port: number; close: () => Promise<void> }> {
-  const settings = settingsHandler(deps.ai);
-  const tester = testHandler(deps.ai);
-  /** 监听后才知道端口：落地页/状态页要显示它 */
-  let boundPort = 0;
-
-  const server = createServer((req, res) => {
-    const url = new URL(req.url ?? '/', 'http://127.0.0.1');
-    const method = req.method ?? 'GET';
-
-    if (method === 'OPTIONS') {
-      res.writeHead(204);
-      res.end();
-      return;
-    }
-
-    // ---- 配置页：与 CLI 完全一致（静态资源公开，读写接口要令牌）----
-    if (url.pathname === '/standalone-ai/') {
-      sendText(res, 200, 'text/html', settingsPage);
-      return;
-    }
-    if (url.pathname === '/standalone-ai/settings.js') {
-      sendText(res, 200, 'text/javascript', settingsScript);
-      return;
-    }
-    if (url.pathname === '/standalone-ai/settings.css') {
-      sendText(res, 200, 'text/css', settingsStyle);
-      return;
-    }
-    if (url.pathname === '/standalone-ai/settings' || url.pathname === '/standalone-ai/test') {
-      if (!deps.security.authorize(req, res)) return;
-      const handler = url.pathname === '/standalone-ai/test' ? tester : settings;
-      void handler(req, res).catch((error: unknown) => {
-        log(`配置页接口失败 ${url.pathname}: ${error instanceof Error ? error.message : String(error)}`);
-        if (!res.headersSent) rejectRequest(res, 500, '配置页暂时无法处理请求');
-        else res.end();
-      });
-      return;
-    }
-
-    // ---- 状态与落地页 ----
-    if (url.pathname === '/health') {
-      sendJson(res, status(boundPort));
-      return;
-    }
-    if (url.pathname === '/') {
-      sendText(res, 200, 'text/html', landingPage(boundPort));
-      return;
-    }
-
-    // ---- 插件路由（桌面窗口）----
-    const route = routes.find((candidate) =>
-      candidate.kind === 'exact'
-        ? url.pathname === candidate.path
-        : url.pathname === candidate.path || url.pathname.startsWith(`${candidate.path}/`),
-    );
-    if (!route) {
-      res.writeHead(404, { 'content-type': 'text/plain; charset=utf-8' });
-      res.end('not found');
-      return;
-    }
-    const origin = req.headers.origin;
-    if (origin !== undefined && origin !== 'null') {
-      // 来自网页的跨站请求：本机任意网站都能打这几个端点（含 /chat、/whisper 会花钱）
-      rejectRequest(res, 403, '不允许网页来源访问');
-      return;
-    }
-    // 窗口是 file:// 页面，属于跨源请求：插件 handler 不写 CORS，这里统一补
-    res.setHeader('access-control-allow-origin', '*');
-    Promise.resolve(route.handler(req, res)).catch((error: unknown) => {
-      log(`路由失败 ${url.pathname}: ${error instanceof Error ? error.message : String(error)}`);
-      if (!res.headersSent) res.writeHead(500);
-      res.end();
-    });
-  });
-
-  return new Promise((resolvePromise, reject) => {
-    server.once('error', reject);
-    server.listen(0, '127.0.0.1', () => {
-      const address = server.address() as AddressInfo;
-      boundPort = address.port;
-      resolvePromise({
-        port: address.port,
-        close: () => new Promise<void>((done) => server.close(() => done())),
-      });
-    });
-  });
-}
-
 function status(port: number): Record<string, unknown> {
   const paths = configPathsFor(packageRoot, dshHomeDir());
   let pets: Array<Record<string, unknown>> = [];
@@ -284,7 +194,9 @@ function landingPage(port: number): string {
   const info = status(port);
   const pets = (info.pets as Array<Record<string, unknown>>) ?? [];
   const petLines = pets.length
-    ? pets.map((pet) => `<li>${escapeHtml(String(pet.name ?? pet.id))}（${escapeHtml(String(pet.display))}）</li>`).join('')
+    ? pets
+        .map((pet) => `<li>${escapeHtml(String(pet.name ?? pet.id))}（${escapeHtml(String(pet.display))}）</li>`)
+        .join('')
     : '<li>（未读到宠物，检查配置文件）</li>';
   return `<!doctype html>
 <html lang="zh-CN"><head><meta charset="utf-8"><title>dsh-pet</title>
@@ -307,27 +219,6 @@ function landingPage(port: number): string {
   <h2>状态</h2>
   <p><a href="/health">/health</a> · <a href="/standalone-ai/">配置页（未授权时读写会返回 403）</a></p>
 </main></body></html>`;
-}
-
-function sendText(res: ServerResponse, status: number, type: string, body: string): void {
-  res.writeHead(status, {
-    'content-type': `${type}; charset=utf-8`,
-    'content-length': Buffer.byteLength(body),
-    'cache-control': 'no-store',
-    'x-content-type-options': 'nosniff',
-    'referrer-policy': 'no-referrer',
-  });
-  res.end(body);
-}
-
-function sendJson(res: ServerResponse, body: unknown): void {
-  const payload = JSON.stringify(body);
-  res.writeHead(200, {
-    'content-type': 'application/json; charset=utf-8',
-    'content-length': Buffer.byteLength(payload),
-    'cache-control': 'no-store',
-  });
-  res.end(payload);
 }
 
 function escapeHtml(value: string): string {

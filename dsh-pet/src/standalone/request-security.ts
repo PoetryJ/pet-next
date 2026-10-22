@@ -5,7 +5,7 @@ export interface RequestSecurity {
   /** Process capability: private launcher manifest only, never an HTTP response or log. */
   readonly token: string;
   authenticatedUrl(baseUrl: string): string;
-  authorize(req: IncomingMessage, res: ServerResponse): boolean;
+  authorize(req: IncomingMessage, res: ServerResponse, allowFileOrigin?: boolean): boolean;
 }
 
 export function rejectRequest(res: ServerResponse, status: number, error: string): false {
@@ -15,13 +15,9 @@ export function rejectRequest(res: ServerResponse, status: number, error: string
 }
 
 function publicRead(req: IncomingMessage): boolean {
+  // The plugin decodes its route before dispatch; authorization must use the same spelling.
+  const path = decodeURIComponent(new URL(req.url ?? '/', 'http://127.0.0.1').pathname);
   if (req.method !== 'GET' && req.method !== 'HEAD') return false;
-  let path: string;
-  try {
-    path = new URL(req.url ?? '/', 'http://127.0.0.1').pathname;
-  } catch {
-    return false;
-  }
   if (['/standalone-ai/settings', '/shutdown'].includes(path)) return false;
   if (/^\/dsh-pet-\d+\/(?:whisper|chat)(?:\/|$)/.test(path)) return false;
   return (
@@ -47,20 +43,24 @@ export function createRequestSecurity(): RequestSecurity {
       }
       return `${base.origin}/standalone-ai/#token=${token}`;
     },
-    authorize(req, res) {
+    authorize(req, res, allowFileOrigin = false) {
       const host = req.headers.host;
       const port = req.socket.localPort;
       if (!port || (host !== `127.0.0.1:${port}` && host !== `localhost:${port}`)) {
         return rejectRequest(res, 403, '仅允许当前本机地址');
       }
+      // A file renderer still needs the process capability: sandboxed websites also send "null".
+      // Non-CORS media loads from the same file renderer may omit Origin altogether.
+      const fileOrigin = allowFileOrigin && (req.headers.origin === 'null' || req.headers.origin === undefined);
       if (
-        (req.headers.origin !== undefined && req.headers.origin !== `http://${host}`) ||
-        req.headers['sec-fetch-site'] === 'cross-site'
+        !fileOrigin &&
+        ((req.headers.origin !== undefined && req.headers.origin !== `http://${host}`) ||
+          req.headers['sec-fetch-site'] === 'cross-site')
       ) {
         return rejectRequest(res, 403, '不允许跨站请求');
       }
       try {
-        if (publicRead(req)) return true;
+        if (publicRead(req) && !fileOrigin) return true;
       } catch {
         return rejectRequest(res, 400, '请求地址无效');
       }

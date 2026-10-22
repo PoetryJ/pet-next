@@ -32,6 +32,71 @@ test('capabilities are random, fragment-only, and process-bound', () => {
   assert.equal(new URLSearchParams(url.hash.slice(1)).get('token'), a.token);
   assert.throws(() => a.authenticatedUrl('https://evil.test/'));
 });
+
+test('encoded private routes still require a capability; invalid encodings fail explicitly', () => {
+  const security = createRequestSecurity();
+  for (const path of [
+    '/dsh-pet-7340/%63hat?pet=main',
+    '/dsh-pet-7340/ch%61t',
+    '/dsh-pet-7340/chat%2Fhistory',
+    '/dsh-pet-7340/%77hisper',
+  ]) {
+    for (const method of ['GET', 'HEAD']) {
+      const res = response();
+      assert.equal(security.authorize(request({}, path, method), res as unknown as ServerResponse), false);
+      assert.equal(res.status, 403);
+      assert.equal(
+        security.authorize(
+          request({ 'x-dsh-pet-token': security.token }, path, method),
+          response() as unknown as ServerResponse,
+        ),
+        true,
+      );
+    }
+  }
+  for (const method of ['GET', 'POST']) {
+    const res = response();
+    assert.equal(
+      security.authorize(
+        request({ 'x-dsh-pet-token': security.token }, '/dsh-pet-7340/%ZZ', method),
+        res as unknown as ServerResponse,
+      ),
+      false,
+    );
+    assert.equal(res.status, 400);
+  }
+  assert.equal(
+    security.authorize(request({}, '/dsh-pet-7340/thumb/main/%E7%9C%8B.webm'), response() as unknown as ServerResponse),
+    true,
+  );
+});
+
+test('desktop file-origin exception always needs a capability and never relaxes Host checks', () => {
+  const security = createRequestSecurity();
+  const fileHeaders = { origin: 'null', 'sec-fetch-site': 'cross-site' };
+  for (const path of ['/dsh-pet-7340/config', '/dsh-pet-7340/chat']) {
+    assert.equal(security.authorize(request(fileHeaders, path), response() as unknown as ServerResponse, true), false);
+    const headers = { ...fileHeaders, 'x-dsh-pet-token': security.token };
+    assert.equal(security.authorize(request(headers, path), response() as unknown as ServerResponse, true), true);
+    assert.equal(security.authorize(request(headers, path), response() as unknown as ServerResponse), false);
+    assert.equal(
+      security.authorize(
+        request({ ...headers, host: 'evil.test:3080' }, path),
+        response() as unknown as ServerResponse,
+        true,
+      ),
+      false,
+    );
+    assert.equal(
+      security.authorize(
+        request({ ...headers, origin: 'https://evil.test' }, path),
+        response() as unknown as ServerResponse,
+        true,
+      ),
+      false,
+    );
+  }
+});
 test('all private reads and mutations need the header, never a query capability', () => {
   const security = createRequestSecurity();
   for (const method of ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS']) {
