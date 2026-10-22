@@ -339,6 +339,67 @@ describe('readUserConfig —— 用户层读取必须容忍 JSONC 注释（保�
   });
 });
 
+describe('JSONC 配置读取：字符串中的注释标记与转义', () => {
+  const prompts = [
+    '请原样解释 // 示例 这段文字',
+    '请原样解释 /* 示例 */ 这段文字',
+    '链接 https://example.test/a//b?q=/*text*/',
+    '请解释 "引号内的 // 内容" 和 /* 内容 */',
+    String.raw`反斜杠 \\ 与转义引号 \" 后面的 // 内容`,
+    '结尾反斜杠 \\',
+  ];
+
+  for (const whisperPrompt of prompts) {
+    test(`读取与合并原样保留 ${JSON.stringify(whisperPrompt)}`, () => {
+      const overlay = { whisperPrompt, metadata: { '/* 字段名 */': '// 字段值' } };
+      const { paths, dir } = pathsWithUser('// 外部行注释\n' + JSON.stringify(overlay) + '\n/* 外部块注释 */');
+      try {
+        assert.deepEqual(readUserConfig(paths), overlay);
+        assert.equal(userConfigUnparsable(paths), false);
+        assert.equal(readAllConfig(paths).main.whisperPrompt, whisperPrompt);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
+
+  test('注释中的引号和注释标记不影响 CRLF、CR 与文件末尾行注释', () => {
+    const { paths, dir } = pathsWithUser(
+      '// " /* 行注释\r\n{\r  /* " // 块注释\r\n */ "chatMemoryRounds": 3\r}\r// 文件末尾',
+    );
+    try {
+      assert.deepEqual(readUserConfig(paths), { chatMemoryRounds: 3 });
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('读取后保存保留提示词内容及高级配置', () => {
+    const overlay = { whisperPrompt: '解释 // 和 /* */', physics: BASE.physics, animations: BASE.animations };
+    const { paths, dir } = pathsWithUser(JSON.stringify(overlay));
+    try {
+      const out = saveUserConfig({ pets: BASE.pets }, readUserConfig(paths)) as Record<string, unknown>;
+      assert.equal(out.whisperPrompt, overlay.whisperPrompt);
+      assert.deepEqual(out.physics, overlay.physics);
+      assert.deepEqual(out.animations, overlay.animations);
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  for (const raw of ['{"chatMemoryRounds": 1/* 注释 */2}', '{"chatMemoryRounds": 3} /* 未结束']) {
+    test(`拒绝损坏的配置 ${raw}`, () => {
+      const { paths, dir } = pathsWithUser(raw);
+      try {
+        assert.equal(readUserConfig(paths), undefined);
+        assert.equal(userConfigUnparsable(paths), true);
+      } finally {
+        rmSync(dir, { recursive: true, force: true });
+      }
+    });
+  }
+});
+
 const PETS = BASE.pets;
 
 describe('saveUserConfig —— 表情包配图开关（白名单 + 透传保留）', () => {

@@ -116,12 +116,35 @@ function warnOnce(key: string, message: string): void {
   console.warn('dsh-pet: ' + message);
 }
 
-/** 剥除 JSONC 注释（行注释 // 与块注释）得到纯 JSON */
+/** 仅删除字符串之外的 JSONC 注释，保留字符串转义、换行与相邻 JSON token 的分隔。 */
 function stripJsonc(src: string): string {
-  return src
-    .replace(/\/\*[\s\S]*?\*\//g, '')
-    .replace(/(^|[^\\:])\/\/.*$/gm, '$1')
-    .trim();
+  let out = '';
+  let inString = false;
+  for (let i = 0; i < src.length; i++) {
+    const ch = src[i];
+    if (inString) {
+      out += ch;
+      if (ch === '\\' && i + 1 < src.length) {
+        out += src[++i];
+      } else if (ch === '"') {
+        inString = false;
+      }
+    } else if (ch === '"') {
+      inString = true;
+      out += ch;
+    } else if (ch === '/' && src[i + 1] === '/') {
+      out += ' ';
+      while (i + 1 < src.length && src[i + 1] !== '\r' && src[i + 1] !== '\n') i++;
+    } else if (ch === '/' && src[i + 1] === '*') {
+      const end = src.indexOf('*/', i + 2);
+      if (end === -1) throw new SyntaxError('Unterminated JSONC block comment');
+      out += src.slice(i, end + 2).replace(/[^\r\n]/g, ' ');
+      i = end + 1;
+    } else {
+      out += ch;
+    }
+  }
+  return out.trim();
 }
 
 /** 读取并解析 JSONC 文件；不存在/解析失败 → undefined（调用方决定处理） */
