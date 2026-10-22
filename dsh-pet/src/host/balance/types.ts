@@ -32,12 +32,30 @@ export interface BalanceFetchContext {
 }
 
 /**
- * 一个 service provider 的余额查询定义 —— **一行 = 一个自包含服务商**。
+ * 第三方注册进来的 provider（对外契约）：只有 id + 取数。
+ * 拿不到宿主解析的 key，也拿不到 `resolveAccount` —— 上下文里只有 `provider`；
+ * 凭证由注册方在自己的插件里解决（读自己的配置/环境变量，或根本不需要）。
+ */
+export interface PluginProvider {
+  /** 命中的 provider id（必须与 agentDefaultModel 报告的 id 完全一致）。 */
+  id: string;
+  /** 取数 + 解析；只负责成功路径，任何失败一律 `throw`，由 `queryBalance` 统一落成 `fetch-error`。 */
+  fetch(ctx: PluginFetchContext): Promise<BalanceSuccess>;
+}
+
+/** 第三方取数上下文：只有 provider（没有 key，没有 resolveAccount）。 */
+export interface PluginFetchContext {
+  /** 命中的 provider id（原样回填进结果，展示层据此区分服务商）。 */
+  provider: string;
+}
+
+/**
+ * 一个**内置** service provider 的余额查询定义 —— **一行 = 一个自包含服务商**。
  * 接口地址、业务常量、响应解析全在它自己的文件里（见 ./providers/）。
  */
 export interface BalanceProvider {
   /** 可命中的 provider id（agentDefaultModel 报告的 id） */
-  ids: string[];
+  id: string;
   /** 凭证来源（决定 queryBalance 是解析凭证还是调服务） */
   credential: CredentialSpec;
   /**
@@ -51,13 +69,18 @@ export interface BalanceProvider {
 // ---------- 展示形态（wire 契约：host 写进叶子，两端展示层按它选渲染分支） ----------
 
 /**
- * 展示形态 —— 只有两种，且**不含任何服务商信息**：
+ * 展示形态 —— 三种，且**不含任何服务商信息**：
  * - `windows`：三窗口用量（百分比 + 重置倒计时）→ 气泡「X额度已用 N%」
  * - `money`：账户金额 → 气泡「余额（峰/谷）¥x.xx」
+ * - `points`：积分/点数余额（非货币）→ 气泡「余额 800 积分」
  *
- * 加一个服务商只要落到这两种形态之一，src/shared 与两端展示层就完全不用动。
+ * 积分单列一种形态而不是借用 money：`granted`/`toppedUp`（充值/赠送）在积分里没有意义，
+ * 硬塞等于在 wire 契约上写假数据。单列之后 `unit` 只承担「数字后面的后缀」这一个职责，
+ * `currency` 继续只表示币种代码。
+ *
+ * 加一个服务商只要落到这三种形态之一，src/shared 与两端展示层就完全不用动。
  */
-export type BalanceShape = 'windows' | 'money';
+export type BalanceShape = 'windows' | 'money' | 'points';
 
 /** 计价档位装饰（气泡上的「峰/谷」）：由服务商按自己的计价规则算好后随数据带出 */
 export type PricingTier = 'peak' | 'idle';
@@ -120,6 +143,26 @@ export interface MoneyBalance {
 }
 
 /**
+ * 积分/点数余额（`shape: 'points'`）。有些服务商（典型是本地网关）的余额不是货币，而是整数积分。
+ *
+ * 单列一种形态的理由：积分既不是窗口用量，也不该借 `money` 的字段——`granted`/`toppedUp`
+ * （充值/赠送）在积分里没有意义，硬塞只能在 wire 契约上写假的 `'0.00'`。
+ *
+ * 字段语义：
+ * - `unit`：展示单位（「积分」「点数」…）。与 `currency` 的分工：`currency` 是币种代码，
+ *   `unit` 只是拼在数字后面的后缀，**不参与任何计算**；
+ * - `total`：当前余额（字符串，与接口一致，不做换算、不重算）；
+ * - `full`：**档位基准**（同 unit 的数值）——余额 ≥ 该值视为未消耗。缺省 = 没有基准，
+ *   不参与百分比折算、不播档位动画（不替服务商猜一个）。基准是服务商自己的业务事实，
+ *   故由数据带出、不写死在展示层。
+ */
+export interface PointsBalance {
+  unit: string;
+  total: string;
+  full?: string;
+}
+
+/**
  * DSH 账号服务的余额快照（`ctx.deepseekAccount.getBalance()` 的返回，只取用到的字段）。
  * 与 `dsh-deepseek-account` 的 `AccountDetails['balance']` 同构：`ready` 带两个钱包数组，
  * `failed` 是"查过但失败"（与"没登录"的 null 不同）。
@@ -137,7 +180,8 @@ export interface AccountBalanceSnapshot {
 /** 成功结果（client 端与 host 端同构使用）：`shape` 是展示形态，`provider` 是当前到底是谁 */
 export type BalanceSuccess =
   | { ok: true; provider: string; shape: 'windows'; data: WindowsUsage }
-  | { ok: true; provider: string; shape: 'money'; data: MoneyBalance };
+  | { ok: true; provider: string; shape: 'money'; data: MoneyBalance }
+  | { ok: true; provider: string; shape: 'points'; data: PointsBalance };
 
 /**
  * 按当前服务商查询余额的结果。

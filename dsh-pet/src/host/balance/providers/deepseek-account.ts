@@ -78,7 +78,7 @@ export function parseAccountBalance(
 }
 
 export const deepseekAccount: BalanceProvider = {
-  ids: ['deepseek-account'],
+  id: 'deepseek-account',
   credential: { mode: 'none' },
   async fetch({ provider, resolveAccount }) {
     // queryBalance 对 mode === 'none' 已保证 resolveAccount 在场（否则落 credential-missing）；

@@ -14,7 +14,7 @@ import { fetchWithRetry, obj, str } from '../internal';
 import type { BalanceProvider } from '../types';
 
 export const deepseekOfficial: BalanceProvider = {
-  ids: ['deepseek-official'],
+  id: 'deepseek-official',
   credential: { mode: 'ref', ref: 'DEEPSEEK_API_KEY' },
   async fetch({ key, provider }) {
     const res = await fetchWithRetry('https://api.deepseek.com/user/balance', key);

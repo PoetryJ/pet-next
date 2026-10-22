@@ -22,7 +22,7 @@ const QUOTA_USD = {
 const ROLLING_LABEL = '5h';
 
 export const opencodeGo: BalanceProvider = {
-  ids: ['opencode-go'],
+  id: 'opencode-go',
   credential: { mode: 'ref', ref: 'OPENCODE_GO_API_KEY' },
   async fetch({ key, provider }) {
     const res = await fetchWithRetry('https://opencode.ai/zen/go/v1/usage', key);

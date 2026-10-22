@@ -35,7 +35,7 @@ const bubbleCss = [
   '@font-face{font-family:"ShangshouSoftCandy";src:url("/dsh-pet-7340/font/上首软糖体.ttf") format("truetype");font-display:swap;font-weight:400}',
   '.dsh-pet-bubble{position:absolute;left:50%;transform:translateX(-50%);' +
     'bottom:calc(100% - var(--dsh-pet-size)*0.108);' +
-    'width:max-content;min-width:calc(var(--f)*5.7143);max-width:min(calc(var(--f)*10.989),100%);' +
+    'width:max-content;min-width:calc(var(--f)*5.7143);max-width:min(calc(var(--f)*16),100%);' +
     // 钉死 content-box：宿主页面可能全局设了 border-box，那会让 min/max-width 把内边距也算进去，
     // 内容可用宽度被悄悄缩掉一圈（表现为「明明还有空位却折行」）。桌面端 index.html 同样钉死，两端一致。
     'box-sizing:content-box;' +
@@ -60,7 +60,10 @@ const bubbleCss = [
   // 配图（碎碎念/对话共用）：样式在 shared 的 MEME_BUBBLE_CSS（两端同一份，由
   // createMemeImage 注入）——这里不再重复写一份，避免与桌面端 index.html 走样
   '.dsh-pet-bubble .pet-bub-title{font-size:calc(var(--f)*0.7692);color:rgba(43,43,43,.6);margin-bottom:calc(var(--f)*0.1978)}',
-  '.dsh-pet-bubble .pet-bub-row{display:flex;justify-content:space-between;gap:calc(var(--f)*0.6593)}',
+  '.dsh-pet-bubble .pet-bub-row{display:flex;justify-content:space-between;gap:calc(var(--f)*0.6593);flex-wrap:wrap}',
+  // 档位行由多个片段拼成（「余额（」+「峰」+「）¥8.79/$2.40」）：只允许在片段之间换行，
+  // 片段内部不拆字（否则宽度不够时会出现一个字一行的竖排）
+  '.dsh-pet-bubble .pet-bub-row>span{white-space:nowrap}',
   '.dsh-pet-bubble .pet-bub-sub{font-size:calc(var(--f)*0.7692);color:rgba(43,43,43,.6)}',
   '.dsh-pet-bubble .pet-bub-val{font-variant-numeric:tabular-nums;font-weight:650;color:#1f1f1f}',
   '.dsh-pet-bubble .pet-bub-err{color:#d94f3d;font-size:calc(var(--f)*0.7692)}',
@@ -204,7 +207,8 @@ export function makeBalanceBubble(rt: {
     }, [expanded, full]);
 
     const rows = full ? balanceDetailView(state) : balanceBubbleView(state);
-    // 只有 windows 形态有三窗口读数可展开；money（账户余额）与不可用状态点开也没别的内容
+    // 只有 windows 形态有三窗口读数可展开；money（账户余额）/ points（积分）与不可用状态
+    // 点开也没别的内容
     const clickable = state.ok && state.shape === 'windows';
     // 不可用状态（不支持/缺凭证/抓取失败）是**多行文字说明**：套用碎碎念的换行变体
     // （字号缩到 0.75、宽度下限更窄，多行说明更紧凑；折行现在已是气泡的通用行为）

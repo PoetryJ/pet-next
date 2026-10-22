@@ -2538,8 +2538,9 @@ components:
           type: string
           description: |
             展示形态。`windows` = 三窗口用量（百分比，opencode / commandcode）；
-            `money` = 账户金额（DeepSeek 两条路由）。
-          enum: [windows, money]
+            `money` = 账户金额（DeepSeek 两条路由）；
+            `points` = 积分/点数余额（非货币单位，如本地网关自带的额度）。
+          enum: [windows, money, points]
         manual:
           type: boolean
           description: |
@@ -2606,6 +2607,28 @@ components:
                   该币种的档位基准（同币种单位）——余额 ≥ 该值视为未消耗。
                   缺省 = 这个币种没有基准，不参与档位折算（不替它猜一个）。DeepSeek：CNY 20 / USD 5。
                 example: "20"
+        points:
+          type: object
+          description: |
+            points：积分/点数余额（非货币单位）。`unit` 只是拼在数字后面的展示后缀，
+            不参与任何计算（与 `wallets[].currency` 的分工不同：那个是币种代码）。
+            气泡渲染为「余额 800 积分」，不会套货币符号。
+          required: [unit, total]
+          properties:
+            unit:
+              type: string
+              description: 展示单位（如「积分」「点数」）
+              example: 积分
+            total:
+              type: string
+              description: 当前余额（字符串，与上游一致；不做换算、不重算）
+              example: "800"
+            full:
+              type: string
+              description: |
+                档位基准（同 unit 的数值）——余额 ≥ 该值视为未消耗。
+                缺省 = 没有基准，不参与百分比折算、不播档位动画（不替它猜一个）。
+              example: "1000"
 
     BalanceUnavailable:
       type: object

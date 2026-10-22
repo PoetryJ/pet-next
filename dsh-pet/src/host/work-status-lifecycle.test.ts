@@ -61,6 +61,8 @@ function setup(): Harness {
   const disposers: Array<() => void> = [];
   const noop = (): void => {};
   apply({
+    // 对外 Cordis 服务（ctx.provide）：与 DSH 一致，返回释放函数
+    provide: () => noop,
     effect: (fn: () => unknown) => {
       try {
         const ret = fn();

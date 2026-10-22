@@ -22,13 +22,14 @@ import { fileURLToPath } from 'node:url';
 
 import {
   balanceBubbleView,
+  balanceDetailView,
   balancePercent,
   decideBalanceNotice,
   toBalanceState,
   urgentWindow,
   type BalanceState,
   type BalanceView,
-} from './balance.ts';
+} from './balance/index.ts';
 
 /** 包内文件源码（守卫用；相对 src/shared/ 解析） */
 const readSource = (rel: string): string => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
@@ -422,5 +423,87 @@ describe('money —— 档位基准由数据带出（展示层不再写死任何
       null,
       '缺 currency 的项被丢弃，丢光就是认不出',
     );
+  });
+});
+
+describe('points 形态 —— 积分/点数余额（非货币）', () => {
+  const leaf = (data: Record<string, unknown>) => ({
+    ok: true,
+    provider: 'local-gateway',
+    shape: 'points',
+    data,
+  });
+
+  test('toBalanceState：unit + total 必有，full 可选', () => {
+    const s = toBalanceState(leaf({ unit: '积分', total: '800', full: '1000' }));
+    assert.ok(s && s.ok && s.shape === 'points');
+    assert.deepEqual(s.points, { unit: '积分', total: '800', full: '1000' });
+
+    const noFull = toBalanceState(leaf({ unit: '点数', total: '0' }));
+    assert.ok(noFull && noFull.ok && noFull.shape === 'points');
+    assert.equal(noFull.points?.full, undefined, '没给基准 → 不参与档位折算');
+    assert.equal(noFull.points?.total, '0', '0 是合法余额，不像 0 元那样被过滤');
+
+    const emptyFull = toBalanceState(leaf({ unit: '积分', total: '800', full: '' }));
+    assert.ok(emptyFull && emptyFull.ok && emptyFull.shape === 'points');
+    assert.equal(emptyFull.points?.full, undefined, '空串基准 → 视为没给');
+  });
+
+  test('toBalanceState：缺 unit / total → null（认不出，不渲染这一拍）', () => {
+    assert.equal(toBalanceState(leaf({ total: '800' })), null, '缺 unit = 拼不出「800 积分」');
+    assert.equal(toBalanceState(leaf({ unit: '积分' })), null, '缺 total = 没有数字可展示');
+    assert.equal(toBalanceState(leaf({ unit: '', total: '800' })), null);
+    assert.equal(toBalanceState(leaf({ unit: '积分', total: '' })), null);
+    assert.equal(toBalanceState({ ok: true, provider: 'x', shape: 'points' }), null, '缺 data 段');
+  });
+
+  test('balancePercent：按 points.full 折算；没有基准 → undefined（不播档位）', () => {
+    const view = (total: string, full?: string): BalanceView => ({
+      provider: 'local-gateway',
+      shape: 'points',
+      ok: true,
+      points: { unit: '积分', total, full },
+    });
+    assert.equal(balancePercent(view('1000', '1000')), 0);
+    assert.equal(balancePercent(view('800', '1000')), 20);
+    assert.equal(balancePercent(view('0', '1000')), 100);
+    assert.equal(balancePercent(view('1200', '1000')), 0, '超出基准 → 夹到 0');
+    assert.equal(balancePercent(view('-50', '1000')), 100, '负数与 0 等价');
+    assert.equal(balancePercent(view('800')), undefined, '没有基准 → 不播档位');
+    assert.equal(balancePercent(view('800', '0')), undefined, '基准为 0 → 不折算');
+    assert.equal(balancePercent(view('abc', '1000')), undefined, '非法数字 → 不播');
+  });
+
+  test('balanceBubbleView：一行「余额 800 积分」，不套货币符号', () => {
+    assert.deepEqual(
+      balanceBubbleView({
+        provider: 'local-gateway',
+        shape: 'points',
+        ok: true,
+        points: { unit: '积分', total: '800', full: '1000' },
+      }),
+      [{ role: 'label', text: '余额 800 积分' }],
+    );
+    // 单位换了也不会退化成 ¥
+    assert.deepEqual(
+      balanceBubbleView({
+        provider: 'local-gateway',
+        shape: 'points',
+        ok: true,
+        points: { unit: '点数', total: '12' },
+      }),
+      [{ role: 'label', text: '余额 12 点数' }],
+    );
+  });
+
+  test('balanceDetailView / urgentWindow：points 没有窗口可展开、没有告急窗口', () => {
+    const view: BalanceView = {
+      provider: 'local-gateway',
+      shape: 'points',
+      ok: true,
+      points: { unit: '积分', total: '800', full: '1000' },
+    };
+    assert.deepEqual(balanceDetailView(view), balanceBubbleView(view), '展开态与收起态一致');
+    assert.equal(urgentWindow(view), undefined, '积分没有「最紧迫窗口」');
   });
 });

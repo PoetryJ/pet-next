@@ -100,6 +100,8 @@ export function createStandaloneContext(options: StandaloneContextOptions): Stan
   const failures: string[] = [];
   /** effect 释放函数（后注册先释放，与 Cordis 的逆序释放一致） */
   const disposers: Array<() => unknown> = [];
+  /** 插件通过 ctx.provide 挂出去的服务（独立模式没有其他插件，通常为空） */
+  const services = new Map<string, unknown>();
   let disposed = false;
 
   const portOf = (): number => (typeof options.port === 'function' ? options.port() : options.port);
@@ -135,6 +137,17 @@ export function createStandaloneContext(options: StandaloneContextOptions): Stan
         logger.error(`初始化某项失败（已跳过）：${message}`);
         return undefined;
       }
+    },
+    /** 对外服务注册（Cordis 的 ctx.provide 语义）：存起来供 get 读取，返回释放函数 */
+    provide(name: string, value: unknown): () => void {
+      services.set(name, value);
+      return () => {
+        if (services.get(name) === value) services.delete(name);
+      };
+    },
+    /** 服务查找（Cordis 的 ctx.get 语义）：独立模式没有别的插件，通常拿不到 */
+    get(name: string): unknown {
+      return services.get(name);
     },
     /** 独立模式没有 DSH 会话事件：不订阅，工作状态保持空闲 */
     on(): () => void {

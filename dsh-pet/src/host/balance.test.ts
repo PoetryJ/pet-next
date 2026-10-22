@@ -15,10 +15,12 @@ import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 
 import {
+  listBalanceProviders,
   matchBalanceProvider,
   parseAccountBalance,
   parseCommandCode,
   queryBalance,
+  registerBalanceProvider,
   type BalanceResult,
   type WindowsUsage,
 } from './balance/index.ts';
@@ -99,9 +101,10 @@ function goatRoute(url: string): Response {
 describe('BALANCE_PROVIDERS —— commandcode 已登记（凭证 COMMANDCODE_API_KEY）', () => {
   test('provider id 命中 commandcode，凭证 ref 是 COMMANDCODE_API_KEY，且定义自带取数', () => {
     const def = matchBalanceProvider('commandcode');
-    assert.deepEqual(def?.ids, ['commandcode']);
-    assert.deepEqual(def?.credential, { mode: 'ref', ref: 'COMMANDCODE_API_KEY' });
-    assert.equal(typeof def?.fetch, 'function', '服务商定义必须自带取数（加服务商只写一个文件）');
+    assert.ok(def && 'credential' in def, '内置服务商必须带凭证声明');
+    assert.equal(def.id, 'commandcode');
+    assert.deepEqual(def.credential, { mode: 'ref', ref: 'COMMANDCODE_API_KEY' });
+    assert.equal(typeof def.fetch, 'function', '服务商定义必须自带取数（加服务商只写一个文件）');
   });
 
   test('未登记的服务商仍然不命中（→ unsupported，不静默伪造 0）', () => {
@@ -345,9 +348,10 @@ describe('deepseek-account —— DSH 账号路由（走账号服务，不是 HT
 
   test('provider id 命中 deepseek-account，shape 与 deepseek-official 相同，凭证模式为 none（无 API Key）', () => {
     const def = matchBalanceProvider('deepseek-account');
-    assert.deepEqual(def?.ids, ['deepseek-account']);
-    assert.deepEqual(def?.credential, { mode: 'none' }, '账号路由没有 API Key，凭证由账号服务持有');
-    assert.equal(typeof def?.fetch, 'function');
+    assert.ok(def && 'credential' in def, '内置服务商必须带凭证声明');
+    assert.equal(def.id, 'deepseek-account');
+    assert.deepEqual(def.credential, { mode: 'none' }, '账号路由没有 API Key，凭证由账号服务持有');
+    assert.equal(typeof def.fetch, 'function');
   });
 
   test('ready：每个币种一条钱包，total = 充值 + 赠送（与官方 total_balance 同构）', () => {
@@ -514,6 +518,112 @@ describe('deepseek-account —— DSH 账号路由（走账号服务，不是 HT
       provider: 'deepseek-account',
       reason: 'fetch-error',
       message: 'dsh-pet: 账号余额查询失败',
+    });
+  });
+});
+
+describe('注册表 —— 第三方 provider（register / list / match）', () => {
+  /** 一个最小可用的第三方 provider（points 形态） */
+  const plugin = (id: string) => ({
+    id,
+    async fetch({ provider }: { provider: string }) {
+      return {
+        ok: true as const,
+        provider,
+        shape: 'points' as const,
+        data: { unit: '积分', total: '800', full: '1000' },
+      };
+    },
+  });
+
+  test('注册后命中，list 里可见；注销后回落 unsupported', () => {
+    const dispose = registerBalanceProvider(plugin('plugin-a'));
+    try {
+      assert.equal(matchBalanceProvider('plugin-a')?.id, 'plugin-a');
+      assert.ok(listBalanceProviders().external.includes('plugin-a'));
+      assert.ok(listBalanceProviders().builtin.includes('commandcode'), '内置仍在列表里');
+    } finally {
+      dispose();
+    }
+    assert.equal(matchBalanceProvider('plugin-a'), undefined, '注销后不再命中');
+  });
+
+  test('不能覆盖内置 id', () => {
+    assert.throws(() => registerBalanceProvider(plugin('deepseek-official')), /不能覆盖内置服务商/);
+  });
+
+  test('重复注册同一个 id → 抛错（不静默覆盖）', () => {
+    const dispose = registerBalanceProvider(plugin('plugin-b'));
+    try {
+      assert.throws(() => registerBalanceProvider(plugin('plugin-b')), /已被注册/);
+    } finally {
+      dispose();
+    }
+  });
+
+  test('旧注销函数不会误删后来注册的同一个 id', () => {
+    const first = registerBalanceProvider(plugin('plugin-c'));
+    first();
+    const second = registerBalanceProvider(plugin('plugin-c'));
+    first(); // 迟到的注销（旧插件实例的 cleanup）
+    try {
+      assert.equal(matchBalanceProvider('plugin-c')?.id, 'plugin-c');
+    } finally {
+      second();
+    }
+  });
+
+  test('queryBalance：第三方分支不解析 key、不传 resolveAccount', async () => {
+    let keyAsked = 0;
+    let seen: unknown;
+    const dispose = registerBalanceProvider({
+      id: 'plugin-d',
+      async fetch(ctx) {
+        seen = ctx;
+        return { ok: true, provider: ctx.provider, shape: 'points', data: { unit: '积分', total: '1' } };
+      },
+    });
+    try {
+      const r = await queryBalance(
+        'plugin-d',
+        async () => {
+          keyAsked++;
+          return 'k';
+        },
+        async () => ({ status: 'ready' }),
+      );
+      assert.ok(r.ok && r.shape === 'points');
+      assert.equal(keyAsked, 0, '第三方分支不得去解析凭证');
+      assert.deepEqual(seen, { provider: 'plugin-d' }, 'fetch 只能拿到 provider（没有 key / resolveAccount）');
+    } finally {
+      dispose();
+    }
+  });
+
+  test('queryBalance：第三方 fetch 抛错 → fetch-error（与内置同一口径）', async () => {
+    const dispose = registerBalanceProvider({
+      id: 'plugin-e',
+      async fetch() {
+        throw new Error('boom');
+      },
+    });
+    try {
+      assert.deepEqual(await queryBalance('plugin-e', async () => 'k'), {
+        ok: false,
+        provider: 'plugin-e',
+        reason: 'fetch-error',
+        message: 'boom',
+      });
+    } finally {
+      dispose();
+    }
+  });
+
+  test('未注册的 id 仍是 unsupported', async () => {
+    assert.deepEqual(await queryBalance('plugin-unknown', async () => 'k'), {
+      ok: false,
+      provider: 'plugin-unknown',
+      reason: 'unsupported',
     });
   });
 });

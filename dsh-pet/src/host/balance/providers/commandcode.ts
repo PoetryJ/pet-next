@@ -86,7 +86,7 @@ export function parseCommandCode(
 }
 
 export const commandCode: BalanceProvider = {
-  ids: ['commandcode'],
+  id: 'commandcode',
   credential: { mode: 'ref', ref: 'COMMANDCODE_API_KEY' },
   async fetch({ key, provider }) {
     const whoami = obj(

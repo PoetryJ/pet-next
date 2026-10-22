@@ -79,7 +79,7 @@
            内容可用宽度被悄悄缩掉一圈（表现为「明明还有空位却折行」）。与浏览器 bubble.ts 同一口径 */
         box-sizing: content-box;
         min-width: calc(var(--f) * 5.7143);
-        max-width: min(calc(var(--f) * 10.989), 100%);
+        max-width: min(calc(var(--f) * 16), 100%);
         padding: calc(var(--f) * 0.4835) calc(var(--f) * 0.6593);
         border-radius: calc(var(--f) * 0.7692);
         background: rgba(255, 255, 255, 0.92);
@@ -139,6 +139,11 @@
         display: flex;
         justify-content: space-between;
         gap: calc(var(--f) * 0.6593);
+        flex-wrap: wrap;
+      }
+      /* 档位行由多个片段拼成：只允许在片段之间换行，片段内部不拆字 */
+      .pet-bub-row > span {
+        white-space: nowrap;
       }
       .pet-bub-sub {
         font-size: calc(var(--f) * 0.7692);

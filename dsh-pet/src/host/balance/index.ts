@@ -5,26 +5,27 @@
  * - 数据源按「服务商 provider id」寻址（来源 = agentDefaultModel.currentSelection().provider）；
  * - 只登记**有查询接口**的服务商（公开文档化，或第一方 CLI 正在用的未文档化路由）；一个都没有的
  *   服务商不在此表 → 显式 `unsupported`，由上层决定不显示，绝不静默伪造 0 余额；
- * - **一个服务商 = 一个自包含文件**（见 ./providers/）：接口地址、业务常量、响应解析都在它自己那份，
- *   本文件只留注册表与统一的凭证/失败口径。加一个服务商 = 加一个 provider 文件 + 在下面加一行；
+ * - **一个服务商 = 一个自包含文件**（见 ./providers/）：接口地址、业务常量、响应解析都在它自己那份。
+ *   加一个内置服务商 = 加一个 provider 文件 + 在 ./registry.ts 的内置数组里加一行；
+ *   第三方服务商不进这里 —— 走 `registerBalanceProvider`（宿主经 `ctx.provide('petApi7340')` 暴露）；
  * - key 由调用方经 DSH 官方 credentialRef 解析后注入（不直接读 .credentials.yaml）；
  * - 例外：DSH 账号路由（`deepseek-account`，免费额度 / 平台登录）**没有** API Key，它的凭证是
  *   账号服务持有的授权记录，由调用方经 `resolveAccount` 注入查询（同样不直接读凭证存储）；
+ * - 第三方注册的 provider 没有 `credential`：宿主不解析 key、也不给 `resolveAccount`；
  * - 失败口径统一：provider 只负责成功路径，任何失败一律 `throw`，这里统一落成 `fetch-error`。
  */
-import { commandCode } from './providers/commandcode';
-import { deepseekAccount } from './providers/deepseek-account';
-import { deepseekOfficial } from './providers/deepseek-official';
-import { opencodeGo } from './providers/opencode-go';
-import type { AccountBalanceSnapshot, BalanceProvider, BalanceResult } from './types';
+import { BUILTIN_PROVIDERS, matchBalanceProvider } from './registry';
+import type { AccountBalanceSnapshot, BalanceResult } from './types';
 
-/** 已登记的服务商（登记口径见模块头：只收有接口的，其余 → `unsupported`） */
-export const BALANCE_PROVIDERS: BalanceProvider[] = [opencodeGo, commandCode, deepseekOfficial, deepseekAccount];
+export {
+  BUILTIN_PROVIDERS,
+  listBalanceProviders,
+  matchBalanceProvider,
+  registerBalanceProvider,
+} from './registry';
 
-/** provider id → 唯一匹配定义；未匹配返回 undefined（= 不支持查询） */
-export function matchBalanceProvider(provider: string): BalanceProvider | undefined {
-  return BALANCE_PROVIDERS.find((p) => p.ids.includes(provider));
-}
+/** 已登记的内置服务商（保持旧导出名：测试与既有调用方不受影响） */
+export const BALANCE_PROVIDERS = BUILTIN_PROVIDERS;
 
 /**
  * 失败结果（三种 reason 一个出口，避免各处手写字段）。
@@ -37,6 +38,11 @@ function failed(
   message?: string,
 ): BalanceResult {
   return message === undefined ? { ok: false, provider, reason } : { ok: false, provider, reason, message };
+}
+
+/** provider 取数抛错 → 统一的 `fetch-error` 结果（内置与第三方同一口径）。 */
+function fetchFailed(provider: string, e: unknown): BalanceResult {
+  return failed(provider, 'fetch-error', e instanceof Error ? e.message : String(e));
 }
 
 /**
@@ -55,8 +61,18 @@ export async function queryBalance(
   const def = matchBalanceProvider(provider);
   if (!def) return failed(provider, 'unsupported');
 
-  // 凭证前置检查放在 try 之外：解析凭证本身抛错属于意外异常，由调用方（refreshBalance）兜底 ——
-  // 与拆分前的口径一致。账号路由没有 API Key，改为判定「账号服务在不在场」。
+  // 第三方注册的 provider 没有 credential：上下文里只有 provider ——
+  // 宿主不解析 key，也不给 resolveAccount（给了等于允许它顺手查用户的 DSH 账号余额）。
+  if (!('credential' in def)) {
+    try {
+      return await def.fetch({ provider });
+    } catch (e) {
+      return fetchFailed(provider, e);
+    }
+  }
+
+  // 内置路由：凭证前置检查放在 try 之外 —— 解析凭证本身抛错属于意外异常，由调用方（refreshBalance）
+  // 兜底。账号路由没有 API Key，改为判定「账号服务在不在场」。
   let key = '';
   if (def.credential.mode === 'ref') {
     const resolved = await resolveKey(def.credential.ref);
@@ -69,7 +85,7 @@ export async function queryBalance(
   try {
     return await def.fetch({ provider, key, resolveAccount });
   } catch (e) {
-    return failed(provider, 'fetch-error', e instanceof Error ? e.message : String(e));
+    return fetchFailed(provider, e);
   }
 }
 
@@ -85,6 +101,9 @@ export type {
   BalanceSuccess,
   CredentialSpec,
   MoneyBalance,
+  PluginFetchContext,
+  PluginProvider,
+  PointsBalance,
   PricingTier,
   WindowsUsage,
 } from './types';
