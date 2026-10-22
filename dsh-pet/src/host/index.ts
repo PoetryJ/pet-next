@@ -996,22 +996,32 @@ export function apply(ctx: any): void {
   /**
    * 桌面模式是否**曾经**成功启动过（粘性，仅本插件生命周期内有效）。
    * 把「没有桌面宠物就不启动」放宽成「从来没有过桌面宠物才不启动」：桌面宠物被全部改成
-   * web/none 之后，Helper 仍会带着空宠物列表重启并常驻——因为托盘（桌面端显示开关）是此时
-   * 唯一还能把宠物切回桌面的入口，Helper 一退它就没了。
+   * web/none 之后，Helper 仍会带着空宠物列表重启并常驻——只为了把托盘（桌面端显示开关）留着，
+   * 那是此时唯一还能在**桌面侧**把宠物切回桌面的入口，Helper 一退它就没了。
+   * 但它只在托盘还开着时才值得：`trayEnabled` 为 false 时没人需要那个图标，常驻就只是空进程
+   * （0 窗口 / 0 托盘 / 0 Dock），于是判据收紧成 `desktopModeEverActive && trayOn`。
    * 纯浏览器用户（从未有过桌面宠物）不受影响：照旧不探测、不下载、不拉起 Electron。
    */
   let desktopModeEverActive = false;
+  /**
+   * 系统托盘是否开启（main 条目的 trayEnabled，缺失按开）。与 hasDesktopPet 同一次读盘取得——
+   * 它们在同一个判据里一起用，分两次读只会多解析一遍配置。
+   */
+  let trayOn = true;
   const refreshDesktop = (): void => {
     hasDesktopPet = false;
     try {
-      const pets = effectivePetList();
+      const merged = readAllConfig(configPaths);
+      const pets = flattenPetList(merged);
       const desktopPets = pets.filter((p) => isDesktopVisible(p.display));
       hasDesktopPet = desktopPets.length > 0;
+      trayOn = merged.main?.trayEnabled !== false;
       // 诊断日志（issue #168）：设置页显示「仅桌面」却始终没有 helper 进程时，这一行能立刻
       // 分辨「宿主读到的 display 就是 web」还是「读到了 desktop」——此前这个判定完全不可见。
+      // 托盘开关同样只在这一行里可见：加了它之后「为什么没有托盘/为什么留着空进程」都靠这里看。
       ctx.logger?.info?.(
         `[dsh-pet] 桌面判定：pets=${pets.length}，桌面可见=${desktopPets.length}` +
-          `（${desktopPets.map((p) => String(p.id)).join(',') || '无'}）→ hasDesktopPet=${hasDesktopPet}`,
+          `（${desktopPets.map((p) => String(p.id)).join(',') || '无'}）→ hasDesktopPet=${hasDesktopPet} tray=${trayOn}`,
       );
     } catch (e) {
       ctx.logger?.warn?.(`[dsh-pet] 宠物配置非法，桌面模式已跳过：${e instanceof Error ? e.message : String(e)}`);
@@ -1056,7 +1066,8 @@ export function apply(ctx: any): void {
   const launchHelper = (electronPath: string | undefined): void => {
     if (inProcessHost) return; // 应用模式：窗口由本进程建，绝不 spawn
     if (helper || disposed) return;
-    if (!hasDesktopPet && !desktopModeEverActive) return; // 无桌面宠物且桌面模式从未启用过：不启动
+    // 无桌面宠物时：只有「桌面模式曾启用过**且**托盘还开着」才值得为托盘常驻，否则不启动
+    if (!hasDesktopPet && !(desktopModeEverActive && trayOn)) return;
     const port = typeof ctx.webServer?.port === 'number' ? ctx.webServer.port : 0;
     if (!port || port <= 0) {
       // webServer 可能尚未完成监听（OS 分配端口时 port 短暂为 0）：延迟重试。
@@ -1147,14 +1158,17 @@ export function apply(ctx: any): void {
   const startHelper = (): void => {
     if (inProcessHost) return; // 应用模式：不探测、不下载 Electron
     if (helper || electronEnsure || disposed) return;
-    if (!hasDesktopPet && !desktopModeEverActive) {
+    if (!hasDesktopPet && !(desktopModeEverActive && trayOn)) {
       // 诊断日志（issue #168）：这条短路以前完全静默，是「桌面模式凭空消失：无进程、无目录、
       // 无提示」的直接成因。用 info 而非 warn——纯网页用户这是正常状态；只打一次避免刷屏。
+      // 托盘关掉后这里也会命中：没人需要那个图标，空常驻没有意义（见 desktopModeEverActive 注释）。
       if (!noDesktopSkipped) {
         noDesktopSkipped = true;
-        ctx.logger?.info?.('[dsh-pet] 无桌面宠物（display 均为 web/none），已跳过桌面 Helper 启动');
+        ctx.logger?.info?.(
+          `[dsh-pet] 无桌面宠物（display 均为 web/none）且无需保留托盘（tray=${trayOn}），已跳过桌面 Helper 启动`,
+        );
       }
-      return; // 无桌面宠物且桌面模式从未启用过：不启动
+      return;
     }
     // 无图形显示环境（Linux 服务器 / 容器）：直接放弃，不探测、不下载、不拉起。
     // 否则 Electron 会「拉起即崩」，被守护循环反复重启并刷满 core dump。
@@ -1299,7 +1313,7 @@ export function apply(ctx: any): void {
               status: 400,
               obj: {
                 error:
-                  'invalid pet config: expected { pets:[{name?,id,size,balanceEnabled,display,position:{corner,marginX,marginY}}] }（display 为 web/desktop/both/none 之一；可选顶层 notificationsEnabled / whisperImageEnabled / chatImageEnabled 布尔；可选宠物布尔 whisperEnabled / workStatusEnabled / fixedEnabled）',
+                  'invalid pet config: expected { pets:[{name?,id,size,balanceEnabled,display,position:{corner,marginX,marginY}}] }（display 为 web/desktop/both/none 之一；可选顶层 notificationsEnabled / whisperImageEnabled / chatImageEnabled / trayEnabled 布尔；可选宠物布尔 whisperEnabled / workStatusEnabled / fixedEnabled）',
               },
             };
           }

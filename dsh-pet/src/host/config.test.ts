@@ -339,6 +339,23 @@ describe('readUserConfig —— 用户层读取必须容忍 JSONC 注释（保�
   });
 });
 
+describe('saveUserConfig —— 系统托盘开关（trayEnabled）', () => {
+  test('非法值整包拒绝（与其它全局布尔同口径，不静默丢用户输入）', () => {
+    assert.equal(saveUserConfig({ pets: PETS, trayEnabled: 'false' }, undefined), null);
+    assert.equal(saveUserConfig({ pets: PETS, trayEnabled: 0 }, undefined), null);
+  });
+
+  test('请求体没带 → 透传磁盘旧值（不得把用户关掉的托盘又打开）', () => {
+    const out = saveUserConfig({ pets: PETS }, { trayEnabled: false }) as Record<string, unknown>;
+    assert.equal(out.trayEnabled, false);
+  });
+
+  test('请求体带了 → 以请求体为准', () => {
+    const out = saveUserConfig({ pets: PETS, trayEnabled: false }, { trayEnabled: true }) as Record<string, unknown>;
+    assert.equal(out.trayEnabled, false);
+  });
+});
+
 describe('JSONC 配置读取：字符串中的注释标记与转义', () => {
   const prompts = [
     '请原样解释 // 示例 这段文字',
