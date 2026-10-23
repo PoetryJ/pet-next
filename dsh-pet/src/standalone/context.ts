@@ -174,9 +174,17 @@ export function createStandaloneContext(options: StandaloneContextOptions): Stan
         if (services.get(name) === value) services.delete(name);
       };
     },
-    /** 服务查找（Cordis 的 ctx.get 语义）：独立模式没有别的插件，通常拿不到 */
+    /**
+     * 服务查找（Cordis 的 ctx.get 语义）。先查注册表，再回落到 ctx 自身的属性——
+     * 独立模式把可选能力（standaloneAi / shutdownApp）直接挂在伪 ctx 上，而不是走 provide 注册；
+     * 而 host 侧统一用 `ctx.get(name, false)` 软取（DSH 的严格 getter 不允许裸读未 inject 的服务）。
+     * 不回落的话，独立模式会把**本来就有的能力**判成没有：自动碎碎念被当成「未授权」、
+     * 托盘退出的菜单项直接消失。
+     */
     get(name: string): unknown {
-      return services.get(name);
+      const registered = services.get(name);
+      if (registered !== undefined) return registered;
+      return (this as unknown as Record<string, unknown>)[name];
     },
     /** 独立模式没有 DSH 会话事件：不订阅，工作状态保持空闲 */
     on(): () => void {

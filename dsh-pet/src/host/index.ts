@@ -103,7 +103,7 @@ import { resolveDshHome } from '@deepseek-ai/dsh-home-paths';
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
 import { listBalanceProviders, queryBalance, registerBalanceProvider } from './balance/index';
 import { generateWhisper } from './whisper';
-import { automaticWhisperSchedule } from './whisper-policy';
+import { automaticWhisperSchedule, type StandaloneWhisperPolicy } from './whisper-policy';
 import { generateChat, type ChatMemoryMessage } from './chat';
 import { configuredModel } from './model-selection';
 import { limitPool, pickMeme, readMemePool } from './memes';
@@ -341,6 +341,28 @@ export function apply(ctx: any): void {
       'dsh-pet: log file',
     );
   }
+  /**
+   * 软取宿主提供的**可选服务**（DSH 的 `ctx.get(name, required)` 语义：缺失返回 undefined，不抛）。
+   *
+   * 为什么不直接读 `ctx.standaloneAi`：DSH 的 ctx 是**严格 getter**，读一个没写进 `inject`
+   * 的服务会**抛异常**（`cannot get property "standaloneAi" without inject`），而不是返回 undefined。
+   * 独立模式独有的两个能力都没进 inject，裸读在 DSH 里必然炸：
+   *   - 碎碎念周期 tick 每拍都抛 → catch 后不再排下一拍 → 自动碎碎念永久停摆（7440b96 起）；
+   *   - /quit 的 `typeof ctx.shutdownApp` 每个请求都抛 → GET /quit 回 500，而不是 {canQuit:false}。
+   * 与下面余额里取 `deepseekAccount` 的写法同源：可选服务一律软取，不进 inject。
+   *
+   * 最小 fake ctx（测试里的普通对象）没有 get：回落成属性读取，语义一致（缺字段即 undefined）。
+   */
+  const optionalService = (name: string): unknown => {
+    const get = (ctx as { get?: (n: string, required?: boolean) => unknown }).get;
+    if (typeof get === 'function') return get.call(ctx, name, false);
+    return (ctx as unknown as Record<string, unknown>)[name];
+  };
+
+  /** 独立模式的碎碎念授权策略（可选能力）：DSH 宿主里是 undefined → 回落到只看 pet.whisperEnabled。 */
+  const standaloneAiPolicy = (): StandaloneWhisperPolicy | undefined =>
+    optionalService('standaloneAi') as StandaloneWhisperPolicy | undefined;
+
   // 用户主配置（可编辑层）与文件宠物目录；配置读取/合并统一走 readAllConfig（./config）。
   // 主配置是 **JSONC**（main-config.jsonc）——与包内默认 config.jsonc 同名同格式：
   // 「同步」写进去的就是带注释的原文，扩展名如实反映内容（旧版 main-config.json 只读回落 + 启动迁移）
@@ -859,6 +881,12 @@ export function apply(ctx: any): void {
       return result;
     }
     state.writePet(petId, 'say', result.image ? { text: result.text, image: result.image } : { text: result.text });
+    // 成功也留一行（此前只有失败有日志）：调度拍了、生成也回来了，但「成功」在文件里毫无痕迹，
+    // 于是「没触发」与「触发了并且成功」无法区分。
+    log.info(
+      `[dsh-pet] 碎碎念生成成功 pet=${petId}，${result.text.length} 字` +
+        (result.image ? `，配图=${result.image}` : ''),
+    );
     // 文本随返回值带出，且与刚写进叶子的**是同一个变量**：两条出口给同一份文本，不是一个真相两个版本
     return { ok: true, text: result.text, ...(result.image ? { image: result.image } : {}) };
   };
@@ -970,6 +998,9 @@ export function apply(ctx: any): void {
   };
 
   const refreshBalance = async (manual = false): Promise<void> => {
+    // 开始 + 结果各一行：此前成功路径**完全静默**，logs.txt 里既看不出「有没有查」，
+    // 也看不出「查了但余额没变」，排错只能靠人肉盯 /state。
+    log.info(`[dsh-pet] 余额刷新开始（${manual ? '手动' : '周期'}）`);
     const mark = <T>(v: T): T | (T & { manual: true }) => (manual ? { ...v, manual: true } : v);
     try {
       const sel = ctx.agentDefaultModel.currentSelection();
@@ -989,16 +1020,28 @@ export function apply(ctx: any): void {
         },
       );
       state.writeSection('balance', mark(result));
+      // 失败也写 S（前端弹文字说明），日志同样留一条：否则「查了、失败了」与「根本没查」
+      // 在文件里长得一模一样。成功用 info，失败用 warn（亮度不同，扫一眼就能分辨）。
+      if (result.ok) {
+        log.info(`[dsh-pet] 余额刷新成功 provider=${result.provider}（${result.shape}）`);
+      } else {
+        log.warn(
+          `[dsh-pet] 余额刷新失败 provider=${result.provider} reason=${result.reason}` +
+            (result.message ? ' ' + result.message : ''),
+        );
+      }
     } catch (e) {
+      const message = e instanceof Error ? e.message : String(e);
       state.writeSection(
         'balance',
         mark({
           ok: false,
           provider: 'unknown',
           reason: 'fetch-error',
-          message: e instanceof Error ? e.message : String(e),
+          message,
         }),
       );
+      log.warn('[dsh-pet] 余额刷新异常：' + message);
     }
   };
 
@@ -1492,7 +1535,10 @@ export function apply(ctx: any): void {
     // DSH 内的桌面模式没有它 —— 关掉整个 DSH 不该由一只宠物的托盘决定，故 canQuit:false、菜单项不出现。
     // 不调 syncDesktop：退出不是重启，reload 那条守卫仍要求它恰好出现 4 次。
     if (rest === 'quit') {
-      const canQuit = typeof ctx.shutdownApp === 'function';
+      // 能力按**请求时**软取：DSH 宿主没有这个服务（裸读属性会抛，见 optionalService 的说明），
+      // 于是拿到 undefined → canQuit:false，退出菜单项不出现；独立模式取得到 → 菜单可用。
+      const quit = optionalService('shutdownApp');
+      const canQuit = typeof quit === 'function';
       if (method === 'GET') return { kind: 'json', status: 200, obj: { canQuit } };
       if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
       // 失败按动作端点口径回 200 + 结构化结果（与 /pet-display 一致）：不支持退出不是协议层错误。
@@ -1507,7 +1553,7 @@ export function apply(ctx: any): void {
       // 推到下一拍再执行，让本次 200 先写出去。
       setImmediate(() => {
         try {
-          ctx.shutdownApp('托盘退出');
+          (quit as (reason: string) => void)('托盘退出');
         } catch (e: unknown) {
           log.warn(`[dsh-pet] 托盘退出失败：${e instanceof Error ? e.message : String(e)}`);
         }
@@ -2654,9 +2700,15 @@ export function apply(ctx: any): void {
         sec = balancePeriodSec(cfg);
         // 没有任何启用余额的宠物 → 不查（省外部调用）；配置改了下一拍自然跟上
         if (flattenPetList(cfg).some((p) => p.balanceEnabled === true)) await refreshBalance();
-      } catch {
+        else log.info('[dsh-pet] 余额周期跳过：没有启用余额的宠物');
+      } catch (e) {
         // 读配置抛错 = 安装损坏（readAllConfig 只在**内置默认**缺失/损坏时抛，用户层写坏只会告警回退）：
         // 不再重排——每 30 分钟重试一次没有意义，而且会白占一个常驻定时器。修好安装后重启 DSH 即可。
+        // 留一行 warn：这条路径会让余额周期**永久停摆**，此前全静默，与「查了但没变化」无法区分。
+        log.warn(
+          '[dsh-pet] 余额周期读配置失败，周期刷新已停止（重启 DSH 后恢复）：' +
+            (e instanceof Error ? e.message : String(e)),
+        );
         return;
       }
       arm(sec);
@@ -2685,6 +2737,11 @@ export function apply(ctx: any): void {
         const cfg = readAllConfig(configPaths);
         const now = Date.now();
         let min = Infinity;
+        // 每一拍的账：检查几只、到点几只、没到点几只、跳过几只（带原因）。只用于日志，调度行为不变。
+        let checked = 0;
+        let due = 0;
+        let notDue = 0;
+        const skipped: string[] = [];
         for (const pet of flattenPetList(cfg)) {
           const petId = String(pet.id ?? '');
           if (!petId) continue;
@@ -2692,28 +2749,54 @@ export function apply(ctx: any): void {
           // 搜索同一集合）；查不到只可能是两者口径漂移——跳过这一拍，**不猜也不兜底 main**。
           const found = findPetInstance(cfg, petId);
           if (!found) continue;
+          checked += 1;
           const schedule = automaticWhisperSchedule(
-            ctx.standaloneAi,
+            standaloneAiPolicy(),
             pet.whisperEnabled === true,
             whisperPeriodSec(found.conf),
           );
-          if (!schedule.enabled) continue;
+          if (!schedule.enabled) {
+            // 两种「没启用」分开记：宠物自己关掉，与独立模式没授权，处理方式完全不同
+            skipped.push(
+              petId + ': ' + (pet.whisperEnabled === true ? '独立模式未授权自动碎碎念' : 'whisperEnabled=false'),
+            );
+            continue;
+          }
           const sec = schedule.periodSec;
           min = Math.min(min, sec);
-          if (now - (lastWhisperAt.get(petId) ?? 0) < sec * 1000) continue;
+          if (now - (lastWhisperAt.get(petId) ?? 0) < sec * 1000) {
+            notDue += 1;
+            continue;
+          }
           // 占用锁：这只宠物被占用时**跳过这一拍**——不生成也不补（碎碎念是瞬时事件，过期即弃）。
           // 而且**不推进 lastWhisperAt**：锁一放开，下一拍就该照常说。
           // 宿主侧只挡这一处 **per-pet** 来源；两个**全局段**（balance / workStatus）不在这里挡——
           // 它们所有宠物共用一份，宿主"跳过写入"会连带静音别的宠物；那两处由渲染端按宠物忽略
           // （见 src/client/pet.ts 的冻结判定），代价是叶子照常推进、渲染端自己不看。
-          if (lock.locked(petId)) continue;
+          if (lock.locked(petId)) {
+            skipped.push(petId + ': 占用锁跳过');
+            continue;
+          }
+          due += 1;
+          log.info(`[dsh-pet] 碎碎念到点 pet=${petId}（周期 ${sec}s），开始生成`);
           lastWhisperAt.set(petId, now);
           // 不 await：生成要几秒，别把调度拍拖住（每只宠物独立生成，互不阻塞）
           void publishWhisper(petId).catch(() => {});
         }
         if (Number.isFinite(min)) next = min;
-      } catch {
-        // 读配置抛错 = 安装损坏（同余额定时器）：不再重排，别白占常驻句柄
+        // 每拍一行汇总：调度是否还在跑、下一拍多久、为什么跳过，全在这一行里（300s 一条，量可忽略）
+        log.info(
+          `[dsh-pet] 碎碎念调度：检查 ${checked} 只 → 到点 ${due}、未到点 ${notDue}、跳过 ${skipped.length}` +
+            (skipped.length > 0 ? `（${skipped.join('；')}）` : '') +
+            `；下一拍 ${next}s`,
+        );
+      } catch (e) {
+        // 读配置抛错 = 安装损坏（同余额定时器）：不再重排，别白占常驻句柄。
+        // 但必须留一行 warn：这条路径会让自动碎碎念**永久停摆**，此前它是全静默的。
+        log.warn(
+          '[dsh-pet] 碎碎念调度读配置失败，自动碎碎念已停止（重启 DSH 后恢复）：' +
+            (e instanceof Error ? e.message : String(e)),
+        );
         return;
       }
       arm(next);
