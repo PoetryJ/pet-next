@@ -6,14 +6,17 @@
  *
  * 数据形状（两层，没有第三层）：
  *
- *   owners: Map<owner, Map<label, petId | null>>
+ *   owners: Map<owner, { target, items: Map<label, petId | null> }>
  *           键 = owner（身份键，同时也是一级分组名）
- *           值 = label → 触发它的宠物 id；null = 没点过
+ *           target = 这个 owner 的菜单项显示在哪个端（web / desktop / both；缺省 both）
+ *           items  = label → 触发它的宠物 id；null = 没点过
  *
  * 语义要点（实现前先读完，都是刻意的）：
  *  - **注册 = 整体覆盖**：该 owner 的菜单项 = 本次 labels 事件（不在列表里的项连同触发标记一起
  *    丢弃）。没有单独的删除接口——注销就再注册一个空列表？不，空列表按非法处理（400），
  *    所以"不想要了"只能注册一份新的（或等进程重启）。这是有意的：菜单项生命周期与插件一致。
+ *  - **端归属是 owner 级**：一次注册一个 `target`，跟 labels 一起被整体覆盖，不按单条菜单项分开。
+ *    缺省 `both`——加这个字段之前的行为，老调用方（只传 owner + labels）一个字都不用改。
  *  - **同 owner 内 label 唯一**：重复 label 去重（保留第一次出现的顺序）。
  *  - **点击是闩锁不是队列**：同一项连点两次，查询只看到"点过"一次；不计数、不排序。
  *  - **查询即清空**（读取即消费）：返回后把这些标记全部清成 null。没有确认、没有重投——
@@ -44,7 +47,18 @@ const CONTROL_CHARS = /[\x00-\x1f\x7f]/;
 export interface MenuItemSnapshot {
   owner: string;
   label: string;
+  /** 这一项该出现在哪个端：两端各自按自己的端过滤（shared/menu 的 readMenuItems） */
+  target: MenuTarget;
 }
+
+/** 菜单项显示在哪个端 */
+export type MenuTarget = 'web' | 'desktop' | 'both';
+
+/** 合法的 target 取值 */
+const MENU_TARGETS: ReadonlySet<string> = new Set<string>(['web', 'desktop', 'both']);
+
+/** 缺省 target = 两端都显示（= 加这个字段之前的行为） */
+const DEFAULT_TARGET: MenuTarget = 'both';
 
 /** 注册结果：业务失败按插件口径回 `{ ok:false, reason, message }`（HTTP 200），不是 400 */
 export type MenuRegisterResult = { ok: true } | { ok: false; reason: string; message: string };
@@ -60,8 +74,8 @@ function displayText(value: unknown, max: number): string | null {
 export class MenuRegistry {
   // 用 declare + 构造器赋值（不用类字段初始化器）：类字段会降级出 @oxc-project/runtime 外部
   // helper，而它是未声明的依赖，会被 prepack 门禁拦下（同 src/host/state.ts 的约定）。
-  /** owner → (label → 触发它的 petId；null = 未触发) */
-  declare private readonly owners: Map<string, Map<string, string | null>>;
+  /** owner → { target, items }；items = label → 触发它的 petId（null = 未触发） */
+  declare private readonly owners: Map<string, { target: MenuTarget; items: Map<string, string | null> }>;
   /** owner → 挂在该 owner 上的长轮询唤醒回调 */
   declare private readonly waiters: Map<string, Set<() => void>>;
 
@@ -71,14 +85,15 @@ export class MenuRegistry {
   }
 
   /**
-   * 注册（整体覆盖）：`{ owner, labels: string[] }`。
+   * 注册（整体覆盖）：`{ owner, labels: string[], target?: 'web' | 'desktop' | 'both' }`。
    *
    * 覆盖的粒度是 **owner 的全部菜单项**，不是逐项 upsert：这样注册方每次都能用一份完整列表
    * 描述"我现在有什么"，不必关心上次注册了什么，也不会留下已下线的僵尸项。
+   * `target` 选填、缺省 `both`（老调用方零改动）；它跟 labels 一起被整体覆盖。
    */
   register(raw: unknown): MenuRegisterResult {
     if (!raw || typeof raw !== 'object' || Array.isArray(raw)) {
-      return { ok: false, reason: 'bad-request', message: 'body 必须是 { owner, labels }' };
+      return { ok: false, reason: 'bad-request', message: 'body 必须是 { owner, labels, target? }' };
     }
     const body = raw as Record<string, unknown>;
     const owner = displayText(body.owner, OWNER_MAX);
@@ -110,7 +125,21 @@ export class MenuRegistry {
     if (!this.owners.has(owner) && this.owners.size >= OWNERS_MAX) {
       return { ok: false, reason: 'too-many-owners', message: `最多 ${OWNERS_MAX} 个 owner` };
     }
-    this.owners.set(owner, new Map(labels.map((label) => [label, null] as const)));
+    // target 选填：不写 / null = both（老调用方只传 owner + labels 时一个字都不用改）；
+    // 写了就必须是三个字面量之一——非法值只报错、不猜，免得第三方以为注册成功却看不到菜单。
+    const rawTarget = body.target;
+    let target: MenuTarget = DEFAULT_TARGET;
+    if (rawTarget !== undefined && rawTarget !== null) {
+      if (typeof rawTarget !== 'string' || !MENU_TARGETS.has(rawTarget)) {
+        return {
+          ok: false,
+          reason: 'invalid-target',
+          message: 'target 只能是 web / desktop / both（不写 = both）',
+        };
+      }
+      target = rawTarget as MenuTarget;
+    }
+    this.owners.set(owner, { target, items: new Map(labels.map((label) => [label, null] as const)) });
     return { ok: true };
   }
 
@@ -126,9 +155,9 @@ export class MenuRegistry {
     if (owner === null) {
       return { ok: false, reason: 'invalid-owner', message: `owner 必须是 1–${OWNER_MAX} 字符的字符串（禁控制字符）` };
     }
-    const items = this.owners.get(owner);
-    if (!items) return { ok: true, removed: 0 };
-    const removed = items.size;
+    const entry = this.owners.get(owner);
+    if (!entry) return { ok: true, removed: 0 };
+    const removed = entry.items.size;
     this.owners.delete(owner);
     const waiters = this.waiters.get(owner);
     this.waiters.delete(owner);
@@ -139,8 +168,8 @@ export class MenuRegistry {
   /** 全量快照（写进 state；顺序 = 注册顺序 + 列表顺序，两端渲染顺序与它一致） */
   snapshot(): MenuItemSnapshot[] {
     const out: MenuItemSnapshot[] = [];
-    for (const [owner, items] of this.owners) {
-      for (const label of items.keys()) out.push({ owner, label });
+    for (const [owner, entry] of this.owners) {
+      for (const label of entry.items.keys()) out.push({ owner, label, target: entry.target });
     }
     return out;
   }
@@ -156,9 +185,9 @@ export class MenuRegistry {
     const owner = typeof body.owner === 'string' ? body.owner : '';
     const label = typeof body.label === 'string' ? body.label : '';
     const pet = typeof body.pet === 'string' ? body.pet.trim() : '';
-    const items = this.owners.get(owner);
-    if (!items || !items.has(label) || pet === '') return { ok: true, delivered: false };
-    items.set(label, pet);
+    const entry = this.owners.get(owner);
+    if (!entry || !entry.items.has(label) || pet === '') return { ok: true, delivered: false };
+    entry.items.set(label, pet);
     const waiters = this.waiters.get(owner);
     if (waiters) for (const wake of [...waiters]) wake();
     return { ok: true, delivered: true };
@@ -171,10 +200,10 @@ export class MenuRegistry {
    * 超时后照常返回全 null 的映射。owner 不存在 → null（路由回 404，调用方据此知道要重新注册）。
    */
   async poll(owner: string, waitMs: number): Promise<Record<string, string | null> | null> {
-    const items = this.owners.get(owner);
-    if (!items) return null;
+    const entry = this.owners.get(owner);
+    if (!entry) return null;
 
-    if (waitMs > 0 && !hasFired(items)) {
+    if (waitMs > 0 && !hasFired(entry.items)) {
       await new Promise<void>((resolve) => {
         const set = this.waiters.get(owner) ?? new Set<() => void>();
         this.waiters.set(owner, set);
@@ -197,9 +226,9 @@ export class MenuRegistry {
     const current = this.owners.get(owner);
     if (!current) return null;
     const out: Record<string, string | null> = {};
-    for (const [label, pet] of current) {
+    for (const [label, pet] of current.items) {
       out[label] = pet;
-      current.set(label, null); // 读取即消费
+      current.items.set(label, null); // 读取即消费
     }
     return out;
   }

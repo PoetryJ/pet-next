@@ -88,20 +88,29 @@ export interface MenuMoreItem {
 export const MORE_MENU_LABEL = '更多';
 
 /**
- * 从 `/state` 的 `sections.menu.data` 里读出第三方菜单项。
+ * 从 `/state` 的 `sections.menu.data` 里读出**本端**要显示的第三方菜单项。
  *
  * 两侧（浏览器 / 桌面）共用同一份解析：快照来自网络，字段一律按"可能不存在"处理——
  * 非法条目静默丢弃，绝不让一条坏数据把整个右键菜单搞崩（菜单是高频交互入口）。
+ *
+ * `surface` = 本端身份（浏览器传 `web`，桌面 helper 传 `desktop`）：条目上的 `target` 等于它
+ * 或等于 `both` 才收。`target` 缺失或不是三个字面量之一 → 按 `both` 处理（老宿主没有这个字段，
+ * 宁可在两端都显示，也不要让一个正在用的第三方菜单凭空消失）。
  */
-export function readMenuItems(data: unknown): MenuMoreItem[] {
+export function readMenuItems(data: unknown, surface: 'web' | 'desktop'): MenuMoreItem[] {
   if (!data || typeof data !== 'object') return [];
   const items = (data as { items?: unknown }).items;
   if (!Array.isArray(items)) return [];
   const out: MenuMoreItem[] = [];
   for (const item of items) {
     if (!item || typeof item !== 'object') continue;
-    const owner = (item as Record<string, unknown>).owner;
-    const label = (item as Record<string, unknown>).label;
+    const rec = item as Record<string, unknown>;
+    // 端过滤：只认三个字面量，其余（缺失 / 写坏）一律当 both
+    const rawTarget = rec.target;
+    const target = rawTarget === 'web' || rawTarget === 'desktop' || rawTarget === 'both' ? rawTarget : 'both';
+    if (target !== 'both' && target !== surface) continue;
+    const owner = rec.owner;
+    const label = rec.label;
     if (typeof owner === 'string' && owner !== '' && typeof label === 'string' && label !== '') {
       out.push({ owner, label });
     }

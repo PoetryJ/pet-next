@@ -1481,7 +1481,8 @@ export function apply(ctx: any): void {
     }
 
     // 第三方右键菜单（供别的插件注册自己的菜单项）。四个方法：
-    //   POST   /menu/item    注册（该 owner 的菜单项**整体覆盖**）
+    //   POST   /menu/item    注册（该 owner 的菜单项**整体覆盖**；body = { owner, labels, target? }，
+    //                        target 选填 web / desktop / both，缺省 both）
     //   DELETE /menu/item    清除该 owner 的全部菜单项（幂等）
     //   GET    /menu/events  查询触发（读取即消费；?wait= 长轮询）
     //   POST   /menu/click   渲染端点击上报（内部通道，第三方不调）

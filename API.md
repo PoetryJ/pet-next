@@ -74,7 +74,7 @@ dsh-pet 的宿主半侧向 DSH 自己的 Web 服务注册了**一条前缀路由
 
 | 接口 | 功能 |
 | --- | --- |
-| `POST /dsh-pet-7340/menu/item` | **注册菜单项**（该 `owner` 的菜单项整体覆盖）：`{ owner, labels: ["弹弓","钓鱼"] }` |
+| `POST /dsh-pet-7340/menu/item` | **注册菜单项**（该 `owner` 的菜单项整体覆盖）：`{ owner, labels: ["弹弓","钓鱼"], target?: "web"\|"desktop"\|"both" }`，`target` 不写 = 两端都显示 |
 | `DELETE /dsh-pet-7340/menu/item?owner=` | **清除菜单项**（该 `owner` 的全部项，幂等）：回 `{ ok: true, removed: 2 }` |
 | `GET /dsh-pet-7340/menu/events?owner=&wait=` | **查询触发**（读取即清空，`wait` = 长轮询毫秒数）：回 `{ 弹弓: "main", 钓鱼: null }` |
 | `POST /dsh-pet-7340/menu/click` | 渲染端上报点击（**内部通道**，第三方不用调） |

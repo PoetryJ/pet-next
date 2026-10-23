@@ -2408,7 +2408,7 @@ export function makePetUI(rt: {
           baseline = flattenCounters(s); // 首拉：只记基线，不渲染
           // 菜单项是**当前状态**不是"事件"，首拉必须装上：否则刷新页面后第三方菜单会一直是空的，
           // 要等下一次注册（写 sections.menu）才出现。
-          menuItemsRef.current = readMenuItems(s.sections.menu?.data);
+          menuItemsRef.current = readMenuItems(s.sections.menu?.data, 'web');
           return;
         }
         for (const { path, leaf } of takeChanged(s, baseline)) {
@@ -2433,7 +2433,7 @@ export function makePetUI(rt: {
             notifyFromFrame(leaf.data);
           } else if (path === 'sections.menu') {
             // 第三方菜单注册表快照：只更新 ref（菜单在右键那一刻现拼），不触发任何渲染
-            menuItemsRef.current = readMenuItems(leaf.data);
+            menuItemsRef.current = readMenuItems(leaf.data, 'web');
           } else if (path.startsWith('pets.') && path.endsWith('.say')) {
             // 说话叶子：路径形如 pets.<id>.say。宠物 id **允许含点号**，所以按前缀/后缀切片，
             // 绝不 split('.')（那会把 id 切碎、派发给不存在的宠物）。

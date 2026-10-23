@@ -385,7 +385,7 @@ function applyLockLeaf(petId, leaf) {
 /** 第三方菜单快照叶子 → 灌进各宠物（右键菜单据此拼「更多」）。
  *  与上面那些"指令"不同，这是**当前状态**：注册/覆盖时写一次，所有窗口共用同一份快照。 */
 function applyMenuLeaf(leaf) {
-  const items = S.readMenuItems(leaf ? leaf.data : null);
+  const items = S.readMenuItems(leaf ? leaf.data : null, 'desktop');
   for (const s of sprites) s.menuItems = items;
 }
 
