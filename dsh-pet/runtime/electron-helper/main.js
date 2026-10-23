@@ -77,6 +77,8 @@ app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 // 双击启动的用户没有终端可按 Ctrl+C，托盘上必须有一个「退出」，否则只能去任务管理器杀进程。
 // DSH 内的桌面模式不设这个变量，托盘形态与 userData 目录都保持原样。
 const APP_MODE = process.env.DSH_PET_APP_MODE === '1';
+// Captured only for in-process app requests; never exposed to renderer URLs or logs.
+const APP_TOKEN = APP_MODE ? process.env.DSH_PET_APP_TOKEN : undefined;
 // 名字必须与 src/host/storage-paths.ts 的 DESKTOP_APP_NAME 逐字一致
 // （storage-paths.test.ts 会直接读本文件比对，改名不同步测试就红）。
 app.setName('dsh-pet-electron-helper');
@@ -691,7 +693,10 @@ async function hostRequest(method, url, body) {
   if (BRIDGE) return bridgeRequest(method, url, body);
   const resp = await fetch(ORIGIN + url, {
     method,
-    headers: body ? { 'content-type': 'application/json' } : undefined,
+    headers: {
+      ...(body ? { 'content-type': 'application/json' } : {}),
+      ...(APP_TOKEN ? { 'X-DSH-Pet-Token': APP_TOKEN } : {}),
+    },
     body,
   });
   return { status: resp.status, body: await resp.text() };
