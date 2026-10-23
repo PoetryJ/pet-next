@@ -1456,6 +1456,36 @@ export function apply(ctx: any): void {
       return { kind: 'json', status: 200, obj: { reloading: true } };
     }
 
+    // 托盘「退出」（桌面 Helper 的托盘菜单 → GET 探能力 / POST 执行，issue #178）。
+    // 为什么不是 helper 自己 app.quit()：BRIDGE 模式下 helper 由宿主拉起，它退出会被**当成崩溃**按
+    // 指数退避重启（helper-process.ts），点了只是闪一下、进程还在；必须由宿主执行「停 Helper + 关服务 +
+    // 退出」。这个能力只有独立模式提供（standalone 伪 ctx 上的 shutdownApp，见 src/standalone/context.ts）：
+    // DSH 内的桌面模式没有它 —— 关掉整个 DSH 不该由一只宠物的托盘决定，故 canQuit:false、菜单项不出现。
+    // 不调 syncDesktop：退出不是重启，reload 那条守卫仍要求它恰好出现 4 次。
+    if (rest === 'quit') {
+      const canQuit = typeof ctx.shutdownApp === 'function';
+      if (method === 'GET') return { kind: 'json', status: 200, obj: { canQuit } };
+      if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+      // 失败按动作端点口径回 200 + 结构化结果（与 /pet-display 一致）：不支持退出不是协议层错误。
+      if (!canQuit) {
+        return {
+          kind: 'json',
+          status: 200,
+          obj: { ok: false, reason: 'unsupported', message: '宿主未提供退出能力（DSH 内请关闭桌面模式）' },
+        };
+      }
+      // 不 await：收尾会先停掉发起请求的这个 Helper，响应不保证送达（与 /reload 同一处境）。
+      // 推到下一拍再执行，让本次 200 先写出去。
+      setImmediate(() => {
+        try {
+          ctx.shutdownApp('托盘退出');
+        } catch (e: unknown) {
+          ctx.logger?.warn?.(`[dsh-pet] 托盘退出失败：${e instanceof Error ? e.message : String(e)}`);
+        }
+      });
+      return { kind: 'json', status: 200, obj: { ok: true } };
+    }
+
     // 配置文件路径 + 存储位置清单（设置页「高级配置」与「卸载与存储」展示用）
     if (rest === 'config/meta') {
       return {

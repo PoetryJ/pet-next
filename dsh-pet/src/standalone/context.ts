@@ -60,6 +60,15 @@ export interface StandaloneContextOptions {
   routes?: RegisteredRoute[];
   ai?: StandaloneModelService;
   authenticatedUrl?: (baseUrl: string) => string;
+  /**
+   * 「关掉整个独立模式进程」的能力（桌面 Helper 托盘的「退出」，issue #178）。
+   *
+   * 只有独立模式有这个东西：helper 自己 `app.quit()` 会被宿主的崩溃重启逻辑当成异常退出、
+   * 750ms 后原地复活，真正的退出必须让本进程走 `/shutdown` 那条收尾路径
+   * （`context.dispose()` → 停 Helper → 关服务 → `exit 0`）。DSH 内的桌面模式**不挂**这个字段：
+   * 关掉整个 DSH 不该由一只宠物的托盘决定，宿主路由据此回 `canQuit:false`（见 src/host/index.ts 的 /quit）。
+   */
+  shutdown?: (reason: string) => void;
 }
 
 export interface StandaloneContext {
@@ -165,6 +174,9 @@ export function createStandaloneContext(options: StandaloneContextOptions): Stan
           },
         }
       : {}),
+    // 托盘「退出」的能力开关：宿主路由（src/host/index.ts 的 /quit）只看这个字段在不在，
+    // 不关心它内部怎么停机——独立模式复用 cli.ts 已有的 /shutdown 收尾，不写第二套停机逻辑。
+    ...(options.shutdown ? { shutdownApp: options.shutdown } : {}),
     commands: { register: (): (() => void) => () => {} },
     agentDefaultModel: {
       currentSelection: (): { provider: string; model: string } =>
