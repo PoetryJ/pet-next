@@ -19,6 +19,8 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
+import { createFileLogger } from '../host/log-file';
+
 /** 独立模式下余额路由报出的服务商 id（未登记 → `unsupported`，气泡里能看到它） */
 export const STANDALONE_PROVIDER = 'standalone';
 
@@ -82,8 +84,26 @@ export interface StandaloneContext {
   dispose(): Promise<void>;
 }
 
-/** 默认日志器：直接写控制台，格式与插件自身的 `[dsh-pet]` 前缀区分开 */
-export function createStandaloneLogger(): StandaloneLogger {
+/** `createStandaloneLogger` 的选项 */
+export interface StandaloneLoggerOptions {
+  /**
+   * 落盘文件（单文件、按大小截断，见 ../host/log-file）。
+   * 不给则只写控制台——`--check` 这类短命令不需要留文件。
+   */
+  file?: string;
+}
+
+/** 默认日志器：给了 file 就写成文件日志器，否则直接写控制台，格式与插件自身的 `[dsh-pet]` 前缀区分开 */
+export function createStandaloneLogger(options: StandaloneLoggerOptions = {}): StandaloneLogger {
+  if (options.file) {
+    // 这个 logger 会挂到伪 ctx.logger 上：插件（host/index.ts）据此复用同一个文件出口，
+    // 不再自建第二个写同一文件的 logger（两份缓冲/截断会互相踩）。
+    return createFileLogger({
+      file: options.file,
+      base: console,
+      debugEnabled: process.env.DSH_PET_LOG_DEBUG === '1',
+    });
+  }
   const stamp = (): string => new Date().toISOString().replace('T', ' ').slice(0, 19);
   const write = (level: string, message: string): void => {
     console.log(`[dsh-pet-standalone ${stamp()}] ${level} ${message}`);

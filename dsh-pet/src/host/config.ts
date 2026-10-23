@@ -37,6 +37,8 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
+import { defaultLog } from './log-file';
+
 /** 位置角落白名单 */
 const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const;
 const CORNER_SET: ReadonlySet<string> = new Set(CORNERS);
@@ -113,7 +115,7 @@ const warnedKeys = new Set<string>();
 function warnOnce(key: string, message: string): void {
   if (warnedKeys.has(key)) return;
   warnedKeys.add(key);
-  console.warn('dsh-pet: ' + message);
+  defaultLog('warn', 'dsh-pet: ' + message);
 }
 
 /** 仅删除字符串之外的 JSONC 注释，保留字符串转义、换行与相邻 JSON token 的分隔。 */
@@ -709,7 +711,7 @@ export function saveUserConfig(
     // 显示名：可重复不校验唯一；缺失/留空/非字符串 → 按该宠物 id 处理（兼容旧配置）并告警
     let name = typeof pp.name === 'string' ? pp.name.trim() : '';
     if (!name) {
-      console.warn(`dsh-pet: pet「${id}」缺少 name，已按默认 ${id}（宠物 id）处理`);
+      defaultLog('warn', `dsh-pet: pet「${id}」缺少 name，已按默认 ${id}（宠物 id）处理`);
       name = id;
     }
     const balanceEnabled = pp.balanceEnabled;

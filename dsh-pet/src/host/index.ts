@@ -116,6 +116,7 @@ import {
 } from './broadcast';
 import { decideAnim } from './anim';
 import { LockStore } from './lock';
+import { createFileLogger, isFileLogger, setDefaultLogger } from './log-file';
 import { MENU_WAIT_MAX_MS, MenuRegistry } from './menu';
 import { decidePosition, decideThrow, positionLeafData } from './motion-cue';
 import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
@@ -314,6 +315,32 @@ export function apply(ctx: any): void {
   // 用户数据根：配置与用户素材统一收敛于此（扩展包按 <插件id> 各自建目录）
   const dshHome = resolveDshHome();
   const userRoot = join(dshHome, 'dsh-pet');
+  // 统一日志出口（单文件、按大小截断，见 ./log-file）：桌面版 DSH 没有控制台，
+  // `ctx.logger` 只写宿主 stdout 等于把排障信息丢掉。放在最前面——下面的配置迁移、
+  // 桌面判定、Helper 崩溃/重启都走它；`base` 保留终端输出，node 版行为不变。
+  //
+  // standalone / 独立应用已经把**自己的**文件 logger 挂在 ctx.logger 上（见 standalone/context.ts）：
+  // 那时必须复用它，否则两个 logger 各自的缓冲与截断会写同一个文件、互相踩。
+  const reusedLog = isFileLogger(ctx.logger) ? ctx.logger : undefined;
+  const log =
+    reusedLog ??
+    createFileLogger({
+      file: join(userRoot, 'logs.txt'),
+      base: ctx.logger,
+      debugEnabled: process.env.DSH_PET_LOG_DEBUG === '1',
+    });
+  // 纯模块（./config、./chat、./whisper）拿不到 ctx.logger，用这个默认出口落盘
+  setDefaultLogger(log);
+  // 只在自己创建时负责收尾：复用的 logger 归 standalone/app 生命周期管，插件卸载不该把它关掉。
+  if (!reusedLog) {
+    ctx.effect(
+      () => () => {
+        void log.flush();
+        log.dispose();
+      },
+      'dsh-pet: log file',
+    );
+  }
   // 用户主配置（可编辑层）与文件宠物目录；配置读取/合并统一走 readAllConfig（./config）。
   // 主配置是 **JSONC**（main-config.jsonc）——与包内默认 config.jsonc 同名同格式：
   // 「同步」写进去的就是带注释的原文，扩展名如实反映内容（旧版 main-config.json 只读回落 + 启动迁移）
@@ -329,7 +356,7 @@ export function apply(ctx: any): void {
   };
   // 老用户一次性迁移：main-config.json → main-config.jsonc（重命名，内容一字不动；
   // 新文件已存在则不动旧文件）。失败不影响运行——读取侧对旧路径有回落。
-  migrateUserConfig(configPaths, (msg) => console.log('[dsh-pet] ' + msg));
+  migrateUserConfig(configPaths, (msg) => log.info('[dsh-pet] ' + msg));
   // 用户动画目录（thumb 播放时优先于包内素材；webm 放 main-animation/webm/，mov（macOS 定制）放 main-animation/mov/）
   const thumbUserRoot = join(userRoot, 'main-animation');
   // 用户表情包目录（碎碎念/对话配图的图片：优先于包内 assets/memes，加图不必改包）
@@ -735,7 +762,7 @@ export function apply(ctx: any): void {
       if (!parsed || typeof parsed !== 'object') throw new Error('not an object');
       return parsed as Record<string, Record<string, { messages: ChatMemoryMessage[] }>>;
     } catch (e) {
-      console.error(
+      log.error(
         `dsh-pet: 记忆文件损坏已备份（对话将从头开始）：${memoryPath}（${e instanceof Error ? e.message : String(e)}）`,
       );
       try {
@@ -819,7 +846,7 @@ export function apply(ctx: any): void {
     const result = await generateWhisper(ctx, system, meme, configuredModel(found.conf, 'whisperModel'));
     if (!result.ok) {
       // 失败**不写 S**（与改造前一致：静默跳过 + console.warn，不伪造文案、不弹错误气泡）
-      console.warn(
+      log.warn(
         '[dsh-pet] 碎碎念生成失败 pet=' +
           petId +
           ' reason=' +
@@ -1020,12 +1047,12 @@ export function apply(ctx: any): void {
       // 诊断日志（issue #168）：设置页显示「仅桌面」却始终没有 helper 进程时，这一行能立刻
       // 分辨「宿主读到的 display 就是 web」还是「读到了 desktop」——此前这个判定完全不可见。
       // 托盘开关同样只在这一行里可见：加了它之后「为什么没有托盘/为什么留着空进程」都靠这里看。
-      ctx.logger?.info?.(
+      log.info(
         `[dsh-pet] 桌面判定：pets=${pets.length}，桌面可见=${desktopPets.length}` +
           `（${desktopPets.map((p) => String(p.id)).join(',') || '无'}）→ hasDesktopPet=${hasDesktopPet} tray=${trayOn}`,
       );
     } catch (e) {
-      ctx.logger?.warn?.(`[dsh-pet] 宠物配置非法，桌面模式已跳过：${e instanceof Error ? e.message : String(e)}`);
+      log.warn(`[dsh-pet] 宠物配置非法，桌面模式已跳过：${e instanceof Error ? e.message : String(e)}`);
     }
   };
   refreshDesktop();
@@ -1076,9 +1103,9 @@ export function apply(ctx: any): void {
       // 「连尝试都没有」且没有任何线索。这里只加可见性，重试节奏与次数保持原样。
       portWaitAttempts += 1;
       if (portWaitAttempts === 1) {
-        ctx.logger?.info?.(`[dsh-pet] webServer 端口尚未就绪（port=${String(port)}），每 500ms 重试拉起桌面 Helper`);
+        log.info(`[dsh-pet] webServer 端口尚未就绪（port=${String(port)}），每 500ms 重试拉起桌面 Helper`);
       } else if (portWaitAttempts % 20 === 0) {
-        ctx.logger?.warn?.(
+        log.warn(
           `[dsh-pet] 已等待 webServer 端口 ${(portWaitAttempts * 500) / 1000}s 仍未就绪` +
             `（port=${String(port)}），桌面 Helper 尚未拉起`,
         );
@@ -1142,14 +1169,14 @@ export function apply(ctx: any): void {
           };
         },
       },
-      ctx.logger ?? console,
+      log,
     );
     try {
       helper.start();
       desktopModeEverActive = true; // 此后即使桌面宠物清零也保留 Helper：托盘常驻，可随时切回来
-      ctx.logger?.info?.(`dsh-pet desktop helper started (config: ${configUrl})`);
+      log.info(`dsh-pet desktop helper started (config: ${configUrl})`);
     } catch (e) {
-      ctx.logger?.warn?.(`dsh-pet desktop helper start failed: ${e instanceof Error ? e.message : String(e)}`);
+      log.warn(`dsh-pet desktop helper start failed: ${e instanceof Error ? e.message : String(e)}`);
       helper = undefined;
     }
   };
@@ -1165,7 +1192,7 @@ export function apply(ctx: any): void {
       // 托盘关掉后这里也会命中：没人需要那个图标，空常驻没有意义（见 desktopModeEverActive 注释）。
       if (!noDesktopSkipped) {
         noDesktopSkipped = true;
-        ctx.logger?.info?.(
+        log.info(
           `[dsh-pet] 无桌面宠物（display 均为 web/none）且无需保留托盘（tray=${trayOn}），已跳过桌面 Helper 启动`,
         );
       }
@@ -1176,7 +1203,7 @@ export function apply(ctx: any): void {
     if (!hasGraphicalDisplay()) {
       if (!displayWarned) {
         displayWarned = true;
-        ctx.logger?.warn?.(
+        log.warn(
           '[dsh-pet] 未检测到图形显示环境（DISPLAY/WAYLAND_DISPLAY 均为空），已跳过桌面宠物。' +
             '浏览器内宠物不受影响；如需在服务器上启用桌面模式，请配置 Xvfb 后设置 DSH_PET_DESKTOP_FORCE=1。',
         );
@@ -1190,21 +1217,23 @@ export function apply(ctx: any): void {
     }
     // 诊断日志（issue #168）：只报「没找到」不够用——最常见的情形是「文件明明存在」，
     // 但不在实际查询的路径上（DSH_HOME 不一致）。把真正查的路径一起打出来。
-    ctx.logger?.warn?.(
+    log.warn(
       `[dsh-pet] 未找到 Electron 可执行文件：DSH_HOME=${dshHomeDir()}，查找路径=${defaultElectronExe()}` +
         `，DSH_PET_ELECTRON_PATH=${process.env.DSH_PET_ELECTRON_PATH ?? '(未设置)'}`,
     );
-    ctx.logger?.warn?.(`[dsh-pet] 开始下载 Electron 到 ${defaultElectronExe()} ...`);
+    log.warn(`[dsh-pet] 开始下载 Electron 到 ${defaultElectronExe()} ...`);
     electronEnsure = ensureElectronDownload({
       // 下载全过程写进工作状态气泡（用户没有控制台，只能靠它看进度与失败原因）
       onLog: ({ text, level, done }) =>
         reportDownload(text, level === 'warn' ? 'error' : done ? 'success' : 'working', done),
+      // 同一份进度也落盘：气泡只在有宠物显示时可见，桌面版 Helper 起不来时它就没有载体
+      logger: log,
     })
       .then((path) => {
         if (path) {
           launchHelper(path);
         } else {
-          ctx.logger?.warn?.(
+          log.warn(
             '[dsh-pet] Electron download failed; desktop pet unavailable. Set DSH_PET_ELECTRON_PATH and restart, or retry later.',
           );
         }
@@ -1252,7 +1281,7 @@ export function apply(ctx: any): void {
         startHelper();
       })
       .catch((e: unknown) => {
-        ctx.logger?.warn?.(`[dsh-pet] 重启桌面 Helper 失败：${e instanceof Error ? e.message : String(e)}`);
+        log.warn(`[dsh-pet] 重启桌面 Helper 失败：${e instanceof Error ? e.message : String(e)}`);
       });
     return desktopSyncQueue;
   };
@@ -1480,7 +1509,7 @@ export function apply(ctx: any): void {
         try {
           ctx.shutdownApp('托盘退出');
         } catch (e: unknown) {
-          ctx.logger?.warn?.(`[dsh-pet] 托盘退出失败：${e instanceof Error ? e.message : String(e)}`);
+          log.warn(`[dsh-pet] 托盘退出失败：${e instanceof Error ? e.message : String(e)}`);
         }
       });
       return { kind: 'json', status: 200, obj: { ok: true } };
@@ -2766,14 +2795,14 @@ export function apply(ctx: any): void {
           const text = rawInput.trim();
           if (!text) {
             void publishWhisper(petId).catch((e: unknown) =>
-              console.warn('[dsh-pet] 碎碎念异常：' + (e instanceof Error ? e.message : String(e))),
+              log.warn('[dsh-pet] 碎碎念异常：' + (e instanceof Error ? e.message : String(e))),
             );
             return { kind: 'success', text: '已让桌宠碎碎念一句' };
           }
           if (text.length > 2000) return { kind: 'error', text: '消息过长（限 2000 字）' };
           void chatWithPet(petId, text).then((r) => {
             if (!r.ok) {
-              console.warn('[dsh-pet] 对话失败 reason=' + r.reason + (r.message ? ' ' + r.message : ''));
+              log.warn('[dsh-pet] 对话失败 reason=' + r.reason + (r.message ? ' ' + r.message : ''));
             }
           });
           return { kind: 'success', text: '已发送，桌宠马上回应' };
