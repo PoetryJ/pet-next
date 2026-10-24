@@ -45,7 +45,8 @@ try {
   );
   process.exit(3);
 }
-const { app, BrowserWindow, ipcMain, screen, shell, protocol, Tray, Menu, nativeImage } = electronApi;
+const { app, BrowserWindow, ipcMain, screen, shell, protocol, Tray, Menu, nativeImage, powerMonitor } =
+  electronApi;
 const path = require('node:path');
 const { execFileSync } = require('node:child_process');
 const { readFileSync, writeFileSync } = require('node:fs');
@@ -84,6 +85,12 @@ const APP_TOKEN = APP_MODE ? process.env.DSH_PET_APP_TOKEN : undefined;
 // 名字必须与 src/host/storage-paths.ts 的 DESKTOP_APP_NAME 逐字一致
 // （storage-paths.test.ts 会直接读本文件比对，改名不同步测试就红）。
 app.setName('dsh-pet-electron-helper');
+// Windows 任务栏分组（#193 后续）：不设 AppUserModelID 时 Shell 把窗口归到 electron.exe 名下，
+// 任务栏按钮一旦意外出现就显示 Electron 默认图标。设成自己的 ID 后至少归到本应用、图标走窗口 icon。
+// 必须在 ready 之前调用；独立应用与 DSH 内 helper 用不同 ID，避免两边同时运行时被合成一组。
+if (process.platform === 'win32') {
+  app.setAppUserModelId(APP_MODE ? 'com.dsh.pet.app' : 'com.dsh.pet.helper');
+}
 // 应用模式只改**数据目录**，不改应用名：独立应用与 DSH 内的 helper 若共用同一个 userData，
 // 两个 Chromium 进程会抢同一份 profile（单例锁）互相踢。名字不动也就不会触发上面那个防漂移测试。
 if (APP_MODE) app.setPath('userData', path.join(app.getPath('appData'), 'dsh-pet'));
@@ -410,6 +417,22 @@ function petWindowSize(size) {
 }
 
 /**
+ * 把窗口从任务栏摘掉（#193 后续：合盖/唤醒后任务栏冒出 Electron 默认图标）。
+ *
+ * `skipTaskbar: true` 只在建窗时生效一次。Windows 在唤醒、显示器拓扑变化后会让 Shell 重新
+ * 枚举顶层窗口：窗口重新 show 时任务栏按钮会被重建，而这次重建不保证再被摘掉。所以凡是
+ * 「窗口可能重新出现」的时机都要再摘一次。show() 内部重建按钮是异步的——紧跟一个 0ms 的
+ * 第二次调用才算数（只调一次仍会残留按钮）。
+ */
+function keepOffTaskbar(win) {
+  if (!win || win.isDestroyed()) return;
+  win.setSkipTaskbar(true);
+  setTimeout(() => {
+    if (!win.isDestroyed()) win.setSkipTaskbar(true);
+  }, 0);
+}
+
+/**
  * 桌面几何：**逐显示器的工作区列表** + 它们的外接矩形 + 主屏下标。
  *
  * 外接矩形（hull）仍然是渲染端视口 VIEW 的来源——它只用作坐标系原点与比例换算基准。
@@ -443,6 +466,8 @@ function createPetWindows() {
       frame: false,
       alwaysOnTop: true,
       skipTaskbar: true,
+      // 任务栏按钮万一还是冒出来（唤醒后重建），至少显示宠物图标而不是 Electron 默认原子图
+      icon: path.join(__dirname, '..', '..', 'assets', 'logo.png'),
       resizable: false,
       hasShadow: false,
       // 可聚焦：对话输入框/菜单需要窗口焦点才能打字（focusable:false 会让输入框永远无法聚焦）。
@@ -475,7 +500,12 @@ function createPetWindows() {
     // 默认整窗点击穿透（renderer 在光标进/出身体命中区时经 IPC 翻转可交互）；
     // forward:true 保证穿透期间 mousemove 仍转发进渲染端做命中判定。
     setWindowIgnore(win, true);
-    win.once('ready-to-show', () => win.showInactive());
+    // 任务栏按钮可能在 show / ready-to-show / 唤醒 / 显示器变化后重建（见 keepOffTaskbar）
+    win.on('show', () => keepOffTaskbar(win));
+    win.once('ready-to-show', () => {
+      keepOffTaskbar(win);
+      win.showInactive();
+    });
     // [#55 兜底显示] paintWhenInitiallyHidden:false 时渲染器可能不产出首帧，ready-to-show 便永不触发
     // （Electron 文档原文：ready-to-show "will never fire if you use paintWhenInitiallyHidden: false"），
     // 而 show() 只挂在它上面 → 窗口永远隐藏（进程活着、宠物逻辑照跑，桌面上什么都没有）。
@@ -850,6 +880,14 @@ app.whenReady().then(() => {
 
   createPetWindows();
 
+  // 合盖/唤醒是任务栏按钮重建最集中的时刻（#193 后续）：resume / unlock-screen 后把每只宠物
+  // 重新摘一次。powerMonitor 只能在 ready 之后使用，所以挂在这里而不是模块顶层。
+  const reassertTaskbar = () => {
+    for (const win of windows.values()) keepOffTaskbar(win);
+  };
+  powerMonitor.on('resume', reassertTaskbar);
+  powerMonitor.on('unlock-screen', reassertTaskbar);
+
   // 宠物窗口跟随：renderer 逐帧上报窗口内容区位置/尺寸
   ipcMain.on('pet:set-bounds', (event, bounds) => {
     const win = BrowserWindow.fromWebContents(event.sender);
@@ -1015,7 +1053,10 @@ app.whenReady().then(() => {
     const geo = deskGeometry();
     lastRequestedBounds.clear(); // 坐标系变了，去重缓存作废，下一帧必须真的重设一次
     for (const win of windows.values()) {
-      if (!win.isDestroyed()) win.webContents.send('pet:displays', geo);
+      if (win.isDestroyed()) continue;
+      // 显示器拓扑变化同样是任务栏按钮重建的时机（#193 后续）
+      keepOffTaskbar(win);
+      win.webContents.send('pet:displays', geo);
     }
     console.error('[dsh-pet-desktop-helper] displays changed: ' + JSON.stringify(geo));
     // 主屏缩放可能一起变了（它决定宠物的尺寸补偿）。线性化生效期间 screen API 只报被强制的值，
