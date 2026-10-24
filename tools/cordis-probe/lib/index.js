@@ -1,10 +1,13 @@
 /**
- * dsh-cordis-probe 的宿主半侧：注册三个 mock 服务商，验证第三方注册入口与展示层。
+ * dsh-cordis-probe 的宿主半侧：注册五个 mock 服务商，验证第三方注册入口与展示层。
  *
  * 三件事，缺一不可：
  * - `ctx.llm.registerConfigurableProviders(...)` —— 让它们进入设置页的「模型」目录；
  * - `ctx.llm.registerAdapter(...)` —— 注册路由，选择器里才能选中并列出模型；
  * - `petApi7340.balance.register(...)` —— 选中后能查到余额、弹出对应气泡。
+ *
+ * 服务商里有两个是**自定义多页气泡**（`shape: 'custom'`）：一个把内置三种形态复刻成 4 页、
+ * 一个自设计 3 页，用来验证"第三方自己决定气泡长什么样 + 点击循环切页"这条能力。
  *
  * @module dsh-cordis-probe
  */
@@ -25,6 +28,8 @@ const DISPLAY_NAMES = {
   'mock-windows': 'Mock 三窗口额度',
   'mock-money': 'Mock 账户余额',
   'mock-points': 'Mock 积分',
+  'mock-custom-kinds': 'Mock 自定义（4 页复刻三种形态）',
+  'mock-custom-fancy': 'Mock 自定义（3 页复杂布局）',
 };
 
 /** 设置页里这几个 mock 服务商所属的命名空间（没有配置项，只用于渲染卡片）。 */

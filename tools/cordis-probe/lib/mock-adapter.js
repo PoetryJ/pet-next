@@ -1,5 +1,5 @@
 /**
- * 极简 LLM 适配器：只为让三个 mock 服务商出现在 DSH 的模型选择器里，不参与真实对话。
+ * 极简 LLM 适配器：只为让五个 mock 服务商出现在 DSH 的模型选择器里，不参与真实对话。
  *
  * 走鸭子类型而非继承 `LlmAdapter`：探针不声明对 `@deepseek-ai/dsh-llm` 的依赖，
  * `ctx.llm.registerAdapter()` 运行时也不做 instanceof 校验。各方法的默认值照抄基类。
