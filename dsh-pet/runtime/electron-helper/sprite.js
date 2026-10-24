@@ -475,16 +475,33 @@ class PetSprite {
    * 显示器几何变化（改分辨率/缩放、插拔屏、旋转）后就地重挂：
    * 抛掷空间作废，并把宠物从可能变成空洞的位置拉回可见区。
    * 拖拽中不动它（用户正握着，位置由指针决定）；飞行中也不动（下一帧物理自会按新边界夹取）。
+   *
+   * prevView 是**变化前**的视口原点/尺寸（renderer 在 applyDeskGeometry 之前取）。
+   * 宠物位置是「视口相对」坐标，而视口原点会随显示器拓扑平移（外接屏在主屏左侧时合盖，
+   * hull 原点从 −2560 变 0）。旧实现直接把旧坐标当新坐标去夹取：宠物被误判越界、夹到最近屏
+   * 边缘，夹取后的比例在新拓扑里又不对应原位置 —— 每开合一次漂一次（#193）。这里改由
+   * S.rebaseCenter 做「世界坐标守恒 + 越界才夹」，并把比例**无条件**跟着新视口重写。
    */
-  relayout() {
+  relayout(prevView) {
     this.space = null;
     if (this.dragState.active || this.throwRef !== null) return;
     this.stopMove();
-    const cx = this.pos.x + this.halfW;
-    const cy = this.pos.y + this.halfH;
-    const p = S.clampPointToRegion(AREAS, cx, cy);
-    if (p.x !== cx || p.y !== cy) {
-      this.customPos = { rx: p.x / VIEW.w, ry: p.y / VIEW.h };
+    if (!this.pos) {
+      // 还没摆过位（position() 首次调用前）：没有旧位置可守恒，直接按新几何定位
+      this.position();
+      return;
+    }
+    const from = prevView || VIEW;
+    const centerOld = { x: this.pos.x + this.halfW, y: this.pos.y + this.halfH };
+    const center = S.rebaseCenter(centerOld, from, VIEW, AREAS);
+    // 平移后（世界坐标守恒）本应落在的位置；与夹取结果不同 = 那块屏真的没了
+    const moved = { x: centerOld.x + from.x - VIEW.x, y: centerOld.y + from.y - VIEW.y };
+    const clamped = center.x !== moved.x || center.y !== moved.y;
+    // customPos 非空 = 用户摆过的位置，语义是「相对视口的比例」：视口变了就必须重写，
+    // 否则同一个比例在新视口里是另一个世界坐标。customPos 为空 = 角落模式：没越界就保持
+    // 「跟主屏角落」的配置语义，只有真的越界才转成锁定坐标。
+    if (this.customPos || clamped) {
+      this.customPos = { rx: center.x / VIEW.w, ry: center.y / VIEW.h };
     }
     this.position();
   }

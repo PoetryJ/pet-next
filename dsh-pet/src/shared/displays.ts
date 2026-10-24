@@ -89,6 +89,27 @@ export const clampPointToRegion = (rects: Rect[], x: number, y: number): { x: nu
   return i < 0 ? { x, y } : clampPointInRect(rects[i], x, y);
 };
 
+/**
+ * 显示器拓扑变化后重定位宠物中心（#193）：**世界坐标守恒**，越界才夹到最近屏。
+ *
+ * 参数与返回值都是**新视口**的相对坐标（areas 也是新视口下的逐屏工作区）；
+ * fromView / toView 是变化前后两套视口的原点（hull 左上角，屏幕坐标）。
+ *
+ * 为什么不能直接拿旧坐标去夹：旧实现把「旧视口相对坐标」当「新视口相对坐标」用，而视口原点
+ * 会随拓扑平移（外接屏在主屏左侧时合盖，hull 原点从 −2560 变 0），于是宠物被误判越界、夹到
+ * 最近屏边缘；夹取后的比例写回 customPos，在新拓扑里又不对应原位置 —— 每开合一次漂一次。
+ *
+ * 这里先把中心还原成世界坐标，再换算进新视口：只要那块屏还在，宠物真正所在的位置不变；
+ * 只有屏真的没了（点不落在任何 area 上）才夹到最近的屏。
+ */
+export const rebaseCenter = (
+  center: { x: number; y: number },
+  fromView: { x: number; y: number },
+  toView: { x: number; y: number },
+  areas: Rect[],
+): { x: number; y: number } =>
+  clampPointToRegion(areas, center.x + fromView.x - toView.x, center.y + fromView.y - toView.y);
+
 /** 并集面积（各屏不重叠时 = 面积和；重叠会重复计，仅作诊断用） */
 export const regionArea = (rects: Rect[]): number => rects.reduce((s, r) => s + r.width * r.height, 0);
 

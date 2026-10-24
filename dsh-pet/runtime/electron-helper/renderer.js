@@ -150,8 +150,11 @@ function injectAssets() {
 // 这条通道是必需的——桌面几何原先只在窗口创建时经 URL query 注入一次，运行期永不更新。
 if (window.petBridge && window.petBridge.onDisplays) {
   window.petBridge.onDisplays((geo) => {
+    // 变化前的视口原点必须在 applyDeskGeometry 之前取：relayout 要靠它把「旧视口相对坐标」
+    // 还原成世界坐标，否则合盖/开盖时视口原点一平移，宠物就会被误判越界（#193）。
+    const prevView = { x: VIEW.x, y: VIEW.y, w: VIEW.w, h: VIEW.h };
     if (!applyDeskGeometry(geo)) return;
-    for (const s of sprites) s.relayout();
+    for (const s of sprites) s.relayout(prevView);
   });
 }
 

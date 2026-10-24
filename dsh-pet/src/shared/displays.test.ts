@@ -20,6 +20,7 @@ import {
   clampPointToRegion,
   indexAtPoint,
   nearestIndex,
+  rebaseCenter,
   rectAtPoint,
   regionHoleRatio,
   translateRects,
@@ -430,5 +431,70 @@ describe('throwStepRegion —— confineToScreen：锁定屏后屏缝也当墙',
     assert.ok(end.x <= SPACE.bounds[0].maxX + 1e-6, `不得越过主屏右缘：x=${end.x}`);
     assert.equal(end.screen, 0);
     assert.ok(bodyVisible(end.x, end.y), `落点必须可见：${end.x},${end.y}`);
+  });
+});
+
+// #193：Mac 锁屏/关屏（合盖）后宠物位置错乱。根因之一是 relayout() 把「旧视口的相对坐标」
+// 直接当「新视口的相对坐标」去夹取 —— 视口原点随显示器拓扑平移后，宠物被误判越界、夹到最近屏
+// 边缘，夹取结果又写回 customPos，于是每开合一次漂一次。rebaseCenter 用世界坐标守恒修掉它。
+//
+// 布局（笔记本 + 左侧外接大屏，与 issue 报告者一致）：
+//   内置主屏   workArea 0,0 1512×982
+//   外接副屏   workArea −2560,0 2560×1392（在主屏左侧，所以外接时 hull 原点为 −2560）
+describe('rebaseCenter —— 显示器拓扑变化后保持世界坐标（#193）', () => {
+  const BUILTIN: Rect = { x: 0, y: 0, width: 1512, height: 982 };
+  const EXTERNAL: Rect = { x: -2560, y: 0, width: 2560, height: 1392 };
+  /** 合盖前：两块屏都在（视口原点 = hull 左上角 = 外接屏左上角） */
+  const VIEW_AB: { x: number; y: number } = { x: -2560, y: 0 };
+  /** 合盖后：只剩内置屏（视口原点回到 0,0） */
+  const VIEW_B: { x: number; y: number } = { x: 0, y: 0 };
+
+  /** 屏幕坐标 → 指定视口的相对坐标（rebaseCenter 的 areas 参数要求新视口相对坐标） */
+  const inView = (r: Rect, view: { x: number; y: number }): Rect => ({
+    ...r,
+    x: r.x - view.x,
+    y: r.y - view.y,
+  });
+  /** 视口相对坐标 → 世界坐标（屏幕坐标） */
+  const toWorld = (p: { x: number; y: number }, view: { x: number; y: number }) => ({
+    x: p.x + view.x,
+    y: p.y + view.y,
+  });
+  const AREAS_AB = [inView(BUILTIN, VIEW_AB), inView(EXTERNAL, VIEW_AB)];
+  const AREAS_B = [inView(BUILTIN, VIEW_B)];
+
+  test('合盖（副屏消失）：主屏上的宠物世界坐标不变', () => {
+    const world = { x: 756, y: 491 }; // 内置屏正中心
+    const local = { x: world.x - VIEW_AB.x, y: world.y - VIEW_AB.y };
+    const moved = rebaseCenter(local, VIEW_AB, VIEW_B, AREAS_B);
+    assert.deepEqual(moved, world, '拓扑变化不得改变宠物真正所在的位置');
+  });
+
+  test('合盖再开盖（A→B→A）：往返后中心世界坐标与起点逐位一致', () => {
+    const world = { x: 1000, y: 600 };
+    const a = { x: world.x - VIEW_AB.x, y: world.y - VIEW_AB.y };
+    const b = rebaseCenter(a, VIEW_AB, VIEW_B, AREAS_B);
+    const back = rebaseCenter(b, VIEW_B, VIEW_AB, AREAS_AB);
+    assert.deepEqual(toWorld(back, VIEW_AB), world, `往返不得漂移：${JSON.stringify(toWorld(back, VIEW_AB))}`);
+  });
+
+  test('视口没变（缩放/分辨率变化但原点与屏集合一致）：原样返回', () => {
+    const world = { x: 1000, y: 600 };
+    const local = { x: world.x - VIEW_AB.x, y: world.y - VIEW_AB.y };
+    assert.deepEqual(rebaseCenter(local, VIEW_AB, VIEW_AB, AREAS_AB), local);
+  });
+
+  test('副屏被拔掉且宠物正在副屏上：夹到最近屏的可见边缘，而不是飞走', () => {
+    const world = { x: -1280, y: 696 }; // 外接屏中心（在主屏左侧）
+    const local = { x: world.x - VIEW_AB.x, y: world.y - VIEW_AB.y };
+    const moved = rebaseCenter(local, VIEW_AB, VIEW_B, AREAS_B);
+    // 最近屏 = 内置屏：世界坐标 −1280 离它的左缘 0 最近，于是夹到左缘；y 本就在 [0,982) 内
+    assert.deepEqual(moved, { x: 0, y: 696 });
+  });
+
+  test('对照组：把旧视口相对坐标直接当新坐标（旧实现）会误判越界', () => {
+    // 主屏中心在旧视口里的相对坐标 x=3316，远超新视口宽度 1512 —— 这就是误判的来源
+    const stale = clampPointToRegion(AREAS_B, 3316, 491);
+    assert.equal(stale.x, BUILTIN.width - 1, '旧实现必然把仍在屏内的宠物夹到右缘');
   });
 });
