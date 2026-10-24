@@ -124,7 +124,7 @@ dsh plugin --profile web add file:D:/path/to/dsh-pet/dsh-pet
 - **工作状态联动**：监听 DSH 会话事件，切「思考 / 工作 / 整理 / 等待 / 成功 / 出错」档位动画 + 常驻气泡；目标多轮任务只在真正收尾轮庆祝
 - **系统通知**：窗口失焦时弹系统 toast（对话完成 / 生成失败 / 输出截断 / 权限申请 / 用户选择）
 - **桌面模式（可选）**：每只宠物开一个独立透明置顶局部小窗，与浏览器严格同行为、共用同一份素材与纯逻辑（见下节）
-- **pet pack（额外宠物种类）**：`pet/` 下建 `种类名-config.json` + `种类名-animation/` 即新增独立动画池与素材的全新种类，多实例共享素材（见「配置 → 方式四」）
+- **pet pack（额外宠物种类）**：`pet/` 下建 `种类名-config.json` + `种类名-animation/` 即新增独立动画池与素材的全新种类，多实例共享素材（见 [CONFIG.md](CONFIG.md) 的「方式四」）
 - **自定义动画**：往 `main-animation/webm/` 放 VP9-Alpha 的 `.webm` 即为新动画，优先于包内素材
 - **无障碍**：支持 `prefers-reduced-motion`（减少动效时跳过 Q 弹挤压与淡入切换）
 
@@ -144,6 +144,8 @@ dsh plugin --profile web add file:D:/path/to/dsh-pet/dsh-pet
 - [`CORDIS.md`](CORDIS.md) —— 对外 Cordis 服务（客户端半侧，页面内 `ctx.get('petApi7340')`，不走网络）
 - [`tools/api-tester.html`](tools/api-tester.html) —— HTTP 侧示例：桌宠控制台，扮演第三方消费方，可直观试用（`node tools/api-tester.cjs` 启动）
 - [`tools/cordis-probe`](tools/cordis-probe/README.md) —— Cordis 侧示例：扮演同页客户端插件，用 `ctx.get()` 消费服务
+
+扩展做出来后欢迎分享：统一收录在 [PC2005-cloud/petE](https://github.com/PC2005-cloud/petE)——本项目的扩展收录仓库，每个扩展占一个目录、元信息写在 `plugin.json`，列表由流水线生成。想把自己的加进去，按仓库里的 `CONTRIBUTING.md` 提 PR 即可。安装：`dsh plugin --profile web add "github:PC2005-cloud/petE#path:/<扩展目录>"`。收录不代表对功能或安全性的审核，安装前请自行阅读代码。
 
 ## 兼容性
 
@@ -207,98 +209,9 @@ npm run build && npm run standalone   # 仓库里（先构建）
 
 ## ⚙️ 配置（大小 / 位置 / 多开）
 
-桌宠的大小、位置、多开均可配置，两条途径：
+设置页可改大小、位置、边距、显示位置、余额开关、多开与物理参数；配置文件则可以任意自由配置（动画池、播放权重、事件动画、刷新周期……）。
 
-> 💡 **两条途径只是编辑入口不同，最终都是同一份用户配置**——配置能力远不止设置页那几个选项：设置页可改大小/位置/边距/显示位置/余额开关/多开，但**手动编写配置文件可以任意自由配置**（动画池、播放权重、事件动画、刷新周期……），只要**格式与包内默认配置 `config.jsonc` 一致**即可，用户配置会**整体覆盖**对应字段的默认值。
-
-### 方式一：设置页（推荐）
-
-DSH 设置 → 「桌宠配置」：
-
-- **大小**：宽度 px（高度自动 = 宽度 × 9/16）
-- **位置**：四角（corner）＋ 水平/垂直边距（marginX / marginY）
-- **显示位置**（display）：web=仅浏览器 / desktop=仅桌面 / both=两者都显示 / none=都不显示
-- **余额功能**：勾选后该宠物才会触发余额动画并显示余额气泡（服务商未登记余额接口时改为弹文字说明气泡）
-- **多开**：添加/删除宠物，每只宠物独立 id、大小、位置
-- **物理参数**：拖拽抛掷手感（重力 / 弹性 / 地面摩擦 / 总力度 / 顶部反弹 / 宠物互撞）也能在设置页图形化改，不用去手改配置文件
-- **AI 模型**：碎碎念与对话可以**各自指定模型**——设置页「AI 模型」每项一个下拉框（与 DSH 对话框右下角的模型选择器同款：搜索框 + 按服务商分组的清单，选项同源）；选「跟随当前对话」= 用当前对话的模型，指定了但调用失败会自动回落到当前对话的模型重试一次
-- 点「保存」**即时生效**（无需刷新）；「同步」把包内 `config.jsonc` 的**原文**（含注释与全部高级字段）整份写入用户配置——既回到默认，又留下一份可直接编辑的完整配置
-
-### 方式二：config.jsonc（单一来源）
-
-插件包内 `dsh-pet/assets/config.jsonc` 的 `pets` 数组定义**默认宠物**：
-
-```jsonc
-"pets": [
-  { "id": "main", "size": 462, "balanceEnabled": true, "display": "both", "position": { "corner": "top-right", "marginX": 24, "marginY": 100 } }
-]
-```
-
-- 每只宠物：`id`（标识）／ `size`（宽度 px）／ `balanceEnabled`（是否启用余额功能，必填布尔）／ `display`（web/desktop/both/none，必填，见上）／ `position`（corner 四角之一 + marginX/marginY 边距）
-- 余额刷新周期：`eventsRefreshSec.balance`（秒）——余额数据刷新与余额动画触发的间隔，启动时立即触发一次，之后按此周期循环（默认 1800）
-- 设置页的修改保存到用户层 `$DSH_HOME/dsh-pet/main-config.jsonc`（**完整宠物列表**，覆盖包内默认）；「同步」把包内 `config.jsonc` 原文整份写入该文件（等价于回落默认，但文件保留下来、可直接编辑）
-
-### 方式三：手动编辑配置文件（高级，任意自由配置）
-
-用户层配置文件位于 `$DSH_HOME/dsh-pet/main-config.jsonc`。**它和包内默认配置是同一套格式**——想改什么直接照着 `assets/config.jsonc` 的结构写即可，写错的字段/缺失的字段回落默认，无需（也无法）写完整份。设置页「同步」可直接生成这份完整文件（原文复制包内 `config.jsonc`，注释齐全）：
-
-| 字段                   | 作用                                                                                    | 格式与默认一致即可         |
-| ---------------------- | --------------------------------------------------------------------------------------- | -------------------------- |
-| `pets`                 | 宠物列表（大小/位置/多开/余额开关）                                                     | 数组，每项同 `pets[]` 结构 |
-| `animations`           | **动画池**：idle / turn / drag / clicks / moves / categories / events（余额等事件动画） | 同 `animations` 结构       |
-| `animationWeights`     | 动画链播放权重（idle / turn / move）                                                    | 同 `animationWeights` 结构 |
-| `eventsRefreshSec`     | 事件刷新周期（秒）                                                                      | 同 `eventsRefreshSec` 结构 |
-| `notificationsEnabled` | 系统通知总开关（布尔）                                                                  | 同 `notificationsEnabled`  |
-
-> 覆盖语义：用户层给出即**整体替换**该字段（如写了 `animations` 就用你的整份动画池，替代默认），没写的字段回落包内默认。校验在插件加载时执行——格式错误会在 DSH 控制台显式报错，不会静默运行残缺配置。
-
-### 方式四：额外宠物（pet pack）——添加新「种类」
-
-方式一~三都只调整**默认宠物的实例**（数量/大小/位置），动画池始终是全局一份。要添加**全新种类的宠物**（独立动画池 + 自己的素材），在用户数据根下建 `pet/` 目录：
-
-```
-$DSH_HOME/dsh-pet/
-├─ main-config.jsonc           ← 主宠物配置（现有，不动）
-├─ main-animation/webm/*.webm  ← 主宠物素材（现有，只属于 main）
-└─ pet/
-   ├─ pig-config.json          ← 额外宠物 pig 的配置（命名词干 = 种类名，实例 id 任意）
-   └─ pig-animation/*.webm     ← pig 自己的动画素材（直接平铺，仿 main-animation）
-```
-
-每只额外宠物 = 一个 `-config.json` + 一个 `-animation/` 目录，同前缀配对；扫描 `pet/` 自动发现，浏览器与桌面同时生效。一个 `-config.json` 定义**一个「种类」**（动画池 + 素材目录），`pets` 数组可放该种类的**任意多只实例**（共享动画池与素材）：
-
-```jsonc
-// pet/pig-config.json —— 与 main-config.jsonc 同构的完整配置
-{
-  "notificationsEnabled": true,
-  "pets": [
-    {
-      "id": "pig1",              // 实例 id（可多只；不必等于文件名前缀）
-      "size": 420,
-      "balanceEnabled": true,
-      "display": "both",        // web / desktop / both / none
-      "position": { "corner": "top-right", "marginX": 24, "marginY": 100 }
-    },
-    { "id": "pig2", "size": 360, "balanceEnabled": false, "display": "web", "position": { "corner": "top-left", "marginX": 24, "marginY": 100 } }
-  ],
-  "animations": {
-    "idle": ["待机"], "turn": [], "drag": [], "clicks": ["打滚"],
-    "moves": { "default": { "minDist": 80, "maxDist": 360, "margin": 20, "leadSec": 2, "tailSec": 2 }, "actions": [] },
-    "categories": [],
-    "events": { "balance": ["余额-钱袋满溢", "余额-金袋叮当", "余额-钱袋如常", "余额-数金皱眉", "余额-袋空如洗", "余额-分文不剩"] }
-  },
-  "animationWeights": { "idle": 80, "turn": 0, "move": 0 },
-  "eventsRefreshSec": { "balance": 1800 }
-}
-```
-
-规则（与主宠物**严格隔离**，绝不混用）：
-- **素材只查自己的**：素材目录名 = 文件名前缀（`pet/pig-config.json` → `pet/pig-animation/`），该种类所有实例共用；动画 URL `/thumb/<前缀>/<名>.webm`，查不到即 404——绝不落到 `main-animation` 或包内素材
-- **动画池不回落全局**：`animations` / `animationWeights` 必须写全（缺失即配置错误）
-- 与主配置同构的约束：`pets` 每只字段完整合法、数组内 id 唯一、`animations` / `animationWeights` 结构校验同一套规则；`notificationsEnabled` / `eventsRefreshSec` 是全局属性，不归宠物文件管（写了忽略、不写不报错）
-- 配置非法 / 缺少 `-animation/` 目录 / 实例 id 与主宠物冲突 → 加载时显式报错并跳过（不影响其他宠物）
-- 设置页不列出文件宠物（改文件即生效，刷新可见；保存/同步不会把它们写进 `main-config.jsonc`）
-- 余额档位动画按各宠物自己的 `events.balance`
+三种配置途径与「pet pack 额外宠物种类」的完整说明见 **[CONFIG.md](CONFIG.md)**。
 
 ## 运行效果
 
@@ -487,88 +400,18 @@ $DSH_HOME/dsh-pet/
 
 > 注：动画为透明背景；GIF 预览中透明部分显示为页面底色，实际 webm 播放为透明。
 
-## 从零生成你自己的宠物（完整流程）
+## 从零生成你自己的宠物
 
-### ① 提示词 → 源视频
+AI 提示词 → 绿幕视频 → 透明动画 → 插件，换角色、换动作、换风格，全流程可复现。
 
-用 AI 视频生成工具（如可灵、Runway、豆包等，本项目素材即由豆包生成），按 `prompts/桌面宠物 10 秒动作提示词.md` 的配方，一个动作生成一段 10 秒绿幕视频：
+完整步骤见 **[MAKE-YOUR-OWN-PET.md](MAKE-YOUR-OWN-PET.md)**（提示词配方、素材链、Safari 兼容、发布）。
 
-- 视频比例 16:9，背景纯绿幕（#00FF00）
-- 人物位置/大小固定（头顶 ~20% 高度、脚底 ~85% 高度）
-- 动作全程在画幅内，首尾帧为标准正面站立
-- 每段动画按秒分解（0-10s 各阶段动作）
+## 项目结构
 
-生成结果按动作各存一个 mp4，放入 `video/`。
-
-> **源视频获取**：为控制仓库体积，`video/` 源视频不入 git。Releases 提供**打包压缩包**，浏览器直接下载即可：
->
-> - `assets-videos.zip` —— 全部源视频压缩包（中文名 mp4，解压后放入 `video/`）
->
-> 解压：`Expand-Archive assets-videos.zip`（Windows）或 `unzip assets-videos.zip`，把 mp4 放回 `video/` 即可运行素材链。
-
-### ② 源视频 → 透明动画（素材链）
-
-step02（透明视频）有**两条路线，按需二选一**（默认自动、人人可复现；效果不佳可用 PR 手工抠像覆盖）：
-
-```sh
-cd scripts
-# 路线 A（默认）：自动绿幕抠像（HSV 色相，无需人工）
-python watermark_step01.py   # 水印遮罩填充 → step01/
-python chroma_step02.py      # 绿幕抠像转透明 → step02/
-
-# 路线 B（可选）：PR 手工抠像覆盖（针对含第三方物品/自动抠像效果不佳的动作）
-#   1. 在 PR 里手工抠像，导出带 alpha 的透明 .mov（如 ProRes 4444 with Alpha）
-#   2. 放入 pr/，文件名与动作名一致（如 吃白饭.mov）
-python pr_import_step02.py   # pr/*.mov → step02/（透明 webm，覆盖该动作自动抠像结果）
-
-# 后续步骤两条路线共用：
-python normalize_step03.py   # 归一化 2160×1215 统一站立居中 → step03/
-python encode_thumbs.py      # 转码 640×360 播放变体 → step04/
-```
-
-**依赖**：Python 3 + ffmpeg + numpy + scipy（素材链脚本自动用工作区 `.tools/` 下的 ffmpeg）。
-
-> **本项目全部采用路线 B**（全部动作均为 PR 手工抠像）：对"含第三方物品/透明边缘复杂"的动作，自动 HSV 抠像易残边或误抠，PR 手动遮罩更精细。两条路线产出同一级 `step02/`，后续步骤完全一致；`chroma_step02.py` 保留为自动化兜底，任何动作仍可一键自动生成。
-
-### ②.5 🍎 Safari/HEVC 兼容素材（macOS 专用 mov）
-
-插件默认只发布 `.webm`（VP9-alpha），Safari/WKWebView 不认 webm alpha（黑底），macOS 需要在 GitHub Release 下载官方转码的 **HEVC-with-Alpha `.mov`** 素材使用，两步：
-
-1. **下载**：<https://github.com/PC2005-cloud/dsh-pet/releases/tag/assets-mov>（固定 tag，保持最新；zip 解压后文件名与 webm 一一对应）
-2. **放入**：`.mov` 文件放进 `$DSH_HOME/dsh-pet/main-animation/mov/`（pet pack 宠物则是 `pet/<种类名>-animation/mov/`）
-
-### ③ 动画 → 插件
-
-```sh
-# 把 step04 的播放变体同步进插件包（webm 直接 cp）
-cp step04/*.webm dsh-pet/assets/webm/   # 播放格式（VP9-alpha）
-
-# 本地安装插件（--profile 填实际在用的那个：dsh web → web；
-# 桌面应用（Electron 版）改用应用内「插件管理」，见「快速开始（安装插件）」；
-# file: 指向插件目录 dsh-pet/dsh-pet）
-dsh plugin --profile web add file:D:/path/to/dsh-pet/dsh-pet
-```
-
-> 中间产物（step01-04）由脚本生成、不入仓库；`video/` 源视频和脚本是成果、入库维护。
-
-### 🎯 发布（单一 webm 格式）
-
-插件只发布一个 npm 包、一个素材格式（webm）；`files` 收敛为固定清单（lib / src / assets/webm / runtime/electron-helper / assets/fonts / assets/pic / assets/config.jsonc / scripts/ensure-electron.mjs / cordis.patch.yml，见 `prepare.js`；浏览器与桌面模式共用，包体最小）：
-
-```sh
-cd dsh-pet
-npm publish --tag latest   # prepack 自动执行构建（完整产物 + 收敛 files），无需手动构建
-```
-
-- client 端按运行时判断播放扩展名：macOS WebKit（Safari/WKWebView）自动用 `.mov`，其余用 `.webm`
-- 需要 Safari/HEVC 版（macOS）：mov 素材官方发布在 GitHub Release `assets-mov`，下载解压进 `main-animation/mov/` 即可
-
-### 项目结构
-
-只列代码与发布相关目录；素材链的 video / scripts / step / pr 见 ② 章节（gitignore 的本地目录不列）：
+只列代码与发布相关目录；素材链的 video / scripts / step / pr 见 [MAKE-YOUR-OWN-PET.md](MAKE-YOUR-OWN-PET.md) 的 ② 章节（gitignore 的本地目录不列）：
 
 ```
-├── README.md  API.md  CORDIS.md  openapi.yaml   # 说明 / HTTP 接口 / Cordis 服务 / OpenAPI 规范
+├── README.md  MAKE-YOUR-OWN-PET.md  CONFIG.md  API.md  CORDIS.md  openapi.yaml   # 说明 / 宠物制作指南 / 配置 / HTTP 接口 / Cordis 服务 / OpenAPI 规范
 ├── prompts/           # ① 动画生成提示词配方（绿幕规范 + 按秒分解）
 ├── assets/            # 仓库展示用截图
 ├── tools/             # 开发工具：API 调试页、cordis-probe mock 服务商、DPI 探针
@@ -590,4 +433,6 @@ npm publish --tag latest   # prepack 自动执行构建（完整产物 + 收敛 
 
 - 代码：MIT
 - 素材（动画/提示词/源视频）：允许开源使用，**禁止商用**
-- **二次创作（二创）约定**：基于本项目的衍生 / 改版 / 换皮作品，在**任何介绍、展示、分发该作品的地方**，须附上原作者 GitHub 地址：<https://github.com/PC2005-cloud/dsh-pet>
+- **二次创作（二创）约定**：基于本项目的衍生 / 改版 / 换皮作品，在 **GitHub 仓库、产品官网等公开渠道**上须附上原作者 GitHub 地址：<https://github.com/PC2005-cloud/dsh-pet>
+- **形象出处**：宠物形象为社区二创的 DeepSeek「大肥鱼」（鲸鱼娘），**非 DeepSeek 官方形象**；原型「溟月」出自 B 站 [@上善无形](https://space.bilibili.com/4456176)，DeepSeek 版（女仆鲸鱼娘）设计出自 B 站 [@ZipZipPipe](https://space.bilibili.com/4168597)
+- **形象授权**：[CC BY-NC-SA 4.0](https://creativecommons.org/licenses/by-nc-sa/4.0/deed.zh-hans)（署名 · 非商业 · 相同方式共享），[声明原文](https://www.bilibili.com/opus/1247156596114456581)：「大肥鱼是遵守CC BY-NC-SA 4.0协议的形象，不可以以任何形式商业化。若您非常喜爱该形象，希望其拥有实体，您可以自行定制。」
