@@ -23,7 +23,7 @@
  *   /dsh-pet-7340/reload              → 桌面端「重载配置」（右键菜单，POST）：重启桌面 Helper，全部桌面
  *                                宠物窗口按最新配置重建（改配置文件后不必回设置页点保存）；与保存走
  *                                **同一条**重启路径（syncDesktop），宠物数量/display/size 变化同样生效
- *   /dsh-pet-7340/config/meta         → 配置文件与素材目录路径 + 全部存储位置清单
+ *   /dsh-pet-7340/config/meta         → 配置文件与素材目录路径 + 日志文件 + 全部存储位置清单
  *                                       （设置页「高级配置」「卸载与存储」展示用）
  *   /dsh-pet-7340/models              → 可选「服务商 + 模型」清单（设置页「AI 模型」下拉框数据源；
  *                                       与 DSH 模型选择器同源，取宿主 llm 服务的 listProviders/listModels）
@@ -1579,6 +1579,9 @@ export function apply(ctx: any): void {
           default: join(PACKAGE_ROOT, 'assets', 'config.jsonc'),
           animations: thumbUserRoot,
           memes: memesUserRoot,
+          // 统一日志出口（就是上面那个 logger 的 file：三种模式都落在 $DSH_HOME/dsh-pet/logs.txt）：
+          // 桌面版没有控制台，用户反馈「宠物不出现 / 闪退」时只能靠这个文件。
+          logs: log.file,
           // 全部落盘位置（本包用户数据 / Electron 运行时 / 桌面端缓存 / 下载缓存 / 插件本体）：
           // 前两条直接传真实写入方的路径，不在这里重拼目录名
           storage: storageEntries({

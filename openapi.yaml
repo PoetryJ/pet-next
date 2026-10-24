@@ -1775,7 +1775,7 @@ paths:
       summary: 配置文件路径与存储位置清单
       description: |
         设置页「高级配置」与「卸载与存储」区块的展示数据源：
-        告诉你配置和各类数据到底落在哪，以及卸载命令该用哪个 profile。
+        告诉你配置和各类数据到底落在哪、日志文件在哪，以及卸载命令该用哪个 profile。
       responses:
         "200":
           description: 路径清单
@@ -1783,7 +1783,7 @@ paths:
             application/json:
               schema:
                 type: object
-                required: [user, default, animations, storage, profile]
+                required: [user, default, animations, logs, storage, profile]
                 properties:
                   user:
                     type: string
@@ -1794,6 +1794,12 @@ paths:
                   animations:
                     type: string
                     description: 用户动画素材根目录绝对路径
+                  logs:
+                    type: string
+                    description: |
+                      统一日志文件绝对路径（`$DSH_HOME/dsh-pet/logs.txt`）。
+                      桌面版 DSH 没有控制台，插件的运行日志全部落在这一个文件上，
+                      单文件上限 1 MB，写满后只保留最新的 512 KB。
                   storage:
                     type: array
                     description: 全部落盘位置（用户数据 / Electron 运行时 / 桌面端缓存 / 下载缓存 / 插件本体）

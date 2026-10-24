@@ -267,6 +267,9 @@ export const zh = {
   userConfig: '用户配置（自定义覆盖）',
   animationDir: '动画素材目录（可自定义/扩充动画）',
   memesDir: '表情包目录（可自定义/扩充配图）',
+  logFile: '日志文件（排障用，可清空）',
+  logFileNote:
+    '桌面版没有控制台，插件的运行日志（启动、桌面宠物崩溃/重启、错误与告警）全部写进这一个文件；反馈问题请附上它。单文件上限 1 MB，写满只留最新的 512 KB。',
   saved: '已保存，桌宠即时生效。',
   loadError: '加载配置失败',
   saveError: '保存配置失败，请检查服务连接、配置目录的写入权限或服务日志。',
@@ -452,6 +455,9 @@ export const en = {
   userConfig: 'User config (custom overrides)',
   animationDir: 'Animation assets dir (add/customize animations here)',
   memesDir: 'Meme images dir (add/customize images here)',
+  logFile: 'Log file (for troubleshooting; safe to clear)',
+  logFileNote:
+    'The DSH desktop app has no console, so every runtime log of the plugin (startup, desktop pet crashes/restarts, errors and warnings) goes into this single file — attach it when reporting a problem. It is capped at 1 MB; once full, only the latest 512 KB is kept.',
   saved: 'Saved — the pets updated instantly.',
   loadError: 'Failed to load config',
   saveError:
@@ -1009,6 +1015,8 @@ export function makePetConfigSection(rt: {
       animations: string;
       /** 用户表情包目录（$DSH_HOME/dsh-pet/memes：加图不必改包） */
       memes?: string;
+      /** 统一日志文件（$DSH_HOME/dsh-pet/logs.txt：桌面版没控制台，排障只看它） */
+      logs?: string;
       /** 插件落盘的全部位置（路径 + 是否已存在），host 按平台推导 */
       storage?: Array<{ key: string; path: string; exists?: boolean }>;
       /** 当前 profile 名（拼卸载命令用；反推不出时为空串） */
@@ -1898,6 +1906,12 @@ export function makePetConfigSection(rt: {
                 paths.memes
                   ? h('div', { className: 'dsh-pet-cfg__path', children: t('memesDir') + '：' + paths.memes })
                   : null,
+                // 日志文件：路径 + 一句说明。其余位置的用途都收在问号里，唯独这条写在明面上——
+                // 用户反馈「宠物不出现 / 闪退」时，第一件事就是让他把这个文件找出来
+                paths.logs
+                  ? h('div', { className: 'dsh-pet-cfg__path', children: t('logFile') + '：' + paths.logs })
+                  : null,
+                paths.logs ? h('div', { className: 'dsh-pet-cfg__note', children: t('logFileNote') }) : null,
               ],
             })
           : null,
