@@ -13,6 +13,31 @@ const OPEN_SHORTCUT_HINT = /Mac/i.test(navigator.platform || navigator.userAgent
 /** 本次点击是否按住了「呼出 DSH」的修饰键（Ctrl / Cmd） */
 const isOpenShortcut = (e) => !!(e && (e.ctrlKey || e.metaKey));
 
+// ---------- 点击音效（内置 assets/sound/click-duck.wav） ----------
+// 与浏览器端 client/pet.ts 同一套参数：单例 <audio>、音量 0.5、100ms 节流、失败静默。
+// URL 用 ORIGIN（http）而不是 BASE：BRIDGE 模式下 BASE 是自定义 scheme，CSP 的 media-src 不覆盖它。
+const CLICK_SOUND_URL = ORIGIN + '/dsh-pet-7340/sound/click-duck.wav';
+const CLICK_SOUND_VOLUME = 0.5;
+const CLICK_SOUND_THROTTLE_MS = 100;
+let clickAudio = null;
+let lastClickSoundAt = 0;
+const playClickSound = () => {
+  // 开关来自成品配置 main.clickSoundEnabled（renderer.js 的 loadConfig 带入）；缺失一律静音
+  if (!config || config.clickSoundEnabled !== true) return;
+  const now = Date.now();
+  if (now - lastClickSoundAt < CLICK_SOUND_THROTTLE_MS) return;
+  lastClickSoundAt = now;
+  try {
+    clickAudio = clickAudio || new Audio(CLICK_SOUND_URL);
+    clickAudio.volume = CLICK_SOUND_VOLUME;
+    clickAudio.currentTime = 0;
+    const p = clickAudio.play();
+    if (p && typeof p.catch === 'function') p.catch(() => {});
+  } catch {
+    /* 音频不可用：静默忽略 */
+  }
+};
+
 // ---------- 单只宠物（行为与浏览器 PetCard 一致；纯逻辑来自 src/shared） ----------
 class PetSprite {
   constructor(pet) {
@@ -1604,6 +1629,8 @@ class PetSprite {
     }
     this.stopThrow(); // 点击飞行中的宠物 = 收手停住（再播点击回应）
     this.stopMove();
+    // 点击音效：与浏览器端同位置——放在「按下已触发积分」的早退之后、点击动画判断之前
+    playClickSound();
     if (!this.animations.clicks.length) return;
     this.pendingSquash = true; // 等新点击动画切到前台后 Q 弹（压新首帧，与浏览器一致）
     this.playOnce(S.pick(this.animations.clicks));

@@ -204,6 +204,7 @@ const MIME: Record<string, string> = {
   '.mov': 'video/quicktime',
   '.mp4': 'video/mp4',
   '.png': 'image/png',
+  '.wav': 'audio/wav',
   '.json': 'application/json; charset=utf-8',
   '.jsonc': 'application/json; charset=utf-8',
   '.ttf': 'font/ttf',
@@ -2435,6 +2436,16 @@ export function apply(ctx: any): void {
       if (picFile === undefined) return { kind: 'text', status: 404, body: 'dsh-pet: pic not found' };
       const ext = picFile.slice(picFile.lastIndexOf('.')).toLowerCase();
       return { kind: 'file', file: picFile, contentType: MIME[ext] ?? 'application/octet-stream' };
+    }
+
+    // 点击音效：/dsh-pet-7340/sound/<file> → 包内 assets/sound（当前只有 click-duck.wav）。
+    // 与 font 同一种扁平形式（<scope>/<file>）：只有包内一份，不做用户目录覆盖。
+    if (scope === 'sound') {
+      const soundRoot = join(PACKAGE_ROOT, 'assets', 'sound');
+      const soundFile = resolveExisting(soundRoot, restParts.join('/'));
+      if (soundFile === undefined) return { kind: 'text', status: 404, body: 'dsh-pet: sound not found' };
+      const ext = soundFile.slice(soundFile.lastIndexOf('.')).toLowerCase();
+      return { kind: 'file', file: soundFile, contentType: MIME[ext] ?? 'application/octet-stream' };
     }
 
     if (scope !== 'thumb') {

@@ -66,6 +66,7 @@
     "assets/fonts",
     "assets/pic",
     "assets/memes",
+    "assets/sound",
     "assets/config.jsonc",
     "assets/logo.png",
     "scripts/ensure-electron.mjs",

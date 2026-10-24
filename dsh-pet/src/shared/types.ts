@@ -190,6 +190,10 @@ export interface FontConfig {
 export interface ClientConfig {
   /** 系统通知总开关：true=对话完成/生成失败/输出截断/权限申请/用户选择时弹出系统通知；缺失即配置错误 */
   notificationsEnabled: boolean;
+  /** 点击音效开关：true=点击宠物时播放内置 click-duck.wav（音量 0.5、100ms 内去重）；false=静音。
+   *  内置默认 **false**（默认静音，不突袭既有用户）。只读 main 条目这一份
+   *  （与 notificationsEnabled 同语义，pet pack 不单独覆盖） */
+  clickSoundEnabled: boolean;
   /** 桌面模式系统托盘开关：true=桌面端启动后在通知区域（macOS 为菜单栏）建托盘——列出配置里
    *  **全部**宠物（含 display 为 web/none 的），勾选即可切回桌面；false=不建。
    *  缺失默认 true（内置默认开启）。仅影响桌面模式；关掉后「把不在桌面的宠物叫回桌面」在桌面侧

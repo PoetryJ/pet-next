@@ -117,6 +117,32 @@ export type RuntimePet = Pet & {
 /** 本次会话已定论的动画扩展名（null = 尚未判断）。模块级：一次判断，整页复用。 */
 let resolvedExt: string | null = null;
 
+/** ---- 点击音效（内置 assets/sound/click-duck.wav）----
+ *  单例 <audio>：同一时刻只可能响一声（多开时也不会叠成一片），重播靠 currentTime 归零。
+ *  开关来自成品配置 main.clickSoundEnabled；100ms 内连点只响一次（快速点击/连点不轰炸）。
+ *  播放失败（自动播放策略、文件缺失）一律静默——音效是锦上添花，绝不能影响点击本身。 */
+const CLICK_SOUND_URL = '/dsh-pet-7340/sound/click-duck.wav';
+const CLICK_SOUND_VOLUME = 0.5;
+const CLICK_SOUND_THROTTLE_MS = 100;
+let clickAudio: HTMLAudioElement | null = null;
+let lastClickSoundAt = 0;
+/** 点击音效开关（成品配置 main.clickSoundEnabled，全局一份）：PetMulti 拉配置时写入，点击时读。
+ *  初值 false = 配置未加载前保守静音（新增音效默认不突袭用户）。 */
+let clickSoundEnabled = false;
+const playClickSound = (): void => {
+  const now = Date.now();
+  if (now - lastClickSoundAt < CLICK_SOUND_THROTTLE_MS) return;
+  lastClickSoundAt = now;
+  try {
+    clickAudio ??= new Audio(CLICK_SOUND_URL);
+    clickAudio.volume = CLICK_SOUND_VOLUME;
+    clickAudio.currentTime = 0;
+    void clickAudio.play().catch(() => {});
+  } catch {
+    /* 音频不可用：静默忽略 */
+  }
+};
+
 /** 是否该先要 mov：只有 macOS 上的 WebKit（Safari / WKWebView）需要 HEVC-with-Alpha。
  *  **不能用 canPlayType 判断**——Safari 能播 VP9 webm 却会丢弃 alpha（表现为黑底），
  *  「能解码」与「透明还在」是两件事，后者没有任何 Web API 可查询。 */
@@ -1960,6 +1986,8 @@ export function makePetUI(rt: {
       }
       stopThrow(); // 点击飞行中的宠物 = 收手停住（再播点击回应）
       stopMove();
+      // 点击音效：放在所有「不播点击动画」的早退分支之后——按下已触发积分的那次不响（粒子即反馈）
+      if (clickSoundEnabled) playClickSound();
       setOnce(true);
       if (!petAnims.clicks.length) return;
       const name = pick(petAnims.clicks);
@@ -2336,6 +2364,8 @@ export function makePetUI(rt: {
         if (typeof main !== 'object' || main === null) {
           throw new Error('配置响应不是成品聚合（host 版本不匹配？）');
         }
+        // 点击音效开关（全局一份，只读 main 条目）：非 true 一律静音，配置缺失时保守关闭
+        clickSoundEnabled = main.clickSoundEnabled === true;
         const flattened = flattenConfigPets(merged);
         petBridge.current = flattened;
         // 「添加宠物」模板 = main 条目 pets[0]（内置默认或用户覆盖后的主宠物）

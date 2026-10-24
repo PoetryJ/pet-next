@@ -69,6 +69,9 @@ const keep = [
   // 漏掉它 → 包内一张图都没有、配图功能整体失效。注意本函数每次发布（npm install/publish）都会
   // 用这个数组**覆盖** package.json 的 files，所以"只在 package.json 里加一行"是无效的，必须加在这里
   'assets/memes',
+  // 点击音效（assets/sound/click-duck.wav）：host 的 /sound 路由只从**包内**这一份读，
+  // 漏掉它 → npm 包里没有音频，点击静音。与 memes 同理，必须加在这个数组里而不是 package.json
+  'assets/sound',
   'assets/config.jsonc',
   // 插件图标（DSH 插件管理页显示）：package.json 顶层 icon 字段指向这张图。
   // 与 memes 同理——本数组会覆盖 package.json 的 files，漏掉它则 npm 包里没有这张图，
