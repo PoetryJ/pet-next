@@ -5,14 +5,53 @@
 import type { QuotaTone } from './tone';
 
 /**
- * 展示形态 —— 三种，且**不含任何服务商信息**：
+ * 展示形态 —— 三种内置 + 一种「完全自定义」，且**不含任何服务商信息**：
  * - `windows`：三窗口用量（百分比 + 重置倒计时）→ 气泡「X额度已用 N%」
  * - `money`：账户金额 → 气泡「余额（峰/谷）¥x.xx」
  * - `points`：积分/点数余额（非货币）→ 气泡「余额 800 积分」
+ * - `custom`：**第三方自己拼的节点树**（见 CustomBalance）。前三种表达不了的服务商
+ *   （多模型分别余量、剩余次数、储值+赠送分栏…）走这一形态，插件不必逐个实现
  *
  * 这里是 `Record<BalanceShape, …>`（handlers/index.ts）的键类型：加形态时漏改会被编译拦住。
  */
-export type BalanceShape = 'windows' | 'money' | 'points';
+export type BalanceShape = 'windows' | 'money' | 'points' | 'custom';
+
+/**
+ * 自定义气泡节点：第三方交来的一棵**声明式**布局树（tag + 内联样式 + 文本/子节点）。
+ *
+ * 为什么是树而不是 HTML 字符串：两端渲染器（浏览器 React / 桌面 DOM）可以共用一个几十行的
+ * 白名单渲染器，不经 `innerHTML`、不含脚本，因而没有 XSS 面；而 HTML 字符串要自己写清洗器，
+ * 两端行为还难以保证一致。样式用 camelCase 键（与 React style 对象同形），桌面端直接
+ * `el.style[key] = value` 即可，两端语义相同。
+ *
+ * 合法 tag 与样式白名单见 parse.ts 的 CUSTOM_TAGS / CUSTOM_STYLE_KEYS：越界内容在解析层
+ * 就被丢掉（非法 tag → 整棵树作废），**渲染器只管画，不再做第二次校验**。
+ */
+export type CustomTag = 'div' | 'span' | 'i' | 'b' | 'strong' | 'em' | 'img';
+
+export interface CustomNode {
+  tag: CustomTag;
+  /** 文本节点（叶子用）；与 children 可以同时存在，按「先文本后子节点」顺序渲染 */
+  text?: string;
+  /** 仅 `img`：图片地址，只接受 http/https（与 /broadcast 的 url 同口径） */
+  src?: string;
+  /** 内联样式（camelCase 键，值一律字符串）；解析层已按白名单过滤 */
+  style?: Record<string, string>;
+  children?: CustomNode[];
+}
+
+/**
+ * `shape: 'custom'` 的载荷（**已归一化**）：多页视图 + 可选档位百分比。
+ *
+ * 页是"点击循环切换"的：第 1 项为初始显示，点一下换下一页、末页回到第一页。
+ * 只有 1 页时气泡不可点（与"没有展开态"同义）；上限见 parse.ts 的 CUSTOM_LIMITS.maxViews。
+ * wire 上另外允许 `rows` + `detailRows` 的老两页写法，解析层会把它归一成 `views`（见 parse.ts）。
+ */
+export interface CustomBalance {
+  views: CustomNode[];
+  /** 已用百分比（0-100，驱动 events.balance 档位动画）；缺省 = 不播档位动画 */
+  percent?: number;
+}
 
 /** 余额叶子里的原始响应（与 host/balance/ 的 BalanceResult 同构；两端按此结构校验） */
 export interface RawBalanceResult {
@@ -42,6 +81,14 @@ export interface RawBalanceResult {
     total?: unknown;
     /** points：档位基准；缺省 = 不参与百分比折算、不播档位动画 */
     full?: unknown;
+    /** custom：多页视图（优先）；每页一棵树，第 1 项为初始页 */
+    views?: unknown;
+    /** custom：单页写法（与 views 二选一）：收起态节点树 */
+    rows?: unknown;
+    /** custom：第二页（与 rows 搭配的老两页写法） */
+    detailRows?: unknown;
+    /** custom：已用百分比（0-100）；缺省 = 不播档位动画 */
+    percent?: unknown;
   };
 }
 
@@ -78,6 +125,8 @@ export interface BalanceView {
   tier?: PricingTier;
   /** points：积分/点数余额（非货币，`unit` 只用于展示） */
   points?: PointsView;
+  /** custom：第三方自定义气泡（节点树 + 可选展开态 + 可选百分比）；只有该形态带这份数据 */
+  custom?: CustomBalance;
 }
 
 /** 积分/点数余额（points 形态的已解析数据）。`full` 缺省 = 没有基准，不参与档位折算 */

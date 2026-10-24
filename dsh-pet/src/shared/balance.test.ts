@@ -24,11 +24,15 @@ import {
   balanceBubbleView,
   balanceDetailView,
   balancePercent,
+  customClickable,
+  customViews,
   decideBalanceNotice,
   toBalanceState,
   urgentWindow,
+  CUSTOM_LIMITS,
   type BalanceState,
   type BalanceView,
+  type CustomBalance,
 } from './balance/index.ts';
 
 /** 包内文件源码（守卫用；相对 src/shared/ 解析） */
@@ -505,5 +509,186 @@ describe('points 形态 —— 积分/点数余额（非货币）', () => {
     };
     assert.deepEqual(balanceDetailView(view), balanceBubbleView(view), '展开态与收起态一致');
     assert.equal(urgentWindow(view), undefined, '积分没有「最紧迫窗口」');
+  });
+});
+
+/**
+ * custom 形态（第三方自定义节点树）的契约测试。
+ *
+ * 为什么这些断言重要：节点树是**外部输入**，解析层是唯一一道防线（渲染器不做二次校验）。
+ * 这里钉住四件事：白名单裁剪、容量上限、失败即整拍跳过（不画缺块的树）、以及"行数据通道为空"
+ * —— 后者保证两端渲染入口必须走 tree 分支，不会误渲染成空气泡而不自知。
+ */
+describe('custom 形态 —— 第三方自定义气泡（节点树）', () => {
+  const leaf = (data: Record<string, unknown>): unknown => ({
+    ok: true,
+    provider: 'weird-provider',
+    shape: 'custom',
+    data,
+  });
+  const customOf = (raw: unknown): CustomBalance | undefined => {
+    const s = toBalanceState(raw);
+    return s && s.ok && s.shape === 'custom' ? s.custom : undefined;
+  };
+  const twoSpans = (): Record<string, unknown> => ({
+    tag: 'div',
+    style: { display: 'flex', gap: '4px' },
+    children: [
+      { tag: 'span', text: '额度', style: { color: '#666' } },
+      { tag: 'b', text: '8.16' },
+    ],
+  });
+
+  test('合法树原样解析：tag / 文本 / 样式 / 子节点全部保留', () => {
+    assert.deepEqual(customOf(leaf({ rows: twoSpans() }))?.views[0], {
+      tag: 'div',
+      style: { display: 'flex', gap: '4px' },
+      children: [
+        { tag: 'span', text: '额度', style: { color: '#666' } },
+        { tag: 'b', text: '8.16' },
+      ],
+    });
+  });
+
+  test('views 多页：按顺序保留；多于 1 页才可点（一页不可点）', () => {
+    const three = customOf(
+      leaf({ views: [twoSpans(), { tag: 'div', text: '第二页' }, { tag: 'div', text: '第三页' }] }),
+    );
+    assert.equal(three?.views.length, 3);
+    assert.equal(three?.views[1]?.text, '第二页');
+    assert.equal(three?.views[2]?.text, '第三页');
+
+    const multi = toBalanceState(leaf({ views: [twoSpans(), twoSpans()] }))!;
+    assert.equal(customClickable(multi), true, '两页可点');
+    assert.equal(customClickable(toBalanceState(leaf({ rows: twoSpans() }))!), false, '一页不可点');
+  });
+
+  test('views 与 rows/detailRows 同时给：views 优先（老字段只作兼容）', () => {
+    const v = customOf(
+      leaf({
+        views: [{ tag: 'div', text: '新' }],
+        rows: { tag: 'div', text: '旧' },
+        detailRows: { tag: 'div', text: '旧2' },
+      }),
+    );
+    assert.equal(v?.views.length, 1);
+    assert.equal(v?.views[0]?.text, '新');
+  });
+
+  test('页数超过上限 → null；正好上限 → 通过', () => {
+    const pages = Array.from({ length: CUSTOM_LIMITS.maxViews + 1 }, () => ({ tag: 'div', text: 'x' }));
+    assert.equal(toBalanceState(leaf({ views: pages })), null);
+    assert.ok(customOf(leaf({ views: pages.slice(0, CUSTOM_LIMITS.maxViews) })));
+  });
+
+  test('老两页写法（rows + detailRows）等价于 views: [rows, detailRows]', () => {
+    const legacy = customOf(leaf({ rows: twoSpans(), detailRows: { tag: 'div', text: '第二页' } }));
+    assert.equal(legacy?.views.length, 2);
+    assert.equal(legacy?.views[1]?.text, '第二页');
+    assert.equal(toBalanceState(leaf({ rows: twoSpans(), detailRows: { tag: 'script' } })), null);
+  });
+
+  test('img 节点只认 http/https（file: 等本地协议整树作废）', () => {
+    assert.equal(
+      customOf(leaf({ views: [{ tag: 'div', children: [{ tag: 'img', src: 'https://cdn.example/a.png' }] }] }))
+        ?.views[0]?.children?.[0]?.src,
+      'https://cdn.example/a.png',
+    );
+    assert.equal(toBalanceState(leaf({ views: [{ tag: 'img', src: 'file:///C:/secret.png' }] })), null);
+  });
+
+  test('样式只留下白名单键；外部资源 / 表达式 / 超长值被丢，且不影响其余样式', () => {
+    const style = customOf(
+      leaf({
+        views: [
+          {
+            tag: 'div',
+            style: {
+              color: '#123456',
+              gap: '4px',
+              position: 'absolute', // 白名单外：能让内容跑出气泡
+              background: 'url(https://tracker.example/x.png)', // 外部资源引用
+              width: 'expression(alert(1))', // 表达式
+              fontSize: 'x'.repeat(CUSTOM_LIMITS.maxStyleValue + 1), // 超长
+            },
+          },
+        ],
+      }),
+    )?.views[0]?.style;
+    assert.deepEqual(style, { color: '#123456', gap: '4px' });
+  });
+
+  test('文本超长按上限截断（内容仍可读，不整树作废）', () => {
+    const text = customOf(leaf({ views: [{ tag: 'span', text: 'x'.repeat(500) }] }))?.views[0]?.text;
+    assert.equal(text?.length, CUSTOM_LIMITS.maxText);
+  });
+
+  test('非白名单 tag → null（整拍跳过，绝不画一棵缺块的树）', () => {
+    assert.equal(toBalanceState(leaf({ views: [{ tag: 'script', text: 'alert(1)' }] })), null);
+    assert.equal(toBalanceState(leaf({ views: [{ tag: 'div', children: [{ tag: 'iframe' }] }] })), null);
+    assert.equal(toBalanceState(leaf({ rows: { tag: 'script', text: 'alert(1)' } })), null, '老写法同样受白名单约束');
+  });
+
+  test('任一页非法 → null（不做「前几页正常、翻到后面崩」的半坏状态）', () => {
+    assert.equal(toBalanceState(leaf({ views: [twoSpans(), { tag: 'script' }] })), null);
+    assert.ok(customOf(leaf({ views: [twoSpans(), twoSpans()] })));
+  });
+
+  test('子节点数 / 树深 / 全树节点数超限 → null', () => {
+    const many = Array.from({ length: CUSTOM_LIMITS.maxChildren + 1 }, () => ({ tag: 'span', text: 'x' }));
+    assert.equal(toBalanceState(leaf({ views: [{ tag: 'div', children: many }] })), null);
+
+    // 嵌套到深度上限以外（根为 0，第 maxDepth 层即非法）
+    let deep: Record<string, unknown> = { tag: 'span', text: 'x' };
+    for (let i = 0; i < CUSTOM_LIMITS.maxDepth; i++) deep = { tag: 'div', children: [deep] };
+    assert.equal(toBalanceState(leaf({ views: [deep] })), null);
+
+    // 1 + 24 + 576 > maxNodes（每层都没超 maxChildren，但总量超了）
+    const grandchildren = Array.from({ length: CUSTOM_LIMITS.maxChildren }, () => ({ tag: 'span', text: 'x' }));
+    const huge = Array.from({ length: CUSTOM_LIMITS.maxChildren }, () => ({
+      tag: 'div',
+      children: grandchildren,
+    }));
+    assert.equal(toBalanceState(leaf({ views: [{ tag: 'div', children: huge }] })), null);
+  });
+
+  test('percent：夹到 0-100；非数字 → 不播档位动画（undefined）', () => {
+    assert.equal(customOf(leaf({ rows: twoSpans(), percent: 140 }))?.percent, 100);
+    assert.equal(customOf(leaf({ rows: twoSpans(), percent: -5 }))?.percent, 0);
+    assert.equal(customOf(leaf({ rows: twoSpans(), percent: 'abc' }))?.percent, undefined);
+    assert.equal(
+      balancePercent({ provider: 'p', shape: 'custom', ok: true, custom: { views: [{ tag: 'div' }] } }),
+      undefined,
+    );
+    assert.equal(
+      balancePercent({ provider: 'p', shape: 'custom', ok: true, custom: { views: [{ tag: 'div' }], percent: 40 } }),
+      40,
+    );
+  });
+
+  test('行数据通道为空：balanceBubbleView 对 custom 返回 []（渲染入口必须走树）', () => {
+    const state = toBalanceState(leaf({ views: [twoSpans()] }))!;
+    assert.deepEqual(balanceBubbleView(state), []);
+    assert.deepEqual(balanceDetailView(state), []);
+    // 唯有树访问器拿得到内容，两端渲染入口据此判断
+    assert.equal(customViews(state)?.length, 1);
+    assert.equal(customClickable(state), false, '只有一页 = 不可点');
+  });
+
+  test('customViews / customClickable：只对 custom 且 ok 的状态有值', () => {
+    const state = toBalanceState(leaf({ views: [twoSpans(), twoSpans()] }))!;
+    assert.equal(customViews(state)?.length, 2);
+    assert.equal(customClickable(state), true);
+    assert.equal(customViews(unsupported), undefined, '不可用状态没有树');
+    assert.equal(
+      customViews({
+        provider: 'p',
+        shape: 'money',
+        ok: true,
+        wallets: [{ currency: 'CNY', total: '1', granted: '0', toppedUp: '0' }],
+      }),
+      undefined,
+      '内置形态没有树',
+    );
   });
 });

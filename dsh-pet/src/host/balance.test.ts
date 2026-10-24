@@ -619,6 +619,35 @@ describe('注册表 —— 第三方 provider（register / list / match）', () 
     }
   });
 
+  test('queryBalance：第三方返回 custom 形态原样透传（host 不校验也不改形状）', async () => {
+    // host 侧的职责只是"把第三方交来的结果写进叶子"：tree 的白名单裁剪在客户端解析层
+    // （src/shared/balance/parse.ts）。这里钉住"不篡改"——否则第三方设计好的布局会在中途变形。
+    const custom = {
+      ok: true as const,
+      provider: 'plugin-f',
+      shape: 'custom' as const,
+      data: {
+        views: [
+          { tag: 'div' as const, children: [{ tag: 'span' as const, text: '剩余 12 次' }] },
+          { tag: 'div' as const, text: '本月已用 8 次' },
+          { tag: 'div' as const, text: '下月 1 日重置' },
+        ],
+        percent: 40,
+      },
+    };
+    const dispose = registerBalanceProvider({
+      id: 'plugin-f',
+      async fetch() {
+        return custom;
+      },
+    });
+    try {
+      assert.deepEqual(await queryBalance('plugin-f', async () => 'k'), custom);
+    } finally {
+      dispose();
+    }
+  });
+
   test('未注册的 id 仍是 unsupported', async () => {
     assert.deepEqual(await queryBalance('plugin-unknown', async () => 'k'), {
       ok: false,

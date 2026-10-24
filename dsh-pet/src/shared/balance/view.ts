@@ -4,7 +4,7 @@
 // 形态相关的文案不在这里：这里只负责「不可用状态」的说明行 + 按形态查分发表。
 
 import { HANDLERS } from './handlers';
-import type { BalanceBubbleRow, BalanceState, BalanceUnavailable } from './types';
+import type { BalanceBubbleRow, BalanceState, BalanceUnavailable, CustomNode } from './types';
 
 /** 不可用状态的气泡行（显式说明原因，绝不伪造数字）：
  *  - unsupported：服务商未登记查询接口（配置事实，不是故障）→ 报出 provider id，便于自查"当前到底是谁"
@@ -38,6 +38,8 @@ function unavailableRows(state: BalanceUnavailable): BalanceBubbleRow[] {
  * - money：一行 —— 「余额（峰/谷）¥x.xx」（峰红/谷绿由 role:'tier' 表达）；
  *   服务商没给档位装饰时退化成「余额 ¥x.xx」，不替它编一个峰谷
  * - points：一行 —— 「余额 800 积分」（单位由数据带出，绝不套货币符号）
+ * - **custom：返回空数组** —— 该形态的展示语言是节点树，走同文件下方的 customViews()；
+ *   两端渲染入口都先判 shape === 'custom'，这里的空数组只在"误用行数据"时兜底成空气泡
  * - 无效：显式展示不可用原因（见 unavailableRows），绝不伪造数字
  */
 export function balanceBubbleView(state: BalanceState): BalanceBubbleRow[] {
@@ -55,4 +57,28 @@ export function balanceDetailView(state: BalanceState): BalanceBubbleRow[] {
   if (!state.ok) return unavailableRows(state);
   const handler = HANDLERS[state.shape];
   return handler.detail ? handler.detail(state) : handler.rows(state);
+}
+
+// ---- 自定义气泡（shape:'custom'）：节点树这条并行通道 ----
+//
+// 与行数据的分工：行数据（BalanceBubbleRow[]）由插件定好"长什么样"，只填文案；节点树把布局本身
+// 交给第三方。两种通道互斥（按 shape 分），渲染入口先判 custom 再决定走哪条 —— 这是**唯一**
+// 需要两端各判一次的地方，其余展示逻辑（显隐、10s 计时、点击切页、淡入淡出）完全共用。
+
+/**
+ * 多页节点树：只有 `shape:'custom'` 有，其余形态一律 undefined（调用方据此回落行数据）。
+ * 第 1 项是初始页；>1 页时气泡可点，点一下切下一页（末页回第一页）。
+ */
+export function customViews(state: BalanceState): CustomNode[] | undefined {
+  if (!state.ok || state.shape !== 'custom') return undefined;
+  const views = HANDLERS[state.shape].views?.(state);
+  return views && views.length > 0 ? views : undefined;
+}
+
+/**
+ * custom 是否可点切页 —— 两端据此决定气泡可不可点（内置形态只有 windows 可点）。
+ * 只有一页 = 点开也没别的东西，保持不可点（气泡继续不挡页面）。
+ */
+export function customClickable(state: BalanceState): boolean {
+  return (customViews(state)?.length ?? 0) > 1;
 }

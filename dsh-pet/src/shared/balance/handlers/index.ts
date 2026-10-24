@@ -5,6 +5,7 @@
 // 「非 money 一律当 windows」那种写法造成的坑）。
 
 import type { BalanceShape } from '../types';
+import { customHandler } from './custom';
 import { moneyHandler } from './money';
 import { pointsHandler } from './points';
 import type { ShapeHandler } from './shape';
@@ -14,4 +15,5 @@ export const HANDLERS: Record<BalanceShape, ShapeHandler> = {
   windows: windowsHandler,
   money: moneyHandler,
   points: pointsHandler,
+  custom: customHandler,
 };

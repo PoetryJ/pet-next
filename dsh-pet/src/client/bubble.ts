@@ -2,7 +2,15 @@
 // 自身不发起请求；工厂形态与 pet.ts 一致（react 由 DSH 运行时注入）。
 // 内容（文案/档位/数学）来自 src/shared/balance.ts 的 balanceBubbleView ——
 // 与桌面模式共用同一份行数据，本文件只负责把行数据映射成 React 节点。
-import { balanceBubbleView, balanceDetailView, type BalanceBubbleRow, type BalanceState } from '../shared/balance';
+import {
+  balanceBubbleView,
+  balanceDetailView,
+  customClickable,
+  customViews,
+  type BalanceBubbleRow,
+  type BalanceState,
+  type CustomNode,
+} from '../shared/balance';
 import {
   MEME_BUBBLE_CLASS,
   MEME_IMG_CLASS,
@@ -152,19 +160,46 @@ function rowsToNodes(h: typeof jsx, rows: BalanceBubbleRow[]): ReactNode {
   });
 }
 
+/** 自定义节点树 → React 节点（custom 形态的渲染器，与 rowsToNodes 并列）。
+ *
+ * 与 rowsToNodes 的分工：行数据是**插件定好**的排版（role → class），这里把**第三方定好**的
+ * tag/内联样式/文本原样映射成 JSX。没有 `innerHTML`、没有 HTML 字符串，所以不存在注入面；
+ * tag 与样式白名单在 shared 的解析层（parse.ts）已经裁过，到这里的树是可信输入，渲染器不做二次校验。
+ *
+ * 文本与子节点可同时存在：先文本、后子节点（与 DOM 的 textContent + appendChild 顺序一致），
+ * 这样第三方写「<span>余额 </span><span>8.16</span>」这类混排不需要额外的 text 节点语法。
+ */
+function treeToNodes(h: typeof jsx, node: CustomNode, key: string | number): ReactNode {
+  const props: Record<string, unknown> = { key };
+  if (node.style) props.style = node.style;
+  if (node.tag === 'img') {
+    // 配图：地址只来自解析层的 http/https 白名单；alt 留空（内容由周围文本承担）
+    props.src = node.src ?? '';
+    props.alt = '';
+    return h('img', props);
+  }
+  const children: ReactNode[] = [];
+  if (node.text) children.push(node.text);
+  for (let i = 0; i < (node.children?.length ?? 0); i++) {
+    children.push(treeToNodes(h, node.children![i]!, i));
+  }
+  props.children = children;
+  return h(node.tag, props);
+}
+
 /** 展开/收起时换内容的等待时长（ms）：与 .dsh-pet-bubble 的 opacity 过渡同为 .25s，
  *  淡出走完后才换内容，否则内容会在半透明时被替换 = 看得见的硬切 */
 const BALANCE_FADE_MS = 250;
 
 /**
  * 制造余额气泡（工厂）。
- * 工厂内注入样式一次（与 pet.ts 的 injectCss 同模式）；组件为哑组件，props = { state, on, expanded, onToggle }。
+ * 工厂内注入样式一次（与 pet.ts 的 injectCss 同模式）；组件为哑组件，props = { state, on, index, onCycle }。
  * 内容来自 src/shared 的 balanceBubbleView / balanceDetailView（与桌面模式完全一致）。
  *
- * 两种形态：
- *  - 收起（默认，/balance 与自动轮询出来的就是它）：两行 —— 最紧迫窗口的「已用 N%」+ 重置倒计时；
- *  - 展开（点气泡）：三个窗口各一行 —— 窗口名 + 进度条 + 已用百分比 + 重置倒计时。
- * 切换是淡出 → 换内容 → 淡入，不是硬切。显隐与 10s 计时仍归上层（pet.ts）管，本组件只管内容。
+ * 两种内容语言（按 state.shape 分）：
+ *  - 内置三形态：行数据。收起态两行，展开态（点气泡）三窗口各一行；
+ *  - custom：第三方节点树，`views` 里第 index 项。
+ * 切页（含内置的收/展）是淡出 → 换内容 → 淡入，不是硬切。显隐与 10s 计时仍归上层（pet.ts）管。
  */
 export function makeBalanceBubble(rt: {
   h: typeof jsx;
@@ -174,10 +209,10 @@ export function makeBalanceBubble(rt: {
 }): (props: {
   state: BalanceState;
   on: boolean;
-  /** 目标形态（点一下切换） */
-  expanded: boolean;
-  /** 点击气泡：上层据此切换 expanded 并重置 10s 计时器 */
-  onToggle: () => void;
+  /** 目标页（0 = 初始页；内置 windows 形态下 0 = 收起、1 = 展开） */
+  index: number;
+  /** 点击气泡：上层据此切到下一页并重置 10s 计时器 */
+  onCycle: () => void;
 }) => ReactNode {
   const { h, useState, useEffect } = rt;
   injectBubbleCss();
@@ -185,31 +220,36 @@ export function makeBalanceBubble(rt: {
   return function BalanceBubble({
     state,
     on,
-    expanded,
-    onToggle,
+    index,
+    onCycle,
   }: {
     state: BalanceState;
     on: boolean;
-    expanded: boolean;
-    onToggle: () => void;
+    index: number;
+    onCycle: () => void;
   }) {
-    // 目标是 expanded，实际显示的是 full —— 两者分开是为了留出「先淡出、再换内容」的那 250ms。
-    const [full, setFull] = useState(false);
+    // 目标是 index，实际显示的是 shown —— 两者分开是为了留出「先淡出、再换内容」的那 250ms。
+    const [shown, setShown] = useState(0);
     const [fading, setFading] = useState(false);
     useEffect(() => {
-      if (expanded === full) return;
+      if (index === shown) return;
       setFading(true);
       const timer = window.setTimeout(() => {
-        setFull(expanded);
+        setShown(index);
         setFading(false);
       }, BALANCE_FADE_MS);
       return () => window.clearTimeout(timer);
-    }, [expanded, full]);
+    }, [index, shown]);
 
-    const rows = full ? balanceDetailView(state) : balanceBubbleView(state);
-    // 只有 windows 形态有三窗口读数可展开；money（账户余额）/ points（积分）与不可用状态
-    // 点开也没别的内容
-    const clickable = state.ok && state.shape === 'windows';
+    // 展示语言二选一：内置三种形态给「行数据」，custom 给「第三方节点树」（见 shared/balance/view.ts）。
+    // custom 的页索引越界（页数变少）时夹到最后一页，不显示上一轮的残页。
+    const isCustom = state.ok && state.shape === 'custom';
+    const views = isCustom ? customViews(state) : undefined;
+    const tree = views ? views[Math.min(shown, views.length - 1)] : undefined;
+    const rows = isCustom ? [] : shown > 0 ? balanceDetailView(state) : balanceBubbleView(state);
+    // 可点：windows 有三窗口读数可展开；custom 只有**多于 1 页**才可点（一页点开也没别的内容）。
+    // money（账户余额）/ points（积分）与不可用状态点开也没别的内容，保持不可点（气泡继续不挡页面）。
+    const clickable = state.ok && (state.shape === 'windows' || (isCustom && customClickable(state)));
     // 不可用状态（不支持/缺凭证/抓取失败）是**多行文字说明**：套用碎碎念的换行变体
     // （字号缩到 0.75、宽度下限更窄，多行说明更紧凑；折行现在已是气泡的通用行为）
     const wrap = state.ok ? '' : ' dsh-pet-whisper';
@@ -219,16 +259,16 @@ export function makeBalanceBubble(rt: {
         wrap +
         (on ? ' is-on' : '') +
         (clickable ? ' is-clickable' : '') +
-        (full ? ' is-expanded' : '') +
+        (shown > 0 ? ' is-expanded' : '') +
         (fading ? ' is-fading' : ''),
       // 就地吞掉：宠物本体（.dsh-pet-hit）的点击/拖拽不能被这次点击碰到
       onClick: clickable
         ? (e: ReactNS.MouseEvent<HTMLDivElement>) => {
             e.stopPropagation();
-            onToggle();
+            onCycle();
           }
         : undefined,
-      children: rowsToNodes(h, rows),
+      children: tree ? treeToNodes(h, tree, 'tree') : rowsToNodes(h, rows),
     });
   };
 }

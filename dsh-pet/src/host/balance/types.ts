@@ -69,18 +69,54 @@ export interface BalanceProvider {
 // ---------- 展示形态（wire 契约：host 写进叶子，两端展示层按它选渲染分支） ----------
 
 /**
- * 展示形态 —— 三种，且**不含任何服务商信息**：
+ * 展示形态 —— 三种内置 + 一种「完全自定义」，且**不含任何服务商信息**：
  * - `windows`：三窗口用量（百分比 + 重置倒计时）→ 气泡「X额度已用 N%」
  * - `money`：账户金额 → 气泡「余额（峰/谷）¥x.xx」
  * - `points`：积分/点数余额（非货币）→ 气泡「余额 800 积分」
+ * - `custom`：第三方自己拼的节点树（见 CustomBalance）—— 形态怪到内置三种都装不下的服务商走这里，
+ *   插件不必为它加一个 provider 文件，也不用改展示层
  *
  * 积分单列一种形态而不是借用 money：`granted`/`toppedUp`（充值/赠送）在积分里没有意义，
  * 硬塞等于在 wire 契约上写假数据。单列之后 `unit` 只承担「数字后面的后缀」这一个职责，
  * `currency` 继续只表示币种代码。
  *
- * 加一个服务商只要落到这三种形态之一，src/shared 与两端展示层就完全不用动。
+ * 自定义形态单列的理由不同：它把**布局**也交给服务商，所以内置三种的"行数据"表达不了它
+ * （见 src/shared/balance/handlers/custom.ts）。
  */
-export type BalanceShape = 'windows' | 'money' | 'points';
+export type BalanceShape = 'windows' | 'money' | 'points' | 'custom';
+
+/**
+ * 自定义气泡节点（`shape: 'custom'`）：第三方交来的一棵声明式布局树。
+ *
+ * 与 src/shared/balance/types.ts 的 CustomNode 同构（本文件与 shared 各声明一份：DSH 单文件
+ * 加载约束下 host 不 import 展示层）。合法 tag、样式白名单与容量上限在客户端的解析层强制执行
+ * （src/shared/balance/parse.ts），host 侧只负责把结构原样写进叶子。
+ */
+export type CustomTag = 'div' | 'span' | 'i' | 'b' | 'strong' | 'em' | 'img';
+
+export interface CustomNode {
+  tag: CustomTag;
+  text?: string;
+  /** 仅 `img`：http/https 地址 */
+  src?: string;
+  /** camelCase 内联样式 */
+  style?: Record<string, string>;
+  children?: CustomNode[];
+}
+
+/** `shape: 'custom'` 的载荷：多页视图（或老两页写法）+ 可选档位百分比 */
+export interface CustomBalance {
+  /**
+   * 多页视图（推荐）：1~4 项，第 1 项为初始页。点击气泡循环切页（末页回第一页）；
+   * 只有 1 页时气泡不可点。每页都是一棵 CustomNode。
+   */
+  views?: CustomNode[];
+  /** 单页/两页写法（与 views 二选一）：收起态树。`detailRows` 给了就等价于 `views: [rows, detailRows]` */
+  rows?: CustomNode;
+  detailRows?: CustomNode;
+  /** 已用百分比（0-100，驱动档位动画）；缺省 = 不播 */
+  percent?: number;
+}
 
 /** 计价档位装饰（气泡上的「峰/谷」）：由服务商按自己的计价规则算好后随数据带出 */
 export type PricingTier = 'peak' | 'idle';
@@ -181,7 +217,8 @@ export interface AccountBalanceSnapshot {
 export type BalanceSuccess =
   | { ok: true; provider: string; shape: 'windows'; data: WindowsUsage }
   | { ok: true; provider: string; shape: 'money'; data: MoneyBalance }
-  | { ok: true; provider: string; shape: 'points'; data: PointsBalance };
+  | { ok: true; provider: string; shape: 'points'; data: PointsBalance }
+  | { ok: true; provider: string; shape: 'custom'; data: CustomBalance };
 
 /**
  * 按当前服务商查询余额的结果。

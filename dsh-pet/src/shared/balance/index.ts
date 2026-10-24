@@ -6,16 +6,18 @@
 //
 // **本模块不认识任何服务商**：只认叶子里的 `shape`（展示形态）与数据自带的业务事实
 // （各窗口满额度、滚动窗时长、档位基准、峰谷档位）。服务商名字只用于日志与去重键。
-// 加一个服务商只要落到 `windows` / `money` / `points` 之一，这里与两端展示层一行都不用改。
+// 加一个服务商只要落到 `windows` / `money` / `points` 之一，这里与两端展示层一行都不用改；
+// 落不进这三种的（多模型分别余量、剩余次数、储值+赠送分栏…）用 `custom` 形态：
+// 第三方直接交一棵声明式节点树（CustomNode），由 parse.ts 白名单校验、两端渲染器按树画。
 //
 // 目录按职责分：
-//   types.ts     —— 全部类型（wire 入参、已解析视图、气泡行）
-//   parse.ts     —— 叶子 → 视图（白名单透传，不认识就返回 null）
+//   types.ts     —— 全部类型（wire 入参、已解析视图、气泡行、自定义节点树）
+//   parse.ts     —— 叶子 → 视图（白名单透传，不认识就返回 null；custom 树在这里裁剪）
 //   percent.ts   —— 档位百分比入口 + 档位索引
-//   view.ts      —— 气泡行主出口（不可用说明 + 按形态分发）
+//   view.ts      —— 气泡行主出口（不可用说明 + 按形态分发）+ custom 树的两个访问器
 //   notice.ts    —— 不可用时「弹不弹」的判定
 //   tone.ts      —— 进度条配色档位
-//   handlers/    —— 每个形态一个文件（windows / money / points），由 handlers/index.ts 组成
+//   handlers/    —— 每个形态一个文件（windows / money / points / custom），由 handlers/index.ts 组成
 //                   `Record<BalanceShape, ShapeHandler>`：加形态漏补 handler 会被 tsc 拦住
 //
 // 导出面保持与原单文件一致（`src/shared/index.ts` 与两端调用方都不受影响）。

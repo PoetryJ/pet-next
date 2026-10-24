@@ -126,7 +126,7 @@ PetSprite.prototype.showBalanceNotice = function showBalanceNotice(state, manual
   this.balanceWrap = true; // 文字说明可能多行：renderBubble 据此套用紧凑变体（字号缩到 0.75、宽度下限更窄）
   this.balanceView = S.balanceBubbleView(state);
   this.balanceState = state; // 留着：不可用状态不可展开，但要防止上一次的余额读数残留在字段里
-  this.balanceExpanded = false; // 文字说明没有展开态
+  this.balanceViewIndex = 0; // 文字说明只有一页（页数由 balancePageCount 从 state 算）
   this.renderBubble();
   if (this.bubbleTimer !== null) window.clearTimeout(this.bubbleTimer);
   this.bubbleTimer = window.setTimeout(() => {
@@ -207,17 +207,18 @@ PetSprite.prototype.showWhisper = function showWhisper(text, image, url, duratio
 // 余额展示（气泡 + 档位动画）：周期轮询与菜单点播共用同一展示路径，视觉/行为严格一致。
 // 两条门控分得很清楚：
 //  - 弹气泡：手动请求（manual）**无条件**弹——用户问了就得有答复，哪怕这只宠物关了 balanceEnabled、
-//    哪怕服务商没有百分比语义（纯余额金额也照样显示）；自动轮询则要求有百分比依据。
+//    哪怕服务商没有百分比语义（纯余额金额也照样显示）；自动轮询则要求"有内容可展示"：
+//    内置形态要有百分比依据，**custom 形态不看百分比**（内容由第三方设计，percent 只是可选的档位驱动）。
 //  - 档位动画：只属于启用余额的宠物，且要有百分比依据（关掉开关的宠物不该因为被点一次菜单就突然演一遍）。
 PetSprite.prototype.showBalanceNow = function showBalanceNow(state, manual) {
   if (!state || !state.ok) return;
   const p = S.balancePercent(state);
-  if (!manual && p === undefined) return; // 自动轮询没有百分比语义：没有档位依据，不弹（手动仍要给答复）
+  if (!manual && p === undefined && state.shape !== 'custom') return; // 自动轮询没有百分比语义：没有档位依据，不弹（手动仍要给答复）
   this.bubbleOn = true;
   this.balanceWrap = false; // 正常余额气泡用常规尺寸，别继承上一次文字说明的紧凑变体
   this.balanceView = S.balanceBubbleView(state);
   this.balanceState = state; // 展开态要拿完整读数现算三窗口行（balanceView 只是收起态那两行）
-  this.balanceExpanded = false; // 新一轮查询一律从收起态开始（与浏览器一致）
+  this.balanceViewIndex = 0; // 新一轮查询一律从第一页开始（与浏览器一致）
   this.renderBubble();
   // 气泡 10s 定时消失（与动画解耦：即使动画被点击/拖拽打断，气泡也按时收起；重复触发先清旧定时器）
   if (this.bubbleTimer !== null) window.clearTimeout(this.bubbleTimer);
@@ -244,7 +245,8 @@ PetSprite.prototype.showBalanceNow = function showBalanceNow(state, manual) {
   this.playOnce(name);
 };
 
-// 点余额气泡：展开/收起三窗口完整读数（与浏览器 src/client/bubble.ts 同一套语义）。
+// 点余额气泡：切到下一页（与浏览器 src/client/bubble.ts 同一套语义：末页回第一页）。
+// 页数由 balancePageCount 决定：内置 windows 是 收起/展开 两页，custom 是 views.length 页。
 // 两件事一起做：
 //  - 淡出 → 换内容 → 淡入：先在 .is-fading 里把 opacity 降到 0，250ms 后才重绘内容，
 //    否则内容会在半透明时被替换 = 看得见的硬切；
@@ -252,13 +254,13 @@ PetSprite.prototype.showBalanceNow = function showBalanceNow(state, manual) {
 // 命中区由 renderBubble 末尾的 syncInputBusy() 重报（is-clickable 变化会连带控件矩形变化）。
 PetSprite.prototype.toggleBalanceDetail = function toggleBalanceDetail() {
   if (!this.balanceClickable()) return;
-  this.balanceExpanded = !this.balanceExpanded;
+  this.balanceViewIndex = (this.balanceViewIndex + 1) % this.balancePageCount();
   this.bubble.classList.add('is-fading');
   if (this.balanceFadeTimer !== null) window.clearTimeout(this.balanceFadeTimer);
   this.balanceFadeTimer = window.setTimeout(() => {
     this.balanceFadeTimer = null;
     this.bubble.classList.remove('is-fading');
-    this.renderBubble(); // 重绘内容 + 重报控件矩形（展开态宽度变了，矩形也得跟着变）
+    this.renderBubble(); // 重绘内容 + 重报控件矩形（展开态/换页宽度变了，矩形也得跟着变）
   }, BALANCE_FADE_MS);
   if (this.bubbleTimer !== null) window.clearTimeout(this.bubbleTimer);
   this.bubbleTimer = window.setTimeout(() => {

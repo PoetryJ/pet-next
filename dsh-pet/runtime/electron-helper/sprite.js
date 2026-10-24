@@ -130,7 +130,7 @@ class PetSprite {
     this.balanceView = null;
     this.balanceWrap = false; // true = 当前余额气泡是不可用的「文字说明」（多行，需换行变体）
     this.balanceState = null; // 最近一次余额读数（展开态要用它算三窗口行；balanceView 只是收起态的行）
-    this.balanceExpanded = false; // 展开态：点一下气泡看三窗口完整读数（每次重新弹出都归位）
+    this.balanceViewIndex = 0; // 当前页：点一下气泡切下一页（内置 windows 是 收起/展开 两页；custom 是 views.length 页）
     this.balanceFadeTimer = null; // 展开/收起的淡出等待（250ms 后才换内容，避免硬切）
     this.prevTick = 0;
     // 说话（碎碎念 / 命令气泡 / 对话回复三合一）：文本/配图由容器统一轮询 /state 后经
@@ -1420,12 +1420,26 @@ class PetSprite {
   }
 
   /**
-   * 余额气泡此刻是否可点可展开：只有 windows 形态（三窗口读数）才有可展开的内容；
-   * money（账户余额）与不可用状态的文字说明点开也没有别的东西，保持不可点、继续穿透。
+   * 余额气泡当前有几页：custom 取 views.length；内置 windows 是「收起 / 展开」两页；其余一页。
+   * 只有一页 = 不可点（点开也没别的内容），气泡继续穿透、不挡页面。
+   */
+  balancePageCount() {
+    const s = this.balanceState;
+    if (!s || !s.ok) return 1;
+    if (s.shape === 'custom') {
+      const views = S.customViews(s);
+      return views ? Math.max(1, views.length) : 1;
+    }
+    return s.shape === 'windows' ? 2 : 1;
+  }
+
+  /**
+   * 余额气泡此刻是否可点切页：页数多于 1 且气泡正在显示。
+   * `custom` 的判定与浏览器 bubble.ts 完全一致（都是"多于 1 页"）。
    */
   balanceClickable() {
-    const s = this.balanceState;
-    return !!(this.bubbleOn && s && s.ok && s.shape === 'windows' && !this.balanceWrap);
+    if (!this.bubbleOn || this.balanceWrap) return false;
+    return this.balancePageCount() > 1;
   }
 
   /**
@@ -1867,6 +1881,29 @@ class PetSprite {
     });
   }
 
+  /**
+   * 自定义节点树 → DOM（custom 形态的渲染器，与浏览器 bubble.ts 的 treeToNodes 一一对应）。
+   *
+   * tag 与样式白名单在 shared 的解析层（parse.ts）已经裁过，这里只做映射：**不用 innerHTML**，
+   * 文本走 createTextNode —— 第三方交来的内容因而没有注入面。
+   * 样式键是 camelCase（与 React style 对象同形），直接 `el.style[key] = value` 即可。
+   */
+  renderTree(node) {
+    const el = document.createElement(node.tag);
+    if (node.style) {
+      for (const [key, value] of Object.entries(node.style)) el.style[key] = value;
+    }
+    if (node.tag === 'img') {
+      el.src = node.src || '';
+      el.alt = '';
+      return el;
+    }
+    // 文本与子节点可同时存在：先文本、后子节点（与 textContent + appendChild 的顺序一致）
+    if (node.text) el.appendChild(document.createTextNode(node.text));
+    for (const child of node.children || []) el.appendChild(this.renderTree(child));
+    return el;
+  }
+
   renderBubble() {
     // 气泡单槽：同一时刻只显示一个（优先级：终态任务 > 碎碎念/对话 > 余额 > 非终态任务）。
     // 为什么终态任务不让位：完成/失败气泡只活 10s，被事件顶掉就彻底看不到了；非终态任务气泡
@@ -1895,10 +1932,11 @@ class PetSprite {
       slot === 'whisper' || slot === 'work' || (slot === 'balance' && this.balanceWrap),
     );
     this.bubble.classList.toggle(S.MEME_BUBBLE_CLASS, !!whisperImg);
-    // 可点/展开两个状态类：可点 → 气泡参与命中区（见 syncInputRegions）；展开 → 三窗口排版与更宽的盒
+    // 可点/展开两个状态类：可点 → 气泡参与命中区（见 syncInputRegions）；index>0 → 更宽的盒与紧凑字号
     const clickable = slot === 'balance' && this.balanceClickable();
+    const expanded = clickable && this.balanceViewIndex > 0;
     this.bubble.classList.toggle('is-clickable', clickable);
-    this.bubble.classList.toggle('is-expanded', clickable && this.balanceExpanded);
+    this.bubble.classList.toggle('is-expanded', expanded);
     if (slot === 'none') {
       // 三者都没有可显示的内容：隐藏（不占位，也就不会挡住任何一层）
       this.bubble.classList.remove('is-on');
@@ -1919,10 +1957,16 @@ class PetSprite {
       line.className = 'pet-bub-row';
       line.textContent = this.whisperView[0]?.text ?? '';
       this.bubble.appendChild(line);
+    } else if (this.balanceState && S.customViews(this.balanceState)) {
+      // custom 形态：第三方自己的节点树（与浏览器 treeToNodes 同一套 tag/样式语义）。
+      // 页索引取当前页；页数变少时夹到最后一页，不显示上一轮的残页（与浏览器同一夹取规则）。
+      const views = S.customViews(this.balanceState);
+      const page = views[Math.min(this.balanceViewIndex, views.length - 1)];
+      if (page) this.bubble.appendChild(this.renderTree(page));
     } else {
       // 展开态的行在这里现算：renderBubble 是只读渲染路径，不缓存（余额每轮都在变，缓存反而要同步失效）
       const rows =
-        clickable && this.balanceExpanded && this.balanceState
+        clickable && this.balanceViewIndex > 0 && this.balanceState
           ? S.balanceDetailView(this.balanceState)
           : this.balanceView;
       const hasTier = rows.some((r) => r.role === 'tier');
