@@ -771,7 +771,7 @@ export function apply(ctx: any): void {
   // 对话写操作串行队列：read-modify-write 排队执行，防两端同时对话时交错写盘
   let chatQueue: Promise<void> = Promise.resolve();
 
-  /** 读记忆文件：不存在 → 空；损坏 → 显式报错 + 备份原始文件（绝不静默丢数据）+ 重建空记忆 */
+  /** 读记忆文件：不存在 → 空；解析失败/根不是对象 → 记日志 + 空记忆（不备份、不改写源文件） */
   const readMemory = async (): Promise<Record<string, Record<string, { messages: ChatMemoryMessage[] }>>> => {
     let raw: string;
     try {
@@ -781,18 +781,12 @@ export function apply(ctx: any): void {
     }
     try {
       const parsed = JSON.parse(raw) as Record<string, unknown>;
-      if (!parsed || typeof parsed !== 'object') throw new Error('not an object');
+      if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) throw new Error('not an object');
       return parsed as Record<string, Record<string, { messages: ChatMemoryMessage[] }>>;
     } catch (e) {
       log.error(
-        `dsh-pet: 记忆文件损坏已备份（对话将从头开始）：${memoryPath}（${e instanceof Error ? e.message : String(e)}）`,
+        `dsh-pet: 记忆文件无法解析（对话将从头开始）：${memoryPath}（${e instanceof Error ? e.message : String(e)}）`,
       );
-      try {
-        await mkdir(userRoot, { recursive: true });
-        await writeFile(`${memoryPath}.bak-${Date.now()}`, raw, 'utf8');
-      } catch {
-        /* 备份失败仅告警，不阻断 */
-      }
       return {};
     }
   };
@@ -920,8 +914,16 @@ export function apply(ctx: any): void {
           ? limitPool(readMemePool(found.conf.memes, memeDirsFor(found.entry)), Number(found.conf.chatImageLimit))
           : [];
       const mem = await readMemory();
-      const bucket = (mem[found.entry] ??= {});
-      const entry = (bucket[petId] ??= { messages: [] });
+      // 坏结构（数组/标量）按空桶重建；messages 不是数组的条目按新会话处理，避免 push 到坏对象上崩溃
+      const bucket =
+        mem[found.entry] && typeof mem[found.entry] === 'object' && !Array.isArray(mem[found.entry])
+          ? mem[found.entry]
+          : (mem[found.entry] = {});
+      const existing = bucket[petId];
+      if (existing !== undefined && (!existing || !Array.isArray(existing.messages))) {
+        log.error(`[dsh-pet] 记忆结构异常（messages 不是数组）pet=${petId}，按新会话处理：${memoryPath}`);
+      }
+      const entry = existing && Array.isArray(existing.messages) ? existing : (bucket[petId] = { messages: [] });
       // rounds = 0（用户关掉历史）→ 空历史；否则截尾部 rounds 轮（1 轮 = 1 问 1 答）。
       // 不能写 slice(-rounds * 2)：-0 在 JS 里 === 0，slice(-0) 返回整个数组而不是空。
       const list = sliceMemoryRounds(entry.messages, rounds);
@@ -2343,8 +2345,13 @@ export function apply(ctx: any): void {
         const petId = who.petId;
         if (method === 'GET') {
           const mem = await readMemory();
-          const bucket = mem[who.entry] ?? {};
-          const list = (bucket[petId]?.messages ?? []).slice();
+          const rawMessages = mem[who.entry]?.[petId]?.messages;
+          // 记忆文件是合法 JSON 但 messages 不是数组时，slice() 会抛 slice is not a function：
+          // 按空历史处理并记一行日志，不因为一条坏数据让整个历史接口报错。
+          const list = Array.isArray(rawMessages) ? rawMessages.filter((m) => m && typeof m.content === 'string') : [];
+          if (rawMessages !== undefined && !Array.isArray(rawMessages)) {
+            log.error(`[dsh-pet] 记忆结构异常（messages 不是数组）pet=${petId}，按空历史处理：${memoryPath}`);
+          }
           // 传了 ?rounds= 就用传的（含 0 = 空历史），没传才回落到配置
           const rounds = roundsOverride ?? memoryRounds(who.conf);
           // 与 chatWithPet 同一语义：rounds = 0 → 空历史（slice(-0) 会返回整个数组，见上）
