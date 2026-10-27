@@ -6,13 +6,15 @@
  * @module dsh-pet/src/shared/menu/mount
  */
 import type { ContextMenuMount, MenuBranch, MenuLeaf, MenuNode } from './types.ts';
+import { pickPanelPosition } from './position.ts';
 
 function isBranchNode(n: MenuNode): n is MenuBranch {
   return 'children' in n && Array.isArray((n as MenuBranch).children);
 }
 
 /** 挂载一个系统风格右键菜单（级联子菜单）到 document.body，位置为视口坐标。
- *  结构：根容器零尺寸，每级面板平级挂载、按触发项屏幕位置贴边定位（右/下边缘自动翻转夹取）。
+ *  结构：根容器零尺寸，每级面板平级挂载、按触发项屏幕位置贴边定位（优先父面板右侧，
+ *  放不下翻到父面板左侧，且不与任何已展开面板重叠）。
  *  级联：指针在菜单树内绝不自动收起，整体离开（root mouseleave，软 200ms）才关闭整棵菜单。
  *  clamp：允许占用的矩形（视口局部坐标）；桌面传「窗口 ∩ 工作区」——宠物贴边时窗口外扩的部分
  *  会被 OS 裁掉，约束进去即可完整显示，窗口与宠物零移动。 */
@@ -55,19 +57,29 @@ export function mountContextMenu(opts: {
     }
   };
 
-  /** 把面板显示在触发项旁边：右缘展开，贴右/下边缘自动翻转夹取（在 clamp 矩形内） */
+  /** 把子面板摆到触发项旁边：优先父面板右侧，放不下翻到父面板左侧，
+   *  且不与任何已展开面板重叠；贴边时夹进 clamp。 */
   const showPanel = (panel: HTMLElement, item: HTMLElement): void => {
     const rect = item.getBoundingClientRect();
     panel.style.left = '';
     panel.style.top = '';
     panel.style.display = 'block';
-    let left = rect.right + 4;
-    if (left + panel.offsetWidth > c.x + c.w - 4) left = rect.left - panel.offsetWidth - 4;
-    left = Math.max(c.x + 4, left);
-    let top = rect.top;
-    if (top + panel.offsetHeight > c.y + c.h - 4) top = Math.max(c.y + 4, c.y + c.h - 4 - panel.offsetHeight);
-    panel.style.left = left + 'px';
-    panel.style.top = top + 'px';
+    const parentEl = item.parentElement;
+    const pr = parentEl ? parentEl.getBoundingClientRect() : rect;
+    const pick = pickPanelPosition({
+      panel: { w: panel.offsetWidth, h: panel.offsetHeight },
+      item: { left: rect.left, right: rect.right, top: rect.top },
+      parent: { left: pr.left, right: pr.right, top: pr.top },
+      others: Array.from(root.querySelectorAll<HTMLElement>('.dsh-pet-menu-column'))
+        .filter((p) => p !== panel && p.style.display !== 'none')
+        .map((p) => {
+          const b = p.getBoundingClientRect();
+          return { left: b.left, top: b.top, right: b.right, bottom: b.bottom };
+        }),
+      clamp: { x: c.x, y: c.y, w: c.w, h: c.h },
+    });
+    panel.style.left = pick.left + 'px';
+    panel.style.top = pick.top + 'px';
   };
 
   /** 构建一层面板；分支项的子面板平级挂到 root 下、不嵌套。
