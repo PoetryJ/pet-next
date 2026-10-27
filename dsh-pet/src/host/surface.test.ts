@@ -31,10 +31,10 @@ describe('displayCovers —— 4×4 匹配矩阵', () => {
     web: { web: true, desktop: false, both: false, any: true },
     desktop: { web: false, desktop: true, both: false, any: true },
     both: { web: true, desktop: true, both: true, any: true },
-    none: { web: false, desktop: false, both: false, any: false },
+    none: { web: false, desktop: false, both: false, any: true },
   };
 
-  test('四行全对：both 只被 both 满足；any 只被前三者满足；none 一律不满足', () => {
+  test('四行全对：both 只被 both 满足；any 不挑显示模式（none 也放行）', () => {
     for (const [display, row] of Object.entries(TABLE)) {
       for (const want of SURFACES) {
         assert.equal(displayCovers(want, display), row[want], `display=${display} want=${want}`);

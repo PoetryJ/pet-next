@@ -4,8 +4,8 @@
  * 负责把「必然不可能」提前变成显式失败（pet-not-displayed + 实际 display），纯逻辑、可离线单测。
  * 不负责按面分发：指令照旧写进同一个叶子、两端内容照旧完全一致；要两端播不同内容用两只宠物表达。
  * 依赖无；只有宿主用得到，所以不与 src/shared 各写一份。
- * 始终成立：surface 必填（any 是「不关心哪一端」的明说方式，不是省略）；display: none 无条件拒绝。
- * 契约见 openapi.yaml 的 SurfaceQuery。
+ * 始终成立：surface 必填（any 是「不关心哪一端」的明说方式，不是省略）；`web`/`desktop`/`both`
+ * 仍拒绝 `display: none`，只有 `any` 放行——对话窗口这类不看渲染结果的消费方用 `any`。
  *
  * @module dsh-pet/src/host/surface
  */
@@ -27,13 +27,13 @@ export function normalizeSurface(v: unknown): Surface | null {
 /**
  * 该宠物的 display 是否满足调用方的期望。
  *
- * 判定规则见 openapi.yaml 的 SurfaceQuery（both 只匹配 display: both，any 只排除 none）；
- * display 不是合法值时一律视为不满足——配置校验会拦住，这里只做防御。
+ * `any` 不看显示模式（含 none）：调用方不看渲染结果。其余三值按 display 收窄；
+ * 非法 display 一律不满足（配置校验会拦，这里只防御）。
  */
 export function displayCovers(want: Surface, display: string): boolean {
   switch (want) {
     case 'any':
-      return display === 'web' || display === 'desktop' || display === 'both';
+      return display === 'web' || display === 'desktop' || display === 'both' || display === 'none';
     case 'web':
       return display === 'web' || display === 'both';
     case 'desktop':

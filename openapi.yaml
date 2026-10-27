@@ -2495,12 +2495,13 @@ components:
         - `web` —— 必须显示在**网页**（`display` 为 `web` / `both`）；
         - `desktop` —— 必须显示在**桌面**（`display` 为 `desktop` / `both`）；
         - `both` —— **两端都要**显示（只匹配 `display: both`，比"哪端都行"更严）；
-        - `any` —— **哪端都行**，只要不是不显示（`display` 为 `web` / `desktop` / `both`）。
+        - `any` —— **不看显示模式**：四种 `display` 全放行，**包括 `none`**（给不看渲染结果的
+          消费方用，例如对话窗口：记忆与返回值与显示在哪一端无关）。
 
         失败两种（都是 HTTP 200 + `ok: false`）：
 
         - 缺省 / 非法（含大小写不符、空串）→ `bad-request`；
-        - 与该宠物的 `display` 对不上（含 `display: none`——`any` 也拒）→ `pet-not-displayed`，
+        - 与该宠物的 `display` 对不上（`display: none` 只有 `any` 放行）→ `pet-not-displayed`，
           并**回带该宠物实际的 `display`**，调用方据此一眼知道该怎么办。
 
         **这是前置校验，不是"按面分发"**：指令照旧写进同一个叶子、两端内容照旧完全一致。
