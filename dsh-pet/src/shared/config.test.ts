@@ -94,7 +94,12 @@ describe('flattenConfigPets —— 成品 → 渲染列表的唯一填充点', (
   test('源码守卫：客户端只有这一处填充，host 的写接口返回成品聚合', () => {
     const clientPet = readSource('../client/pet.ts');
     const clientSettings = readSource('../client/settings.ts');
-    const host = readSource('../host/index.ts');
+    const host =
+      readSource('../host/index.ts') +
+      '\n' +
+      readSource('../host/routes/config.ts') +
+      '\n' +
+      readSource('../host/routes/state.ts');
 
     // ① 旧的手抄填充（mc.<字段> 映射）、以及"设置页回推列表"这条旁路，都不得复活
     assert.ok(
@@ -115,7 +120,7 @@ describe('flattenConfigPets —— 成品 → 渲染列表的唯一填充点', (
     assert.equal(returns.length, 4, 'GET / PUT / POST /config 与 POST /pet-display 都应返回成品聚合');
     // 只扫 /config 那一段：动作端点（POST /balance 等）返回 { ok: true } 是对的（动作不带数据，
     // 数据只有 /state 一个出口），全文件扫描会把它们误判成"config 写接口返回了 ok:true"。
-    const configBlock = /if \(rest === 'config'\) \{([\s\S]*?)\n {4}\}/.exec(host)?.[1] ?? '';
+    const configBlock = /if \(rest === 'config'\) \{([\s\S]*?)\n {2}\}/.exec(host)?.[1] ?? '';
     assert.ok(configBlock.length > 0, '必须能定位到 /config 路由段（守卫失效即无意义）');
     assert.ok(
       !/obj: \{ ok: true \}/.test(configBlock),
@@ -173,7 +178,7 @@ describe('flattenConfigPets —— 成品 → 渲染列表的唯一填充点', (
       '「保存」的请求体必须带上 physics（否则设置页改的物理参数不会落盘）',
     );
     assert.ok(
-      /physicsValid\(ph\)/.test(readSource('../host/config.ts')),
+      /physicsValid\(ph\)/.test(readSource('../host/config/save.ts')),
       'saveUserConfig 必须用 physicsValid 校验 physics（与读取侧同一套规则）',
     );
     // ⑨ 模型选择（设置页「AI 模型」两个下拉框）必须真的提交：whisperModel / chatModel 若不在白名单里，
@@ -183,7 +188,7 @@ describe('flattenConfigPets —— 成品 → 渲染列表的唯一填充点', (
       /(^|[^.\w])whisperModel\b/.test(saveBody[1]) && /(^|[^.\w])chatModel\b/.test(saveBody[1]),
       '「保存」的请求体必须带上 whisperModel / chatModel（否则设置页选的模型不会落盘）',
     );
-    const hostConfig = readSource('../host/config.ts');
+    const hostConfig = readSource('../host/config/save.ts');
     assert.ok(
       /modelSelectionValid\(wm\)/.test(hostConfig) && /modelSelectionValid\(cm\)/.test(hostConfig),
       'saveUserConfig 必须用 modelSelectionValid 校验 whisperModel / chatModel（与读取侧同一套规则）',

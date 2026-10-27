@@ -22,7 +22,12 @@ import { fileURLToPath } from 'node:url';
 /** 包内文件源码（守卫用；相对 src/host/ 解析） */
 const readSource = (rel: string): string => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
-const host = readSource('./index.ts');
+const host =
+  readSource('./index.ts') +
+  '\n' +
+  readSource('./plugin/desktop-helper.ts') +
+  '\n' +
+  readSource('./plugin/desktop/spawn.ts');
 const main = readSource('../../runtime/electron-helper/main.js');
 const constants = readSource('../../runtime/electron-helper/constants.js');
 const sprite = readSource('../../runtime/electron-helper/sprite.js');

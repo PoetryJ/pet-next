@@ -27,7 +27,7 @@ import { apply } from './index.ts';
 /** 包内文件源码（守卫用；相对 src/host/ 解析） */
 const readSource = (rel: string): string => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
-const hostSource = readSource('./index.ts');
+const hostSource = readSource('./index.ts') + '\n' + readSource('./routes/desktop.ts');
 
 type Result = { status: number; body: string };
 
@@ -218,7 +218,7 @@ describe('桌面端与独立模式的接线（源码守卫：两半各自构建�
   });
 
   test('退出不是重启：/quit 路由块内不得调用 syncDesktop()', () => {
-    const block = /if \(rest === 'quit'\) \{([\s\S]*?)\n {4}\}/.exec(hostSource);
+    const block = /if \(rest === 'quit'\) \{([\s\S]*?)\n {2}\}/.exec(hostSource);
     assert.ok(block, '宿主必须有 /quit 路由');
     assert.ok(!/syncDesktop/.test(block[1]), '退出不是重启：reload 守卫要求 syncDesktop 恰好 4 次');
   });

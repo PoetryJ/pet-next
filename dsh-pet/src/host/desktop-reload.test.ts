@@ -23,18 +23,20 @@ import { fileURLToPath } from 'node:url';
 /** 包内文件源码（守卫用；相对 src/host/ 解析） */
 const readSource = (rel: string): string => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
-const host = readSource('./index.ts');
+/** 路由源码：/reload 与 /config 写接口分居两个领域模块（见 routes/） */
+const routeSource = readSource('./routes/config.ts') + '\n' + readSource('./routes/desktop.ts');
+const host = readSource('./index.ts') + '\n' + routeSource;
 const sprite = readSource('../../runtime/electron-helper/sprite.js');
 const clientPet = readSource('../client/pet.ts');
-const menu = readSource('../shared/menu.ts');
+const menu = readSource('../shared/menu.ts') + readSource('../shared/menu/types.ts');
 
 describe('桌面端「重载配置」—— 菜单 → 宿主重启 Helper', () => {
   test('宿主：POST /reload 复用 syncDesktop()，且只重启、不写配置文件', () => {
-    const block = /if \(rest === 'reload'\) \{([\s\S]*?)\n {4}\}/.exec(host);
+    const block = /if \(rest === 'reload'\) \{([\s\S]*?)\n {2}\}/.exec(routeSource);
     assert.ok(block, '宿主必须有 /reload 路由');
     const body = block[1];
     assert.ok(/method !== 'POST'/.test(body), 'reload 只接受 POST（重载是动作，不是可缓存的资源）');
-    assert.ok(/void syncDesktop\(\)/.test(body), 'reload 必须复用 syncDesktop()：与保存同一条重启路径');
+    assert.ok(/void requestRestart\(\)/.test(body), 'reload 必须复用 requestRestart()：与保存同一条重启路径');
     assert.ok(
       !/writeFile|saveUserConfig|syncUserConfigFromDefault/.test(body),
       'reload 只重启 Helper，绝不碰配置文件（写盘是 PUT /config 的职责）',
@@ -57,9 +59,9 @@ describe('桌面端「重载配置」—— 菜单 → 宿主重启 Helper', () 
     assert.ok(!/action: 'reload'/.test(clientPet), '浏览器端不得有 reload 菜单项（它会重启整个桌面 Helper）');
   });
 
-  test('syncDesktop 是唯一的重启入口：两个 /config 写接口、/reload 与 /pet-display 都走它', () => {
-    const calls = host.match(/void syncDesktop\(\)/g) ?? [];
-    assert.equal(calls.length, 4, 'PUT /config、POST /config、POST /reload、POST /pet-display 都应走 syncDesktop()');
+  test('requestRestart 是唯一的重启入口：两个 /config 写接口、/reload 与 /pet-display 都走它', () => {
+    const calls = host.match(/void requestRestart\(\)/g) ?? [];
+    assert.equal(calls.length, 4, 'PUT /config、POST /config、POST /reload、POST /pet-display 都应走 requestRestart()');
   });
 
   test('shared 菜单契约放行 reload（桌面壳注入该动作，类型必须包含它）', () => {
