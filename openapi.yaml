@@ -1466,7 +1466,8 @@ paths:
         - 文本超过 **2000 字** → `{ ok: false, reason: 'bad-request' }`。
         - 模型选择：条目配置的 `chatModel` 优先；留空则跟随当前对话的模型。
           指定模型生成失败时会**自动回落到当前对话的模型**重试一次。
-        - 记忆只存**正文**：配图属展示层，不进上下文（否则下次请求会把标记当历史读回去）。
+        - 记忆会记下本轮的图片引用与配图名（供聊天记录展示），但历史回放**只带正文**：
+          图信息不进上下文，否则每轮都会把旧图重发一遍给模型。
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/SurfaceQuery"
@@ -3289,6 +3290,31 @@ components:
           type: integer
           format: int64
           description: 写入时间戳（毫秒）
+        image:
+          type: object
+          description: |
+            该轮用户上传的图片，只出现在 user 消息里；缺失 = 这一轮没带图。
+            存的是 DSH 附件引用（**不含图片本体**），取图需按引用读回字节；只供记录展示，不进上下文。
+          required: [attachmentId, mediaType, bytes, width, height]
+          properties:
+            attachmentId:
+              type: string
+              description: 内容寻址的附件标识（sha256），不是文件路径
+            mediaType:
+              type: string
+              enum: [image/png, image/jpeg, image/webp, image/gif]
+            bytes:
+              type: integer
+              description: 编码后字节数（读图时用于完整性校验）
+            width:
+              type: integer
+            height:
+              type: integer
+        meme:
+          type: string
+          description: |
+            该轮 AI 配的表情包名称（配置 memes 的键），只出现在 assistant 消息里；缺失 = 没配图。
+            名称可按 `/pic/memes/<素材根>/<名称>.png` 还原成图；只供记录展示，不进上下文。
 
     Provider:
       type: object

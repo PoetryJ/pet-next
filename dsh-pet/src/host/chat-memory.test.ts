@@ -1,0 +1,128 @@
+/**
+ * 对话记忆写入的单元测试 —— 钉住「聊天记录存档」的两类图信息：
+ * 带图那一轮 user 消息记下附件引用、配图那一轮 assistant 消息记下表情包名；
+ * 不带图那一轮两条消息的字段集合必须与加字段前完全一致（纯增量，不破坏旧格式）。
+ *
+ * 走真实 memory.json 落盘（临时目录隔离），默认配置取仓库内 assets/config.jsonc（与生产同一份，
+ * 不手抄第二份）；LLM 用假流驱动、不联网。
+ *
+ * 跑法：node --experimental-strip-types --test src/host/chat-memory.test.ts
+ */
+import { test, describe } from 'node:test';
+import assert from 'node:assert/strict';
+import { mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { join } from 'node:path';
+import { tmpdir } from 'node:os';
+import { fileURLToPath } from 'node:url';
+
+import { createChatMemory, type ChatMemoryInput } from './plugin/chat-memory.ts';
+import type { ChatMemoryMessage } from './chat.ts';
+import type { ConfigPaths } from './config.ts';
+import type { PetImageRef } from './image-attachment.ts';
+
+/** 一条已落盘的图片引用：字段与附件服务返回的一致。 */
+const IMAGE: PetImageRef = {
+  attachmentId: '9f2c4a1b',
+  mediaType: 'image/png',
+  bytes: 10108,
+  width: 257,
+  height: 173,
+};
+
+/** 一份假 ctx：对话生成只读 agentDefaultModel 与 llm.stream，reply 为模型回的那句。 */
+function fakeCtx(reply: string): unknown {
+  return {
+    agentDefaultModel: { currentSelection: () => ({ provider: 'test', model: 'test-model' }) },
+    llm: {
+      stream: () =>
+        (async function* () {
+          yield { type: 'text-delta', index: 0, text: reply };
+        })(),
+    },
+  };
+}
+
+/** 临时工作区：用户配置与记忆目录隔离，默认配置指回仓库里那一份。 */
+function tempWorkspace(overlay: Record<string, unknown> = {}) {
+  const dir = mkdtempSync(join(tmpdir(), 'dsh-pet-memory-test-'));
+  const configPaths: ConfigPaths = {
+    defaultFile: fileURLToPath(new URL('../../assets/config.jsonc', import.meta.url)),
+    userFile: join(dir, 'main-config.jsonc'),
+    petDir: join(dir, 'pet'), // 不存在 = 无文件宠物
+  };
+  writeFileSync(configPaths.userFile, JSON.stringify(overlay));
+  return { dir, configPaths, memeDir: join(dir, 'memes'), userRoot: join(dir, 'user') };
+}
+
+/** 造一份对话记忆；memeDir 缺省 = 没有表情包目录（池为空）。 */
+function createMemory(reply: string, ws: ReturnType<typeof tempWorkspace>, memeDir?: string) {
+  return createChatMemory({
+    ctx: fakeCtx(reply),
+    configPaths: ws.configPaths,
+    log: { info: () => {}, warn: () => {}, error: () => {} },
+    memeDirsFor: () => (memeDir === undefined ? [] : [memeDir]),
+    state: { writePet: () => {} },
+    userRoot: ws.userRoot,
+  } as unknown as ChatMemoryInput);
+}
+
+/** 读回刚落盘的记忆消息（只应有一只宠物一个分桶）。 */
+function readMessages(userRoot: string): ChatMemoryMessage[] {
+  const mem = JSON.parse(readFileSync(join(userRoot, 'memory.json'), 'utf8')) as Record<
+    string,
+    Record<string, { messages: ChatMemoryMessage[] }>
+  >;
+  const buckets = Object.values(mem).flatMap((byPet) => Object.values(byPet));
+  const bucket = buckets[0];
+  assert.ok(bucket && buckets.length === 1, '应当只写入一只宠物的记忆');
+  return bucket.messages;
+}
+
+describe('createChatMemory —— 图信息写入记忆文件', () => {
+  test('带图的一轮：user 原样记下附件引用，assistant 不凭空多出 meme 字段', async () => {
+    const ws = tempWorkspace();
+    try {
+      const r = await createMemory('好看', ws).chatWithPet('main', '看看这个', IMAGE);
+      assert.equal(r.ok, true);
+      const messages = readMessages(ws.userRoot);
+      assert.equal(messages.length, 2);
+      const assistant = messages[1];
+      assert.ok(assistant);
+      assert.deepEqual(messages[0]?.image, IMAGE, 'user 消息应原样存下附件引用');
+      assert.equal('meme' in assistant, false, '这一轮没配图，不得写 meme 字段');
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('不带图的一轮：两条消息的字段集合与加字段前逐字节一致', async () => {
+    const ws = tempWorkspace();
+    try {
+      const r = await createMemory('在的', ws).chatWithPet('main', '在吗');
+      assert.equal(r.ok, true);
+      const messages = readMessages(ws.userRoot);
+      assert.equal(messages.length, 2);
+      for (const m of messages) {
+        assert.deepEqual(Object.keys(m).sort(), ['content', 'role', 'ts'], '不该出现 image / meme 字段');
+      }
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('配图的一轮：assistant 记下表情包名，正文里的标记仍被剥离', async () => {
+    const ws = tempWorkspace({ chatImageEnabled: true, memes: { 可爱: '卖萌立绘' } });
+    mkdirSync(ws.memeDir, { recursive: true });
+    writeFileSync(join(ws.memeDir, '可爱.png'), '');
+    try {
+      const r = await createMemory('你好呀\n[图:可爱]', ws, ws.memeDir).chatWithPet('main', '在吗');
+      assert.equal(r.ok, true);
+      const assistant = readMessages(ws.userRoot)[1];
+      assert.ok(assistant);
+      assert.equal(assistant.meme, '可爱', 'assistant 消息应记下配图名');
+      assert.equal(assistant.content, '你好呀', '配图标记属于展示层，不得留在记忆正文里');
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+});

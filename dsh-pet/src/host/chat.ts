@@ -23,11 +23,15 @@ export type ChatGenerateResult =
   | { ok: true; text: string; image?: string }
   | { ok: false; reason: 'provider-missing' | 'generate-error'; message?: string };
 
-/** 记忆中的一条消息（与 shared/chat 的 ChatMessage 同构）。 */
+/** 记忆中的一条消息：GET /chat 返回的窗口条目就是它。 */
 export interface ChatMemoryMessage {
   role: 'user' | 'assistant';
   content: string;
   ts: number;
+  /** 该轮用户上传的图片（附件引用，不含图片本体）；只存不送——历史回放不带图。 */
+  image?: PetImageRef;
+  /** 该轮 AI 配的表情包名称（不是条目对象）；只存不送——不进上下文。 */
+  meme?: string;
 }
 
 /** 单次生成超时（ms）：对话等 LLM 回复，60s 足够。 */

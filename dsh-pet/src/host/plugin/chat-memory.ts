@@ -205,9 +205,15 @@ export function createChatMemory(deps: ChatMemoryInput) {
       });
       if (!generated.ok) return generated;
       const now = Date.now();
-      entry.messages.push({ role: 'user', content: text, ts: now });
-      // 记忆只存正文（配图属展示层，不进上下文——否则下次请求会把标记当历史读回去）
-      entry.messages.push({ role: 'assistant', content: generated.text, ts: now });
+      // 图信息只存不送：记忆要能还原「这一轮带过图、配过哪张」（聊天记录存档），
+      // 但历史回放一律只带正文——否则每轮都会把旧图重发一遍给模型。
+      entry.messages.push({ role: 'user', content: text, ts: now, ...(image ? { image } : {}) });
+      entry.messages.push({
+        role: 'assistant',
+        content: generated.text,
+        ts: now,
+        ...(generated.image ? { meme: generated.image } : {}),
+      });
       await writeMemory(mem);
       // 回复写进 S（与碎碎念同一个叶子：前端本来就是同一条展示链路）
       state.writePet(
