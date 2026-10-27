@@ -42,6 +42,7 @@ const browserGlobals = {
   ResizeObserver: 'readonly',
   Blob: 'readonly',
   FileReader: 'readonly',
+  btoa: 'readonly',
   CustomEvent: 'readonly',
   performance: 'readonly',
   fetch: 'readonly',

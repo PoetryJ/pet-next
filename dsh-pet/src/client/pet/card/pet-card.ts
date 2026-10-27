@@ -3,9 +3,9 @@
  * 不持有状态、不做判定——状态在 card-state，判定在各驱动与 shared。
  * @module dsh-pet/src/client/pet/card/pet-card
  */
-import { makeCardView } from './card-view.ts';
-import { createCardRuntime } from './card-runtime.ts';
-import type { PetCardProps } from './card-props.ts';
+import { makeCardView } from './view.ts';
+import { createCardRuntime } from './runtime.ts';
+import type { PetCardProps } from './props.ts';
 import type { PetRuntime } from '../types.ts';
 import type { FunctionComponent } from 'react';
 

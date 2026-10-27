@@ -39,7 +39,7 @@ import type {
 import type { MenuMoreItem } from '../../shared/menu.ts';
 import type { PetCollisionSlot } from '../../shared/physics.ts';
 import type { WorkStatusSnapshot } from '../../shared/work-status.ts';
-import type { PetCardProps } from './card/card-props.ts';
+import type { PetCardProps } from './card/props.ts';
 import type { PetRuntime, RuntimePet } from './types.ts';
 import { setClickSoundEnabled } from './click-sound.ts';
 import { runStatePoll } from './state-poll.ts';

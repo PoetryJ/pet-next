@@ -3,9 +3,9 @@
  * 只声明契约，不构造实现——装配根用当帧闭包拼出来，全部按 getter 取，避免驱动读到旧值。
  * 依赖卡状态、动画链、气泡单槽与三条运动驱动。
  * 不变量：每次渲染重新绑定；消费方不得缓存整个 hub，只能在调用点取值。
- * @module dsh-pet/src/client/pet/card/card-hub
+ * @module dsh-pet/src/client/pet/card/hub
  */
-import type { CardStateApi } from './card-state.ts';
+import type { CardStateApi } from './state.ts';
 import type { OwnAnimation } from '../animation/animation.ts';
 import type { BubbleSlots } from './bubble-slots.ts';
 import type { PositionFollow } from '../motion/position-follow.ts';

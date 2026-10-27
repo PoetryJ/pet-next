@@ -8,8 +8,8 @@
 import { balanceEventIndex, balancePercent } from '../../../shared/balance/index.ts';
 import { pickSlot, poolIncludes } from '../../../shared/pickers.ts';
 import { WORK_STATUS_INDEX } from '../../../shared/work-status.ts';
-import type { CardHub } from './card-hub.ts';
-import type { PetCardProps } from './card-props.ts';
+import type { CardHub } from './hub.ts';
+import type { PetCardProps } from './props.ts';
 import type * as ReactNS from 'react';
 
 /** 注入的 react 能力。 */

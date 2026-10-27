@@ -2,13 +2,13 @@
  * 一张宠物卡的动画链装配：构造 OwnAnimation、跟随状态换源，并登记挂载期的只读服务。
  * 不负责运动与浮层：走位、拖拽、挤压经装配根的迟绑槽取值，本模块只决定「何时读」。
  * 卸载顺序固定：摘监听 → 注销 pose/progress → dispose 动画链 → 停三套运动。
- * @module dsh-pet/src/client/pet/card/card-animation
+ * @module dsh-pet/src/client/pet/card/animation
  */
 import { createOwnAnimation, type OwnAnimation, type OwnAnimationDeps } from '../animation/animation.ts';
 import { registerPose } from '../../pose.ts';
 import { registerProgress } from '../../progress.ts';
-import type { CardLive } from './card-live.ts';
-import type { CardStateApi } from './card-state.ts';
+import type { CardLive } from './live.ts';
+import type { CardStateApi } from './state.ts';
 import type { RuntimePet } from '../types.ts';
 import type { LockState } from '../../../shared/state.ts';
 import type { WorkStatusSnapshot } from '../../../shared/work-status.ts';

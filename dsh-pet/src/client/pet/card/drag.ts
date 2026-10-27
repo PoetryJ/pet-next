@@ -2,14 +2,14 @@
  * 指针拖拽的装配：把当帧能力束成 DragCard，再交给驱动长期持有。
  * 依赖 motion 的运动面与迟绑槽里的动画流、锁与提示——它们创建得更晚，只在回调里读。
  * 只建一次：驱动自带指针状态机与捕获，重建会让按下中的手势丢失。
- * @module dsh-pet/src/client/pet/card/card-drag
+ * @module dsh-pet/src/client/pet/card/drag
  */
 import { createDrag, type Drag, type DragCard } from '../motion/drag.ts';
 import { boxToRatio } from '../motion/geometry.ts';
 import { playClickSound } from '../click-sound.ts';
-import type { CardLive } from './card-live.ts';
-import type { CardMotion } from './card-motion.ts';
-import type { CardStateApi } from './card-state.ts';
+import type { CardLive } from './live.ts';
+import type { CardMotion } from './motion.ts';
+import type { CardStateApi } from './state.ts';
 import type { RuntimePet } from '../types.ts';
 import type * as ReactNS from 'react';
 

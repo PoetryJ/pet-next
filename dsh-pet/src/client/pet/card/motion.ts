@@ -2,15 +2,15 @@
  * 一张宠物卡的运动装配：包围盒、几何、自主走位、抛掷飞行、位置跟随与碰撞站场。
  * 不负责指针与菜单：拖拽驱动经迟绑槽回读，避免与运动驱动形成构造期环。
  * 三套驱动都只建一次，rAF 句柄与世代号在驱动内部，跨渲染存活。
- * @module dsh-pet/src/client/pet/card/card-motion
+ * @module dsh-pet/src/client/pet/card/motion
  */
 import { createFlight, type Flight, type FlightMetrics } from '../motion/flight.ts';
 import { createPositionFollow, type PositionFollow } from '../motion/position-follow.ts';
 import { createSquashDriver, type SquashDriver } from '../motion/squash.ts';
 import { createWalk, type Walk } from '../motion/walk.ts';
 import { landingSquash, throwVelocity } from '../../../shared/physics.ts';
-import type { CardLive } from './card-live.ts';
-import type { CardStateApi } from './card-state.ts';
+import type { CardLive } from './live.ts';
+import type { CardStateApi } from './state.ts';
 import type { MovesConfig } from '../../../shared/types.ts';
 import type { PetCollisionSlot } from '../../../shared/physics.ts';
 import type { RuntimePet } from '../types.ts';

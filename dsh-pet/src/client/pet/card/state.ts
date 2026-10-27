@@ -3,7 +3,7 @@
  * 不负责派生几何（geometry 负责）与驱动实例（由装配根持有），也不做任何判定。
  * 依赖注入的 react；状态只在卡内使用，跨卡不共享。
  * 不变量：anim / once / seq 三者共同决定是否换源，只改其中一个会走进防重分支。
- * @module dsh-pet/src/client/pet/card/card-state
+ * @module dsh-pet/src/client/pet/card/state
  */
 import type { Center } from '../motion/geometry.ts';
 import type { Corner } from '../../../shared/types.ts';

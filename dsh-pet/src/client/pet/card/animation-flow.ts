@@ -8,7 +8,7 @@
 import { pick, pickSlot, rollKind } from '../../../shared/pickers.ts';
 import { WORK_STATUS_INDEX } from '../../../shared/work-status.ts';
 import { decideNextAnimation } from '../animation/next-animation.ts';
-import type { CardHub } from './card-hub.ts';
+import type { CardHub } from './hub.ts';
 import type { EndedCue } from '../animation/cues.ts';
 import type { WorkStatusSnapshot } from '../../../shared/work-status.ts';
 import type * as ReactNS from 'react';

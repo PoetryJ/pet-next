@@ -2,9 +2,11 @@
  * 右键菜单、对话弹窗与悬浮提示的入口：三样都是贴在宠物上的浮层，共享同一套关闭与定位时机。
  * 不负责动作本身：菜单叶子交给 menu-actions 派发，对话内容由 shared/chat 与宿主 /chat 处理。
  * 浮层句柄只在本模块持有，卸载时统一关闭；提示位置直接写 style，不走 React 状态。
- * @module dsh-pet/src/client/pet/card/card-entry
+ * @module dsh-pet/src/client/pet/card/entry
  */
-import { mountChatDialog } from '../../../shared/chat.ts';
+import { CHAT_HOTKEY_HINT, mountChatDialog } from '../../../shared/chat/index.ts';
+import { captureDisplayFrame } from '../../../shared/chat/capture.ts';
+import { bindOpenChat } from './open-chat.ts';
 import {
   buildMenuTree,
   buildMoreBranch,
@@ -15,9 +17,9 @@ import {
 import { ROUTE_PATH } from '../../../shared/constants.ts';
 import { TOOLTIP_GAP_RATIO, tooltipPlacement } from '../../../shared/tooltip.ts';
 import type { MenuMoreItem } from '../../../shared/menu.ts';
-import type { CardLive } from './card-live.ts';
-import type { CardMotion } from './card-motion.ts';
-import type { CardStateApi } from './card-state.ts';
+import type { CardLive } from './live.ts';
+import type { CardMotion } from './motion.ts';
+import type { CardStateApi } from './state.ts';
 import type { Drag } from '../motion/drag.ts';
 import type { MenuActions } from '../menu-actions.ts';
 import type { RuntimePet } from '../types.ts';
@@ -59,8 +61,8 @@ export interface CardEntry {
   placeTip: (clientX: number, clientY: number) => void;
   /** 打开右键菜单。 */
   handleContextMenu: (e: ReactNS.MouseEvent<HTMLDivElement>) => void;
-  /** 打开对话弹窗：菜单里「对话」那一项走这里。 */
-  openChat: () => void;
+  /** 打开对话弹窗：菜单里「对话」那一项走这里；带图时直接进入待发送状态（拖拽用）。 */
+  openChat: (image?: File) => void;
   /** 指针进入：先摆位再显示。 */
   onPointerEnter: (e: ReactNS.PointerEvent<HTMLDivElement>) => void;
   /** 指针离开：收起提示。 */
@@ -115,7 +117,7 @@ export function createCardEntry(rt: CardEntryRuntime) {
     );
 
     /** 打开对话弹窗：弹窗贴在身体命中区右上角，视频框右上角不等于宠物右上角；超出视口夹回。 */
-    const openChat = (): void => {
+    const openChat = (image?: File): void => {
       if (chatRef.current) chatRef.current.close();
       const hitRect = stage()?.querySelector('.dsh-pet-hit')?.getBoundingClientRect();
       chatRef.current = mountChatDialog({
@@ -124,6 +126,9 @@ export function createCardEntry(rt: CardEntryRuntime) {
         surface: 'web',
         x: hitRect ? hitRect.right + 6 : window.innerWidth - 256,
         y: hitRect ? hitRect.top + 6 : 8,
+        ...(image ? { initialImage: image } : {}),
+        // 浏览器侧截屏：getDisplayMedia 抓一帧，系统选择器由用户确认
+        capture: captureDisplayFrame,
         onSent: () => {
           // 发送成功：回复已写进 /state，长轮询会立刻返回并弹气泡。
           console.info('[dsh-pet] 对话已发送 pet=' + cfgRef.current.id);
@@ -133,6 +138,24 @@ export function createCardEntry(rt: CardEntryRuntime) {
         },
       });
     };
+
+    // 悬停标记：快捷键与拖拽都只在"鼠标停在这只宠物上"时生效，避免和页面其它交互抢事件。
+    const hoverRef = useRef(false);
+    // 挂载时注册一次监听，但始终调用最新的 openChat 闭包（它读 ref，不能捕获旧值）。
+    const openChatRef = useRef<(image?: File) => void>(openChat);
+    openChatRef.current = openChat;
+    // stage 是 getter（首次渲染时节点还不存在），effect 里再取一次，并用 ref 避开依赖告警。
+    const stageGetterRef = useRef(stage);
+    stageGetterRef.current = stage;
+    useEffect(
+      () =>
+        bindOpenChat({
+          stage: stageGetterRef.current(),
+          isHovered: () => hoverRef.current,
+          openChat: (image) => openChatRef.current(image),
+        }),
+      [],
+    );
     // 菜单的动作面里含「对话」一条，回调注册一次即可：弹窗句柄在闭包里。
     live.current.placeTip = placeTip;
     live.current.tipOn = () => card.state.tipOn;
@@ -145,7 +168,7 @@ export function createCardEntry(rt: CardEntryRuntime) {
       const tools: MenuNode[] = [
         { label: '查看余额', action: 'show-balance' },
         { label: '碎碎念', action: 'whisper' },
-        { label: '对话', action: 'chat' },
+        { label: '对话', action: 'chat', hint: CHAT_HOTKEY_HINT },
         { label: '回到初始位置', action: 'home' },
         // 显示位置子菜单与桌面端同一份；改成不含 web 的值后本宠物会从页面消失。
         displayMenuBranch(),
@@ -173,10 +196,14 @@ export function createCardEntry(rt: CardEntryRuntime) {
     return {
       handleContextMenu,
       onPointerEnter: (e) => {
+        hoverRef.current = true;
         placeTip(e.clientX, e.clientY); // 先摆位再显示，否则会先在兜底坐标闪一帧。
         card.actions.setTipOn(true);
       },
-      onPointerLeave: () => card.actions.setTipOn(false),
+      onPointerLeave: () => {
+        hoverRef.current = false;
+        card.actions.setTipOn(false);
+      },
       openChat,
       placeTip,
     };

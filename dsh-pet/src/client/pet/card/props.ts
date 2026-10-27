@@ -2,7 +2,7 @@
  * 单只宠物的渲染输入：容器把 /state 叶子分发成这些字段，卡片只读不写。
  * 字段全部来自容器（轮询、配置、碰撞站场），卡片内部不订阅事件——它只负责渲染与响应，
  * 需要改 React 状态时走自己的 setter，不向上要回调。
- * @module dsh-pet/src/client/pet/card/card-props
+ * @module dsh-pet/src/client/pet/card/props
  */
 import type * as ReactNS from 'react';
 import type { BalanceState } from '../../../shared/balance/index.ts';

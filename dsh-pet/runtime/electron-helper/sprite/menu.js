@@ -27,7 +27,7 @@ Object.assign(PetSprite.prototype, {
     tools.push({ label: '查看余额', action: 'show-balance' });
     tools.push(
       { label: '碎碎念', action: 'whisper' },
-      { label: '对话', action: 'chat' },
+      { label: '对话', action: 'chat', hint: S.CHAT_HOTKEY_HINT },
       { label: '回到初始位置', action: 'home' },
       // 显示位置（仅网页/仅桌面/两者/都不）：改这只宠物的 display 配置，由宿主重载生效。
       // 与浏览器端注入同一份子菜单，两端文案与取值不会漂移。不就地开关窗：窗口是进程启动时按
@@ -165,7 +165,7 @@ Object.assign(PetSprite.prototype, {
   // 气泡 10s），只多一步用户输入。记忆经宿主 /chat 读写，同一实例的浏览器与桌面共享。
   // 弹窗跟随身体命中区 this.hit（桌宠在视频中间，视频框右上角 ≠ 宠物右上角），超出视口自动夹回；
   // 弹窗是窗口内 DOM，期间整窗保持可交互，关闭后恢复命中区穿透。
-  showChatFromMenu() {
+  showChatFromMenu(image) {
     if (this.chatClose) {
       this.chatClose();
       this.chatClose = null;
@@ -177,6 +177,25 @@ Object.assign(PetSprite.prototype, {
       surface: 'desktop',
       x: Math.max(4, this.hit.getBoundingClientRect().right + 6),
       y: Math.max(4, this.hit.getBoundingClientRect().top + 6),
+      // 拖拽落到宠物身上时直接带着图开弹窗
+      ...(image ? { initialImage: image } : {}),
+      // 截屏：主进程取宠物所在屏的一帧（JPEG base64），形状与浏览器侧一致
+      capture: async () => {
+        if (!window.petBridge || typeof window.petBridge.captureScreen !== 'function') {
+          throw new Error('当前环境不支持截屏');
+        }
+        const shot = await window.petBridge.captureScreen();
+        if (!shot) throw new Error('没有取到屏幕画面');
+        return {
+          base64: shot.data,
+          mediaType: shot.mediaType,
+          bytes: shot.bytes,
+          width: shot.width,
+          height: shot.height,
+          resized: true,
+          previewUrl: 'data:' + shot.mediaType + ';base64,' + shot.data,
+        };
+      },
       // 弹窗同菜单：只允许在「窗口 ∩ 工作区」内显示，贴边时不被屏幕裁掉
       clamp: this.visibleClampRect(),
       onSent: () => {

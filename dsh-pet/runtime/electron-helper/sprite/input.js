@@ -344,6 +344,8 @@ Object.assign(PetSprite.prototype, {
     const px = wx - this.margin.l;
     const py = wy - this.margin.t;
     const inBody = px >= r.x && px <= r.x + r.w && py >= r.y && py <= r.y + r.h;
+    // 快捷键与拖拽都只在"光标在身体上"时生效，与提示/穿透同源，避免另一套判定
+    this.hoverBody = inBody;
     // 光标存视口坐标（窗口原点 + 窗口内坐标）：窗口随宠物移动时贴光标不会漂。必须在 setTip 之前
     // 更新——setTip 变显隐时会立刻渲染一次，晚一步就会用上一次的光标摆位。
     if (inBody) this.tipCursor = { x: this.pos.x - this.margin.l + wx, y: this.pos.y - this.margin.t + wy };
@@ -385,4 +387,32 @@ Object.assign(PetSprite.prototype, {
   // 菜单/弹窗可视矩形（窗口局部坐标）= 窗口 ∩ 工作区：宠物贴边时外扩余量伸出屏幕，窗口内固定定位的
   // 菜单会走进被屏幕裁掉的部分。把菜单约束到这个矩形内即可完整显示，窗口与宠物零移动；
   // 退化（可视区过小/窗口整体出屏）返回 null，调用方按窗口视口兜底。
+});
+
+Object.assign(PetSprite.prototype, {
+  /**
+   * 拖拽经过命中区：只处理带文件的拖拽。
+   * 必须 preventDefault，否则窗口会把这个文件当导航打开（页面直接被替换）。
+   */
+  onDragOverImage(e) {
+    if (!S.dragHasFiles(e)) return;
+    e.preventDefault();
+    if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
+  },
+
+  /** 松手：第一张图片直接开对话并挂成待发送图；不是图片就当没发生。 */
+  onDropImage(e) {
+    const file = S.firstImageFile(e.dataTransfer);
+    if (!file) return;
+    e.preventDefault();
+    this.showChatFromMenu(file);
+  },
+
+  /** 悬停快捷键：光标在身体上时按 T 打开对话，等价于菜单里的「对话」。 */
+  onHotkey(e) {
+    if (!this.hoverBody) return;
+    if (!S.isChatHotkey(e)) return;
+    e.preventDefault();
+    this.showChatFromMenu();
+  },
 });

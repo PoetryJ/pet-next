@@ -1,5 +1,5 @@
 'use strict';
-const { BrowserWindow, screen } = require('electron');
+const { BrowserWindow, desktopCapturer, screen } = require('electron');
 const { decideWindowIgnore } = require('../pointer-target.js');
 /**
  * 渲染端到主进程的 ipc：窗口跟随、飞行状态、碰撞转发、穿透翻转、输入租约与「打开网站」。
@@ -168,6 +168,28 @@ function registerIpc({ ipcMain, petWindows, shell, openTarget, petRoute }) {
       return;
     }
     openSite(url);
+  });
+
+  /**
+   * 截一帧桌面：只取宠物所在那块屏，按物理像素请求缩略图，回一次 JPEG base64。
+   * 不做流、不落盘；渲染端拿到后与上传图片走同一条预算编码。
+   */
+  ipcMain.handle('pet:capture-screen', async (event) => {
+    const win = BrowserWindow.fromWebContents(event.sender);
+    const display = win ? screen.getDisplayMatching(win.getBounds()) : screen.getPrimaryDisplay();
+    const scale = display.scaleFactor || 1;
+    const size = {
+      width: Math.max(1, Math.min(4096, Math.round(display.size.width * scale))),
+      height: Math.max(1, Math.min(4096, Math.round(display.size.height * scale))),
+    };
+    const sources = await desktopCapturer.getSources({ types: ['screen'], thumbnailSize: size });
+    // display_id 是字符串；取不到对应屏时退回第一块，总比"点了没反应"好
+    const source = sources.find((item) => String(item.display_id) === String(display.id)) ?? sources[0];
+    if (!source || source.thumbnail.isEmpty()) return null;
+    const thumbnail = source.thumbnail;
+    const { width, height } = thumbnail.getSize();
+    const data = thumbnail.toJPEG(85).toString('base64');
+    return { mediaType: 'image/jpeg', data, width, height, bytes: Math.floor((data.length * 3) / 4) };
   });
 }
 

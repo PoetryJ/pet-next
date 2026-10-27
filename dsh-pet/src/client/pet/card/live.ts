@@ -2,7 +2,7 @@
  * 卡片装配根的迟绑槽：动画链、运动驱动与浮层动作在创建上有先后，却要互相取值。
  * 只在 card-runtime 里填充；消费方都在渲染之后的回调里读，渲染期间不读。
  * 不负责状态：这里全是驱动实例与调用入口，响应式状态归 card-state。
- * @module dsh-pet/src/client/pet/card/card-live
+ * @module dsh-pet/src/client/pet/card/live
  */
 import type { OwnAnimation } from '../animation/animation.ts';
 import type { AnimationFlow } from './animation-flow.ts';

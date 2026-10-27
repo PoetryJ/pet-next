@@ -3,7 +3,7 @@
  * 只做接线：不判定（判定在 shared 与各驱动）、不渲染（DOM 在 card-view）、不持有跨卡状态。
  * 装配顺序不能改：动画链早于运动（回调要读走位）、运动早于拖拽（拖拽读飞行）、浮层最后。
  * 必须在渲染期填池：迟绑槽里的驱动实例只在本次渲染内赋值，别处不得写入。
- * @module dsh-pet/src/client/pet/card/card-runtime
+ * @module dsh-pet/src/client/pet/card/runtime
  */
 import { pick } from '../../../shared/pickers.ts';
 import { postAction } from '../../../shared/state.ts';
@@ -16,17 +16,17 @@ import { derivePetMetrics, petRootStyle, petStageStyle } from '../motion/geometr
 import { makePlaybackReporter } from '../playback-report.ts';
 import { createAnimationFlow } from './animation-flow.ts';
 import { createBubbleSlots } from './bubble-slots.ts';
-import { createCardAnimation } from './card-animation.ts';
-import { createCardDrag } from './card-drag.ts';
-import { createCardEntry, type CardEntry } from './card-entry.ts';
-import { createCardMotion } from './card-motion.ts';
-import { createCardState } from './card-state.ts';
+import { createCardAnimation } from './animation.ts';
+import { createCardDrag } from './drag.ts';
+import { createCardEntry, type CardEntry } from './entry.ts';
+import { createCardMotion } from './motion.ts';
+import { createCardState } from './state.ts';
 import { createCueEffects } from './cue-effects.ts';
 import { createLockFreeze } from './lock-freeze.ts';
-import type { CardHub } from './card-hub.ts';
-import type { CardLive } from './card-live.ts';
-import type { CardViewProps } from './card-view.ts';
-import type { PetCardProps } from './card-props.ts';
+import type { CardHub } from './hub.ts';
+import type { CardLive } from './live.ts';
+import type { CardViewProps } from './view.ts';
+import type { PetCardProps } from './props.ts';
 import type { PetRuntime } from '../types.ts';
 
 /**

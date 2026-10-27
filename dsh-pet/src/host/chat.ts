@@ -23,7 +23,7 @@ export type ChatGenerateResult =
   | { ok: true; text: string; image?: string }
   | { ok: false; reason: 'provider-missing' | 'generate-error'; message?: string };
 
-/** 记忆中的一条消息（与 shared/chat.ts 的 ChatMessage 同构）。 */
+/** 记忆中的一条消息（与 shared/chat 的 ChatMessage 同构）。 */
 export interface ChatMemoryMessage {
   role: 'user' | 'assistant';
   content: string;

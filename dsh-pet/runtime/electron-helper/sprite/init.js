@@ -179,6 +179,11 @@ Object.assign(PetSprite.prototype, {
     window.addEventListener('pointerup', (e) => this.onPointerUp(e), { signal: ac.signal });
     window.addEventListener('pointercancel', (e) => this.onPointerUp(e), { signal: ac.signal });
     this.hit.addEventListener('lostpointercapture', (e) => this.onPointerUp(e), { signal: ac.signal });
+    // 拖一张图到宠物身上：直接开对话并挂成待发送图（浏览器端同一套判据）
+    this.hit.addEventListener('dragover', (e) => this.onDragOverImage(e), { signal: ac.signal });
+    this.hit.addEventListener('drop', (e) => this.onDropImage(e), { signal: ac.signal });
+    // 悬停时按 T 开对话；窗口未被聚焦时收不到按键（透明窗用 showInactive 显示，不抢焦点）
+    window.addEventListener('keydown', (e) => this.onHotkey(e), { signal: ac.signal });
     // 点击穿透：窗口默认整窗穿透，光标进出身体命中区时翻转可交互；穿透期间 mousemove 由主进程
     // 转发进来（forward:true），mouseleave 保证光标离开窗口立即恢复穿透。
     window.addEventListener('mousemove', (e) => this.onMouseMove(e), { signal: ac.signal });

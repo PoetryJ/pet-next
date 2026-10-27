@@ -48,6 +48,11 @@ contextBridge.exposeInMainWorld('petBridge', {
   openDshSite(url) {
     ipcRenderer.send('pet:open-site', { url });
   },
+  // 截一帧桌面（宠物所在那块屏）：一次性读取，不建流、不留存。
+  // 返回 { mediaType, data, width, height, bytes } 或 null（取不到画面）。
+  captureScreen() {
+    return ipcRenderer.invoke('pet:capture-screen');
+  },
   // 宠物间碰撞（跨窗 broker）：飞行方上报状态，主进程汇聚广播；被撞方收 pet:hit 后按新初速抛出。
   reportFlight(state) {
     ipcRenderer.send('pet:report-flight', state);
