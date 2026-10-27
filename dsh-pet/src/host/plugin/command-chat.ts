@@ -1,7 +1,5 @@
 /**
  * 斜杠命令 /chat：把一句话转给宠物并回帖。
- *
- * 不实现对话生成（归 chat-memory），只做参数校验与回复。
  * @module dsh-pet/src/host/plugin/command-chat
  */
 import type { ChatMemory } from './chat-memory.ts';

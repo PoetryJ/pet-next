@@ -1,7 +1,5 @@
 /**
  * 斜杠命令 /balance：刷新余额并把结果回给命令面板。
- *
- * 不实现取数（归 balance-poll），只做触发与排版。
  * @module dsh-pet/src/host/plugin/command-balance
  */
 import type { BalancePoll } from './balance-poll.ts';

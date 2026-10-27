@@ -1,7 +1,6 @@
 /**
  * 动作指令：/anim 点播动画、/position 与 /throw 摆位抛掷、/pose 姿态读写。
  *
- * 不做物理演算（归 shared/physics 与客户端）。
  * 依赖（PetRouteDeps）显式传入，模块内不读全局、不建状态。
  * @module dsh-pet/src/host/routes/motion
  */

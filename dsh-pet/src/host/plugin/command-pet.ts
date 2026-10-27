@@ -1,7 +1,5 @@
 /**
  * 斜杠命令 /pet：按 id 或名字切换当前桌宠。
- *
- * 不维护宠物列表（归 balance-poll 的 effectivePetList），只做匹配与提示。
  * @module dsh-pet/src/host/plugin/command-pet
  */
 import type { BalancePoll } from './balance-poll.ts';
