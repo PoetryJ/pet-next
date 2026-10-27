@@ -1481,18 +1481,45 @@ paths:
                   type: string
                   maxLength: 2000
                   description: 用户消息正文
+                attachment:
+                  type: object
+                  required: [mediaType, data]
+                  description: |
+                    可选：随本轮对话发送一张图片（用户主动触发的一帧截图）。
+
+                    - **不传时行为与旧版逐字一致**；图片只影响本轮请求，不进对话记忆、不进气泡。
+                    - 字节由宿主附件服务归一化并落盘（内容寻址，同图去重）；独立模式没有附件服务，
+                      传图一律 `bad-request`。
+                  properties:
+                    mediaType:
+                      type: string
+                      enum: [image/png, image/jpeg, image/webp, image/gif]
+                      description: 图片媒体类型；与解码后的真实类型不符时由附件服务拒绝。
+                    data:
+                      type: string
+                      description: |
+                        图片字节的 canonical base64。**不接受** `data:` URL 前缀；
+                        含非法字符、非规范填充或超出部署上限 → `bad-request`。
             examples:
               hello:
                 summary: 打个招呼
                 value:
                   text: 今天过得怎么样？
+              withImage:
+                summary: 带一张截图提问
+                value:
+                  text: 屏幕上这个报错是什么？
+                  attachment:
+                    mediaType: image/jpeg
+                    data: "<base64 编码的 JPEG 字节>"
       responses:
         "200":
           description: |
             恒为 200（除 405）。`reason` 取值：`pet-required`（没给 pet）、`unknown-pet`（没有这只宠物，
             或在排队等记忆锁期间被删掉了——这一支**不写记忆也不写气泡**）、
-            `bad-request`（空/超长消息 / `surface` 缺省或非法）、`provider-missing`（没有可用的对话服务商）、
-            `pet-not-displayed`（带 `display`）、`generate-error`（生成/IO 失败）。
+            `bad-request`（空/超长消息 / `surface` 缺省或非法 / 图片形状或 base64 非法 /
+            超出部署上限 / 当前模式不支持图片）、`provider-missing`（没有可用的对话服务商）、
+            `pet-not-displayed`（带 `display`）、`generate-error`（生成/IO 失败，含附件落盘失败）。
           content:
             application/json:
               schema:

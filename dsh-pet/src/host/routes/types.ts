@@ -9,6 +9,7 @@
 import type { ChatMemoryMessage } from '../chat.ts';
 import type { ConfigPaths } from '../config.ts';
 import type { RouteResult } from '../http.ts';
+import type { PetImageRef } from '../image-attachment.ts';
 import type { LockStore } from '../lock.ts';
 import type { FileLogger } from '../log-file.ts';
 import type { MenuRegistry } from '../menu.ts';
@@ -121,8 +122,8 @@ export interface PetRouteDeps {
   readonly memoryPath: string;
   /** 单次对话保留的轮数。 */
   readonly memoryRounds: (conf: Record<string, unknown>) => number;
-  /** 与本机宠物对话。 */
-  readonly chatWithPet: (petId: string, text: string) => Promise<GeneratedReply>;
+  /** 与本机宠物对话；image 缺省 = 纯文本，数据路径与加入图片前一致。 */
+  readonly chatWithPet: (petId: string, text: string, image?: PetImageRef) => Promise<GeneratedReply>;
   /** 用户动画目录（按扩展名）。 */
   readonly userRootFor: (ext: string) => string;
   /** 包内动画目录（按扩展名）。 */

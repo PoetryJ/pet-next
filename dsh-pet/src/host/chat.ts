@@ -11,6 +11,7 @@
  */
 
 import { BlockAssembler, createAssistantMessage, createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm';
+import type { PetImageRef } from './image-attachment.ts';
 import { PET_CALL_IDENTITY, noTextReason } from './llm-call.ts';
 import { supportsReasoningOff } from './llm-reasoning.ts';
 import { defaultLog } from './log-file.ts';
@@ -42,24 +43,34 @@ function imageInstruction(pool: MemeEntry[]): string {
   );
 }
 
+/** 一次对话生成的输入。 */
+export interface ChatGenerateInput {
+  /** 宿主上下文（注入 agentDefaultModel / llm）。 */
+  readonly ctx: { agentDefaultModel: { currentSelection(): { provider: string; model: string } }; llm?: unknown };
+  /** 人设提示词（whisperPrompt，与碎碎念共用同一人设）。 */
+  readonly system: string;
+  /** 最近记忆（按时间正序，user / assistant 交替）。 */
+  readonly history: readonly ChatMemoryMessage[];
+  /** 用户刚输入的话；图片不带任何文字描述，语境全靠它。 */
+  readonly userText: string;
+  /** 表情包候选池；空 / 缺省 = 纯文本（指令与解析都不介入）。 */
+  readonly pool?: readonly MemeEntry[];
+  /** 条目单独指定的模型（chatModel）；缺省 / 留空 = 只用当前对话的模型。 */
+  readonly preferred?: ModelRef;
+  /** 本轮附带的图片；缺省 = 纯文本请求，数据路径与加入图片前一致。 */
+  readonly image?: PetImageRef;
+}
+
 /**
  * 生成一句对话回复。
- * @param ctx - 宿主上下文（注入 agentDefaultModel / llm）。
- * @param system - 人设提示词（whisperPrompt，与碎碎念共用同一人设）。
- * @param history - 最近记忆（按时间正序，user / assistant 交替）。
- * @param userText - 用户刚输入的话。
- * @param pool - 表情包候选池；空 / 缺省 = 纯文本（指令与解析都不介入）。
- * @param preferred - 条目单独指定的模型（chatModel）；缺省 / 留空 = 只用当前对话的模型。
+ *
+ * @param input - 上下文、人设、历史、用户输入，以及可选的配图池 / 指定模型 / 图片。
  * @returns 回复文本（+ 命中池内的配图名），或结构化失败（provider 缺失 / 生成错误）。
  */
-export async function generateChat(
-  ctx: { agentDefaultModel: { currentSelection(): { provider: string; model: string } }; llm?: unknown },
-  system: string,
-  history: ChatMemoryMessage[],
-  userText: string,
-  pool: MemeEntry[] = [],
-  preferred?: ModelRef,
-): Promise<ChatGenerateResult> {
+export async function generateChat(input: ChatGenerateInput): Promise<ChatGenerateResult> {
+  const { ctx, system, history, userText, preferred, image } = input;
+  // 表情包侧的读池 / 校验函数按可变数组签名；这里复制一份，避免把调用方数组的引用往下传
+  const pool: MemeEntry[] = [...(input.pool ?? [])];
   // 候选链：配置的模型优先 → 当前对话的模型兜底（chatModel 留空时链上只有后者）
   const candidates = modelCandidates(ctx, preferred);
   if (candidates.length === 0) {
@@ -74,7 +85,7 @@ export async function generateChat(
   // 兜底文案与失败分支同源，避免两处字面量漂移
   let last: ChatGenerateResult = { ok: false, reason: 'generate-error', message: noTextReason(undefined) };
   for (const [i, sel] of candidates.entries()) {
-    const result = await generateWith(ctx, llm, sel, system, history, userText, pool);
+    const result = await generateWith(ctx, { llm, sel, system, history, userText, pool, image });
     if (result.ok) return result;
     last = result;
     // 回落要留痕：配的模型没生效时能在日志里看到原因（否则「我明明配了 A，怎么还是用 B」没法查）
@@ -88,16 +99,20 @@ export async function generateChat(
   return last;
 }
 
-/** 用一个确定的 provider/model 跑一次对话生成（候选链的一环；失败原样返回结构化原因，不吞）。 */
-async function generateWith(
-  ctx: { llm?: unknown },
-  llm: { stream(o: unknown): AsyncIterable<unknown> },
-  sel: ModelRef,
-  system: string,
-  history: ChatMemoryMessage[],
-  userText: string,
-  pool: MemeEntry[],
-): Promise<ChatGenerateResult> {
+/** 单个候选模型的一次生成请求（候选链的一环）。 */
+interface GenerateOnce {
+  readonly llm: { stream(o: unknown): AsyncIterable<unknown> };
+  readonly sel: ModelRef;
+  readonly system: string;
+  readonly history: readonly ChatMemoryMessage[];
+  readonly userText: string;
+  readonly pool: MemeEntry[];
+  readonly image?: PetImageRef;
+}
+
+/** 用一个确定的 provider/model 跑一次对话生成（失败原样返回结构化原因，不吞）。 */
+async function generateWith(ctx: { llm?: unknown }, once: GenerateOnce): Promise<ChatGenerateResult> {
+  const { llm, sel, system, history, userText, pool, image } = once;
   // 历史 → dsh-llm 消息：user 经 createUserMessage（plugin 来源），assistant 经 createAssistantMessage
   // （provider/model 只是消息的角色载体，不涉及适配器回放）
   const historyMessages = history.map((m) =>
@@ -119,6 +134,11 @@ async function generateWith(
   const supportsOff = await supportsReasoningOff(ctx, sel.provider, sel.model);
   // 配图：池非空才把清单与指令附进 user 正文（空池 = 关闭配图）
   const wantImage = pool.length > 0;
+  const content: Record<string, unknown>[] = [
+    { type: 'text', text: wantImage ? userText + imageInstruction(pool) : userText },
+  ];
+  // 图片块排在文本块之后：提示词先到、像素后到，模型更容易按提示去看图。
+  if (image !== undefined) content.push({ type: 'image', attachment: image });
   const options = {
     provider: sel.provider,
     model: sel.model,
@@ -127,7 +147,9 @@ async function generateWith(
     messages: [
       ...historyMessages,
       createUserMessage({
-        content: [{ type: 'text', text: wantImage ? userText + imageInstruction(pool) : userText }],
+        // PetImageRef 与 dsh-llm 的 ImageAttachmentRef 字段一致，差异只有品牌化类型（attachmentId 是 branded string）；
+        // 插件侧不引 @deepseek-ai/dsh-attachment 的类型包，这里显式断言一次。
+        content: content as unknown as Parameters<typeof createUserMessage>[0]['content'],
         source: { kind: 'user' },
       }),
     ],

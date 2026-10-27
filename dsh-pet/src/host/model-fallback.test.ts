@@ -120,21 +120,42 @@ describe('generateWhisper —— 配置模型优先、失败回落当前对话',
 describe('generateChat —— 同一套回落规则（chatModel）', () => {
   test('配置的模型抛错 → 回落到当前对话的模型', async () => {
     const { ctx, calls } = fakeCtx(CURRENT, { configured: 'throw', current: 'ok' });
-    const r = await generateChat(ctx, '人设', [], '在吗', [], CONFIGURED);
+    const r = await generateChat({
+      ctx,
+      system: '人设',
+      history: [],
+      userText: '在吗',
+      pool: [],
+      preferred: CONFIGURED,
+    });
     assert.deepEqual(r, { ok: true, text: '你好呀' });
     assert.deepEqual(calls, [CONFIGURED, CURRENT]);
   });
 
   test('留空 → 只用当前对话的模型（旧行为）', async () => {
     const { ctx, calls } = fakeCtx(CURRENT, { current: 'ok' });
-    const r = await generateChat(ctx, '人设', [], '在吗', [], undefined);
+    const r = await generateChat({
+      ctx,
+      system: '人设',
+      history: [],
+      userText: '在吗',
+      pool: [],
+      preferred: undefined,
+    });
     assert.deepEqual(r, { ok: true, text: '你好呀' });
     assert.deepEqual(calls, [CURRENT]);
   });
 
   test('两边都拿不到模型 → provider-missing，且一次都不调用 LLM', async () => {
     const { ctx, calls } = fakeCtx('throw', {});
-    const r = await generateChat(ctx, '人设', [], '在吗', [], undefined);
+    const r = await generateChat({
+      ctx,
+      system: '人设',
+      history: [],
+      userText: '在吗',
+      pool: [],
+      preferred: undefined,
+    });
     assert.deepEqual(r, { ok: false, reason: 'provider-missing', message: '当前对话未配置模型' });
     assert.deepEqual(calls, []);
   });
@@ -143,7 +164,7 @@ describe('generateChat —— 同一套回落规则（chatModel）', () => {
 describe('调用形状 —— 调用身份与真实失败原因', () => {
   test('对话调用带调用身份 sessionId', async () => {
     const { ctx, options } = fakeCtx(CURRENT, { current: 'ok' });
-    await generateChat(ctx, '人设', [], '在吗', [], undefined);
+    await generateChat({ ctx, system: '人设', history: [], userText: '在吗', pool: [], preferred: undefined });
     assert.equal(options.length, 1);
     assert.equal(options[0].sessionId, PET_CALL_IDENTITY);
   });
@@ -160,14 +181,28 @@ describe('调用形状 —— 调用身份与真实失败原因', () => {
 
   test('流以 error 终止且无正文 → 报终止块里的真实原因', async () => {
     const { ctx } = fakeCtx(CURRENT, { current: 'fail' });
-    const r = await generateChat(ctx, '人设', [], '在吗', [], undefined);
+    const r = await generateChat({
+      ctx,
+      system: '人设',
+      history: [],
+      userText: '在吗',
+      pool: [],
+      preferred: undefined,
+    });
     assert.equal(r.ok, false);
     assert.equal(r.ok === false && r.message, 'current 400：缺少必需的路由头');
   });
 
   test('空流且无终止块 → 仍是"模型未返回文本"（旧行为逐字不变）', async () => {
     const { ctx } = fakeCtx(CURRENT, { configured: 'empty', current: 'empty' });
-    const r = await generateChat(ctx, '人设', [], '在吗', [], CONFIGURED);
+    const r = await generateChat({
+      ctx,
+      system: '人设',
+      history: [],
+      userText: '在吗',
+      pool: [],
+      preferred: CONFIGURED,
+    });
     assert.equal(r.ok === false && r.message, '模型未返回文本');
   });
 });

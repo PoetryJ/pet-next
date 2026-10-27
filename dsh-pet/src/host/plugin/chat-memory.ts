@@ -10,6 +10,7 @@ import { generateChat, type ChatMemoryMessage } from '../chat.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { composeSystemPrompt, petPersona } from '../persona.ts';
 import { findPetInstance, readAllConfig, sliceMemoryRounds } from '../config.ts';
+import type { PetImageRef } from '../image-attachment.ts';
 import { limitPool, pickMeme, readMemePool } from '../memes.ts';
 import { generateWhisper } from '../whisper.ts';
 import { configuredModel } from '../model-selection.ts';
@@ -150,6 +151,7 @@ export function createChatMemory(deps: ChatMemoryInput) {
   const chatWithPet = async (
     petId: string,
     text: string,
+    image?: PetImageRef,
   ): Promise<
     | { ok: true; text: string; image?: string }
     | { ok: false; reason: 'provider-missing' | 'generate-error' | 'unknown-pet'; message?: string }
@@ -184,8 +186,23 @@ export function createChatMemory(deps: ChatMemoryInput) {
       // rounds = 0（用户关掉历史）→ 空历史；否则截尾部 rounds 轮（1 轮 = 1 问 1 答）。
       // 不能写 slice(-rounds * 2)：-0 在 JS 里 === 0，slice(-0) 返回整个数组而不是空。
       const list = sliceMemoryRounds(entry.messages, rounds);
+      // 图片只记尺寸与字节数（不记 base64）：模型不支持读图时 dsh-llm 会把它投影成占位文本，靠这行日志定位
+      if (image !== undefined) {
+        log.info(
+          `[dsh-pet] 对话附带图片 pet=${petId}，${image.width}x${image.height}，${image.bytes} 字节` +
+            '（模型不支持读图时内核会以占位文本代替）',
+        );
+      }
       // 模型：条目配置的 chatModel 优先（留空 = 不指定）；生成侧失败会回落到当前对话的模型重试一次
-      const generated = await generateChat(ctx, system, list, text, pool, configuredModel(found.conf, 'chatModel'));
+      const generated = await generateChat({
+        ctx,
+        system,
+        history: list,
+        userText: text,
+        pool,
+        preferred: configuredModel(found.conf, 'chatModel'),
+        image,
+      });
       if (!generated.ok) return generated;
       const now = Date.now();
       entry.messages.push({ role: 'user', content: text, ts: now });
