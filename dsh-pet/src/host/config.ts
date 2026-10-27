@@ -15,4 +15,4 @@ export {
   readAllConfig,
   readPetConfigEntry,
 } from './config/read.ts';
-export { saveUserConfig, sliceMemoryRounds, syncUserConfigFromDefault } from './config/save.ts';
+export { removeRoundsByTs, saveUserConfig, sliceMemoryRounds, syncUserConfigFromDefault } from './config/save.ts';

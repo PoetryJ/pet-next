@@ -629,7 +629,8 @@ describe('pet 必填 —— 缺省一律 pet-required（issue #122 第 1 条：�
 
   test('/chat：方法不对仍是 405（pet 校验不抢在协议层错误前面）', async () => {
     assert.equal((await call('/dsh-pet-7340/chat', 'PUT')).status, 405);
-    assert.equal((await call('/dsh-pet-7340/chat', 'DELETE')).status, 405);
+    // DELETE 自删除记忆接口起是合法方法（见 chat-delete.test.ts），这里改用同样不被接受的 PATCH
+    assert.equal((await call('/dsh-pet-7340/chat', 'PATCH')).status, 405);
   });
 });
 

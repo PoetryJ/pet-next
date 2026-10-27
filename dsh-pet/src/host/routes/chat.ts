@@ -21,10 +21,10 @@ export async function handleChatRoutes(deps: PetRouteDeps, input: RouteInput): P
   const { body, method, rest, url } = input;
 
   // 对话：GET /chat 读最近记忆窗口（截尾 chatMemoryRounds 轮，一次读、不是轮询），
-  // POST /chat 携带历史生成回复并写入记忆，回复同时写 S 的 pets.<id>.say。
+  // POST /chat 携带历史生成回复并写入记忆，DELETE /chat 删除记忆（按轮或整只）。
   // 记忆唯一读写方是 host（memory.json），浏览器与桌面天然共享同一份。
   if (rest === 'chat') {
-    if (method !== 'GET' && method !== 'POST') return methodNotAllowed();
+    if (method !== 'GET' && method !== 'POST' && method !== 'DELETE') return methodNotAllowed();
     try {
       // `?rounds=`：GET 专属的查看参数——只决定这次读多少轮（不写记忆，也不改变后续对话
       // 往上下文里带多少，所以 POST 不认它）。与 surface 同一处境：参数级校验放在读盘之前。
@@ -37,12 +37,19 @@ export async function handleChatRoutes(deps: PetRouteDeps, input: RouteInput): P
         }
         roundsOverride = n;
       }
+      // `?ts=`（可重复，DELETE 专属）：只删命中的轮。缺省 = 清空整只；同样在读盘之前校验。
+      let tsList: number[] | undefined;
+      if (method === 'DELETE') {
+        const parsed = parseTsList(url.searchParams.getAll('ts'));
+        if (parsed === null) return failResult('bad-request', 'ts 必须是非负整数（毫秒时间戳）');
+        tsList = parsed.length > 0 ? parsed : undefined;
+      }
       // pet 必填且必须真实存在：空串会让人设/配图按 main 条目取，记忆以那个（不存在的）id
       // 新建一个分桶，回复写进没人消费的 `pets[""].say`，还回 ok:true。
       // 惰性 + 记忆化：pet 空串时完全不读配置；GET 分支复用同一次读取。
       let cfgCache: Record<string, Record<string, unknown>> | undefined;
       const cfg = (): Record<string, Record<string, unknown>> => (cfgCache ??= readAllConfig(configPaths));
-      // surface 只对 POST 校验：GET 是读记忆，跟宠物显示在哪一端无关
+      // surface 只对 POST 校验：GET 是读记忆、DELETE 是存储管理，跟宠物显示在哪一端无关
       const who = requirePet(url.searchParams, cfg, { surface: method === 'POST' });
       if (!who.ok) return who.res;
       const petId = who.petId;
@@ -61,6 +68,7 @@ export async function handleChatRoutes(deps: PetRouteDeps, input: RouteInput): P
         const messages = sliceMemoryRounds(list, rounds);
         return okResult({ ok: true, messages, rounds });
       }
+      if (method === 'DELETE') return okResult(await deps.deleteHistory(petId, tsList));
       return await postChat(deps, petId, body);
     } catch (e) {
       // 配置已由 readAllConfig 保证正确（不再有 config-error 分支）；其余（IO/LLM）→ generate-error
@@ -69,6 +77,23 @@ export async function handleChatRoutes(deps: PetRouteDeps, input: RouteInput): P
   }
 
   return undefined;
+}
+
+/**
+ * 解析 DELETE 的 `?ts=`（可重复）。
+ *
+ * @param raws - 查询串里所有 `ts` 的原值。
+ * @returns 去重后的时间戳数组；任一值不是非负整数时返回 `null`（调用方转 bad-request）。
+ */
+function parseTsList(raws: readonly string[]): number[] | null {
+  const out: number[] = [];
+  for (const raw of raws) {
+    const n = Number(raw);
+    // 空串不能当 0：Number('') === 0 会静默删掉 ts=0 的轮
+    if (raw.trim() === '' || !Number.isInteger(n) || n < 0) return null;
+    out.push(n);
+  }
+  return [...new Set(out)];
 }
 
 /**

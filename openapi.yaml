@@ -1536,7 +1536,8 @@ paths:
                   description: |
                     可选：随本轮对话发送一张图片（用户主动触发的一帧截图）。
 
-                    - **不传时行为与旧版逐字一致**；图片只影响本轮请求，不进对话记忆、不进气泡。
+                    - **不传时行为与旧版逐字一致**；图片会记进记忆（只存附件引用，不存本体）、**不进上下文**，
+                      气泡也不显示这张图。
                     - 字节由宿主附件服务归一化并落盘（内容寻址，同图去重）；独立模式没有附件服务，
                       传图一律 `bad-request`。
                   properties:
@@ -1574,6 +1575,56 @@ paths:
               schema:
                 oneOf:
                   - $ref: "#/components/schemas/SayResponse"
+                  - $ref: "#/components/schemas/FailureResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+    delete:
+      tags: [Action]
+      operationId: deleteChatHistory
+      summary: 删除指定宠物的对话记忆
+      description: |
+        删除落盘的对话历史，**不可撤销**。
+
+        - 带 `?ts=`（可重复）：只删这些轮。一轮的两条消息共享同一个 `ts`，命中一条即整轮一起删。
+        - 不带 `?ts=`：清空该宠物的全部历史。
+        - 删空的宠物连空叶子一起摘掉，`memory.json` 里不留空对象。
+        - 不校验 `surface`：删除是存储管理，不改变渲染端可见状态。
+        - 与对话共用同一条写队列，不会与进行中的回复交错。
+      parameters:
+        - $ref: "#/components/parameters/PetIdQuery"
+        - name: ts
+          in: query
+          required: false
+          description: |
+            要删除的轮时间戳（毫秒，取自 `GET /chat` 的 `messages[].ts`）；可重复传多个。
+            任一值不是非负整数 → `bad-request`。一个都不传 = 清空全部。
+          style: form
+          explode: true
+          schema:
+            type: array
+            items:
+              type: integer
+              format: int64
+              minimum: 0
+      responses:
+        "200":
+          description: |
+            恒为 200（除 405）。成功是 `{ ok: true, removed }`；失败是 `{ ok: false, reason }`：
+            `pet-required`（没给 pet）、`unknown-pet`（没有这只宠物）、`bad-request`（ts 非法）、
+            `generate-error`（读写记忆失败）。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [ok, removed]
+                    properties:
+                      ok:
+                        type: boolean
+                        const: true
+                      removed:
+                        type: integer
+                        description: 实际删除的消息条数（一轮 = 2 条）；没有命中时为 0
                   - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"

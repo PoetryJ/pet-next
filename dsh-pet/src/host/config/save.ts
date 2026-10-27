@@ -190,3 +190,22 @@ export function syncUserConfigFromDefault(paths: ConfigPaths): void {
 export function sliceMemoryRounds<T>(messages: T[], rounds: number): T[] {
   return rounds > 0 ? messages.slice(-Math.floor(rounds) * 2) : [];
 }
+
+/**
+ * 对话记忆按轮删除：`ts` 落在集合里的消息整轮移除（一轮两条共享同一个 `ts`，所以天然成对）。
+ *
+ * 不用「空集合 = 全删」表达清空：那会让调用方在漏传参数时静默抹掉全部历史。清空是调用方
+ * 的另一条显式分支（传空数组 = 一条都不删）。
+ *
+ * @param messages - 记忆数组。
+ * @param ts - 要删除的轮时间戳集合。
+ * @returns 保留下来的消息，以及被移除的条数。
+ */
+export function removeRoundsByTs<T extends { ts: number }>(
+  messages: readonly T[],
+  ts: readonly number[],
+): { messages: T[]; removed: number } {
+  const doomed = new Set(ts);
+  const messages_ = messages.filter((m) => !doomed.has(m.ts));
+  return { messages: messages_, removed: messages.length - messages_.length };
+}

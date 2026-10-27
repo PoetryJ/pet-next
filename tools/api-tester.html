@@ -445,11 +445,23 @@
 
     .msg .ts { font-size: 11px; color: var(--faint); margin-top: 4px; }
 
+    /* 历史图：上传图走 /attachment?id=（宿主按附件引用回字节），AI 配图走 /pic/memes/ */
+    .msg .msg-img {
+      display: block; margin-top: 6px; max-width: 220px; max-height: 160px;
+      border-radius: 8px; border: 1px solid var(--border); background: var(--code);
+      object-fit: contain;
+    }
+    .msg.me .msg-img { margin-left: auto; }
+
+    /* 多选删除：勾中任意一条即整轮删除（问 + 答共享同一个 ts） */
+    .msg .pick { flex: 0 0 auto; align-self: center; accent-color: var(--accent); }
+    .msg .col { min-width: 0; }
+
     .composer { flex: 0 0 auto; padding-top: 12px; border-top: 1px solid var(--border); }
     .composer-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
     .composer textarea { min-height: 44px; max-height: 140px; }
 
-    /* ── 对话附图：第三方消费方自己维护的本地预览（服务端不回图，只回文字） ── */
+    /* ── 对话附图：发送前是本地预览；发完由服务端记忆回填（历史里显示真正的图） ── */
     .attach {
       display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px;
       border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel);
@@ -1607,6 +1619,8 @@
               <input type="number" id="chat-rounds-input" min="0" max="200" placeholder="轮数（空=配置）">
               <button type="button" class="btn sm" id="chat-reload">刷新历史</button>
               <span class="spacer" style="flex:1"></span>
+              <button type="button" class="btn sm ghost" id="chat-delete-selected" disabled>删除选中</button>
+              <button type="button" class="btn sm ghost" id="chat-delete-all">清空历史</button>
               <button type="button" class="btn sm ghost" id="chat-clear">清空显示</button>
             </div>
 
@@ -1917,6 +1931,7 @@
     const GET = (p, o) => api("GET", p, o);
     const POST = (p, o = {}) => api("POST", p, { body: {}, ...o });
     const PUT = (p, o) => api("PUT", p, o);
+    const DEL = (p, o) => api("DELETE", p, o);
 
     // ═══════════════════════════════════════════════════════════════
     // 状态轮询：整页唯一的数据来源
@@ -2619,7 +2634,13 @@
         $("chat-rounds").textContent = r.status ? "读取失败" : "未连接";
         return;
       }
-      S.chat = (r.body.messages || []).map((m) => ({ role: m.role, text: m.content, ts: m.ts }));
+      S.chat = (r.body.messages || []).map((m) => ({
+        role: m.role,
+        text: m.content,
+        ts: m.ts,
+        image: m.image,
+        meme: m.meme,
+      }));
       $("chat-rounds").textContent = "保留最近 " + r.body.rounds + " 轮";
       renderChat();
     }
@@ -2629,19 +2650,69 @@
       box.innerHTML = "";
       if (!S.chat.length) {
         box.appendChild(el("div", "empty-note", "还没有对话记录，说点什么吧"));
+        syncPickState();
         return;
       }
       for (const m of S.chat) {
         const isMe = m.role === "user";
         const wrap = el("div", "msg " + (isMe ? "me" : "pet"));
+        // 勾选框按消息放，但删除按轮走：服务端按 ts 删，一轮两条共享同一个 ts
+        const pick = el("input", "pick");
+        pick.type = "checkbox";
+        pick.dataset.ts = String(m.ts || "");
+        pick.title = "选中这一轮（问 + 答一起删）";
+        pick.addEventListener("change", syncPickState);
+        wrap.appendChild(pick);
         wrap.appendChild(el("div", "who", isMe ? "我" : "宠"));
-        const col = el("div");
+        const col = el("div", "col");
         col.appendChild(el("div", "bubble2", m.text));
-        col.appendChild(el("div", "ts", (m.ts ? hhmmss(m.ts) : "") + (m.image ? " · 附图" : "")));
+        // 历史图：上传图是附件引用（宿主按 id 回字节），AI 配图是表情包名（走素材路由）
+        const src =
+          m.image && typeof m.image === "object"
+            ? PREFIX + "/attachment?id=" + encodeURIComponent(m.image.attachmentId)
+            : m.meme
+              ? memeUrl(m.meme, assetRootOf(S.chatPetId))
+              : "";
+        if (src) {
+          const img = el("img", "msg-img");
+          img.src = src;
+          img.alt = m.meme ? "配图 " + m.meme : "附图";
+          img.loading = "lazy";
+          col.appendChild(img);
+        }
+        const note = [];
+        if (m.image) note.push("附图"); // true = 刚发的乐观条目，对象 = 服务端记下的引用
+        if (m.meme) note.push("配图 " + m.meme);
+        col.appendChild(el("div", "ts", (m.ts ? hhmmss(m.ts) : "") + (note.length ? " · " + note.join(" · ") : "")));
         wrap.appendChild(col);
         box.appendChild(wrap);
       }
       box.scrollTop = box.scrollHeight;
+      syncPickState();
+    }
+
+    /** 「删除选中」只在勾了东西时可用。 */
+    function syncPickState() {
+      $("chat-delete-selected").disabled = $("messages").querySelectorAll(".pick:checked").length === 0;
+    }
+
+    /**
+     * 删除对话记忆。
+     *
+     * @param {number[]|null} tsList - 要删的轮；null/空 = 清空该宠物全部历史。
+     */
+    async function deleteChat(tsList) {
+      const qs = tsList && tsList.length ? tsList.map((t) => "&ts=" + encodeURIComponent(t)).join("") : "";
+      const r = await DEL("/chat?pet=" + encodeURIComponent(S.chatPetId) + qs, {
+        note: tsList && tsList.length ? "删 " + tsList.length + " 轮" : "清空整只",
+      });
+      if (!r.ok || (r.body && r.body.ok === false)) {
+        const why = (r.body && r.body.message) || (r.body && r.body.reason) || r.error || "HTTP " + r.status;
+        toast("删除失败：" + why, "bad");
+        return;
+      }
+      toast("已删除 " + r.body.removed + " 条消息", "ok");
+      await loadChat(); // 以服务端为准重绘：被删的轮不该再出现在列表里
     }
 
     /** 桌宠说话了：如果刚才是我们发的消息，就当成回复接进对话 */
@@ -2670,7 +2741,7 @@
       $("typing").style.visibility = "visible";
 
       // 动作接口只回 {ok}，回复从 /state 的 pets.<id>.say 拿；
-      // 图片只影响这一轮：宿主不进记忆、不回显，也不在气泡里回传
+      // 图片会记进记忆（只存附件引用，不存本体），所以发完重拉一次历史就能看到这张图
       const body = image ? { text, attachment: { mediaType: image.mediaType, data: image.base64 } } : { text };
       const note = image ? "附图 " + Math.round(image.bytes / 1024) + "KB" : "";
       const r = await POST("/chat?pet=" + encodeURIComponent(S.chatPetId) + "&surface=" + surfaceOf(), { body, note });
@@ -2694,6 +2765,8 @@
           if (S.chatPetId === S.petId) renderSay(leaf.data, S.chatPetId);
           maybeChatReply(leaf.data);
         }
+        // 以服务端为准重绘：乐观插入的那条只有「有图」布尔，重拉后才拿到附件引用与配图名
+        await loadChat();
       }
       btn.disabled = false;
       ta.focus();
@@ -4136,6 +4209,23 @@
       S.chat = [];
       renderChat();
       toast("只是清空了显示，宿主的记忆还在", "ok");
+    });
+    // 删除是写操作、不可撤销：命中哪些轮由勾选决定（按 ts 去重，一轮两条一起走）
+    $("chat-delete-selected").addEventListener("click", () => {
+      const tsList = [
+        ...new Set(
+          [...$("messages").querySelectorAll(".pick:checked")]
+            .map((n) => Number(n.dataset.ts))
+            .filter((t) => Number.isInteger(t) && t > 0),
+        ),
+      ];
+      if (!tsList.length) return;
+      if (!confirm("删除选中的 " + tsList.length + " 轮对话？删了找不回来。")) return;
+      void deleteChat(tsList);
+    });
+    $("chat-delete-all").addEventListener("click", () => {
+      if (!confirm("清空「" + S.chatPetId + "」的全部对话历史？删了找不回来。")) return;
+      void deleteChat(null);
     });
 
     // 附图：按钮选文件 / 直接粘贴截图（截图工具通常先落到剪贴板）

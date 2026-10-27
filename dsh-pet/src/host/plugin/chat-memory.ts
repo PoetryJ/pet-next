@@ -9,7 +9,7 @@ import { join } from 'node:path';
 import { generateChat, type ChatMemoryMessage } from '../chat.ts';
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { composeSystemPrompt, petPersona } from '../persona.ts';
-import { findPetInstance, readAllConfig, sliceMemoryRounds } from '../config.ts';
+import { findPetInstance, readAllConfig, removeRoundsByTs, sliceMemoryRounds } from '../config.ts';
 import type { PetImageRef } from '../image-attachment.ts';
 import { limitPool, pickMeme, readMemePool } from '../memes.ts';
 import { generateWhisper } from '../whisper.ts';
@@ -225,6 +225,40 @@ export function createChatMemory(deps: ChatMemoryInput) {
       return { ok: true as const, text: generated.text, ...(generated.image ? { image: generated.image } : {}) };
     });
 
+  /** 删除某只宠物的对话记忆：`ts` 缺省 = 清空全部，给了 ts = 只删命中的轮（一轮两条共享 ts，成对删）。
+   *  与对话共用同一条串行队列——删除不会插进一次回复的读-改-写中间，也不会被它覆盖写回。
+   *  删空的宠物连叶子与空条目一起摘掉：否则 memory.json 里会永久堆着空对象，看不出这里曾有历史。 */
+  const deleteHistory = async (
+    petId: string,
+    ts?: readonly number[],
+  ): Promise<{ ok: true; removed: number } | { ok: false; reason: 'unknown-pet'; message: string }> =>
+    withMemoryLock(async () => {
+      const cfg = readAllConfig(configPaths);
+      const found = findPetInstance(cfg, petId);
+      // 与对话同一支：宠物随时可能被删，明确失败，不在文件里留没人消费的分桶
+      if (!found) return { ok: false as const, reason: 'unknown-pet' as const, message: '没有这只桌宠：' + petId };
+      const mem = await readMemory();
+      const byPet = mem[found.entry];
+      const before = byPet?.[petId]?.messages;
+      const list = Array.isArray(before) ? before : [];
+      const kept = ts === undefined ? [] : removeRoundsByTs(list, ts).messages;
+      const removed = list.length - kept.length;
+      if (removed > 0) {
+        const leaf = byPet?.[petId];
+        if (kept.length > 0 && leaf !== undefined) {
+          leaf.messages = kept;
+        } else if (byPet !== undefined) {
+          // 清空（或本来就只剩坏数据）：摘掉宠物叶子；条目空了连条目一起摘
+          delete byPet[petId];
+          if (Object.keys(byPet).length === 0) delete mem[found.entry];
+        }
+        await writeMemory(mem);
+      }
+      // 只记数量与动作，不打正文（记忆内容是用户隐私）
+      log.info(`[dsh-pet] 删除对话记忆 pet=${petId}，removed=${removed}` + (ts === undefined ? '（清空）' : ''));
+      return { ok: true as const, removed };
+    });
+
   /** 当前活跃宠物 id（会话事件写入，余额与碎念读取）。 */
   const getActivePetId = (): string => activePetId;
 
@@ -239,6 +273,7 @@ export function createChatMemory(deps: ChatMemoryInput) {
     memoryRounds,
     publishWhisper,
     chatWithPet,
+    deleteHistory,
     getActivePetId,
     setActivePetId,
   };

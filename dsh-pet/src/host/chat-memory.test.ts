@@ -126,3 +126,71 @@ describe('createChatMemory —— 图信息写入记忆文件', () => {
     }
   });
 });
+
+describe('createChatMemory —— 删除对话记忆', () => {
+  /** 预置一份带两轮记忆的文件（时间戳固定，避免依赖真实时钟）。 */
+  function seed(userRoot: string): void {
+    mkdirSync(userRoot, { recursive: true });
+    const messages = [
+      { role: 'user', content: '第一问', ts: 1000 },
+      { role: 'assistant', content: '第一答', ts: 1000 },
+      { role: 'user', content: '第二问', ts: 2000 },
+      { role: 'assistant', content: '第二答', ts: 2000 },
+    ];
+    writeFileSync(join(userRoot, 'memory.json'), JSON.stringify({ main: { main: { messages } } }));
+  }
+
+  test('按 ts 删：命中的轮成对移除，其余轮原样保留', async () => {
+    const ws = tempWorkspace();
+    seed(ws.userRoot);
+    try {
+      const r = await createMemory('无关', ws).deleteHistory('main', [1000]);
+      assert.deepEqual(r, { ok: true, removed: 2 });
+      const rest = readMessages(ws.userRoot);
+      assert.deepEqual(
+        rest.map((m) => m.content),
+        ['第二问', '第二答'],
+        '只删 ts=1000 的两条，另一轮必须完整留下',
+      );
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('不存在的 ts → removed 为 0，文件内容不变（不因空操作重写记忆）', async () => {
+    const ws = tempWorkspace();
+    seed(ws.userRoot);
+    const before = readFileSync(join(ws.userRoot, 'memory.json'), 'utf8');
+    try {
+      const r = await createMemory('无关', ws).deleteHistory('main', [999]);
+      assert.deepEqual(r, { ok: true, removed: 0 });
+      assert.equal(readFileSync(join(ws.userRoot, 'memory.json'), 'utf8'), before);
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('不带 ts → 清空整只，并把空叶子与空条目一起摘掉', async () => {
+    const ws = tempWorkspace();
+    seed(ws.userRoot);
+    try {
+      const r = await createMemory('无关', ws).deleteHistory('main');
+      assert.deepEqual(r, { ok: true, removed: 4 });
+      const mem = JSON.parse(readFileSync(join(ws.userRoot, 'memory.json'), 'utf8')) as Record<string, unknown>;
+      assert.deepEqual(mem, {}, '清空后不应残留空条目或空宠物叶子');
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('宠物不存在 → unknown-pet，且不写文件', async () => {
+    const ws = tempWorkspace();
+    try {
+      const r = await createMemory('无关', ws).deleteHistory('nobody');
+      assert.equal(r.ok, false);
+      assert.equal(r.ok === false ? r.reason : '', 'unknown-pet');
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+});
