@@ -17,12 +17,19 @@ export interface PetImageRef {
   readonly height: number;
 }
 
+/** 定位一张已落盘图片所需的最小信息：对象路径只由 attachmentId 决定。 */
+export interface PetImageLocator {
+  readonly attachmentId: string;
+}
+
 /** 附件服务的最小形状：DSH 宿主提供，独立模式缺失。 */
 export interface PetImageSink {
   /** 部署级单图字节上限；缺失视为不设限（服务内部仍会权威校验）。 */
   readonly imageLimits?: { readonly maxImageBytes?: number };
   /** 校验并持久化一批图片，返回与入参同序的引用。 */
   saveImages(inputs: readonly { data: Uint8Array; mediaType: PetImageMediaType }[]): Promise<readonly PetImageRef[]>;
+  /** 宿主文件后端上的绝对路径；非文件后端不提供此方法（取图端点据此回 404）。 */
+  imageHostPath?(ref: PetImageLocator): string | undefined;
 }
 
 /** 解析结论；失败时 message 直接作为 bad-request 的文案。 */

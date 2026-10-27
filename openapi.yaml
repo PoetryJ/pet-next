@@ -1401,6 +1401,53 @@ paths:
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
 
+  /dsh-pet-7340/attachment:
+    get:
+      tags: [Assets]
+      operationId: getAttachmentImage
+      summary: 按附件引用取回一张对话图片
+      description: |
+        把 `GET /chat` 里 `messages[].image` 的 `attachmentId` 换回可显示的图片。
+
+        只接受 `sha256:<64 位小写 hex>`：对象路径由宿主附件服务按内容哈希计算，插件自己不拼路径。
+        不校验这张图属于哪只宠物——id 是内容哈希、不可猜，服务也只监听回环。
+
+        附件内容寻址且不可变，所以响应可被浏览器缓存；独立模式（没有附件服务）一律 404。
+      parameters:
+        - name: id
+          in: query
+          required: true
+          description: 附件引用里的 `attachmentId`（形如 `sha256:…`）；缺失或形状非法 → 400。
+          schema:
+            type: string
+            pattern: "^sha256:[a-f0-9]{64}$"
+      responses:
+        "200":
+          description: 图片本体。`Content-Type` 按文件头判定（png / jpeg / gif / webp），响应带缓存头。
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+            image/jpeg:
+              schema:
+                type: string
+                format: binary
+            image/gif:
+              schema:
+                type: string
+                format: binary
+            image/webp:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: id 缺失或形状非法（`text/plain`）。
+        "404":
+          description: 附件不存在、不是可显示的图片，或当前模式没有附件服务（`text/plain`）。
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
   /dsh-pet-7340/chat:
     get:
       tags: [Action]
