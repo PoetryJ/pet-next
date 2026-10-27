@@ -15,7 +15,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -35,6 +35,15 @@ const {
 
 /** 包内文件源码（守卫用；相对 src/host/ 解析） */
 const readSource = (rel: string): string => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
+
+/** 渲染端宠物本体的源码：已按职责拆成 sprite.js 与 sprite-*.js，守卫要读全份。 */
+const spriteSource = (): string =>
+  [
+    readSource(helper + 'sprite.js'),
+    ...readdirSync(fileURLToPath(new URL(helper + 'sprite/', import.meta.url))).map((name) =>
+      readSource(helper + 'sprite/' + name),
+    ),
+  ].join('\n');
 
 /** 真实窗口矩形（DIP）：宠物 size 462 → 窗口 = 462 + 两侧各 231 = 924；高度 = 画布 + bottomPad + 两侧余量 */
 const bounds = { x: 1000, y: 500, width: 924, height: 743 };
@@ -217,7 +226,15 @@ describe('菜单/聊天框只占控件矩形，不吞掉其它应用点击', () 
 });
 
 describe('源码守卫 —— helper 的两个兜底必须在位', () => {
-  const main = readSource(helper + 'main.js');
+  /** 主进程源码：main.js 是装配根，行为散在 main/ 下的模块里，守卫要读全份。 */
+  const mainSource = (dir: string): string =>
+    [
+      readSource(dir + 'main.js'),
+      ...readdirSync(fileURLToPath(new URL(dir + 'main/', import.meta.url)))
+        .filter((name) => name.endsWith('.js'))
+        .map((name) => readSource(dir + 'main/' + name)),
+    ].join('\n');
+  const main = mainSource(helper);
 
   test('#55-1 兜底显示：ready-to-show 之外还要有"加载完成后仍未显示就 show"', () => {
     // 回调可能是单行 `() => win.showInactive()`，也可能多行（多行时先 keepOffTaskbar 再 show）：
@@ -283,15 +300,12 @@ describe('守卫：主进程镜像的命中盒常量不得与 src/shared/constan
     assert.deepEqual(HIT_BOX, { x0: Number(hit[1]), y0: Number(hit[2]), x1: Number(hit[3]), y1: Number(hit[4]) });
     // 画布宽 shared 没有导出（各处都用字面量 640）：这里断言渲染端也是同一约定，避免我们把宽写成别的值
     assert.equal(STAGE_W, 640);
-    assert.ok(
-      /S\.HIT_BOX\.x0 \/ 640/.test(readSource(helper + 'sprite.js')),
-      'sprite.js 的命中判定用 640 作画布宽——两边必须同一约定',
-    );
+    assert.ok(/S\.HIT_BOX\.x0 \/ 640/.test(spriteSource()), 'sprite.js 的命中判定用 640 作画布宽——两边必须同一约定');
   });
 });
 
 describe('守卫：渲染端的输入租约必须在位（helper 随包发行，只能读源码断言）', () => {
-  const sprite = readSource(helper + 'sprite.js');
+  const sprite = spriteSource();
 
   test('租约来源必须**正好**是那三个"正在用窗口输入"的状态', () => {
     const m = /inputBusy\(\)\s*\{([\s\S]*?)\n {2}\}/.exec(sprite);

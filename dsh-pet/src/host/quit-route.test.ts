@@ -194,21 +194,22 @@ describe('POST /quit —— 把退出交给宿主停机', () => {
 });
 
 describe('桌面端与独立模式的接线（源码守卫：两半各自构建，无法互相 import）', () => {
-  const main = readSource('../../runtime/electron-helper/main.js');
+  // 托盘已拆到 main/tray.js：退出项与 quitApp 都在那份里
+  const tray = readSource('../../runtime/electron-helper/main/tray.js');
   const cli = readSource('../standalone/cli.ts');
   const context = readSource('../standalone/context.ts');
 
-  test('退出项不再只给独立应用：canQuit = APP_MODE || !BRIDGE || hostCanQuit', () => {
-    assert.match(main, /const canQuit = APP_MODE \|\| !BRIDGE \|\| hostCanQuit/);
-    assert.match(main, /label: '退出', click: quitApp/);
+  test('退出项不再只给独立应用：canQuit = appMode || !isBridge || hostCanQuit', () => {
+    assert.match(tray, /const canQuit = appMode \|\| !isBridge \|\| hostCanQuit/);
+    assert.match(tray, /label: '退出', click: quitApp/);
   });
 
-  test('BRIDGE 下不得自己 app.quit()：点击必须 POST 回宿主', () => {
-    const block = /const quitApp = \(\) => \{([\s\S]*?)\n {4}\};/.exec(main);
-    assert.ok(block, 'main.js 必须有 quitApp');
+  test('bridge 下不得自己 app.quit()：点击必须 POST 回宿主', () => {
+    const block = /const quitApp = \(\) => \{([\s\S]*?)\n {6}\};/.exec(tray);
+    assert.ok(block, 'main/tray.js 必须有 quitApp');
     assert.ok(
-      /hostRequest\('POST', PET_ROUTE \+ '\/quit'\)/.test(block[1]),
-      'BRIDGE 分支必须把退出交给宿主（自己退会被当成崩溃重启）',
+      /hostRequest\('POST', petRoute \+ '\/quit'\)/.test(block[1]),
+      'bridge 分支必须把退出交给宿主（自己退会被当成崩溃重启）',
     );
   });
 

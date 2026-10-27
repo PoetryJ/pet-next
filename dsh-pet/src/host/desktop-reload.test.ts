@@ -29,7 +29,13 @@ const routeSource = readdirSync(fileURLToPath(new URL('./routes/', import.meta.u
   .map((name) => readSource('./routes/' + name))
   .join('\n');
 const host = readSource('./index.ts') + '\n' + routeSource;
-const sprite = readSource('../../runtime/electron-helper/sprite.js');
+/** 渲染端宠物本体的源码：已按职责拆成 sprite.js 与 sprite-*.js，守卫要读全份。 */
+const sprite = [
+  readSource('../../runtime/electron-helper/sprite.js'),
+  ...readdirSync(fileURLToPath(new URL('../../runtime/electron-helper/sprite/', import.meta.url))).map((name) =>
+    readSource('../../runtime/electron-helper/sprite/' + name),
+  ),
+].join('\n');
 const clientPet = readSource('../client/pet.ts');
 const menu = readSource('../shared/menu.ts') + readSource('../shared/menu/types.ts');
 

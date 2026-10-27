@@ -146,11 +146,12 @@ describe('守卫：main.js 的两条路必须都在位（helper 随包发行，�
     assert.ok(/HOST_POLL_MS/.test(main), '间隔必须是命名常量（来自 host-liveness.js）');
   });
 
-  test('守卫必须早于**任何一次写**（probePrimaryScale 失败就会往 stderr 写）', () => {
+  test('守卫必须早于**任何一次写**（DPI 探测失败就会往 stderr 写）', () => {
     const guardAt = main.indexOf("stream.on('error'");
-    const firstWriteAt = main.indexOf('PRIMARY_SCALE = readCachedPrimaryScale() || probePrimaryScale();');
+    // DPI 探测已拆到 main-dpi.js：main.js 这边第一个可能写 stderr 的动作就是建它
+    const firstWriteAt = main.indexOf('createDpi({');
     assert.ok(guardAt > 0, '找不到管道守卫');
-    assert.ok(firstWriteAt > 0, '找不到 DPI 探测调用点（文件结构变了，请同步本断言）');
+    assert.ok(firstWriteAt > 0, '找不到 DPI 工厂调用点（文件结构变了，请同步本断言）');
     assert.ok(guardAt < firstWriteAt, '管道守卫必须装在任何一次可能写之前');
   });
 

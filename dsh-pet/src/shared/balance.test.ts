@@ -16,7 +16,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import {
@@ -219,7 +219,13 @@ describe('源码守卫 —— 不可用状态不得再被静默丢掉', () => {
 
   test('桌面外壳：同一条判定 + 不可用也走气泡渲染（不再只写 console）', () => {
     const events = readSource('../../runtime/electron-helper/events.js');
-    const sprite = readSource('../../runtime/electron-helper/sprite.js');
+    // 宠物本体已按职责拆成 sprite.js 与 sprite-*.js：守卫要读全份，否则文件一搬就误报
+    const sprite = [
+      readSource('../../runtime/electron-helper/sprite.js'),
+      ...readdirSync(fileURLToPath(new URL('../../runtime/electron-helper/sprite/', import.meta.url))).map((name) =>
+        readSource('../../runtime/electron-helper/sprite/' + name),
+      ),
+    ].join('\n');
     assert.ok(
       /S\.decideBalanceNotice/.test(events),
       '桌面轮询必须调用同一份判定（shared-core 的 S.decideBalanceNotice）',

@@ -17,7 +17,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -107,7 +107,15 @@ describe('shouldReassertTopmost —— 到点才重钉，每拍都问一次', ()
 });
 
 describe('源码守卫 —— 置顶看门狗必须在 main.js 里按这套规则接线', () => {
-  const main = readSource(helper + 'main.js');
+  /** 主进程源码：main.js 是装配根，行为散在 main/ 下的模块里，守卫要读全份。 */
+  const mainSource = (dir: string): string =>
+    [
+      readSource(dir + 'main.js'),
+      ...readdirSync(fileURLToPath(new URL(dir + 'main/', import.meta.url)))
+        .filter((name) => name.endsWith('.js'))
+        .map((name) => readSource(dir + 'main/' + name)),
+    ].join('\n');
+  const main = mainSource(helper);
   /** 看门狗定时器体（锚在 topmostTimer 的赋值上，避免匹配到更早的其它 setInterval） */
   const watchdogBody = (): string => {
     const m = /topmostTimer = setInterval\(\(\) => \{([\s\S]*?)\}, TOPMOST_WATCHDOG_TICK_MS\);/.exec(main);
@@ -125,7 +133,7 @@ describe('源码守卫 —— 置顶看门狗必须在 main.js 里按这套规�
       '看门狗必须再钉一次同档位（HWND_TOPMOST 落带靠它；moveTop 的 HWND_TOP 对已沉底窗口无效）',
     );
     assert.ok(
-      /require\('\.\/topmost-watchdog\.js'\)/.test(main),
+      /require\('\.\.\/topmost-watchdog\.js'\)/.test(main),
       '看门狗判定必须复用 runtime/electron-helper/topmost-watchdog.js（纯逻辑有单测）',
     );
     assert.ok(!/win\.moveTop\(/.test(main), 'moveTop()=HWND_TOP 不落置顶带，不得用它当兜底');

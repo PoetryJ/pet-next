@@ -16,7 +16,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 /** 包内文件源码（守卫用；相对 src/host/ 解析） */
@@ -28,9 +28,23 @@ const host =
   readSource('./plugin/desktop-helper.ts') +
   '\n' +
   readSource('./plugin/desktop/spawn.ts');
-const main = readSource('../../runtime/electron-helper/main.js');
+/** 主进程源码：main.js 是装配根，行为散在 main/ 下的模块里，守卫要读全份。 */
+const mainSource = (dir: string): string =>
+  [
+    readSource(dir + 'main.js'),
+    ...readdirSync(fileURLToPath(new URL(dir + 'main/', import.meta.url)))
+      .filter((name) => name.endsWith('.js'))
+      .map((name) => readSource(dir + 'main/' + name)),
+  ].join('\n');
+const main = mainSource('../../runtime/electron-helper/');
 const constants = readSource('../../runtime/electron-helper/constants.js');
-const sprite = readSource('../../runtime/electron-helper/sprite.js');
+/** 渲染端宠物本体的源码：已按职责拆成 sprite.js 与 sprite-*.js，守卫要读全份。 */
+const sprite = [
+  readSource('../../runtime/electron-helper/sprite.js'),
+  ...readdirSync(fileURLToPath(new URL('../../runtime/electron-helper/sprite/', import.meta.url))).map((name) =>
+    readSource('../../runtime/electron-helper/sprite/' + name),
+  ),
+].join('\n');
 const standaloneContext = readSource('../standalone/context.ts');
 
 describe('「打开网站」按宿主形态自动分派', () => {
@@ -53,7 +67,7 @@ describe('「打开网站」按宿主形态自动分派', () => {
     assert.ok(/openTarget: OPEN_TARGET/.test(main), '形态要沿窗口 query 透到渲染端（文案在那里决定）');
     assert.ok(/shell\.openExternal\('dsh:\/\/open'\)/.test(main), '桌面宿主必须走 dsh://open 唤起应用窗口');
     assert.ok(
-      /OPEN_TARGET === 'desktop'\) \{[\s\S]*?openSite\(url\)/.test(main),
+      /(?:OPEN_TARGET|openTarget) === 'desktop'\) \{[\s\S]*?openSite\(url\)/.test(main),
       'dsh:// 失败要回落成打开站点（协议未注册时不能"点了没反应"）',
     );
     assert.ok(

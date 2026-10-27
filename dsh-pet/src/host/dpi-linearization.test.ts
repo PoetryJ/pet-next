@@ -16,7 +16,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { createRequire } from 'node:module';
 
@@ -126,34 +126,44 @@ describe('端到端不变量 —— 用户真正看到的那件事', () => {
   });
 });
 
-describe('源码守卫 —— main.js 只接线，规则住在 dpi-linearization.js', () => {
-  const main = readSource(helper + 'main.js');
+describe('源码守卫 —— main-dpi.js 只接线，规则住在 dpi-linearization.js', () => {
+  /** 主进程源码：main.js 是装配根，行为散在 main/ 下的模块里，守卫要读全份。 */
+  const mainSource = (dir: string): string =>
+    [
+      readSource(dir + 'main.js'),
+      ...readdirSync(fileURLToPath(new URL(dir + 'main/', import.meta.url)))
+        .filter((name) => name.endsWith('.js'))
+        .map((name) => readSource(dir + 'main/' + name)),
+    ].join('\n');
+  const main = mainSource(helper);
+  // DPI/指针已拆到 main-dpi.js：规则接线看那份，装配仍看 main.js
+  const dpi = readSource(helper + 'main/dpi.js');
 
-  test('main.js 必须 require 新模块', () => {
-    assert.ok(/require\('\.\/dpi-linearization\.js'\)/.test(main), '必须 require dpi-linearization.js');
+  test('main-dpi.js 必须 require 新模块', () => {
+    assert.ok(/require\('\.\.\/dpi-linearization\.js'\)/.test(dpi), '必须 require dpi-linearization.js');
   });
 
   test('三条规则都从模块取，不得内联', () => {
-    assert.ok(/shouldLinearize\(/.test(main), '启用判定必须走 shouldLinearize');
-    assert.ok(/resolveForcedScale\(/.test(main), '强制值必须走 resolveForcedScale');
-    assert.ok(/resolvePetScale\(/.test(main), '渲染端缩放必须走 resolvePetScale');
-    assert.ok(!/PRIMARY_SCALE \/ FORCED_SCALE/.test(main), '补偿公式不允许再内联在 main.js 里');
+    assert.ok(/shouldLinearize\(/.test(dpi), '启用判定必须走 shouldLinearize');
+    assert.ok(/resolveForcedScale\(/.test(dpi), '强制值必须走 resolveForcedScale');
+    assert.ok(/resolvePetScale\(/.test(dpi), '渲染端缩放必须走 resolvePetScale');
+    assert.ok(!/PRIMARY_SCALE \/ FORCED_SCALE/.test(dpi), '补偿公式不允许再内联在 main.js 里');
   });
 
-  test('平台例外只允许住在模块里（main.js 不得出现 darwin 分支）', () => {
-    assert.ok(!/darwin/.test(main), '平台判断写进 main.js 就绕过了本文件的单测');
+  test('平台例外只允许住在模块里（接线文件不得出现 darwin 分支）', () => {
+    assert.ok(!/darwin/.test(main + dpi), '平台判断写进接线文件就绕过了本文件的单测');
   });
 
   test('强制 DSF 的 switch 必须在 shouldLinearize 判定之内（否则 macOS 又被放大）', () => {
-    const guardAt = main.indexOf('shouldLinearize(');
-    const switchAt = main.indexOf("appendSwitch('force-device-scale-factor'");
+    const guardAt = dpi.indexOf('shouldLinearize(');
+    const switchAt = dpi.indexOf("appendSwitch('force-device-scale-factor'");
     assert.ok(guardAt >= 0 && switchAt >= 0, '两处都必须在位');
     assert.ok(switchAt > guardAt, 'switch 必须排在判定之后（同一分支内）');
   });
 
   test('renderer 侧页面缩放仍取自 petScale()（两端共用一个来源）', () => {
     assert.ok(/setZoomFactor\(scale\)/.test(main), '窗口缩放必须来自 petScale()');
-    assert.ok(/const scale = petScale\(\)/.test(main), 'petScale() 必须在建窗前求值一次');
+    assert.ok(/const scale = dpi\.petScale\(\)/.test(main), 'petScale() 必须在建窗前求值一次');
   });
 });
 

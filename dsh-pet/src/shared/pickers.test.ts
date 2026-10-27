@@ -7,7 +7,7 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 import { isEventAnim, nextWorkStatusAnim, pickSlot, poolIncludes, rollKind, slotIncludes } from './pickers.ts';
@@ -173,10 +173,13 @@ describe('宠物固定 —— 双端一致守卫（两端必须都把这个开�
     readFileSync(fileURLToPath(new URL('../client/pet/card/animation-flow.ts', import.meta.url)), 'utf8') +
     '\n' +
     readFileSync(fileURLToPath(new URL('../client/pet.ts', import.meta.url)), 'utf8');
-  const desktopShell = readFileSync(
-    fileURLToPath(new URL('../../runtime/electron-helper/sprite.js', import.meta.url)),
-    'utf8',
-  );
+  // 宠物本体已按职责拆成 sprite.js 与 sprite-*.js：桌面壳的掷骰在 sprite-playback 里，守卫要读全份
+  const desktopShell = [
+    readFileSync(fileURLToPath(new URL('../../runtime/electron-helper/sprite.js', import.meta.url)), 'utf8'),
+    ...readdirSync(fileURLToPath(new URL('../../runtime/electron-helper/sprite/', import.meta.url))).map((name) =>
+      readFileSync(fileURLToPath(new URL('../../runtime/electron-helper/sprite/' + name, import.meta.url)), 'utf8'),
+    ),
+  ].join('\n');
 
   test('浏览器壳（动画流里的 pickNext）传了 fixed', () => {
     // 实参里含 hub.cfg() 这类调用，不能用「到第一个右括号为止」的简单匹配。
