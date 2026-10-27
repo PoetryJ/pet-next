@@ -145,6 +145,7 @@ if (res.ok) {
 | `windows` | `{ monthly, rolling?, weekly?, *CapUsd?, *ResetsAt?, rollingLabel? }` |
 | `money` | `{ wallets: [{ currency, total, granted, toppedUp, fullBalance? }], tier? }` |
 | `points` | `{ unit, total, full? }` |
+| `custom` | 节点树：`{ views: CustomNode[], percent? }` 或 `{ rows: CustomNode, detailRows?: CustomNode, percent? }`，见下 |
 
 ```js
 export const inject = ['petApi7340'];
@@ -165,6 +166,64 @@ export function apply(ctx) {
 ```
 
 宿主不替 `fetch` 加超时或重试。
+
+#### `custom` 形态：自己画气泡
+
+`data` 给一棵节点树，宿主与两端共用同一份渲染器——气泡长什么样完全由你决定，不用为每家服务商改插件代码。
+
+两种写法（`views` 优先；两种都给时忽略 `rows`）：
+
+| 写法 | 形状 | 页数 |
+| --- | --- | --- |
+| 多页 | `{ views: CustomNode[], percent? }` | 最多 4 页；点击循环切页，末页回第一页 |
+| 老两页 | `{ rows: CustomNode, detailRows?: CustomNode, percent? }` | 合成 1–2 页；只有一页时气泡不可点 |
+
+`percent` 是已用百分比，驱动余额档位动画：越界夹到 0–100；缺省或非有限数则不播动画。
+
+节点字段：
+
+| 字段 | 类型 | 说明 |
+| --- | --- | --- |
+| `tag` | `div` \| `span` \| `i` \| `b` \| `strong` \| `em` \| `img` | 白名单之外的标签会让整页作废 |
+| `text` | string | 文本片段，先于子节点渲染 |
+| `src` | string | 仅 `img` 有效，只收 `http` / `https` |
+| `style` | `Record<string, string>` | 内联样式，键为 camelCase，解析层按白名单过滤 |
+| `children` | `CustomNode[]` | 子节点 |
+
+限额（超过即整页作废）：深度 6、全树 200 节点、单节点 24 个子节点、页数 4。单段文本超过 120 字符**截断**；单个样式值超过 64 字符只丢该属性；`src` 超过 512 字符无效。
+
+失败口径：`fetch` 抛错 → 气泡显示 `fetch-error`；`shape: 'custom'` 但任一页非法 → 这一拍整份跳过，不出现「前几页正常、翻到后面崩」的半坏状态。
+
+```js
+ctx.effect(() =>
+  ctx.get('petApi7340').balance.register({
+    id: 'my-gateway',
+    async fetch({ provider }) {
+      return {
+        ok: true,
+        provider,
+        shape: 'custom',
+        data: {
+          percent: 42,
+          views: [
+            {
+              tag: 'div',
+              style: { display: 'flex', gap: '6px' },
+              children: [
+                { tag: 'span', text: '积分' },
+                { tag: 'b', text: '420 / 1000' },
+              ],
+            },
+            { tag: 'div', children: [{ tag: 'span', text: '下次刷新 5 分钟后' }] },
+          ],
+        },
+      };
+    },
+  }),
+);
+```
+
+4 页与 3 页的完整样例见 [`tools/cordis-probe`](tools/cordis-probe/README.md) 的 `lib/mock-balance.js`（`mock-custom-kinds` / `mock-custom-fancy`）。
 
 ### balance.list
 

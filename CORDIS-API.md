@@ -23,7 +23,7 @@ dsh-pet 提供两个 Cordis 服务：页面内的 `petApi7340`（浏览器半侧
 
 | 成员 | 功能 |
 | --- | --- |
-| `balance.register(def)` | 注册一个自定义余额服务商（`{ id, fetch }`），宿主统一排期、统一渲染气泡 |
+| `balance.register(def)` | 注册一个自定义余额服务商（`{ id, fetch }`）：`shape` 支持 `windows` / `money` / `points` / `custom`，最后一种是自己画节点树；宿主统一排期、统一渲染气泡 |
 | `balance.list()` | 列出内置与已注册的余额服务商 id，用来确认注册是否生效 |
 
 ---
