@@ -226,13 +226,14 @@ export function makeBalanceBubble(rt: {
     const clickable = state.ok && (state.shape === 'windows' || (isCustom && customClickable(state)));
     // 不可用状态是多行说明，套用碎碎念的窄字号变体。
     const wrap = state.ok ? '' : ' dsh-pet-whisper';
+    // 展开态只属于内置 windows 的收起/展开两页；custom 各页是对等页面，翻页不该切紧凑字号。
     return h('div', {
       className:
         'dsh-pet-bubble' +
         wrap +
         (on ? ' is-on' : '') +
         (clickable ? ' is-clickable' : '') +
-        (shown > 0 ? ' is-expanded' : '') +
+        (!isCustom && shown > 0 ? ' is-expanded' : '') +
         (fading ? ' is-fading' : ''),
       // 就地吞掉，避免触发宠物本体的点击与拖拽。
       onClick: clickable

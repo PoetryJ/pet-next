@@ -73,9 +73,11 @@ Object.assign(PetSprite.prototype, {
       slot === 'whisper' || slot === 'work' || (slot === 'balance' && this.balanceWrap),
     );
     this.bubble.classList.toggle(S.MEME_BUBBLE_CLASS, !!whisperImg);
-    // 可点/展开两个状态类：可点 → 气泡参与命中区（见 syncInputRegions）；index>0 → 更宽的盒与紧凑字号
+    // 可点/展开两个状态类：可点 → 气泡参与命中区（见 syncInputRegions）；index>0 → 更宽的盒与紧凑字号。
+    // 展开态仅内置 windows 的收起/展开两页使用；custom 各页是对等页面，翻页不切紧凑字号。
+    const isCustom = !!(this.balanceState && S.customViews(this.balanceState));
     const clickable = slot === 'balance' && this.balanceClickable();
-    const expanded = clickable && this.balanceViewIndex > 0;
+    const expanded = clickable && !isCustom && this.balanceViewIndex > 0;
     this.bubble.classList.toggle('is-clickable', clickable);
     this.bubble.classList.toggle('is-expanded', expanded);
     if (slot === 'none') {
