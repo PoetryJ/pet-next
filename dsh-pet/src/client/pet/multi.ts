@@ -5,7 +5,6 @@
  * @module dsh-pet/src/client/pet/multi
  */
 import type { FunctionComponent, ReactNode } from 'react';
-import type { SettingsRuntime } from '../settings/runtime.ts';
 import { petBridge } from '../settings/bridge.ts';
 import { flattenConfigPets, isWebVisible } from '../../shared/config.ts';
 import { decideBalanceNotice } from '../../shared/balance/index.ts';
@@ -41,7 +40,7 @@ import type { MenuMoreItem } from '../../shared/menu.ts';
 import type { PetCollisionSlot } from '../../shared/physics.ts';
 import type { WorkStatusSnapshot } from '../../shared/work-status.ts';
 import type { PetCardProps } from './card/card-props.ts';
-import type { RuntimePet } from '../pet.ts';
+import type { PetRuntime, RuntimePet } from './types.ts';
 import { setClickSoundEnabled } from './click-sound.ts';
 import { runStatePoll } from './state-poll.ts';
 import { notifyFromFrame } from '../notify.ts';
@@ -55,7 +54,7 @@ import { STATE_FALLBACK_MS, STATE_WAIT_MS } from './timings.ts';
  * @returns 容器组件。
  */
 export function createPetMulti(
-  rt: Pick<SettingsRuntime, 'h' | 'useState' | 'useEffect' | 'useRef'>,
+  rt: Pick<PetRuntime, 'h' | 'useState' | 'useEffect' | 'useRef'>,
   Card: FunctionComponent<PetCardProps>,
 ): () => ReactNode {
   const { h, useState, useEffect, useRef } = rt;

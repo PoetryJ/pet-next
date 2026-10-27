@@ -10,7 +10,7 @@ import type { OwnAnimation } from '../animation/animation.ts';
 import type { BubbleSlots } from './bubble-slots.ts';
 import type { PositionFollow } from '../motion/position-follow.ts';
 import type { Animations } from '../../../shared/types.ts';
-import type { RuntimePet } from '../../pet.ts';
+import type { RuntimePet } from '../types.ts';
 
 /** 依据名点播：与右键菜单同一套语义（文字类强制朝左、移动类会走位）。 */
 export type PlayByName = (anim: string, playbackId?: string, keepFacing?: boolean) => void;

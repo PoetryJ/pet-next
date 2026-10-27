@@ -10,7 +10,7 @@ import type { PetCollisionSlot } from '../../../shared/physics.ts';
 import type { LockState, PositionMode, SayCue, PetFacing } from '../../../shared/state.ts';
 import type { MenuMoreItem } from '../../../shared/menu.ts';
 import type { WorkStatusSnapshot } from '../../../shared/work-status.ts';
-import type { RuntimePet } from '../../pet.ts';
+import type { RuntimePet } from '../types.ts';
 
 /** 一张宠物卡的渲染输入。 */
 export interface PetCardProps {
