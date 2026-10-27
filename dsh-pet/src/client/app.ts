@@ -8,6 +8,7 @@
 import { makePetUI } from './pet.ts';
 import { readPose } from './pose.ts';
 import { readProgress } from './progress.ts';
+import { getStateSnapshot } from './state-service.ts';
 import { makePetConfigSection, NS, zh, en, petBridge } from './settings.ts';
 import { initNotify } from './notify.ts';
 import { installCommandFaces, type CommandFace, type CommandUiLike } from './command-faces.ts';
@@ -68,11 +69,11 @@ export function makeFactory(): (require: (mod: string) => any) => any {
       ctx.effect(() => ctx.locale.register(NS, { zh, en }), 'dsh-pet: dictionaries');
       const t = ctx.locale.bind(NS);
 
-      // 同页第三方插件可通过 Cordis 服务 petApi7340 读取本页宠物的实况与播放进度。
+      // 同页第三方插件可通过 Cordis 服务 petApi7340 读取本页宠物的实况、播放进度与最近一拍状态。
       // 只开读，控制仍走 HTTP，避免出现两条控制通道。
       // 服务名带 7340 后缀避免与生态里的同名服务冲突；Cordis 同名 provide 会直接抛错。
-      // 消费者用 ctx.get('petApi7340') 探测，拿不到就是老版本。
-      ctx.provide('petApi7340', { pose: readPose, progress: readProgress });
+      // 消费者用 ctx.get('petApi7340') 探测，拿不到就是老版本；`getState` 也要单独探测（老版本没有它）。
+      ctx.provide('petApi7340', { getState: getStateSnapshot, pose: readPose, progress: readProgress });
 
       // 系统通知：host 把通知帧写进 /state 的 sections.notify，统一轮询发现变化后弹 toast。
       ctx.effect(

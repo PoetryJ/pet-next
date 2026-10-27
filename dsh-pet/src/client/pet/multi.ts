@@ -43,6 +43,7 @@ import type { PetCardProps } from './card/card-props.ts';
 import type { PetRuntime, RuntimePet } from './types.ts';
 import { setClickSoundEnabled } from './click-sound.ts';
 import { runStatePoll } from './state-poll.ts';
+import { setStateSnapshot } from '../state-service.ts';
 import { notifyFromFrame } from '../notify.ts';
 import { STATE_FALLBACK_MS, STATE_WAIT_MS } from './timings.ts';
 
@@ -266,6 +267,8 @@ export function createPetMulti(
 
       /** 应用一份轮询状态：首拉只记基线，之后按 counter 变化逐个分发。 */
       const applyState = (s: PollState) => {
+        // 最近一拍先留给同页消费者（petApi7340.getState）：它读的是同一个对象，不占连接。
+        setStateSnapshot(s);
         if (baseline === null) {
           baseline = flattenCounters(s); // 首拉只记基线，不渲染。
           // 菜单项是当前状态而不是事件，首拉也必须装上，否则刷新后第三方菜单会一直为空。
