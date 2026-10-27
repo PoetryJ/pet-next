@@ -9,6 +9,7 @@ import type { MenuLeaf } from '../../shared/menu.ts';
 import { ROUTE_PATH } from '../../shared/constants.ts';
 import type { Animations } from '../../shared/types.ts';
 import { postAction } from '../../shared/state.ts';
+import { setMenuClick } from '../menu-service.ts';
 
 /** 菜单派发的依赖。 */
 export interface MenuActionDeps {
@@ -94,6 +95,8 @@ export function createMenuActions(deps: MenuActionDeps): MenuActions {
       // 第三方菜单项只上报 owner、label 与当前宠物 id，具体动作由注册方查询。
       const owner = leaf.owner ?? '';
       if (owner !== '') {
+        // 同页消费者（petApi7340.menuEvents）当场就能取到；HTTP 照旧上报，桌面端与老扩展仍读宿主那份。
+        setMenuClick(owner, leaf.label, petId);
         postAction(ROUTE_PATH + '/menu/click', { owner, label: leaf.label, pet: petId }).catch((error: unknown) =>
           deps.warn('[dsh-pet] 第三方菜单点击上报失败 ' + String(error)),
         );

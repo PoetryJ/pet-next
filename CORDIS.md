@@ -2,6 +2,8 @@
 
 同名服务 `petApi7340` 在两半各有一份，分属不同容器（宿主进程 / DSH web 页面），互不可见。
 
+本文是**完整契约**（参数、返回字段、边界与示例）；只要成员的一句话预览，见 [`CORDIS-API.md`](CORDIS-API.md)。
+
 ```js
 ctx.get('petApi7340')
 ```
@@ -10,7 +12,7 @@ ctx.get('petApi7340')
 
 ## 客户端半侧（DSH web 页面内，只在该页面内有效）
 
-入口返回 `{ getState, pose, progress }`。
+入口返回 `{ getState, menuEvents, pose, progress }`。
 
 ### pose
 
@@ -86,6 +88,34 @@ ctx.get('petApi7340').progress('main');
 const s = ctx.get('petApi7340').getState();
 if (s) {
   console.log('版本', s.counter, '这只宠物最近说：', s.pets.main?.say?.data);
+}
+```
+
+### menuEvents
+
+**参数**
+
+| 名称 | 类型 | 说明 |
+| --- | --- | --- |
+| `owner` | string | 注册菜单项时用的 owner |
+
+**返回**：与 `GET /menu/events` 的响应体同形。
+
+| 形态 | 内容 |
+| --- | --- |
+| 成功 | `{ ok: true, events: Record<label, petId \| null> }` |
+| 未知 owner | `{ ok: false, reason: 'unknown-owner' }` |
+
+`events` 覆盖本页可见的全部菜单项：值是 `petId` 表示这一项被点过（点在哪只宠物上），`null` 表示没被点过。
+
+**读取即消费**：读走后所有标记清回 `null`，下一次读到的是之后的新点击；连续点同一条只留最后一次。这个 owner 在本页没有可见项（没注册、已清除，或只注册给 `desktop`）时回 `unknown-owner`。
+
+```js
+const res = ctx.get('petApi7340').menuEvents('my-plugin');
+if (res.ok) {
+  for (const [label, petId] of Object.entries(res.events)) {
+    if (petId !== null) console.log(label, '被点了，点在', petId);
+  }
 }
 ```
 

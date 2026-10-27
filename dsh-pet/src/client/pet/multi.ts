@@ -43,6 +43,7 @@ import type { PetCardProps } from './card/card-props.ts';
 import type { PetRuntime, RuntimePet } from './types.ts';
 import { setClickSoundEnabled } from './click-sound.ts';
 import { runStatePoll } from './state-poll.ts';
+import { setMenuItems } from '../menu-service.ts';
 import { setStateSnapshot } from '../state-service.ts';
 import { notifyFromFrame } from '../notify.ts';
 import { STATE_FALLBACK_MS, STATE_WAIT_MS } from './timings.ts';
@@ -210,8 +211,9 @@ export function createPetMulti(
             notifyFromFrame(leaf.data);
             return;
           case 'menu':
-            // 第三方菜单快照只更新 ref，不触发渲染。
+            // 第三方菜单快照只更新 ref，不触发渲染；同一份交给页面内菜单镜像，供 petApi7340.menuEvents 读取。
             menuItemsRef.current = readMenuItems(leaf.data, 'web');
+            setMenuItems(menuItemsRef.current);
             return;
         }
       };
@@ -273,6 +275,7 @@ export function createPetMulti(
           baseline = flattenCounters(s); // 首拉只记基线，不渲染。
           // 菜单项是当前状态而不是事件，首拉也必须装上，否则刷新后第三方菜单会一直为空。
           menuItemsRef.current = readMenuItems(s.sections.menu?.data, 'web');
+          setMenuItems(menuItemsRef.current);
           return;
         }
         for (const { path, leaf } of takeChanged(s, baseline)) {
