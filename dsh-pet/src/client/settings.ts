@@ -13,7 +13,7 @@ import { requestNotificationPermission } from './notify.ts';
 import { injectSettingsCss } from './settings/css.ts';
 import { type Feedback, makeActions } from './settings/actions.ts';
 import { petBridge } from './settings/bridge.ts';
-import { type MergedConfig, readMainConfig } from './settings/config/index.ts';
+import { type MergedConfig, readConfigEntries, readMainConfig } from './settings/config/index.ts';
 import { type DialogState, makeDialog } from './settings/dialog.ts';
 import { makeFontCard } from './settings/font-card.ts';
 import { makeGlobalCard, type GlobalFlagKey, type GlobalFlags } from './settings/global-card.ts';
@@ -21,6 +21,7 @@ import { makeLoadStatus } from './settings/load-status.ts';
 import { makeModelCard, type ModelFieldKey } from './settings/model-card.ts';
 import { makeModelPicker } from './settings/picker/index.ts';
 import { runNotificationTest } from './settings/notify-test.ts';
+import { makeKindTabs } from './settings/kind-tabs.ts';
 import { makePathsCards } from './settings/paths-cards.ts';
 import { makePetCard } from './settings/pet-card.ts';
 import { makePetTabs } from './settings/pet-tabs.ts';
@@ -56,6 +57,7 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
   // 否则选择器的浮层状态（打开 / 搜索词 / 高亮）每次渲染都会丢。
   const ModelPicker = makeModelPicker({ h, useState, useEffect, useRef, t });
   const PetTabs = makePetTabs({ h, t });
+  const KindTabs = makeKindTabs({ h, t });
   const PetCard = makePetCard(rt);
   const GlobalCard = makeGlobalCard(rt);
   const FontCard = makeFontCard(rt);
@@ -75,8 +77,24 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
     const rootRef = useRef<HTMLElement | null>(null);
     // 确认 / 提示弹窗：remove 删除宠物、lastOne 只剩一只删不了、sync 同步覆盖、corrupt 用户配置已损坏。
     const [dialog, setDialog] = useState<DialogState>(null);
-    // 宠物列表的增删改与选中项都在 settings/use-pet-list.ts：列表初值同样来自容器拍平的成品。
-    const { pets, selId, extraCount, select, update, add, requestRemove, remove, replace } = usePetList(rt, setDialog);
+    // 宠物列表的增删改与选中项都在 settings/use-pet-list.ts：列表覆盖全部条目（main + 文件宠物）。
+    const {
+      pets,
+      mainPets,
+      kinds,
+      kind,
+      visiblePets,
+      selId,
+      entryPrompt,
+      select,
+      selectKind,
+      update,
+      add,
+      requestRemove,
+      remove,
+      replace,
+      packWrites,
+    } = usePetList(rt, setDialog);
     // 一次性拉取的宿主数据：落盘位置（两张路径卡）与候选模型清单（下拉框）。
     const { paths, catalog, catalogFailed } = useRemoteData(rt);
 
@@ -104,16 +122,15 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
     const [chatMemory, setChatMemory] = useState(5);
     // 对话配图张数上限（全局默认）：初值 10 是内置默认（砍掉整张清单约 2/3 开销），加载后由成品值覆盖。
     const [chatImageLimit, setChatImageLimit] = useState(10);
-    // 条目级人设：设置页只编辑实例级覆盖（pets[].whisperPrompt）；这个值只用于「留空时跟随什么」的预览，不参与提交。
-    const [entryPrompt, setEntryPrompt] = useState('');
 
     // 首次读取与恢复默认必须更新同一组控件，避免下一次保存回写过期值。
     const applyConfig = useCallback(
       (merged: MergedConfig) => {
+        // 条目列表与全局字段各取一份：前者给标签条与保存时的写回计划，后者给全局卡片。
+        const entries = readConfigEntries(merged);
         const patch = readMainConfig(merged);
-        if (patch === null) throw new Error('Invalid config response');
-        if (patch.pets !== undefined) replace(patch.pets);
-        if (patch.entryPrompt !== undefined) setEntryPrompt(patch.entryPrompt);
+        if (entries === null || patch === null) throw new Error('Invalid config response');
+        replace(entries);
         if (patch.notificationsEnabled !== undefined) setNotifyEnabled(patch.notificationsEnabled);
         if (patch.clickSoundEnabled !== undefined) setClickSound(patch.clickSoundEnabled);
         if (patch.whisperImageEnabled !== undefined) setWhisperImage(patch.whisperImageEnabled);
@@ -146,6 +163,8 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
 
     // 当前选中的宠物对象（表单数据源）；selId 由 add/remove/sync 同步维护，列表非空时恒有效
     const cur = pets.find((p) => p.id === selId) ?? null;
+    // 文件宠物条目数：只用于标题提示「另 n 只来自 pet/ 目录」。
+    const packCount = kinds.filter((item) => item.kind === 'pack').length;
 
     // 六个全局开关的当前值：卡片只认这个对象，键名与成品配置字段同名。
     const globalFlags: GlobalFlags = {
@@ -182,7 +201,8 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
     // 传的是回调而不是值——save 每次渲染重建，捕获状态会拿旧值存盘。
     const write = createWriteFlow({
       fields: () => ({
-        pets,
+        // PUT /config 只写用户主配置：只能提交 main 层实例，pack 实例走 POST /pet-config。
+        pets: mainPets,
         notificationsEnabled: notifyEnabled,
         clickSoundEnabled: clickSound,
         whisperImageEnabled: whisperImage,
@@ -202,6 +222,7 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
       setDialog,
       dialog: () => dialog,
       applyConfig,
+      packWrites,
       userFile: () => paths?.user ?? '',
       t,
       onRemove: remove,
@@ -240,13 +261,14 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
           className: 'dsh-pet-cfg__title',
           children: [
             t('nav'),
-            q(extraCount > 0 ? t('intro') + '\n' + t('extraPetsHint').replace('{n}', String(extraCount)) : t('intro')),
+            q(packCount > 0 ? t('intro') + '\n' + t('extraPetsHint').replace('{n}', String(packCount)) : t('intro')),
           ],
         }),
 
         h(LoadStatus, { loadState, onRetry: retry }),
 
-        h(PetTabs, { pets, selId, busy, onSelect: select, onAdd: add }),
+        h(KindTabs, { kinds, kind, busy, onSelect: selectKind }),
+        h(PetTabs, { pets: visiblePets, selId, busy, onSelect: select, onAdd: add }),
         h(PetCard, {
           pet: cur,
           busy,

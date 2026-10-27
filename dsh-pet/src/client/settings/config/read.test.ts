@@ -9,7 +9,7 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { readMainConfig } from './config-read.ts';
+import { readConfigEntries, readMainConfig } from './read.ts';
 import { DEFAULT_PHYSICS } from '../../../shared/physics.ts';
 import { DEFAULT_FONT } from '../../../shared/fonts.ts';
 
@@ -59,5 +59,55 @@ describe('readMainConfig —— 成品聚合 → 表单补丁', () => {
 
   test('条目人设原样带出，供「留空时跟随什么」的预览', () => {
     assert.equal(readMainConfig({ main: { pets: [], whisperPrompt: '条目人设' } })?.entryPrompt, '条目人设');
+  });
+});
+
+describe('readConfigEntries —— 成品聚合 → 条目实例列表', () => {
+  test('按条目拍平：main 在前，文件宠物带 assetRoot 与 pack 标记', () => {
+    const entries = readConfigEntries({
+      main: { pets: [{ id: 'm1', position: { corner: 'top-left', marginX: 0, marginY: 0 } }] },
+      glm: { pets: [{ id: 'g1', position: { corner: 'top-right', marginX: 1, marginY: 2 } }] },
+    });
+    assert.deepEqual(
+      entries?.map((entry) => [entry.key, entry.kind]),
+      [
+        ['main', 'main'],
+        ['glm', 'pack'],
+      ],
+    );
+    assert.equal(entries?.[1].pets[0].assetRoot, 'glm', '实例要记住自己属于哪个种类');
+  });
+
+  test('位置深拷贝：编辑列表与成品列表是两份数据', () => {
+    const merged = { main: { pets: [{ id: 'm1', position: { corner: 'top-left', marginX: 1, marginY: 2 } }] } };
+    const entries = readConfigEntries(merged);
+    assert.ok(entries);
+    entries[0].pets[0].position.marginX = 99;
+    assert.equal(merged.main.pets[0].position.marginX, 1, '不允许共享同一份 position 对象');
+  });
+
+  test('不把条目级大对象挂到实例上（提交体不该被动画池撑大）', () => {
+    const entries = readConfigEntries({
+      main: {
+        pets: [{ id: 'm1', position: { corner: 'top-left', marginX: 0, marginY: 0 } }],
+        animations: { idle: ['x'] },
+      },
+    });
+    assert.equal('animations' in (entries?.[0].pets[0] ?? {}), false);
+  });
+
+  test('main.pets 缺失或不是数组：返回 null（响应坏了）', () => {
+    assert.equal(readConfigEntries({}), null);
+    assert.equal(readConfigEntries({ main: {} }), null);
+    assert.equal(readConfigEntries({ main: { pets: 'oops' } }), null);
+  });
+
+  test('条目人设各自带出：pack 跟随自己种类那份，不共用 main 的', () => {
+    const entries = readConfigEntries({
+      main: { pets: [], whisperPrompt: '主宠物人设' },
+      glm: { pets: [], whisperPrompt: 'GLM 人设' },
+    });
+    assert.equal(entries?.[0].entryPrompt, '主宠物人设');
+    assert.equal(entries?.[1].entryPrompt, 'GLM 人设');
   });
 });

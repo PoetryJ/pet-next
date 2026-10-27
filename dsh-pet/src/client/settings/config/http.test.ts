@@ -20,7 +20,7 @@ import {
   saveConfig,
   syncConfig,
   type SaveFields,
-} from './config-io.ts';
+} from './http.ts';
 
 /** 一次请求的记录。 */
 interface Call {

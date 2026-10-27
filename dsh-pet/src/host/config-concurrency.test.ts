@@ -132,6 +132,30 @@ test('concurrent display changes preserve both pack pets and custom fields', asy
   assert.deepEqual(displays(read()), { alpha: 'web', beta: 'web' });
 });
 
+test('concurrent pack write and settings save do not overwrite each other', async () => {
+  writeFileSync(packFile, JSON.stringify({ pets: [pet('pack-a')], whisperPrompt: 'keep this persona' }));
+  const results = await Promise.all([
+    request('config', 'PUT', { pets: [pet('alpha'), pet('beta')], notificationsEnabled: false }),
+    request('pet-config', 'POST', { entry: 'pack', pets: [pet('pack-a'), pet('pack-b')] }),
+  ]);
+  assert.ok(
+    results.every((r) => r.status === 200 && r.body.main),
+    '两条写端点都要成功，且响应都是成品聚合',
+  );
+  assert.deepEqual(
+    read().pets.map((p: { id: string }) => p.id),
+    ['alpha', 'beta'],
+    '设置页保存的 main 实例不得被种类写回覆盖',
+  );
+  assert.equal(read().notificationsEnabled, false, '全局字段不得被种类写回覆盖');
+  assert.deepEqual(
+    read(packFile).pets.map((p: { id: string }) => p.id),
+    ['pack-a', 'pack-b'],
+    '种类写回的结果不得被设置页保存覆盖',
+  );
+  assert.equal(read(packFile).whisperPrompt, 'keep this persona', '条目人设要保留');
+});
+
 test('display changes cannot undo a concurrent settings save', async () => {
   const results = await Promise.all([
     request('config', 'PUT', { pets: [pet('alpha'), pet('beta')], notificationsEnabled: false }),

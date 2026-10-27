@@ -68,11 +68,16 @@ describe('桌面端「重载配置」—— 菜单 → 宿主重启 Helper', () 
     assert.ok(!/action: 'reload'/.test(clientPet), '浏览器端不得有 reload 菜单项（它会重启整个桌面 Helper）');
   });
 
-  test('requestRestart 是唯一的重启入口：三个写接口与「重载配置」都走它', () => {
+  test('requestRestart 是唯一的重启入口：四个写接口与「重载配置」都走它', () => {
     // 按模块断言「这条路由里有调用」，而不是数全仓调用点：以后新增写接口不该让用例变红，
     // 而某个既有接口丢了重启必须红。调用点可能写作 `void requestRestart()` 或 `void deps.requestRestart()`。
     const call = /void (?:deps\.)?requestRestart\(\)/;
-    for (const rel of ['./routes/config-save.ts', './routes/config-display.ts', './routes/desktop.ts']) {
+    for (const rel of [
+      './routes/config/save.ts',
+      './routes/config/display.ts',
+      './routes/config/entry.ts',
+      './routes/desktop.ts',
+    ]) {
       assert.ok(call.test(readSource(rel)), rel + ' 必须经 requestRestart() 重启 Helper（自己停/起会与串行队列打架）');
     }
   });

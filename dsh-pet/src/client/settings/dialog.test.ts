@@ -65,6 +65,14 @@ describe('SettingsDialog —— 确认弹窗', () => {
     assert.ok(texts(tree).includes('atLeastOne'));
   });
 
+  test('某种类只剩一只：也只给「知道了」，文案带出种类名', () => {
+    const { tree } = render({ kind: 'lastOfKind', entry: 'glm' });
+    const all = buttons(tree);
+    assert.equal(all.length, 1, '没有可确认的动作');
+    assert.equal(all[0].props.children, 'ok');
+    assert.ok(texts(tree).includes('lastOfKind'), '文案走 lastOfKind（内含 {entry} 占位）');
+  });
+
   test('同步：确认按钮是主色（不是危险色）', () => {
     const { tree } = render({ kind: 'sync' });
     const all = buttons(tree);

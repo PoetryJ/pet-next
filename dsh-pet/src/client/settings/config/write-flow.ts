@@ -4,17 +4,20 @@
  * 传进来的是回调而不是值：`save` 每次渲染重建，直接捕获状态会拿旧值存盘。
  * @module dsh-pet/src/client/settings/config/write-flow
  */
-import type { SaveFields } from './config-io.ts';
-import type { MergedConfig } from './config-read.ts';
+import type { SaveFields } from './http.ts';
+import type { MergedConfig } from './read.ts';
 import type { Feedback } from '../actions.ts';
 import type { DialogState } from '../dialog.ts';
 import { persistSettings, syncSettings } from './persist.ts';
+import type { PackWrite } from './pack-writes.ts';
 import { validateForm } from './validate-form.ts';
 
 /** {@link createWriteFlow} 的依赖。 */
 export interface WriteFlowDeps {
   /** 现取要提交的全部字段。 */
   fields: () => SaveFields;
+  /** 现算有改动的种类层（与加载快照比较，main 不在其中）。 */
+  packWrites: () => readonly PackWrite[];
   /** 当前是否正在保存（重入保护）。 */
   busy: () => boolean;
   /** 置保存中标志；写盘期间表单整体禁用。 */
@@ -73,13 +76,18 @@ export function createWriteFlow(deps: WriteFlowDeps): WriteFlow {
     setBusy(true);
     setMsg({ kind: '', text: '' });
     try {
-      const result = await persistSettings(fields, force, deps.userFile());
+      const result = await persistSettings(fields, deps.packWrites(), force, deps.userFile());
       if (result.kind === 'ok') {
         setMsg({ kind: 'ok', text: t('saved') });
         return;
       }
       if (result.kind === 'corrupt') {
         setDialog({ kind: 'corrupt', path: result.path });
+        return;
+      }
+      // main 已落盘、部分种类没写成功：必须如实说，否则用户会以为整包都没保存。
+      if (result.kind === 'partial') {
+        setMsg({ kind: 'err', text: t('savePartial').replace('{names}', result.failed.join('、')) });
         return;
       }
       setMsg({ kind: 'err', text: t(result.kind === 'invalid' ? 'saveInvalid' : 'saveError') });

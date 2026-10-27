@@ -10,7 +10,7 @@ import type { RouteResult } from '../http.ts';
 import { handleAssetsRoutes } from './assets.ts';
 import { handleBalanceRoutes } from './balance.ts';
 import { handleChatRoutes } from './chat.ts';
-import { handleConfigRoutes } from './config.ts';
+import { handleConfigRoutes } from './config/index.ts';
 import { handleDesktopRoutes } from './desktop.ts';
 import { handleInteractionRoutes } from './interaction.ts';
 import { handleMenuRoutes } from './menu.ts';

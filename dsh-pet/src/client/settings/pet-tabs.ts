@@ -1,5 +1,5 @@
 /**
- * 宠物列表标签条：每只可编辑宠物一个按钮（显示名字与宽度），末尾是「添加宠物」。
+ * 宠物标签条：当前种类的每只实例一个按钮（显示名字与宽度），末尾是「添加宠物」。
  * 只负责「选中谁」与「加一只」，增删的合法性由设置页外壳判断。
  * @module dsh-pet/src/client/settings/pet-tabs
  */
@@ -9,7 +9,7 @@ import type { SettingsRuntime } from './runtime.ts';
 
 /** 标签条的输入。 */
 export interface PetTabsProps {
-  /** 可编辑的宠物列表（不含 pet/ 目录里的文件宠物）。 */
+  /** 当前种类的实例列表。 */
   pets: readonly Pet[];
   /** 当前选中的宠物 id。 */
   selId: string;
@@ -17,7 +17,7 @@ export interface PetTabsProps {
   busy: boolean;
   /** 切到另一只宠物。 */
   onSelect: (id: string) => void;
-  /** 添加一只新宠物。 */
+  /** 往当前种类加一只新实例。 */
   onAdd: () => void;
 }
 

@@ -86,10 +86,18 @@ ok.push(`${Object.keys(doc.paths).length} 条路径 / ${ops} 个操作`);
 // 宿主半侧的路由分派在各领域处理器里：精确匹配写 `rest === 'x'`，rest 可能是两段（config/meta）；
 // 素材领域按一级段兜底，写 `scope === 'x'`。所以两侧都归一化成一级段再比对，否则会互相误报。
 // 逐个处理器扫而不是只看分发器：分发器只列处理器，段名都在各自文件里。
+// 必须递归：领域处理器按子目录分（如 routes/config/），只扫一层会把子目录里的 rest 分支漏掉，
+// 于是「文档里有、实现也在」被误报成实现缺失。
+const routeSources = (dir) =>
+  readdirSync(dir, { withFileTypes: true }).flatMap((entry) => {
+    const full = join(dir, entry.name);
+    if (entry.isDirectory()) return routeSources(full);
+    return entry.name.endsWith('.ts') && !entry.name.endsWith('.test.ts') ? [full] : [];
+  });
+
 const implemented = new Set();
-for (const file of readdirSync(ROUTES_DIR)) {
-  if (!file.endsWith('.ts') || file.endsWith('.test.ts')) continue;
-  const src = readFileSync(join(ROUTES_DIR, file), 'utf8');
+for (const file of routeSources(ROUTES_DIR)) {
+  const src = readFileSync(file, 'utf8');
   for (const m of src.matchAll(/rest === '([^']+)'/g)) implemented.add(m[1].split('/')[0]);
   // 素材领域既有正向分支，也有反向守卫（`scope !== 'thumb'` 才是 thumb 分支），两种都算。
   for (const m of src.matchAll(/scope (?:===|!==) '([^']+)'/g)) implemented.add(m[1]);

@@ -4,8 +4,8 @@
  * 解析与字段映射不在本文件：拉回来的聚合交给调用方的 `onMerged`（设置页的 `applyConfig`）。
  * @module dsh-pet/src/client/settings/config/use-config-load
  */
-import { loadConfig } from './config-io.ts';
-import type { MergedConfig } from './config-read.ts';
+import { loadConfig } from './http.ts';
+import type { MergedConfig } from './read.ts';
 import type { SettingsRuntime } from '../runtime.ts';
 
 /** 加载状态：`error` 时表单整体禁用并显示重试。 */

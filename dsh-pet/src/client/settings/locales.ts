@@ -96,7 +96,11 @@ export const zh = {
   invalid: '请检查输入：大小需为正数，边距可为任意数字。',
   busy: '保存中…',
   extraPetsHint:
-    '另 {n} 只额外宠物由 pet/ 目录文件定义（<名>-config.json + <名>-animation/ + <名>-memes/），它们不在此列表——改文件后浏览器刷新页面、桌面端右键「重载配置」即可生效。',
+    '另 {n} 个种类来自 pet/ 目录文件（<名>-config.json + <名>-animation/），在上方「种类」条里切换即可修改；保存会写回各自的角色包配置，不混进 main-config.jsonc。',
+  kindLabel: '种类',
+  kindMain: '内置',
+  lastOfKind: '「{entry}」只剩这一只，删掉就没有这个种类了。要彻底移除请直接删除该角色包文件。',
+  savePartial: '主宠物已保存，但 {names} 没能写回：检查该角色包配置是否合法、目录是否可写。',
   notifyToggle: '系统通知',
   notifyToggleHint: '对话完成 / 生成失败 / 权限申请 / 用户选择，在窗口失焦时弹出系统级通知（桌面右下角）。',
   clickSoundToggle: '点击音效',
@@ -292,7 +296,13 @@ export const en: Record<Key, string> = {
   invalid: 'Check your input: size must be positive; margins can be any number.',
   busy: 'Saving…',
   extraPetsHint:
-    '{n} extra pet(s) are file-defined in the pet/ directory (<name>-config.json + <name>-animation/ + <name>-memes/). They are not in this list — after editing the files, refresh the page (browser) or right-click a desktop pet → "Reload config".',
+    "{n} more kind(s) come from files in the pet/ directory (<name>-config.json + <name>-animation/). Switch to them in the Kinds row above; Save writes back to each pack's own config, never into main-config.jsonc.",
+  kindLabel: 'Kinds',
+  kindMain: 'Built-in',
+  lastOfKind:
+    '"{entry}" has only this pet left — deleting it would remove the whole kind. Delete the pet pack files to remove it entirely.',
+  savePartial:
+    'Main pets saved, but {names} could not be written back: check that the pack config is valid and the directory is writable.',
   notifyToggle: 'System notifications',
   notifyToggleHint:
     'OS-level toasts (bottom-right of the desktop) for conversation completion, failures, permission requests, and questions — only while this window is unfocused.',

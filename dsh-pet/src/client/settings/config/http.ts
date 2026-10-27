@@ -1,13 +1,13 @@
 /**
- * 设置页与宿主的 HTTP 契约：读配置、读元信息、读候选模型、写配置（PUT）与同步（POST）。
+ * 设置页与宿主的 HTTP 契约：读配置、读元信息、读候选模型、写用户层（PUT）、同步（POST）与写种类层。
  * 每个函数都是「总函数」——失败不抛给调用方，而是返回约定好的空值或判别联合，调用方只管分支与文案。
  * 写配置强制显式 `force` 布尔：严格 `=== true` 才拼 `?force=1`，绝不能让事件对象冒充真值绕过损坏预检。
- * @module dsh-pet/src/client/settings/config/config-io
+ * @module dsh-pet/src/client/settings/config/http
  */
 import { ROUTE_PATH } from '../../../shared/constants.ts';
 import type { FontConfig, ModelSelection, Pet, PhysicsParams } from '../../../shared/types.ts';
 import type { ModelCatalogGroup } from '../picker/index.ts';
-import type { MergedConfig } from './config-read.ts';
+import type { MergedConfig } from './read.ts';
 
 /** 配置文件路径与存储位置清单；宿主按平台推导，反推不出 `profile` 时为空串。 */
 export interface ConfigMeta {
@@ -170,5 +170,44 @@ export async function syncConfig(): Promise<MergedConfig | null> {
     return (await response.json()) as MergedConfig;
   } catch {
     return null;
+  }
+}
+
+/** 写单个种类层的结果；没有「损坏需确认」分支——那条只属于用户主配置。 */
+export type PetLayerOutcome =
+  | { readonly kind: 'ok'; readonly merged: MergedConfig }
+  | { readonly kind: 'invalid'; readonly message: string }
+  | { readonly kind: 'error' };
+
+/**
+ * 把某个种类的全部实例写回它自己的配置文件。
+ *
+ * @param entry - 条目名（= 素材根）。
+ * @param pets - 该条目的全部实例；漏传一只等于删除它。
+ * @returns 写后的成品聚合，或失败分类；`invalid` 带出宿主给的就地文案（如 id 冲突）。
+ */
+export async function savePetLayer(entry: string, pets: readonly Pet[]): Promise<PetLayerOutcome> {
+  try {
+    const response = await fetch(ROUTE_PATH + '/pet-config', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ entry, pets }),
+    });
+    const payload = (await response.json().catch(() => null)) as {
+      ok?: unknown;
+      reason?: unknown;
+      message?: unknown;
+    } | null;
+    if (payload && payload.ok === false) {
+      // 参数类失败就地显示宿主文案（例如 id 与其它种类冲突），其余归为传输或写盘故障。
+      if (payload.reason === 'bad-request' || payload.reason === 'unknown-entry') {
+        return { kind: 'invalid', message: typeof payload.message === 'string' ? payload.message : '' };
+      }
+      return { kind: 'error' };
+    }
+    if (!response.ok) return { kind: 'error' };
+    return { kind: 'ok', merged: payload as MergedConfig };
+  } catch {
+    return { kind: 'error' };
   }
 }

@@ -143,8 +143,9 @@ paths:
           `0` = 不显示；`anim` 缺省 `true`（联动 `events.whisper` 动画），显式 `false` = 只弹气泡。
           碎碎念与对话回复**不写**这两个字段，消费端按缺省处理——行为与改造前完全一致。
         - **`sections.config` 是配置变更信号**（`data` 恒为 `{}`，只看 `counter`）：它变了就说明配置
-          被写过，消费端应重拉 `GET /config`。**当前唯一的写方是 `POST /pet-display`**（桌面端右键改
-          显示位置）——那是唯一一个**不是发起页面自己**的配置改动，浏览器端只能靠这个信号知道。
+          被写过，消费端应重拉 `GET /config`。**当前写方是 `POST /pet-display`（桌面端右键改显示
+          位置）与 `POST /pet-config`（整条目写回）**——两者都可能**不是发起页面自己**的配置改动，
+          浏览器端只能靠这个信号知道。
           配置本体太大，不能塞进每秒一次的 `/state`，所以这里只放一个信号。
           保存 / 同步配置（`PUT` / `POST /config`）**不写它**：它们的调用方自己就拿到了成品聚合。
           **用户手工编辑 `main-config.jsonc` / `pet/*.json` 不会被感知**——宿主不再读盘比对 mtime
@@ -1740,6 +1741,95 @@ paths:
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
 
+  /dsh-pet-7340/pet-config:
+    post:
+      tags: [Config]
+      operationId: savePetLayer
+      summary: 按种类写回它的全部实例
+      description: |
+        把一个「种类」的 `pets[]` 整段写回它自己的配置文件，并返回写后的成品聚合
+        （与 `GET /config` 同一份）。
+
+        补的是两个既有写端点之间的空档：`PUT /config` 只写用户主配置，`POST /pet-display`
+        只改单只的 `display`。这条按「条目」写：`entry` 是 `pet/<名>-config.json` 的文件名
+        前缀（= 素材根），目标文件由宿主定位，调用方不要传路径。
+
+        必须知道的几点：
+
+        - **整段替换**：`pets` 必须是该条目的**全部实例**，漏传一只等于把它删掉。
+        - **白名单重建 + 透传保留**：实例只保留 `id`/`name`/`size`/`balanceEnabled`/
+          `whisperEnabled`/`workStatusEnabled`/`fixedEnabled`/`display`/`position`/`whisperPrompt`；
+          该文件顶层的 `animations`/`animationWeights`/`whisperPrompt`/`memes` 等原样保留。
+        - **不接受全局字段**：`notificationsEnabled`/`physics`/`font`/`whisperModel` 等即使传了
+          也不写这一层——全局字段只归 `main`，经 `PUT /config` 写。
+        - **`entry: "main"` 被拒绝**：main 层还要带全局字段，必须走 `PUT /config`。
+        - **写回会丢注释**：`pet/*.jsonc` 里的 `//` 注释会被抹成纯 JSON（与 `POST /pet-display`
+          一致）。
+        - **id 跨条目全局唯一**：与其它种类重名的实例 id 会在写盘前被拒（`bad-request`），
+          否则读取时会因重复被静默跳过。
+        - 写盘后同样**异步**重启桌面 Helper、不阻塞响应。
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+              required: [entry, pets]
+              properties:
+                entry:
+                  type: string
+                  description: |
+                    条目名 = `pet/<名>-config.json(c)` 的文件名前缀 = 素材根。
+                    不接受 `main`，也不能含路径分隔符等非法字符。
+                pets:
+                  type: array
+                  minItems: 1
+                  items:
+                    $ref: "#/components/schemas/PetEntry"
+            examples:
+              oneInstance:
+                summary: 把 glm 种类改成一只网页端实例
+                value:
+                  entry: glm
+                  pets:
+                    - id: glm1
+                      name: GLM 龙娘
+                      size: 360
+                      balanceEnabled: false
+                      whisperEnabled: true
+                      workStatusEnabled: true
+                      fixedEnabled: false
+                      display: web
+                      position:
+                        corner: top-right
+                        marginX: 24
+                        marginY: 100
+      responses:
+        "200":
+          description: |
+            **写回成功** → 写后的成品聚合（与 `GET /config` 同一份）；
+            **业务失败** → `{ ok: false, reason, message }`（业务结论不用 400/404 表达）。
+
+            `reason` 取值：`bad-request`（缺 `entry` / `entry` 非法 / `entry` 为 `main` /
+            `pets` 空或字段非法 / id 与其它种类冲突）、`unknown-entry`（该种类没有配置文件）、
+            `generate-error`（读配置或写盘失败）。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    additionalProperties:
+                      $ref: "#/components/schemas/PetConfigEntry"
+                  - $ref: "#/components/schemas/FailureResponse"
+        "400":
+          description: "请求体不是合法 JSON（`reason: invalid-json`）。"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailureResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
   /dsh-pet-7340/config/meta:
     get:
       tags: [Config]
@@ -2822,9 +2912,9 @@ components:
         为什么是信号而不是配置本体：配置聚合很大，而 `/state` 每次请求都会返回**全部叶子的完整
         data**，把配置塞进来等于每秒（桌面端还是一窗一宠各一次）传一整份配置。
 
-        **唯一写方**：`POST /pet-display`（桌面端右键改显示位置）——那是唯一一个不是发起页面
-        自己的配置改动。保存 / 同步配置（`PUT` / `POST /config`）不写它，因为它们的调用方自己
-        就拿到了成品聚合。
+        **写方**：`POST /pet-display`（桌面端右键改显示位置）与 `POST /pet-config`（整条目写回）
+        ——两者都可能不是发起页面自己的配置改动。保存 / 同步配置（`PUT` / `POST /config`）不写它，
+        因为它们的调用方自己就拿到了成品聚合。
 
         **用户手工编辑 `main-config.jsonc` / `pet/*.json` 不会被感知**：宿主不再读盘比对 mtime
         （早先的做法等于每拍读一次盘），改完需要重载。

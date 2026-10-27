@@ -3,49 +3,15 @@
  *
  * 客户端整段读-改-写容易误伤同层其它宠物，也拿不准该写哪一层；合并后 id 全局唯一，
  * findPetInstance 没有歧义。写入语义与 PUT /config 一致：白名单重建 + 磁盘原值透传。
- * 不解析整段 pets[]，不负责配置读取的合并（归 ../config）。
- * @module dsh-pet/src/host/routes/config-display
+ * 不解析整段 pets[]，不负责配置读取的合并（归 ../../config）。
+ * @module dsh-pet/src/host/routes/config/display
  */
-import {
-  PET_DISPLAY_SET,
-  findPetInstance,
-  readAllConfig,
-  readPetConfigEntry,
-  readUserConfig,
-  saveUserConfig,
-} from '../config.ts';
+import { PET_DISPLAY_SET, findPetInstance, readAllConfig, saveUserConfig } from '../../config.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { type RouteResult } from '../http.ts';
-import type { PetRouteDeps, RouteInput } from './types.ts';
-import { failResult, invalidJson, methodNotAllowed, okResult } from './result.ts';
-
-/** 要写的那一层：文件路径、所在目录，以及该文件在磁盘上的原对象（透传递归用）。 */
-interface ConfigLayer {
-  readonly path: string;
-  readonly dir: string;
-  readonly existing: Record<string, unknown> | undefined;
-}
-
-/**
- * 定位目标层：`main` → 用户主配置，其余 → 文件宠物自己的配置。
- * @param deps - 路由层依赖（路径集）。
- * @param entry - 宠物所属条目名。
- * @returns 命中给出该层；条目配置文件不存在时给出可直接返回的失败应答。
- */
-function resolveLayer(
-  deps: PetRouteDeps,
-  entry: string,
-): { ok: true; layer: ConfigLayer } | { ok: false; res: RouteResult } {
-  if (entry === 'main') {
-    return {
-      ok: true,
-      layer: { path: deps.userConfigPath, dir: deps.userRoot, existing: readUserConfig(deps.configPaths) },
-    };
-  }
-  const file = readPetConfigEntry(deps.configPaths, entry);
-  if (!file) return { ok: false, res: failResult('generate-error', `宠物条目配置文件找不到：${entry}`) };
-  return { ok: true, layer: { path: file.path, dir: deps.petConfigDir, existing: file.raw } };
-}
+import { type RouteResult } from '../../http.ts';
+import type { PetRouteDeps, RouteInput } from '../types.ts';
+import { resolveConfigLayer } from './layer.ts';
+import { failResult, invalidJson, methodNotAllowed, okResult } from '../result.ts';
 
 /**
  * 改一只宠物的 display 并返回改动后的成品聚合。
@@ -78,8 +44,10 @@ export async function setPetDisplay(deps: PetRouteDeps, input: RouteInput): Prom
   // 两种都只能按「没有这只桌宠」报——绝不能凭 id 去猜它「应该」属于哪个文件。
   const hit = findPetInstance(merged, petId);
   if (!hit) return failResult('unknown-pet', `没有这只桌宠：${petId}`);
-  const resolved = resolveLayer(deps, hit.entry);
-  if (!resolved.ok) return resolved.res;
+  const resolved = resolveConfigLayer(deps, hit.entry);
+  // 单只端点把「条目文件找不到」仍报 generate-error：id 在合并里存在、文件却消失，属于安装或 IO
+  // 异常，不是调用方参数问题（整条目端点会把它报成 unknown-entry，两者语义不同）。
+  if (!resolved.ok) return failResult('generate-error', `宠物条目配置文件找不到：${hit.entry}`);
   const layer = resolved.layer;
   // 整段替换语义：saveUserConfig 重建的是整个 pets 数组，必须带上该层全部宠物，只把目标
   // 那只的 display 换掉（漏掉别的 = 把它们从配置里删掉）。

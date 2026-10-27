@@ -6,14 +6,20 @@
 import type { Pet } from '../../shared/types.ts';
 
 /**
- * 生成一个未占用的宠物 id（`pet-2`、`pet-3`…）；从 2 起是因为 `pet-1` 通常已被模板占用。
+ * 生成一个未占用的宠物 id。
  *
- * @param list - 现有宠物列表，只读。
- * @returns 形如 `pet-N` 的空闲 id。
+ * 前缀按种类区分：main 沿用 `pet-N`（既有行为），文件宠物用 `<种类>-N`，编号在种类内递增。
+ * 查重始终扫全量列表——合并后 id 跨条目全局唯一，各数各的必然撞。
+ * 从 2 起：`-1` 通常已被该种类的首只占用（`daily1` 这类手工 id 不占号）。
+ *
+ * @param list - 全条目的实例列表，只读。
+ * @param kind - 条目名（`main` 或 pet/<前缀>-config.json 的前缀）；缺省按 main。
+ * @returns 形如 `pet-2` / `daily-2` 的空闲 id。
  */
-export function nextPetId(list: readonly Pet[]): string {
+export function nextPetId(list: readonly Pet[], kind = 'main'): string {
+  const prefix = kind === 'main' ? 'pet' : kind;
   for (let n = 2; ; n += 1) {
-    const id = 'pet-' + n;
+    const id = prefix + '-' + n;
     if (!list.some((pet) => pet.id === id)) return id;
   }
 }

@@ -1,8 +1,8 @@
 /**
- * 成品配置的读取：把宿主 `GET /config` 的聚合响应解析成一份「表单补丁」。
+ * 成品配置的读取：把宿主 `GET /config` 的聚合响应解析成「表单补丁」与「条目实例列表」。
  * 只认成品里合法性说得清的字段：缺字段或类型不对就跳过，让表单保留自己手里的值，不拿坏数据覆盖。
- * 与写方向（`config-io.ts`）分开：这里纯解析，不发请求、不碰状态。
- * @module dsh-pet/src/client/settings/config/config-read
+ * 与写方向（`http.ts`）分开：这里纯解析，不发请求、不碰状态。
+ * @module dsh-pet/src/client/settings/config/read
  */
 import { DEFAULT_FONT } from '../../../shared/fonts.ts';
 import { DEFAULT_PHYSICS } from '../../../shared/physics.ts';
@@ -82,4 +82,41 @@ export function readMainConfig(merged: MergedConfig): MainConfigPatch | null {
   const limit = nonNegative(main.chatImageLimit);
   if (limit !== undefined) patch.chatImageLimit = limit;
   return patch;
+}
+
+/** 一个条目（种类）与它的全部实例；`key` 即素材根。 */
+export interface ConfigEntry {
+  /** 条目名：`main`，或 `pet/<前缀>-config.json(c)` 的前缀。 */
+  readonly key: string;
+  /** `main` 由设置页连同全局字段整包写；`pack` 单独写回自己的配置文件。 */
+  readonly kind: 'main' | 'pack';
+  /** 条目级人设正文：实例人设留空时跟随的就是它（pack 各自一份，不共用 main 的）。 */
+  readonly entryPrompt?: string;
+  /** 该条目的实例；位置已深拷贝，`assetRoot` 即条目名。 */
+  readonly pets: Pet[];
+}
+
+/**
+ * 从成品聚合里读出全部条目及其实例（`main` 在前，其余按文件名顺序）。
+ *
+ * 只带实例字段：条目级的动画池、人设等大对象不挂到每只宠物上——设置页的提交体会被整包
+ * 序列化，挂上去等于把动画池复制 N 份。
+ *
+ * @param merged - `GET /config` 的响应体。
+ * @returns 条目列表；`main.pets` 缺失或不是数组时返回 `null`（响应本身坏了，调用方应报错）。
+ */
+export function readConfigEntries(merged: MergedConfig): ConfigEntry[] | null {
+  const main = merged.main;
+  if (!main || !Array.isArray(main.pets)) return null;
+  const out: ConfigEntry[] = [];
+  for (const [key, conf] of Object.entries(merged)) {
+    const pets = Array.isArray(conf?.pets) ? (conf.pets as Pet[]) : [];
+    out.push({
+      key,
+      kind: key === 'main' ? 'main' : 'pack',
+      ...(typeof conf?.whisperPrompt === 'string' ? { entryPrompt: conf.whisperPrompt } : {}),
+      pets: pets.map((pet) => ({ ...pet, position: { ...pet.position }, assetRoot: key })),
+    });
+  }
+  return out;
 }

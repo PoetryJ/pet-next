@@ -1,22 +1,24 @@
 /**
- * 配置读取与元信息：GET /config 的合并成品、GET /config/meta 的路径清单，以及三个写端点的分发。
+ * 配置读取与元信息：GET /config 的合并成品、GET /config/meta 的路径清单，以及四个写端点的分发。
  *
- * 写入分居 ./config-save（PUT / POST）与 ./config-display（单宠显示位置）：读路径零副作用，
- * 写路径要重建白名单、落盘并重启 Helper，两者的失败模式与改动原因都不同。
- * 不校验配置形状（归 ../config）；依赖由 PetRouteDeps 显式传入，模块内不读全局、不建状态。
- * @module dsh-pet/src/host/routes/config
+ * 写入分居 ./save（用户层 PUT / 同步 POST）、./display（单宠显示位置）与
+ * ./entry（整条目实例）：读路径零副作用，写路径要重建白名单、落盘并重启 Helper，
+ * 三者的失败模式与改动原因都不同。
+ * 不校验配置形状（归 ../../config）；依赖由 PetRouteDeps 显式传入，模块内不读全局、不建状态。
+ * @module dsh-pet/src/host/routes/config/index
  */
-import { readAllConfig } from '../config.ts';
-import { type RouteResult } from '../http.ts';
+import { readAllConfig } from '../../config.ts';
+import { type RouteResult } from '../../http.ts';
 import { join } from 'node:path';
-import { PACKAGE_ROOT } from '../paths.ts';
-import { profileNameFrom, storageEntries } from '../storage-paths.ts';
-import { electronLandingDir } from '../helper-process.ts';
+import { PACKAGE_ROOT } from '../../paths.ts';
+import { profileNameFrom, storageEntries } from '../../storage-paths.ts';
+import { electronLandingDir } from '../../helper-process.ts';
 import { homedir } from 'node:os';
-import type { PetRouteDeps, RouteInput } from './types.ts';
-import { failResult, okResult } from './result.ts';
-import { saveConfigRoute } from './config-save.ts';
-import { setPetDisplay } from './config-display.ts';
+import type { PetRouteDeps, RouteInput } from '../types.ts';
+import { failResult, okResult } from '../result.ts';
+import { saveConfigRoute } from './save.ts';
+import { setPetDisplay } from './display.ts';
+import { savePetLayer } from './entry.ts';
 
 /** 内容配置领域：未命中返回 undefined，命中返回应答。 */
 export async function handleConfigRoutes(deps: PetRouteDeps, input: RouteInput): Promise<RouteResult | undefined> {
@@ -26,6 +28,8 @@ export async function handleConfigRoutes(deps: PetRouteDeps, input: RouteInput):
   }
   // 单只宠物的显示位置（桌面端右键「关闭桌面显示」→ POST /pet-display）
   if (input.rest === 'pet-display') return setPetDisplay(deps, input);
+  // 整个种类层的实例写回（设置页改文件宠物的配置 → POST /pet-config）
+  if (input.rest === 'pet-config') return savePetLayer(deps, input);
   // 配置文件路径 + 存储位置清单（设置页「高级配置」与「卸载与存储」展示用）
   if (input.rest === 'config/meta') return getMeta(deps);
   return undefined;

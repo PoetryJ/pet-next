@@ -2,8 +2,8 @@
  * 配置写入：PUT /config 保存用户层，POST /config 用内置默认整份覆盖。
  *
  * 写入顺序固定：白名单重建 → 落盘 → 异步重启 Helper；失败一律 200 + 失败实体，不留半个文件。
- * 不校验配置形状（归 ../config），不碰单宠显示位置（归 ./config-display）。
- * @module dsh-pet/src/host/routes/config-save
+ * 不校验配置形状（归 ../../config），不碰单宠显示位置（归 ./display）。
+ * @module dsh-pet/src/host/routes/config/save
  */
 import {
   readAllConfig,
@@ -11,11 +11,11 @@ import {
   saveUserConfig,
   syncUserConfigFromDefault,
   userConfigUnparsable,
-} from '../config.ts';
+} from '../../config.ts';
 import { mkdir, writeFile } from 'node:fs/promises';
-import { type RouteResult } from '../http.ts';
-import type { PetRouteDeps, RouteInput } from './types.ts';
-import { failResult, invalidJson, methodNotAllowed, okResult } from './result.ts';
+import { type RouteResult } from '../../http.ts';
+import type { PetRouteDeps, RouteInput } from '../types.ts';
+import { failResult, invalidJson, methodNotAllowed, okResult } from '../result.ts';
 
 /**
  * 写端点分发：PUT 保存用户层，POST 同步内置默认，其余方法 405。
