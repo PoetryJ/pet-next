@@ -489,11 +489,12 @@ describe('thumb 路由 —— petId 不得当路径片段（PR #53 的不变式�
     assert.equal(r.body.includes(SECRET), false, '越根内容不得出现在响应体里');
   });
 
-  test('%2F 正斜杠被切成多段：穿越落在 fileName 段，由 resolveAsset 拦下 → 404', async () => {
-    // 注意与 %5C 的区别：正斜杠参与 split('/')，petId 只剩 '..'（点号属合法标识符字符，不进 400 分支），
-    // 穿越意图体现在 fileName = '../../outside/leak.webm' 上——那道防线是 resolveExisting 的根内校验。
+  test('%2F 正斜杠被切成多段：petId 只剩「..」，标识符规则当场拒 → 400', async () => {
+    // 注意与 %5C 的区别：正斜杠参与 split('/')，petId 只剩 '..'。点号本身是合法标识符字符，
+    // 但 '.' 与 '..' 作为目录名会把素材根顶到上一层，所以 isValidPetId 单独拦掉——早于第二层
+    // resolveExisting 的根内校验（名称段的穿越仍由那层兜住，见下一条用例）。
     const r = await call('/dsh-pet-7340/thumb/..%2F..%2F..%2Foutside/leak.webm');
-    assert.equal(r.status, 404);
+    assert.equal(r.status, 400);
     assert.equal(r.body.includes(SECRET), false);
   });
 
@@ -570,9 +571,11 @@ describe('pic/memes 路由 —— 素材根不得当路径片段（与 thumb 同
     }
   });
 
-  test('%2F 正斜杠被切成多段：穿越落在名称段，由 resolveAsset 拦下 → 404', async () => {
+  test('%2F 正斜杠被切成多段：素材根只剩「..」，标识符规则当场拒 → 400', async () => {
+    // 与 thumb 同一条规则：素材根是目录名，'.'/'..' 会被 isValidPetId 拦在这里。
+    // 名称段的穿越仍由 resolveExisting 兜住（见下一条）。
     const r = await call('/dsh-pet-7340/pic/memes/..%2F..%2F..%2Foutside-memes/leak.png');
-    assert.equal(r.status, 404);
+    assert.equal(r.status, 400);
     assert.equal(r.body.includes(SECRET), false);
   });
 

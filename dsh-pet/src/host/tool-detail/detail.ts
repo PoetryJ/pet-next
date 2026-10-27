@@ -2,7 +2,7 @@
  * 详情生成：把工具调用折叠成一句话，必要时按命令内容细化。
  *
  * 不决定档位与气泡其他字段（归 ./work-status），也不发通知。
- * 必须始终成立：输出长度不超过 TASK_TEXT_MAX，复合命令一律不猜。
+ * 必须始终成立：输出长度 ≤ TASK_TEXT_MAX + 1（含省略号），复合命令一律不猜。
  * @module dsh-pet/src/host/tool-detail/detail
  */
 import {

@@ -2,7 +2,7 @@
  * 成品配置的加载与重试：进页面拉一次 `GET /config`，失败给出「重试」入口。
  * 卸载或重试时用 AbortController 中断上一次请求，迟到的响应不会再写状态。
  * 解析与字段映射不在本文件：拉回来的聚合交给调用方的 `onMerged`（设置页的 `applyConfig`）。
- * @module dsh-pet/src/client/settings/use-config-load
+ * @module dsh-pet/src/client/settings/config/use-config-load
  */
 import { loadConfig } from './config-io.ts';
 import type { MergedConfig } from './config-read.ts';
@@ -37,15 +37,21 @@ export function useConfigLoad(
   useEffect(() => {
     let alive = true;
     const controller = new AbortController();
-    void loadConfig(controller.signal).then((merged) => {
-      if (!alive) return;
-      if (merged === null) {
-        setLoadState('error');
-        return;
-      }
-      onMerged(merged);
-      setLoadState('ready');
-    });
+    void loadConfig(controller.signal)
+      .then((merged) => {
+        if (!alive) return;
+        if (merged === null) {
+          setLoadState('error');
+          return;
+        }
+        onMerged(merged);
+        setLoadState('ready');
+      })
+      // onMerged 抛错（配置形状不可用）同样要落地：否则 loadState 永远停在 loading，
+      // 整页禁用且没有重试入口。与「响应不可用」走同一条出路。
+      .catch(() => {
+        if (alive) setLoadState('error');
+      });
     return () => {
       alive = false;
       controller.abort();

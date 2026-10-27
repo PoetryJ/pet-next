@@ -2,7 +2,7 @@
  * Helper 进程的拉起与停止：定位 Electron、注入环境、退避重试与熔断。
  *
  * 不算宠物列表（归 ./pets），不决定何时重启（归 ./sync 的调用方）。
- * 依赖显式传入（见输入类型），模块内不读全局。
+ * 依赖显式传入（见输入类型），模块内只读两个进程级环境事实：`DSH_PET_IN_PROCESS` 与 `process.versions.electron`。
  * @module dsh-pet/src/host/plugin/desktop/spawn
  */
 import { join } from 'node:path';
@@ -10,6 +10,7 @@ import { ROUTE_PATH } from '../../../shared/constants.ts';
 import { PACKAGE_ROOT } from '../../paths.ts';
 import type { DesktopHelperDeps } from './types.ts';
 import type { DesktopPets } from './pets.ts';
+import { toBridgeResponse } from './bridge-response.ts';
 import {
   HelperProcess,
   defaultElectronExe,
@@ -26,12 +27,12 @@ export type DesktopSpawnInput = Pick<
 > &
   Pick<DesktopPets, 'getHasDesktopPet' | 'desktopPetList' | 'getTrayOn'>;
 
-/**
- * 创建DesktopSpawn。
- */
 /** 宿主是不是 DSH 桌面应用（Electron 宿主）。 */
 const isDesktopHost = (): boolean => Boolean(process.versions.electron);
 
+/**
+ * 创建 Helper 进程的拉起与停止句柄：进程内宿主直接跳过，其余按需下载 Electron 后 spawn 并退避重试。
+ */
 export function createDesktopSpawn(deps: DesktopSpawnInput) {
   const { ctx, getHandlePetRoute, log, reportDownload, thumbUserRoot, getHasDesktopPet, desktopPetList, getTrayOn } =
     deps;
@@ -110,26 +111,10 @@ export function createDesktopSpawn(deps: DesktopSpawnInput) {
           DSH_PET_PETS: JSON.stringify(desktopPetList()),
         },
         // bridge 协议处理器 = HTTP 路由同一份 handlePetRoute（业务逻辑唯一，两端天然一致）；
-        // 素材过文件路径（main.js 自行读盘），json/text 过 body
+        // 形状转换在 ./bridge-response，本模块只管把请求转进去。
         bridgeHandler: async (req) => {
           const result = await getHandlePetRoute()(req.url ?? '/', req.method ?? 'GET', req.body);
-          if (result.kind === 'file') {
-            // file 分支恒 200（404/400 已由 text 分支表达）
-            return { id: req.id, status: 200, contentType: result.contentType, file: result.file };
-          }
-          if (result.kind === 'text') {
-            return { id: req.id, status: result.status, contentType: 'text/plain; charset=utf-8', body: result.body };
-          }
-          if (result.kind === 'none') {
-            // 无需应答：管道侧不传 abort signal，正常到不了这里；保底给个空 204
-            return { id: req.id, status: 204, contentType: 'text/plain; charset=utf-8', body: '' };
-          }
-          return {
-            id: req.id,
-            status: result.status,
-            contentType: 'application/json; charset=utf-8',
-            body: JSON.stringify(result.obj),
-          };
+          return toBridgeResponse(req.id, result);
         },
       },
       log,

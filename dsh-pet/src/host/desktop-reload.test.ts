@@ -68,10 +68,13 @@ describe('桌面端「重载配置」—— 菜单 → 宿主重启 Helper', () 
     assert.ok(!/action: 'reload'/.test(clientPet), '浏览器端不得有 reload 菜单项（它会重启整个桌面 Helper）');
   });
 
-  test('requestRestart 是唯一的重启入口：两个 /config 写接口、/reload 与 /pet-display 都走它', () => {
-    // 调用点可能写作 `void requestRestart()` 或 `void deps.requestRestart()`（看该模块有没有解构）
-    const calls = host.match(/void (?:deps\.)?requestRestart\(\)/g) ?? [];
-    assert.equal(calls.length, 4, 'PUT /config、POST /config、POST /reload、POST /pet-display 都应走 requestRestart()');
+  test('requestRestart 是唯一的重启入口：三个写接口与「重载配置」都走它', () => {
+    // 按模块断言「这条路由里有调用」，而不是数全仓调用点：以后新增写接口不该让用例变红，
+    // 而某个既有接口丢了重启必须红。调用点可能写作 `void requestRestart()` 或 `void deps.requestRestart()`。
+    const call = /void (?:deps\.)?requestRestart\(\)/;
+    for (const rel of ['./routes/config-save.ts', './routes/config-display.ts', './routes/desktop.ts']) {
+      assert.ok(call.test(readSource(rel)), rel + ' 必须经 requestRestart() 重启 Helper（自己停/起会与串行队列打架）');
+    }
   });
 
   test('shared 菜单契约放行 reload（桌面壳注入该动作，类型必须包含它）', () => {

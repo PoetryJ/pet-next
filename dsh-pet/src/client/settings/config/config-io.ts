@@ -2,7 +2,7 @@
  * 设置页与宿主的 HTTP 契约：读配置、读元信息、读候选模型、写配置（PUT）与同步（POST）。
  * 每个函数都是「总函数」——失败不抛给调用方，而是返回约定好的空值或判别联合，调用方只管分支与文案。
  * 写配置强制显式 `force` 布尔：严格 `=== true` 才拼 `?force=1`，绝不能让事件对象冒充真值绕过损坏预检。
- * @module dsh-pet/src/client/settings/config-io
+ * @module dsh-pet/src/client/settings/config/config-io
  */
 import { ROUTE_PATH } from '../../../shared/constants.ts';
 import type { FontConfig, ModelSelection, Pet, PhysicsParams } from '../../../shared/types.ts';

@@ -2,7 +2,7 @@
  * 模型选择器浮层的定位计算：把触发器的实测矩形与视口尺寸换算成浮层的 fixed 坐标。
  * 下方放不下且上方更宽裕时翻到上方，左右钳制在视口内，并给出高度上限——浮层自身不进文档流。
  * 纯函数，不读 `window`：矩形与视口由调用方传入，便于单测与将来的视口外定位。
- * @module dsh-pet/src/client/settings/model-picker-placement
+ * @module dsh-pet/src/client/settings/picker/model-picker-placement
  */
 
 /** 浮层与触发器、视口边缘之间的间距。 */

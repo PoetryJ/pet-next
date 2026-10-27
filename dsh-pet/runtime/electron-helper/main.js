@@ -288,7 +288,6 @@ app.on('before-quit', () => {
   } catch (e) {
     console.error('[dsh-pet-desktop-helper] tray destroy failed:', String(e && e.message ? e.message : e));
   }
-  tray = null;
 });
 
 app.on('window-all-closed', () => {

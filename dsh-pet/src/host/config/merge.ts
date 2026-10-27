@@ -5,11 +5,11 @@
  * 必须始终成立：只填缺省、不覆盖显式值；未知字段不透传。
  * @module dsh-pet/src/host/config/merge
  */
-import { CORNER_SET, GLOBAL_DEFAULT_KEYS, ID_FORBIDDEN, PET_DISPLAY_SET, warnOnce } from './constants.ts';
+import { CORNER_SET, GLOBAL_DEFAULT_KEYS, isValidPetId, PET_DISPLAY_SET, warnOnce } from './constants.ts';
 import { topFieldValid } from './validate.ts';
 
 /**
- * 文件宠物条目的合并基座：内置默认 + 白名单字段改用用户层的值。那 9 个字段是用户级成本/偏好/
+ * 文件宠物条目的合并基座：内置默认 + 白名单字段改用用户层的值。这些字段是用户级成本/偏好/
  * 环境/节奏参数，不是种类属性，用户在设置页改一次应让所有宠物（含 pet pack）都生效。
  * 语义仍是「种类可覆盖」：种类文件顶层写了自己的值就走 overlay 覆盖；用户层写了但非法的值直接跳过。
  */
@@ -128,7 +128,7 @@ function mergePet(
 ): Record<string, unknown> | null {
   const p = raw && typeof raw === 'object' ? (raw as Record<string, unknown>) : {};
   const id = typeof p.id === 'string' ? p.id.trim() : '';
-  if (!id || id.length > 64 || ID_FORBIDDEN.test(id) || seenIds.has(id)) {
+  if (!isValidPetId(id) || seenIds.has(id)) {
     warnOnce(`${label}:id:${id || '(空)'}`, `「${label}」的宠物 id「${id || '(空)'}」非法、重复或已存在，已跳过该实例`);
     return null;
   }

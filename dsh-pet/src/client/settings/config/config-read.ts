@@ -2,7 +2,7 @@
  * 成品配置的读取：把宿主 `GET /config` 的聚合响应解析成一份「表单补丁」。
  * 只认成品里合法性说得清的字段：缺字段或类型不对就跳过，让表单保留自己手里的值，不拿坏数据覆盖。
  * 与写方向（`config-io.ts`）分开：这里纯解析，不发请求、不碰状态。
- * @module dsh-pet/src/client/settings/config-read
+ * @module dsh-pet/src/client/settings/config/config-read
  */
 import { DEFAULT_FONT } from '../../../shared/fonts.ts';
 import { DEFAULT_PHYSICS } from '../../../shared/physics.ts';

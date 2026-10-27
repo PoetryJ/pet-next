@@ -2,7 +2,7 @@
  * 模型选择器浮层的 DOM 树：搜索框、按服务商分组的行清单、加载/失败/空结果三态提示。
  * 只由视图数据构造节点，不持有状态、不读写 DOM——打开与关闭、定位与键盘都在 `model-picker.ts`。
  * 无障碍语义对齐 DSH 自带的选择器：浮层 `menu`、行 `menuitemradio`、高亮行走 `is-active` 类。
- * @module dsh-pet/src/client/settings/model-picker-panel
+ * @module dsh-pet/src/client/settings/picker/model-picker-panel
  */
 import type * as ReactNS from 'react';
 import type { jsx } from 'react/jsx-runtime';

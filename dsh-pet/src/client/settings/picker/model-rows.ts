@@ -2,7 +2,7 @@
  * 模型选择器的纯视图模型：把「候选清单 + 搜索词」折成一行一行可渲染的清单，并给出键盘可走的行号。
  * 不碰 DOM、不持有状态；搜索语义（大小写不敏感的有序子序列）与 DSH 自带的模型选择器一致。
  * 行顺序固定为：跟随当前对话（仅无搜索词时）→ 各服务商分组头 → 组内命中的模型，或该组「没有可用模型」。
- * @module dsh-pet/src/client/settings/model-rows
+ * @module dsh-pet/src/client/settings/picker/model-rows
  */
 
 /** 候选清单里的一组：一个服务商及它名下的模型（`GET /models` 的响应形态）。 */

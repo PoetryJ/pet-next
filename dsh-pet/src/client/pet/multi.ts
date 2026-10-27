@@ -21,12 +21,22 @@ import {
   readSay,
   readThrow,
   readWorkStatus,
+  resolveLeafPath,
   takeChanged,
 } from '../../shared/state.ts';
 import { fontStackOf } from '../../shared/fonts.ts';
 import type { Pet } from '../../shared/types.ts';
 import type { BalanceState } from '../../shared/balance/index.ts';
-import type { LockState, PetFacing, PositionMode, PollState, SayCue } from '../../shared/state.ts';
+import type {
+  LockState,
+  PetFacing,
+  PetLeafName,
+  PollState,
+  PositionMode,
+  SayCue,
+  SectionLeafName,
+  StateLeaf,
+} from '../../shared/state.ts';
 import type { MenuMoreItem } from '../../shared/menu.ts';
 import type { PetCollisionSlot } from '../../shared/physics.ts';
 import type { WorkStatusSnapshot } from '../../shared/work-status.ts';
@@ -174,6 +184,87 @@ export function createPetMulti(
       if (!ready) return;
       let alive = true;
       let baseline: Record<string, number> | null = null;
+      /** 分段叶子 → 消费端副作用；不认识的名字已被 resolveLeafPath 挡在外面。 */
+      const applySection = (name: SectionLeafName, leaf: StateLeaf): void => {
+        switch (name) {
+          case 'config':
+            // 配置被别处改过（唯一写方是 POST /pet-display），重新拉取并拍平。
+            // 叶子 data 只是信号，配置本体太大，不能塞进 /state。
+            petBridge.reload();
+            return;
+          case 'balance': {
+            const hit = readBalance(leaf);
+            if (hit) applyBalanceRef.current(hit.state, hit.manual);
+            return;
+          }
+          case 'workStatus': {
+            const snap = readWorkStatus(leaf);
+            if (snap) {
+              setWorkStatus(snap);
+              setWorkStatusTick((t) => t + 1); // 任何变化都触发，含回到空闲。
+            }
+            return;
+          }
+          case 'notify':
+            // 系统通知：单槽，由 host 决定保留哪一条，内部有开关与权限门。
+            notifyFromFrame(leaf.data);
+            return;
+          case 'menu':
+            // 第三方菜单快照只更新 ref，不触发渲染。
+            menuItemsRef.current = readMenuItems(leaf.data, 'web');
+            return;
+        }
+      };
+
+      /** 宠物叶子 → 该宠物的指令槽；序号自增，卡片据此知道「又写了一次」。 */
+      const applyPetLeaf = (name: PetLeafName, petId: string, leaf: StateLeaf): void => {
+        switch (name) {
+          case 'say': {
+            const said = readSay(leaf);
+            if (!said) return;
+            sayRef.current[petId] = { ...said, seq: (sayRef.current[petId]?.seq ?? 0) + 1 };
+            setSayTick((t) => t + 1);
+            return;
+          }
+          case 'anim': {
+            // 每次写入都会递增 counter，连点两次也会分发两次。
+            const hit = readAnim(leaf);
+            if (!hit) return;
+            animCueRef.current[petId] = {
+              name: hit.name,
+              url: hit.url,
+              playbackId: hit.playbackId,
+              facing: hit.facing,
+              seq: (animCueRef.current[petId]?.seq ?? 0) + 1,
+            };
+            setAnimCueTick((t) => t + 1);
+            return;
+          }
+          case 'position': {
+            const hit = readPosition(leaf);
+            if (!hit) return;
+            posCueRef.current[petId] = { ...hit, seq: (posCueRef.current[petId]?.seq ?? 0) + 1 };
+            setPosCueTick((t) => t + 1);
+            return;
+          }
+          case 'throw': {
+            const hit = readThrow(leaf);
+            if (!hit) return;
+            throwCueRef.current[petId] = { ...hit, seq: (throwCueRef.current[petId]?.seq ?? 0) + 1 };
+            setThrowCueTick((t) => t + 1);
+            return;
+          }
+          case 'lock': {
+            // 占用锁是状态而不是指令：卡片按 expiresAt 自行解除。
+            const hit = readLock(leaf);
+            if (!hit) return;
+            lockRef.current[petId] = hit;
+            setLockTick((t) => t + 1);
+            return;
+          }
+        }
+      };
+
       /** 应用一份轮询状态：首拉只记基线，之后按 counter 变化逐个分发。 */
       const applyState = (s: PollState) => {
         if (baseline === null) {
@@ -184,72 +275,11 @@ export function createPetMulti(
         }
         for (const { path, leaf } of takeChanged(s, baseline)) {
           if (leaf.data === null) continue;
-          if (path === 'sections.config') {
-            // 配置被别处改过（唯一写方是 POST /pet-display），重新拉取并拍平。
-            // 叶子 data 只是信号，配置本体太大，不能塞进 /state。
-            petBridge.reload(); // 内部 GET /config，再 applyMerged 重算 visiblePets。
-          } else if (path === 'sections.balance') {
-            const hit = readBalance(leaf);
-            if (hit) applyBalanceRef.current(hit.state, hit.manual);
-          } else if (path === 'sections.workStatus') {
-            const snap = readWorkStatus(leaf);
-            if (snap) {
-              setWorkStatus(snap);
-              setWorkStatusTick((t) => t + 1); // 任何变化都触发，含回到空闲。
-            }
-          } else if (path === 'sections.notify') {
-            // 系统通知：单槽，由 host 决定保留哪一条，内部有开关与权限门。
-            notifyFromFrame(leaf.data);
-          } else if (path === 'sections.menu') {
-            // 第三方菜单快照只更新 ref，不触发渲染。
-            menuItemsRef.current = readMenuItems(leaf.data, 'web');
-          } else if (path.startsWith('pets.') && path.endsWith('.say')) {
-            // 说话叶子：宠物 id 允许含点号，按前缀与后缀切片，绝不 split('.')。
-            const petId = path.slice('pets.'.length, -'.say'.length);
-            const said = readSay(leaf);
-            if (said) {
-              sayRef.current[petId] = { ...said, seq: (sayRef.current[petId]?.seq ?? 0) + 1 };
-              setSayTick((t) => t + 1);
-            }
-          } else if (path.startsWith('pets.') && path.endsWith('.anim')) {
-            // 点播叶子：路径形如 pets.<id>.anim；每次写入都会递增 counter，连点两次也会分发两次。
-            const petId = path.slice('pets.'.length, -'.anim'.length);
-            const hit = readAnim(leaf);
-            if (hit) {
-              animCueRef.current[petId] = {
-                name: hit.name,
-                url: hit.url,
-                playbackId: hit.playbackId,
-                facing: hit.facing,
-                seq: (animCueRef.current[petId]?.seq ?? 0) + 1,
-              };
-              setAnimCueTick((t) => t + 1);
-            }
-          } else if (path.startsWith('pets.') && path.endsWith('.position')) {
-            // 位置指令叶子，路径形如 pets.<id>.position。
-            const petId = path.slice('pets.'.length, -'.position'.length);
-            const hit = readPosition(leaf);
-            if (hit) {
-              posCueRef.current[petId] = { ...hit, seq: (posCueRef.current[petId]?.seq ?? 0) + 1 };
-              setPosCueTick((t) => t + 1);
-            }
-          } else if (path.startsWith('pets.') && path.endsWith('.throw')) {
-            // 抛掷指令叶子，路径形如 pets.<id>.throw。
-            const petId = path.slice('pets.'.length, -'.throw'.length);
-            const hit = readThrow(leaf);
-            if (hit) {
-              throwCueRef.current[petId] = { ...hit, seq: (throwCueRef.current[petId]?.seq ?? 0) + 1 };
-              setThrowCueTick((t) => t + 1);
-            }
-          } else if (path.startsWith('pets.') && path.endsWith('.lock')) {
-            // 占用锁叶子：它是状态而不是指令，PetCard 按 expiresAt 自行解除。
-            const petId = path.slice('pets.'.length, -'.lock'.length);
-            const hit = readLock(leaf);
-            if (hit) {
-              lockRef.current[petId] = hit;
-              setLockTick((t) => t + 1);
-            }
-          }
+          const target = resolveLeafPath(path);
+          // 不认识的路径（新增的叶子、别处写坏的键）静默跳过。
+          if (target === null) continue;
+          if (target.where === 'section') applySection(target.name, leaf);
+          else applyPetLeaf(target.name, target.petId, leaf);
         }
       };
       // 自调度轮询在 pet/state-poll.ts：这里只提供拉取与分发。

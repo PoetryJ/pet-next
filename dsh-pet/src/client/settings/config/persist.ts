@@ -2,7 +2,7 @@
  * 设置页的写路径：把表单整包存进用户层，或把内置默认整份同步过去。
  * 写完必须立刻把成品交给容器（`petBridge.reload`）并让通知引擎重读——两条都是「保存即生效」的实现前提。
  * 结果归一成判别联合，弹窗与红字由设置页决定，这里不碰 DOM 也不碰状态。
- * @module dsh-pet/src/client/settings/persist
+ * @module dsh-pet/src/client/settings/config/persist
  */
 import { reloadNotifications } from '../../notify.ts';
 import { petBridge } from '../bridge.ts';

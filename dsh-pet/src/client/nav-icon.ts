@@ -49,7 +49,7 @@ export function svgMaskUri(svg: string): string {
 /** 换字形用的 CSS：盖住齿轮，用 `::before` + mask 画上我们的图标。 */
 function cssFor(glyph: string): string {
   return [
-    '/* 「桌宠配置」行的导航图标：见 dsh-pet/src/client/nav-icon.ts 的模块注释 */',
+    '/* 「桌宠配置」行的导航图标：盖住齿轮，换成本模块的图形 */',
     '[' + MARK + '] [class*="navIcon"]{display:none}',
     '[' +
       MARK +

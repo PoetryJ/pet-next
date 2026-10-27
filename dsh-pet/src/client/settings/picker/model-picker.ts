@@ -3,7 +3,7 @@
  * 数据同源于 `GET /models`；打开时实测触发器定位浮层，点浮层外或 Esc 关闭，↑↓/Enter 与鼠标共用一套行清单。
  * 不用两个 `<select>`：既占地方，又容易留下「只选了服务商没选模型」的非法组合；也不提供手填模型 id 的退路。
  * 行清单与浮层定位都在同目录的纯函数里，本文件只管状态、键盘与装配。
- * @module dsh-pet/src/client/settings/model-picker
+ * @module dsh-pet/src/client/settings/picker/model-picker
  */
 import type * as ReactNS from 'react';
 import type { FunctionComponent } from 'react';

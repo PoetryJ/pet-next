@@ -39,11 +39,15 @@ export function registerChatCommand(deps: CommandChatInput): void {
             return { kind: 'success', text: '已让桌宠碎碎念一句' };
           }
           if (text.length > 2000) return { kind: 'error', text: '消息过长（限 2000 字）' };
-          void chatWithPet(petId, text).then((r) => {
-            if (!r.ok) {
-              log.warn('[dsh-pet] 对话失败 reason=' + r.reason + (r.message ? ' ' + r.message : ''));
-            }
-          });
+          void chatWithPet(petId, text)
+            .then((r) => {
+              if (!r.ok) {
+                log.warn('[dsh-pet] 对话失败 reason=' + r.reason + (r.message ? ' ' + r.message : ''));
+              }
+            })
+            // 生成链自己会把业务失败变成 ok:false，走到这里的是真异常（写盘/读配置抛）：
+            // 不接住就是 unhandled rejection，Node 默认终止宿主进程。
+            .catch((e: unknown) => log.warn('[dsh-pet] 对话异常：' + (e instanceof Error ? e.message : String(e))));
           return { kind: 'success', text: '已发送，桌宠马上回应' };
         },
       }),

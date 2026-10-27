@@ -6,16 +6,6 @@
  * @module dsh-pet/src/host/time-context/constants
  */
 
-/**
- * 时间背景（宿主半侧，纯逻辑）：把「现在几点 + 今天是不是什么日子」翻成一段中文，由 index.ts 的
- * petSystemPrompt 追加到 system 末尾——碎碎念与对话共用同一份拼装，一处生效、两端都有。
- * 不碰 IO、不读时钟（Date 由调用方传入），零依赖；非法 Date 返回空串，调用方据此整行不加。
- * 日期与星期读 Date 的本地时间字段（桌宠说「晚上好」要跟着用户所在时区走）；农历用 ICU 自带的中国
- * 农历日历换算，不引第三方库——它的已知精度边界见 lunarPartsOf，要绝对准确只需换掉那一处实现。
- * 契约见 CONFIG.md 与 openapi.yaml。
- * @module dsh-pet/src/host/time-context
- */
-
 /** 时段文案：一天分 9 档（划分见 SLOTS）。 */
 export type TimeSlot = '凌晨' | '清晨' | '早上' | '上午' | '中午' | '下午' | '傍晚' | '晚上' | '深夜';
 

@@ -1,7 +1,7 @@
 /**
  * 宠物定位与访问守卫：按 ?pet= 找实例、按 surface 判占用锁，并给出可直接返回的失败应答。
  *
- * 不读配置以外的介质，不写状态。
+ * 不读配置以外的介质，只经 onChange 同步锁状态到 S。
  * 依赖由 apply 显式传入（见输入类型），模块内不读全局、不建单例。
  * @module dsh-pet/src/host/plugin/pet-lookup
  */

@@ -26,6 +26,21 @@ export const FONT_FAMILY_SET: ReadonlySet<string> = new Set(FONT_PRESETS.map((pr
 // eslint-disable-next-line no-control-regex -- 正则的用途就是拦 \x00-\x1f 控制字符（防配置值逃逸路径），去掉匹配等于放行
 export const ID_FORBIDDEN = /[\\/:\x00-\x1f]/;
 
+/** 标识符的最大长度：id 与素材根都会落成目录名，超长在部分文件系统上直接建不出来。 */
+export const MAX_PET_ID_LENGTH = 64;
+
+/**
+ * 标识符能不能当路径片段用：非空、≤{@link MAX_PET_ID_LENGTH} 字符、不含分隔符与保留字符。
+ *
+ * 宠物 id、表情包素材根、thumb 的 petId 共用这一条——三者最后都拼进文件路径，
+ * 分开各写一份就会出现「一处拦、另一处放行」。合法名含中文照常（用非法字符类而非 ASCII 白名单）。
+ */
+export function isValidPetId(value: string): boolean {
+  // '.' 与 '..' 没有禁用字符，但作为目录名会把素材根顶到上一层：单列出来拦掉。
+  if (value === '.' || value === '..') return false;
+  return value !== '' && value.length <= MAX_PET_ID_LENGTH && !ID_FORBIDDEN.test(value);
+}
+
 /**
  * 「全局默认 + 种类可覆盖」的顶层字段白名单：这些是用户级成本 / 偏好 / 环境 / 节奏参数
  * （chatMemoryRounds、两个模型、两个配图开关与张数上限、eventsRefreshSec、physics、confineToScreen、font），

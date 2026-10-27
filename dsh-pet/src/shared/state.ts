@@ -1,7 +1,7 @@
 /**
  * 轮询状态（/state）的客户端侧纯逻辑：拉取、叶子拍平、与基线比对。
- * 不负责写状态——动作端点只回执，数据只有一个出口；路径（如 pets.<id>.say）当不透明键用，
- * 绝不解析，因为宠物 id 允许含点号。
+ * 不负责写状态——动作端点只回执，数据只有一个出口；路径只按已知前后缀解析成落点
+ * （见 resolveLeafPath），绝不按点号切分，因为宠物 id 允许含点号。
  * 两端共用同一份；首拉只记基线不渲染，否则刷新页面会把旧气泡重放一遍。
  * @module dsh-pet/src/shared/state
  */
@@ -111,6 +111,52 @@ export function takeChanged(s: PollState, baseline: Record<string, number>): Sta
     out.push({ path, leaf });
   }
   return out;
+}
+
+/** `sections.<名>` 里会被消费端分发的那几个叶子。 */
+export type SectionLeafName = 'config' | 'balance' | 'workStatus' | 'notify' | 'menu';
+
+/** `pets.<id>.<名>` 里会被消费端分发的那几个叶子。 */
+export type PetLeafName = 'say' | 'anim' | 'position' | 'throw' | 'lock';
+
+/** 一次叶子分发的落点：分段叶子，或某只宠物的叶子。 */
+export type LeafTarget =
+  { where: 'section'; name: SectionLeafName } | { where: 'pet'; name: PetLeafName; petId: string };
+
+/** 分段叶子名的全集；新增 section 叶子时与 {@link SectionLeafName} 一起改。 */
+const SECTION_LEAF_NAMES = ['config', 'balance', 'workStatus', 'notify', 'menu'] as const;
+
+/** 宠物叶子名的全集；新增宠物叶子时与 {@link PetLeafName} 一起改。 */
+const PET_LEAF_NAMES = ['say', 'anim', 'position', 'throw', 'lock'] as const;
+
+/** 把字符串收窄成分段叶子名。 */
+function isSectionLeafName(name: string): name is SectionLeafName {
+  return (SECTION_LEAF_NAMES as readonly string[]).includes(name);
+}
+
+/** 把字符串收窄成宠物叶子名。 */
+function isPetLeafName(name: string): name is PetLeafName {
+  return (PET_LEAF_NAMES as readonly string[]).includes(name);
+}
+
+/**
+ * 把叶子路径解析成落点；不认识的（含空宠物 id、空叶子名）→ null，消费端跳过这一拍。
+ *
+ * 宠物 id 允许含点号，所以只按**最后一个**点切叶子名，绝不 `split('.')`：`pets.a.b.say` 的宠物是
+ * `a.b`。规则在这里而不是在分发处，是为了能脱离 React 断言——两端共用同一份口径。
+ */
+export function resolveLeafPath(path: string): LeafTarget | null {
+  if (path.startsWith('sections.')) {
+    const name = path.slice('sections.'.length);
+    return isSectionLeafName(name) ? { where: 'section', name } : null;
+  }
+  if (!path.startsWith('pets.')) return null;
+  const rest = path.slice('pets.'.length);
+  const dot = rest.lastIndexOf('.');
+  // dot ≤ 0：没有叶子名（`pets.a`）或宠物 id 为空（`pets..say`）——都不是合法落点。
+  if (dot <= 0) return null;
+  const name = rest.slice(dot + 1);
+  return isPetLeafName(name) ? { where: 'pet', name, petId: rest.slice(0, dot) } : null;
 }
 
 /** 类型收窄：余额叶子 → `{ state, manual }`。

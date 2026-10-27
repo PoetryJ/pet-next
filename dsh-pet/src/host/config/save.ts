@@ -8,7 +8,7 @@
 import { defaultLog } from '../log-file.ts';
 import { mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname } from 'node:path';
-import { CORNER_SET, ID_FORBIDDEN, PET_DISPLAY_SET } from './constants.ts';
+import { CORNER_SET, isValidPetId, PET_DISPLAY_SET } from './constants.ts';
 import type { ConfigPaths } from './constants.ts';
 import { fontValid, modelSelectionValid, physicsValid, topFieldValid } from './validate.ts';
 
@@ -16,7 +16,7 @@ import { fontValid, modelSelectionValid, physicsValid, topFieldValid } from './v
  * 保存用户层（PUT /config）：接受 pets + 全局开关 + physics / font / 两个模型 / 对话参数。
  * 非白名单顶层字段（whisperPrompt、eventsRefreshSec、memes 等）从 existing 原样透传保留——
  * 用户手动编辑的精调配置不会被设置页保存抹掉；白名单字段也只在请求体真的传了时才算白名单。
- * 非法 → 返回 null（宿主回 400）。与读取分离：文件宠物永不回写。
+ * 非法 → 返回 null，由路由回 200 + 失败实体。与读取分离：文件宠物永不回写。
  */
 export function saveUserConfig(
   raw: unknown,
@@ -33,7 +33,7 @@ export function saveUserConfig(
     // 与 mergePet 的身份规则一致：先 trim，再判唯一性，最后写盘。
     const id = typeof pp.id === 'string' ? pp.id.trim() : '';
     // 有意过滤文件名非法字符（Windows 保留符 + 控制字符），防止配置值逃逸 main-config.jsonc 路径
-    if (!id || id.length > 64 || ID_FORBIDDEN.test(id) || seenIds.has(id)) return null;
+    if (!isValidPetId(id) || seenIds.has(id)) return null;
     seenIds.add(id);
     const size = Number(pp.size);
     if (!Number.isFinite(size) || size <= 0) return null;
@@ -174,7 +174,7 @@ export function saveUserConfig(
  * 复制原文而不是删除用户层：既等价于恢复默认（合并结果 = 内置默认），又让用户拿到一份含全部
  * 注释、开箱可编辑的完整配置。读取侧统一走 stripJsonc，带注释写入照样能读。
  * 注意：文件一旦生成即成为显式覆盖层，插件升级改了内置默认后，文件里的旧值仍会继续生效。
- * 默认文件缺失 / 目录不可写 → 直接抛（宿主回 500），绝不静默留下半个配置文件。
+ * 默认文件缺失 / 目录不可写 → 直接抛，由路由回 200 + 失败实体（`generate-error`），绝不静默留下半个配置文件。
  */
 export function syncUserConfigFromDefault(paths: ConfigPaths): void {
   const raw = readFileSync(paths.defaultFile, 'utf8');

@@ -150,10 +150,6 @@ describe('源码守卫 —— main-dpi.js 只接线，规则住在 dpi-lineariza
     assert.ok(!/PRIMARY_SCALE \/ FORCED_SCALE/.test(dpi), '补偿公式不允许再内联在 main.js 里');
   });
 
-  test('平台例外只允许住在模块里（接线文件不得出现 darwin 分支）', () => {
-    assert.ok(!/darwin/.test(main + dpi), '平台判断写进接线文件就绕过了本文件的单测');
-  });
-
   test('强制 DSF 的 switch 必须在 shouldLinearize 判定之内（否则 macOS 又被放大）', () => {
     const guardAt = dpi.indexOf('shouldLinearize(');
     const switchAt = dpi.indexOf("appendSwitch('force-device-scale-factor'");

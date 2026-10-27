@@ -1,7 +1,7 @@
 /**
  * 桌面 Helper 的事件联动：余额、碎碎念、第三方点播与工作状态的展示与轮询。
  *
- * 展示与 tick 回调挂在 PetSprite.prototype 上（运行时解析，加载顺序无碍）；startLoops 是全部轮询的
+ * 展示与 tick 回调挂在 PetSprite.prototype 上，必须在 sprite.js 之后加载（顶层就改写原型）；startLoops 是全部轮询的
  * 唯一入口，boot 成功后调用。不负责动画播放与气泡渲染本身（见 sprite.js）。依赖 constants.js / sprite.js。
  *
  * @module dsh-pet/runtime/electron-helper/events

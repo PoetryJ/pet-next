@@ -1,5 +1,5 @@
 /**
- * 模型选择器浮层定位（src/client/settings/model-picker-placement.ts）的契约测试。
+ * 模型选择器浮层定位的契约测试。
  *
  * 三条契约：
  *   1. 默认向下展开：浮层顶边贴触发器底边往下 4px，高度不超过 360px；

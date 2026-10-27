@@ -93,7 +93,7 @@
     "format": "prettier --write .",
     "format:check": "prettier --check .",
     "test:ui": "node --test scripts/tests/*.test.mjs",
-    "check:runtime": "eslint --no-config-lookup --rule {\"no-undef\":\"error\"} --global require --global process --global module --global __dirname --global __filename --global console --global setTimeout --global clearTimeout --global setInterval --global clearInterval --global setImmediate --global fetch --global Response --global URL --global URLSearchParams --global Buffer runtime/electron-helper/main.js runtime/electron-helper/main/*.js"
+    "check:runtime": "eslint --config eslint.runtime.config.js runtime/electron-helper"
   },
   "license": "MIT",
   "engines": {

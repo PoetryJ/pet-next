@@ -6,7 +6,8 @@
  *   - counter 没变 → 不产出（同一句话不会被反复渲染）；
  *   - 新增的 section / 宠物自动纳入（将来加叶子不用改这段逻辑）；
  *   - 脏数据（counter 非数字 / 叶子非对象）被丢弃，不把垃圾送进渲染层；
- *   - 余额叶子要解析成客户端视图（raw.data 摊平），并带上 host 标的手动标记。
+ *   - 余额叶子要解析成客户端视图（raw.data 摊平），并带上 host 标的手动标记；
+ *   - 路径只按最后一个点切叶子名（宠物 id 允许含点号）。
  *
  * 跑法：node --experimental-strip-types --test src/shared/state.test.ts
  */
@@ -20,6 +21,7 @@ import {
   readPosition,
   readSay,
   readThrow,
+  resolveLeafPath,
   takeChanged,
   type PollState,
 } from './state.ts';
@@ -91,13 +93,51 @@ describe('takeChanged —— counter 变了才算变化', () => {
     );
   });
 
-  test('宠物 id 含点号也能正确区分（路径只当不透明键，绝不解析）', () => {
+  test('宠物 id 含点号也能正确区分（基线按整条路径作键）', () => {
     const baseline: Record<string, number> = {};
     const changes = takeChanged(makeState({}, { 'a.b': { say: [5, { text: 'x' }] } }), baseline);
     assert.deepEqual(
       changes.map((c) => c.path),
       ['pets.a.b.say'],
     );
+  });
+});
+
+describe('resolveLeafPath —— 路径解析成落点（分发规则的唯一口径）', () => {
+  test('sections 的五个叶子各自解析成落点', () => {
+    for (const name of ['config', 'balance', 'workStatus', 'notify', 'menu'] as const) {
+      assert.deepEqual(resolveLeafPath('sections.' + name), { where: 'section', name });
+    }
+  });
+
+  test('pets 的五类叶子各自带上宠物 id', () => {
+    for (const name of ['say', 'anim', 'position', 'throw', 'lock'] as const) {
+      assert.deepEqual(resolveLeafPath('pets.main.' + name), { where: 'pet', name, petId: 'main' });
+    }
+  });
+
+  test('宠物 id 含点号：只按最后一个点切叶子名（`pets.a.b.say` 的宠物是 `a.b`）', () => {
+    assert.deepEqual(resolveLeafPath('pets.a.b.say'), { where: 'pet', name: 'say', petId: 'a.b' });
+  });
+
+  test('叶子名不合法 → null（不把 `say.text` 之类当成叶子名）', () => {
+    assert.equal(resolveLeafPath('pets.main.say.text'), null);
+    assert.equal(resolveLeafPath('sections.balances'), null);
+    assert.equal(resolveLeafPath('pets.main.unknown'), null);
+  });
+
+  test('空宠物 id / 空叶子名 / 缺叶子名 → null（都不是合法落点）', () => {
+    assert.equal(resolveLeafPath('pets..say'), null);
+    assert.equal(resolveLeafPath('pets.main.'), null);
+    assert.equal(resolveLeafPath('pets.main'), null);
+    assert.equal(resolveLeafPath('sections.'), null);
+  });
+
+  test('不属于任何一族的键 → null（顶层 counter、空串、别的插件的键）', () => {
+    assert.equal(resolveLeafPath(''), null);
+    assert.equal(resolveLeafPath('counter'), null);
+    assert.equal(resolveLeafPath('sectionsx.config'), null);
+    assert.equal(resolveLeafPath('pet.main.say'), null);
   });
 });
 

@@ -125,7 +125,7 @@ export interface ModelSelection {
 }
 
 /** config.jsonc 的 physics 段：拖拽抛掷手感参数（全局，所有宠物共用）。
- *  默认值见 shared/physics.ts，内置配置与代码两侧保持一致。 */
+ *  默认值见 {@link DEFAULT_PHYSICS}，内置配置与代码两侧保持一致。 */
 export interface PhysicsParams {
   /** 重力加速度（px/s²）：越大落得越快；0 = 无重力（合法，均匀直线飞行） */
   gravity: number;

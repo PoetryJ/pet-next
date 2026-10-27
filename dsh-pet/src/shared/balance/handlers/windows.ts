@@ -104,6 +104,12 @@ function windowsPercent(v: BalanceView): number | undefined {
   return Math.max(v.rolling ?? 0, v.weekly ?? 0, v.monthly ?? 0);
 }
 
+/** 把 resetInText 的三种返回翻成一句提示：空串 = 时间未知，'已重置' = 已经过点，其余 = 倒计时。 */
+function resetPhrase(reset: string): string {
+  if (reset === '') return '重置时间未知';
+  return reset === '已重置' ? reset : reset + '重置';
+}
+
 /** 两行：最紧迫窗口的已用百分比与重置倒计时 */
 function windowsRows(v: BalanceView): BalanceBubbleRow[] {
   const w = urgentWindow(v);
@@ -111,7 +117,7 @@ function windowsRows(v: BalanceView): BalanceBubbleRow[] {
   const reset = resetInText(w.resetsAt);
   return [
     { role: 'label', text: w.label + '额度已用 ' + Math.round(w.percent) + '%' },
-    { role: 'sub', text: reset ? reset + '重置' : '已重置' },
+    { role: 'sub', text: resetPhrase(reset) },
   ];
 }
 
@@ -133,7 +139,7 @@ function windowsDetail(v: BalanceView): BalanceBubbleRow[] {
     // 与收起态同一套重置文案，两端原样渲染。
     const reset = resetInText(resets[w]);
     const usedText = Math.round(percent) + '%';
-    const resetText = reset === '' ? '已重置' : reset + '重置';
+    const resetText = resetPhrase(reset);
     rows.push({
       role: 'quota',
       text: windowLabel(v, w) + ' ' + usedText + ' ' + resetText,

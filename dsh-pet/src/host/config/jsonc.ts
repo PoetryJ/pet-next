@@ -63,7 +63,7 @@ export function readUserConfig(paths: ConfigPaths): Record<string, unknown> | un
 /**
  * 用户层存在但解析不了（真损坏：连 JSONC 剥注释都救不回来）。
  * 用途：PUT /config 的损坏预检——保存是白名单重建，existing 读不出来会让原有内容被整份静默丢掉，
- * 所以先不写盘、回 409 让设置页弹窗确认。文件不存在 → false。
+ * 所以先不写盘、回 200 + `reason=user-config-unparsable` 让设置页弹窗确认。文件不存在 → false。
  */
 export function userConfigUnparsable(paths: ConfigPaths): boolean {
   const file = effectiveUserFile(paths);

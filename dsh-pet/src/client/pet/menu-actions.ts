@@ -80,6 +80,15 @@ async function switchDisplay(deps: MenuActionDeps, display: string): Promise<voi
 export function createMenuActions(deps: MenuActionDeps): MenuActions {
   const { petId } = deps;
 
+  /** 动作端点：POST 一次，失败只留一行 warn——结果由 /state 送回，这里没有返回值可用。 */
+  const fireAction = (route: string, label: string): void => {
+    postAction(route)
+      .then((ok: boolean) => {
+        if (!ok) deps.warn('[dsh-pet] ' + label + '失败 pet=' + petId);
+      })
+      .catch((error: unknown) => deps.warn('[dsh-pet] ' + label + '异常 pet=' + petId + ' ' + String(error)));
+  };
+
   const run = (leaf: MenuLeaf, playbackId?: string, keepFacing = false): void => {
     if (leaf.action === 'third-party') {
       // 第三方菜单项只上报 owner、label 与当前宠物 id，具体动作由注册方查询。
@@ -94,21 +103,13 @@ export function createMenuActions(deps: MenuActionDeps): MenuActions {
     if (leaf.action === 'show-balance') {
       // 动作端点让宿主刷新并写入 /state，页面什么都不用做。
       console.info('[dsh-pet] 菜单查看余额 pet=' + petId);
-      postAction(ROUTE_PATH + '/balance')
-        .then((ok: boolean) => {
-          if (!ok) deps.warn('[dsh-pet] 余额刷新动作未成功 pet=' + petId);
-        })
-        .catch((error: unknown) => deps.warn('[dsh-pet] 余额刷新异常 ' + String(error)));
+      fireAction(ROUTE_PATH + '/balance', '余额刷新动作');
       return;
     }
     if (leaf.action === 'whisper') {
       // 手动碎碎念：文本随长轮询送达，不受 whisperEnabled 限制；surface 必填，本页面就是网页端。
       console.info('[dsh-pet] 菜单触发碎碎念 pet=' + petId);
-      postAction(ROUTE_PATH + '/whisper?pet=' + encodeURIComponent(petId) + '&surface=web')
-        .then((ok: boolean) => {
-          if (!ok) deps.warn('[dsh-pet] 碎碎念手动触发失败 pet=' + petId);
-        })
-        .catch((error: unknown) => deps.warn('[dsh-pet] 碎碎念手动触发异常 ' + String(error)));
+      fireAction(ROUTE_PATH + '/whisper?pet=' + encodeURIComponent(petId) + '&surface=web', '碎碎念手动触发');
       return;
     }
     if (leaf.action === 'chat') {

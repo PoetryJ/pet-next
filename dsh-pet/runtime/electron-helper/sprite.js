@@ -92,8 +92,6 @@ class PetSprite {
     this.bindEvents();
   }
 
-  /** 播放状态：动画池、前后台与播放回执。 */
-
   dispose() {
     this.ac.abort();
     this.inputRegionMutation.disconnect();
@@ -113,14 +111,6 @@ class PetSprite {
     this.stopMove();
     this.el.remove();
   }
-
-  // 目标包围盒左上角（视口相对坐标）→ 移动窗口：窗口 = sprite + 四周外扩余量。
-  // setContentBounds 要屏幕坐标：视口坐标先加 VIEW.x/y，再统一 ×scale 回物理像素（IPC 收口），
-  // 主进程侧不信任何比例。
-  //
-  // 实况（位置 + 朝向）上报：第三方用 GET /pose 读桌面端这份快照；位移全仓只有 sendBounds 会调
-  // setBounds，所以在它末尾标脏就覆盖了全部位移场景；朝向不必然伴随位移（原地转身），
-  // 故用 accessor 让赋值自动标脏。节流见 constants.js 的 POSE_THROTTLE_MS。
 
   get facing() {
     return this._facing;
@@ -286,7 +276,7 @@ class PetSprite {
     });
   }
 
-  // 双缓冲切换：前台视频切换 + 降级视频清 handler 并停播，防残留 ended 雪崩
+  // 可见夹取矩形：以宠物所在那块屏为界，返回窗口局部坐标；可见区太小则返回 null
   visibleClampRect() {
     // 比较双方都用屏幕坐标，返回的夹取矩形是窗口局部坐标。夹取用宠物所在的那块屏而不是外接矩形：
     // 后者含空洞，按它夹菜单会伸进不属于任何显示器的区域。

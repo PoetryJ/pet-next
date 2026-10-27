@@ -12,14 +12,12 @@ import type { ConfigPaths } from './constants.ts';
 import { effectiveUserFile, readJsonc } from './jsonc.ts';
 import { mergeEntry, packBase } from './merge.ts';
 
-/** 实际生效的用户层文件：优先 .jsonc；不存在则回落到旧的 .json（迁移前的老用户）；
- *  两者都不存在 → undefined（首次使用，无用户层）。 */
-export /**
+/**
  * 老用户一次性迁移：main-config.json → main-config.jsonc（重命名，内容一字不动）。
  * 为什么改扩展名：用户层从「同步」起就是带 // 注释的 JSONC 原文，挂在 .json 名下名不副实。
  * 新文件已存在 → 什么都不做（绝不用旧文件覆盖新文件）；重命名失败静默放过，读取侧有回落。
  */
-function migrateUserConfig(paths: ConfigPaths, log?: (message: string) => void): boolean {
+export function migrateUserConfig(paths: ConfigPaths, log?: (message: string) => void): boolean {
   const legacy = paths.legacyUserFile;
   if (!legacy || !existsSync(legacy) || existsSync(paths.userFile)) return false;
   try {

@@ -8,7 +8,7 @@
 import { join } from 'node:path';
 import { PACKAGE_ROOT } from '../paths.ts';
 import { MIME, resolveAsset, resolveExisting } from '../http.ts';
-import { ID_FORBIDDEN } from '../config.ts';
+import { isValidPetId } from '../config.ts';
 import { existsSync } from 'node:fs';
 import type { PetRouteDeps, RouteInput } from './types.ts';
 import type { RouteResult } from '../http.ts';
@@ -45,7 +45,7 @@ export async function handleAssetsRoutes(deps: PetRouteDeps, input: RouteInput):
       // 所以两种形式不歧义；素材根与 /thumb 的 petId 同规矩：含分隔符 / 保留字符即显式 400。
       const scoped = segs.length >= 2;
       const assetRoot = scoped ? segs[0] : 'main';
-      if (scoped && (assetRoot.length > 64 || ID_FORBIDDEN.test(assetRoot))) {
+      if (scoped && !isValidPetId(assetRoot)) {
         return { kind: 'text', status: 400, body: 'dsh-pet: invalid asset root' };
       }
       const rel = (scoped ? segs.slice(1) : segs).join('/');
@@ -90,7 +90,7 @@ export async function handleAssetsRoutes(deps: PetRouteDeps, input: RouteInput):
   // 含分隔符/保留字符即显式 400，早于任何路径拼接判定。合法名（含中文）照常——
   // 用非法字符类而不是 ASCII 白名单。非法输入不再静默回落到主素材池（攻击尝试与「没有独立素材」可区分），
   // 也给下面的 resolveAsset 之外再留一道结构性防线。
-  if (ID_FORBIDDEN.test(petId)) {
+  if (!isValidPetId(petId)) {
     return { kind: 'text', status: 400, body: 'dsh-pet: invalid pet id' };
   }
 
