@@ -449,6 +449,22 @@
     .composer-row { display: flex; gap: 8px; align-items: flex-end; margin-top: 8px; }
     .composer textarea { min-height: 44px; max-height: 140px; }
 
+    /* ── 对话附图：第三方消费方自己维护的本地预览（服务端不回图，只回文字） ── */
+    .attach {
+      display: flex; align-items: center; gap: 10px; margin-top: 8px; padding: 8px;
+      border: 1px solid var(--border); border-radius: var(--radius); background: var(--panel);
+    }
+    .attach[hidden] { display: none; }
+    .attach-thumb {
+      width: 64px; height: 48px; object-fit: cover; border-radius: 6px;
+      border: 1px solid var(--border); background: var(--code); flex: 0 0 auto;
+    }
+    .attach-meta { display: flex; flex-direction: column; gap: 2px; min-width: 0; flex: 1; }
+    .attach-name { font-size: 12.5px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .attach-size { font-size: 11.5px; color: var(--muted); }
+    .attach-size.bad { color: var(--bad); }
+    .composer-actions { display: flex; flex-direction: column; gap: 6px; }
+
     .typing { display: inline-flex; gap: 4px; align-items: center; color: var(--faint); font-size: 12.5px; }
     .typing i {
       width: 5px; height: 5px; border-radius: 50%; background: var(--faint);
@@ -1600,9 +1616,22 @@
               <div class="typing" id="typing" style="visibility:hidden">
                 <i></i><i></i><i></i><span>桌宠正在想…</span>
               </div>
+              <!-- 附图：选好先本地预览并按预算压缩，发送时随 body 走 attachment 字段（只影响这一轮） -->
+              <div class="attach" id="chat-attach" hidden>
+                <img class="attach-thumb" id="chat-attach-thumb" alt="待发送的图片">
+                <div class="attach-meta">
+                  <span class="attach-name" id="chat-attach-name"></span>
+                  <span class="attach-size" id="chat-attach-size"></span>
+                </div>
+                <button type="button" class="btn sm ghost" id="chat-attach-remove">移除</button>
+              </div>
               <div class="composer-row">
-                <textarea id="chat-input" rows="2" placeholder="说点什么…（Enter 发送，Shift+Enter 换行）"></textarea>
-                <button type="button" class="btn primary" id="chat-send">发送</button>
+                <textarea id="chat-input" rows="2" placeholder="说点什么…（Enter 发送，Shift+Enter 换行；可直接粘贴图片）"></textarea>
+                <div class="composer-actions">
+                  <button type="button" class="btn sm" id="chat-image">附一张图</button>
+                  <button type="button" class="btn primary" id="chat-send">发送</button>
+                </div>
+                <input type="file" id="chat-image-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
               </div>
             </div>
           </div>
@@ -1750,6 +1779,16 @@
     const PREFIX = "/dsh-pet-7340";
     const POLL_MS = 1000;
 
+    // ── 对话附图：第三方消费方自己截图 / 选图，宿主只收 base64 ──
+    /** 附件服务接受的媒体类型，与宿主白名单一致 */
+    const IMAGE_TYPES = ["image/png", "image/jpeg", "image/webp", "image/gif"];
+    /** 扩展名兜底：拖拽或部分系统来源不给 file.type */
+    const IMAGE_EXT = { png: "image/png", jpg: "image/jpeg", jpeg: "image/jpeg", webp: "image/webp", gif: "image/gif" };
+    /** 单张字节上限：宿主按 1 MiB 请求体与部署上限拒绝，这里留出文本与 JSON 的余量 */
+    const IMAGE_MAX_BYTES = 640 * 1024;
+    /** 长边上限：再大对"看清报错文字"没有收益，只会挤占请求体 */
+    const IMAGE_MAX_SIDE = 2048;
+
     const S = {
       port: 3080,
       connected: null,     // null=未知 true/false
@@ -1764,6 +1803,7 @@
       sayCounter: 0,
       notes: [],           // 客户端自己攒的通知历史（host 侧只有一个槽位）
       chat: [],
+      chatImage: null,     // 待发送的图 { base64, mediaType, bytes, width, height, resized, name }
       awaiting: false,
       activity: [],
       timers: {},
@@ -1870,7 +1910,7 @@
       } catch (e) {
         out = { ok: false, status: 0, ms: Math.round(performance.now() - t0), error: "请求没能发出去：" + e.message };
       }
-      logActivity(method, url, out);
+      logActivity(method, url + (opts.note ? "  ·  " + opts.note : ""), out);
       return out;
     }
 
@@ -2461,6 +2501,115 @@
     // 对话
     // ═══════════════════════════════════════════════════════════════
 
+    // ── 附图：自截 / 选图 → 自压到预算内 → 自转 base64，再随对话发一次 ──
+
+    /** 文件 → 媒体类型；认不出返回空串（调用方据此拒绝） */
+    function imageTypeOf(file) {
+      const declared = String(file.type || "").toLowerCase();
+      if (IMAGE_TYPES.includes(declared)) return declared;
+      const ext = String(file.name || "").split(".").pop().toLowerCase();
+      return IMAGE_EXT[ext] || "";
+    }
+
+    /** 用 objectURL 解码：既拿尺寸也给 canvas 画；解不出说明不是图片 */
+    function loadImageElement(file) {
+      return new Promise((resolve, reject) => {
+        const url = URL.createObjectURL(file);
+        const img = new Image();
+        img.onload = () => { URL.revokeObjectURL(url); resolve(img); };
+        img.onerror = () => { URL.revokeObjectURL(url); reject(new Error("这个文件解不出图片")); };
+        img.src = url;
+      });
+    }
+
+    /** 字节 → 规范 base64（分块，避免 String.fromCharCode 参数过多爆栈） */
+    function bytesToBase64(bytes) {
+      let bin = "";
+      const CHUNK = 0x8000;
+      for (let i = 0; i < bytes.length; i += CHUNK) {
+        bin += String.fromCharCode.apply(null, bytes.subarray(i, i + CHUNK));
+      }
+      return btoa(bin);
+    }
+
+    /** 按 base64 长度反推字节数（不再解码一次） */
+    function base64Bytes(base64) {
+      const pad = base64.endsWith("==") ? 2 : base64.endsWith("=") ? 1 : 0;
+      return Math.floor((base64.length * 3) / 4) - pad;
+    }
+
+    /**
+     * 把一张图变成可发送的附件：够小就原样发，超限才缩到长边上限并按质量阶梯重编码。
+     * 原图重编码会掉画质（报错文字先糊），所以"能不发就不发"。
+     * @returns {{base64: string, mediaType: string, bytes: number, width: number, height: number, resized: boolean}}
+     */
+    async function encodeImage(file) {
+      const img = await loadImageElement(file);
+      const width = img.naturalWidth || img.width;
+      const height = img.naturalHeight || img.height;
+      const raw = new Uint8Array(await file.arrayBuffer());
+      if (raw.length <= IMAGE_MAX_BYTES && Math.max(width, height) <= IMAGE_MAX_SIDE) {
+        return { base64: bytesToBase64(raw), mediaType: imageTypeOf(file), bytes: raw.length, width, height, resized: false };
+      }
+      const scale = Math.min(1, IMAGE_MAX_SIDE / Math.max(width, height));
+      const w = Math.max(1, Math.round(width * scale));
+      const h = Math.max(1, Math.round(height * scale));
+      const canvas = document.createElement("canvas");
+      canvas.width = w;
+      canvas.height = h;
+      canvas.getContext("2d").drawImage(img, 0, 0, w, h);
+      // 逐档降质量，最后一档兜底：宁可糊一点，也不让请求体超限被整条拒掉
+      for (const quality of [0.85, 0.75, 0.65, 0.55]) {
+        const dataUrl = canvas.toDataURL("image/jpeg", quality);
+        const base64 = dataUrl.slice(dataUrl.indexOf(",") + 1);
+        const bytes = base64Bytes(base64);
+        if (bytes <= IMAGE_MAX_BYTES || quality === 0.55) {
+          return { base64, mediaType: "image/jpeg", bytes, width: w, height: h, resized: true };
+        }
+      }
+      throw new Error("无法把图片压到预算内");
+    }
+
+    /** 待发送的附件 → 面板（缩略图 + 尺寸/体积；超预算用红字，正常不会出现） */
+    function renderAttach() {
+      const img = S.chatImage;
+      if (!img) {
+        $("chat-attach").hidden = true;
+        $("chat-attach-thumb").removeAttribute("src");
+        $("chat-attach-name").textContent = "";
+        $("chat-attach-size").textContent = "";
+        return;
+      }
+      $("chat-attach-thumb").src = "data:" + img.mediaType + ";base64," + img.base64;
+      $("chat-attach-name").textContent = img.name || "粘贴的图片";
+      const over = img.bytes > IMAGE_MAX_BYTES;
+      const size = $("chat-attach-size");
+      size.className = "attach-size" + (over ? " bad" : "");
+      size.textContent =
+        img.width + "×" + img.height + " · " + Math.round(img.bytes / 1024) + " KB" +
+        (img.resized ? " · 已压缩" : "") + (over ? " · 超出上限" : "");
+      $("chat-attach").hidden = false;
+    }
+
+    /** 选中 / 粘贴了一张图：编码后挂到待发送状态；失败只提示，不影响已输入的文本 */
+    async function setImage(file) {
+      if (!imageTypeOf(file)) { toast("只支持 PNG / JPEG / WebP / GIF", "bad"); return; }
+      try {
+        const encoded = await encodeImage(file);
+        S.chatImage = { ...encoded, name: file.name || "" };
+        renderAttach();
+      } catch (e) {
+        toast("读图失败：" + e.message, "bad");
+      }
+    }
+
+    /** 撤掉待发送的图（发送成功后也走这里） */
+    function clearImage() {
+      S.chatImage = null;
+      $("chat-image-input").value = "";
+      renderAttach();
+    }
+
     async function loadChat() {
       // 轮数留空 = 用配置的 chatMemoryRounds；填了就让服务端按这个值截取（非法值会被判 bad-request）
       const n = $("chat-rounds-input").value.trim();
@@ -2488,7 +2637,7 @@
         wrap.appendChild(el("div", "who", isMe ? "我" : "宠"));
         const col = el("div");
         col.appendChild(el("div", "bubble2", m.text));
-        col.appendChild(el("div", "ts", m.ts ? hhmmss(m.ts) : ""));
+        col.appendChild(el("div", "ts", (m.ts ? hhmmss(m.ts) : "") + (m.image ? " · 附图" : "")));
         wrap.appendChild(col);
         box.appendChild(wrap);
       }
@@ -2511,18 +2660,23 @@
       if (!text) return;
       if (text.length > 2000) { toast("消息太长（限 2000 字）", "bad"); return; }
 
+      const image = S.chatImage;
       const btn = $("chat-send");
       btn.disabled = true;
       S.awaiting = true;
-      S.chat.push({ role: "user", text, ts: Date.now() });
+      S.chat.push({ role: "user", text, ts: Date.now(), image: !!image });
       renderChat();
       ta.value = "";
       $("typing").style.visibility = "visible";
 
-      // 动作接口只回 {ok}，回复从 /state 的 pets.<id>.say 拿
-      const r = await POST("/chat?pet=" + encodeURIComponent(S.chatPetId) + "&surface=" + surfaceOf(), { body: { text } });
+      // 动作接口只回 {ok}，回复从 /state 的 pets.<id>.say 拿；
+      // 图片只影响这一轮：宿主不进记忆、不回显，也不在气泡里回传
+      const body = image ? { text, attachment: { mediaType: image.mediaType, data: image.base64 } } : { text };
+      const note = image ? "附图 " + Math.round(image.bytes / 1024) + "KB" : "";
+      const r = await POST("/chat?pet=" + encodeURIComponent(S.chatPetId) + "&surface=" + surfaceOf(), { body, note });
 
-      if (!r.ok) {
+      // 业务失败同样是 HTTP 200（body.ok === false）：图片形状 / 超限 / 当前模式不支持都从这条路回
+      if (!r.ok || (r.body && r.body.ok === false)) {
         // 失败：把乐观插入的那条撤掉，并说明原因
         S.awaiting = false;
         $("typing").style.visibility = "hidden";
@@ -2531,6 +2685,7 @@
         const why = (r.body && r.body.message) || (r.body && r.body.reason) || r.error || ("HTTP " + r.status);
         toast("发送失败：" + why, "bad");
       } else {
+        clearImage(); // 成功才清：失败时留着图，改完文字可以直接重发
         // 立刻补拉一拍，0 延迟拿回复（replies 也走轮询，这里只是不等那 1 秒）
         const s = await GET("/state");
         const leaf = s.body && s.body.pets && s.body.pets[S.chatPetId] && s.body.pets[S.chatPetId].say;
@@ -3981,6 +4136,20 @@
       S.chat = [];
       renderChat();
       toast("只是清空了显示，宿主的记忆还在", "ok");
+    });
+
+    // 附图：按钮选文件 / 直接粘贴截图（截图工具通常先落到剪贴板）
+    $("chat-image").addEventListener("click", () => $("chat-image-input").click());
+    $("chat-image-input").addEventListener("change", (e) => {
+      const file = e.target.files && e.target.files[0];
+      if (file) void setImage(file);
+    });
+    $("chat-attach-remove").addEventListener("click", () => clearImage());
+    $("chat-input").addEventListener("paste", (e) => {
+      const file = e.clipboardData && e.clipboardData.files && e.clipboardData.files[0];
+      if (!file) return; // 纯文本粘贴照旧
+      e.preventDefault();
+      void setImage(file);
     });
 
     $("pet-add").addEventListener("click", () => {
