@@ -11,21 +11,22 @@ import type { DesktopSpawn } from './spawn.ts';
 
 /** DesktopSync的输入。 */
 export type DesktopSyncInput = Pick<DesktopHelperDeps, 'log'> &
-  Pick<DesktopPets, 'refreshDesktop'> &
+  Pick<DesktopPets, 'logDesktopDecision'> &
   Pick<DesktopSpawn, 'startHelper' | 'stopHelperAndWait'>;
 
 /**
  * 创建DesktopSync。
  */
 export function createDesktopSync(deps: DesktopSyncInput) {
-  const { log, refreshDesktop, startHelper, stopHelperAndWait } = deps;
+  const { log, logDesktopDecision, startHelper, stopHelperAndWait } = deps;
 
   let desktopSyncQueue: Promise<void> = Promise.resolve();
 
   const restartDesktop = (): Promise<void> => {
     desktopSyncQueue = desktopSyncQueue
       .then(async () => {
-        refreshDesktop();
+        // 判定是现读的（pets 不持有状态），这里只补一行诊断日志。
+        logDesktopDecision();
         await stopHelperAndWait('desktop-config-change');
         startHelper();
       })

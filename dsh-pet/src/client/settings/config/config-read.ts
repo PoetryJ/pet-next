@@ -1,0 +1,85 @@
+/**
+ * 成品配置的读取：把宿主 `GET /config` 的聚合响应解析成一份「表单补丁」。
+ * 只认成品里合法性说得清的字段：缺字段或类型不对就跳过，让表单保留自己手里的值，不拿坏数据覆盖。
+ * 与写方向（`config-io.ts`）分开：这里纯解析，不发请求、不碰状态。
+ * @module dsh-pet/src/client/settings/config-read
+ */
+import { DEFAULT_FONT } from '../../../shared/fonts.ts';
+import { DEFAULT_PHYSICS } from '../../../shared/physics.ts';
+import type { FontConfig, ModelSelection, Pet, PhysicsParams } from '../../../shared/types.ts';
+
+/** 宿主返回的成品聚合：`main` 是大配置条目，其余键是文件定义的其他宠物条目。 */
+export type MergedConfig = Record<string, Record<string, unknown>>;
+
+/** 表单要吃的补丁；字段缺省表示「这次响应里没有可信值」。 */
+export interface MainConfigPatch {
+  /** main 条目的宠物列表（已深拷贝位置，可直接进编辑列表）。 */
+  pets?: Pet[];
+  /** 条目级人设正文，作为实例人设「留空时跟随什么」的预览。 */
+  entryPrompt?: string;
+  notificationsEnabled?: boolean;
+  clickSoundEnabled?: boolean;
+  whisperImageEnabled?: boolean;
+  chatImageEnabled?: boolean;
+  confineToScreen?: boolean;
+  trayEnabled?: boolean;
+  /** 物理参数：成品已按「内置默认 ← 用户层」填满，缺子键再用内置默认兜底一次。 */
+  physics?: PhysicsParams;
+  /** 字体：同物理参数。 */
+  font?: FontConfig;
+  whisperModel?: ModelSelection;
+  chatModel?: ModelSelection;
+  chatMemoryRounds?: number;
+  chatImageLimit?: number;
+}
+
+/** 非负有限数才算合法；其余（`NaN`、负数、字符串）一律当作没写。 */
+const nonNegative = (value: unknown): number | undefined => {
+  const n = Number(value);
+  return Number.isFinite(n) && n >= 0 ? n : undefined;
+};
+
+/** 一对模型选择：两项都是字符串才算写全，只写一半视为没写（宿主会按非法拒绝）。 */
+const readModel = (value: unknown): ModelSelection | undefined => {
+  const model = value as Partial<ModelSelection> | undefined;
+  if (!model || typeof model.provider !== 'string' || typeof model.model !== 'string') return undefined;
+  return { provider: model.provider, model: model.model };
+};
+
+/**
+ * 从成品聚合里读出 main 条目的表单补丁。
+ *
+ * @param merged - `GET /config` 的响应体。
+ * @returns 表单补丁；`main.pets` 缺失或不是数组时返回 `null`（响应本身坏了，调用方应报错）。
+ */
+export function readMainConfig(merged: MergedConfig): MainConfigPatch | null {
+  const main = merged.main;
+  if (!main || !Array.isArray(main.pets)) return null;
+  const pets = main.pets as Pet[];
+  const patch: MainConfigPatch = {
+    // 位置深拷贝：编辑列表与容器手里的成品列表必须是两份数据。
+    pets: pets.map((pet) => ({ ...pet, position: { ...pet.position } })),
+  };
+  if (typeof main.whisperPrompt === 'string') patch.entryPrompt = main.whisperPrompt;
+  if (typeof main.notificationsEnabled === 'boolean') patch.notificationsEnabled = main.notificationsEnabled;
+  if (typeof main.clickSoundEnabled === 'boolean') patch.clickSoundEnabled = main.clickSoundEnabled;
+  if (typeof main.whisperImageEnabled === 'boolean') patch.whisperImageEnabled = main.whisperImageEnabled;
+  if (typeof main.chatImageEnabled === 'boolean') patch.chatImageEnabled = main.chatImageEnabled;
+  if (typeof main.confineToScreen === 'boolean') patch.confineToScreen = main.confineToScreen;
+  if (typeof main.trayEnabled === 'boolean') patch.trayEnabled = main.trayEnabled;
+  if (main.physics && typeof main.physics === 'object') {
+    patch.physics = { ...DEFAULT_PHYSICS, ...(main.physics as PhysicsParams) };
+  }
+  if (main.font && typeof main.font === 'object') {
+    patch.font = { ...DEFAULT_FONT, ...(main.font as FontConfig) };
+  }
+  const whisperModel = readModel(main.whisperModel);
+  if (whisperModel) patch.whisperModel = whisperModel;
+  const chatModel = readModel(main.chatModel);
+  if (chatModel) patch.chatModel = chatModel;
+  const rounds = nonNegative(main.chatMemoryRounds);
+  if (rounds !== undefined) patch.chatMemoryRounds = rounds;
+  const limit = nonNegative(main.chatImageLimit);
+  if (limit !== undefined) patch.chatImageLimit = limit;
+  return patch;
+}

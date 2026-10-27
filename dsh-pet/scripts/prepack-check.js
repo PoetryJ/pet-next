@@ -143,7 +143,12 @@ const walk = (dir) => {
     const p = join(dir, entry.name);
     if (entry.isDirectory()) {
       // 跳过不会进 npm 包的目录
-      if (!['node_modules', '.git', 'scripts', 'step01', 'step02', 'step03', 'preview'].includes(entry.name)) walk(p);
+      // dist-app 是 electron-builder 的本地产物（.gitignore 已忽略、不进包），不参与体积估算。
+      if (
+        !['node_modules', '.git', 'scripts', 'step01', 'step02', 'step03', 'preview', 'dist-app'].includes(entry.name)
+      ) {
+        walk(p);
+      }
     } else if (!entry.name.endsWith('.map')) {
       // 打包产物 tarball（npm pack 遗留）不计入自查口径
       if (!entry.name.endsWith('.tgz')) total += statSync(p).size; // sourcemap 不计

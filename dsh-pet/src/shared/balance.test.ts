@@ -207,7 +207,8 @@ describe('decideBalanceNotice —— 弹不弹文字说明（两端共用同一�
 
 describe('源码守卫 —— 不可用状态不得再被静默丢掉', () => {
   test('浏览器 overlay：渲染处不许再要求 balance.ok，且由 noticeTick 驱动气泡、判定来自 shared', () => {
-    const clientPet = readSource('../client/pet.ts');
+    // 渲染入口与指令处理分处两个文件：气泡在 pet.ts，按 tick 弹的判定在 card/cue-effects.ts。
+    const clientPet = readSource('../client/pet.ts') + '\n' + readSource('../client/pet/card/cue-effects.ts');
     assert.ok(
       !/balance\.ok\s*&&\s*cfg\.balanceEnabled/.test(clientPet),
       '余额气泡不得再要求 balance.ok：那是「未登记服务商完全没反应」的根因，文字说明走同一个气泡',

@@ -1986,6 +1986,29 @@ paths:
               schema:
                 type: string
 
+  "/dsh-pet-7340/sound/{file}":
+    get:
+      tags: [Assets]
+      operationId: getSound
+      summary: 获取点击音效文件
+      description: 从包内 `assets/sound/` 读取（扁平结构，**没有** petId 段）；当前只有 `click-duck.wav`。
+      parameters:
+        - $ref: "#/components/parameters/AssetFile"
+      responses:
+        "200":
+          description: 音效文件
+          content:
+            application/octet-stream:
+              schema:
+                type: string
+                format: binary
+        "404":
+          description: "音效不存在（`dsh-pet: sound not found`）"
+          content:
+            text/plain:
+              schema:
+                type: string
+
   "/dsh-pet-7340/font/{file}":
     get:
       tags: [Assets]

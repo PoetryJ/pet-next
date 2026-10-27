@@ -92,8 +92,10 @@ describe('flattenConfigPets —— 成品 → 渲染列表的唯一填充点', (
   });
 
   test('源码守卫：客户端只有这一处填充，host 的写接口返回成品聚合', () => {
-    const clientPet = readSource('../client/pet.ts');
-    const clientSettings = readSource('../client/settings.ts');
+    // 容器（拍平与渲染列表）在 pet/multi.ts，卡片在 pet.ts：两处一起读，守卫才不会被拆分绕过。
+    const clientPet = readSource('../client/pet.ts') + '\n' + readSource('../client/pet/multi.ts');
+    const clientSettings =
+      readSource('../client/settings.ts') + '\n' + readSource('../client/settings/config/config-io.ts');
     const host =
       readSource('../host/index.ts') +
       '\n' +
@@ -171,7 +173,7 @@ describe('flattenConfigPets —— 成品 → 渲染列表的唯一填充点', (
     //    透传时，前端就算把输入框画出来、改了值，写盘时也会被丢弃）。守卫两侧：
     //    「保存」请求体必须带 physics；宿主必须用同一份 physicsValid 整段校验它。
     //    取请求体字面量再找键（不写死 `physics: physics`：打包器会把同名简写压成 `physics,`）。
-    const saveBody = /const body: Record<string, unknown> = \{([\s\S]*?)\n {8}\};/.exec(clientSettings);
+    const saveBody = /export function buildSaveBody[\s\S]*?return \{([\s\S]*?)\n {2}\};/.exec(clientSettings);
     assert.ok(saveBody, '设置页必须有「保存」的请求体字面量');
     assert.ok(
       /(^|[^.\w])physics\b/.test(saveBody[1]),

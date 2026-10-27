@@ -24,7 +24,7 @@ export type DesktopSpawnInput = Pick<
   DesktopHelperDeps,
   'ctx' | 'getHandlePetRoute' | 'log' | 'reportDownload' | 'thumbUserRoot'
 > &
-  Pick<DesktopPets, 'hasDesktopPet' | 'desktopPetList' | 'getTrayOn'>;
+  Pick<DesktopPets, 'getHasDesktopPet' | 'desktopPetList' | 'getTrayOn'>;
 
 /**
  * 创建DesktopSpawn。
@@ -33,7 +33,8 @@ export type DesktopSpawnInput = Pick<
 const isDesktopHost = (): boolean => Boolean(process.versions.electron);
 
 export function createDesktopSpawn(deps: DesktopSpawnInput) {
-  const { ctx, getHandlePetRoute, log, reportDownload, thumbUserRoot, hasDesktopPet, desktopPetList, getTrayOn } = deps;
+  const { ctx, getHandlePetRoute, log, reportDownload, thumbUserRoot, getHasDesktopPet, desktopPetList, getTrayOn } =
+    deps;
 
   let desktopModeEverActive = false;
 
@@ -57,7 +58,7 @@ export function createDesktopSpawn(deps: DesktopSpawnInput) {
     if (inProcessHost) return; // 应用模式：窗口由本进程建，绝不 spawn
     if (helper || disposed) return;
     // 无桌面宠物时：只有「桌面模式曾启用过且托盘还开着」才值得为托盘常驻，否则不启动
-    if (!hasDesktopPet && !(desktopModeEverActive && getTrayOn())) return;
+    if (!getHasDesktopPet() && !(desktopModeEverActive && getTrayOn())) return;
     const port = typeof ctx.webServer?.port === 'number' ? ctx.webServer.port : 0;
     if (!port || port <= 0) {
       // webServer 可能尚未完成监听（OS 分配端口时 port 短暂为 0）：延迟重试。
@@ -146,7 +147,7 @@ export function createDesktopSpawn(deps: DesktopSpawnInput) {
   const startHelper = (): void => {
     if (inProcessHost) return; // 应用模式：不探测、不下载 Electron
     if (helper || electronEnsure || disposed) return;
-    if (!hasDesktopPet && !(desktopModeEverActive && getTrayOn())) {
+    if (!getHasDesktopPet() && !(desktopModeEverActive && getTrayOn())) {
       // 诊断日志（issue #168）：这条短路不打日志，就是「桌面模式凭空消失：无进程、无目录、无提示」
       // 的直接成因。用 info 而非 warn——纯网页用户这是正常状态；只打一次避免刷屏。
       // 托盘关掉后这里也会命中：没人需要那个图标，空常驻没有意义。
