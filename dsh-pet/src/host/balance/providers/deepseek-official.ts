@@ -7,9 +7,9 @@
  *
  * @module dsh-pet/src/host/balance/providers/deepseek-official
  */
-import { deepseekFullBalance, deepseekPricingTier } from '../deepseek-common';
-import { fetchWithRetry, obj, str } from '../internal';
-import type { BalanceProvider } from '../types';
+import { deepseekFullBalance, deepseekPricingTier } from '../deepseek-common.ts';
+import { fetchWithRetry, obj, str } from '../internal.ts';
+import type { BalanceProvider } from '../types.ts';
 
 /** DeepSeek 官方 API Key 路由的内置定义。 */
 export const deepseekOfficial: BalanceProvider = {

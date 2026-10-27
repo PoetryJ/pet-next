@@ -5,9 +5,9 @@
  * 物理参数运行时取自成品配置，本文件的常量只是默认值来源（与内置 config 的 physics 段一致）。
  * @module dsh-pet/src/shared/physics
  */
-import type { PhysicsParams, Rect } from './types';
-import { HIT_BOX } from './constants';
-import { indexAtPoint, nearestIndex, rectBottom, rectRight } from './displays';
+import type { PhysicsParams, Rect } from './types.ts';
+import { HIT_BOX } from './constants.ts';
+import { indexAtPoint, nearestIndex, rectBottom, rectRight } from './displays.ts';
 
 /** 拖拽弹簧刚度：越大跟手越紧。 */
 export const SPRING_K = 200;

@@ -9,7 +9,7 @@
  * @module dsh-pet/src/host/tool-detail
  */
 
-import { TASK_TEXT_MAX } from './work-status';
+import { TASK_TEXT_MAX } from './work-status.ts';
 
 /** 句子里可用的占位符：{target} 目标名、{cmd} 命令名。 */
 type CopyLine = string;

@@ -11,10 +11,10 @@
  * @module dsh-pet/src/host/broadcast
  */
 
-import { findPetInstance } from './config';
-import { matchMeme, readMemePool } from './memes';
+import { findPetInstance } from './config.ts';
+import { matchMeme, readMemePool } from './memes.ts';
 // url 参数的 scheme 规则与 /anim 是同一条（两个「第三方投喂」端点不各写一份，免得走样）
-import { normalizeHttpUrl } from './anim';
+import { normalizeHttpUrl } from './anim.ts';
 
 /** 气泡默认显示时长（ms）——与两端消费侧的常量同值（host 不得 import src/shared，只能各写一份）。
  *  它只用于把缺省解析成显式值写进叶子，让 /state 里能看到实际生效的时长。 */

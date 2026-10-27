@@ -7,7 +7,7 @@
  * @module dsh-pet/src/shared/balance/handlers/shape
  */
 
-import type { BalanceBubbleRow, BalanceView, CustomNode } from '../types';
+import type { BalanceBubbleRow, BalanceView, CustomNode } from '../types.ts';
 
 /** 一种展示形态向两端的展示层提供的全部规则。 */
 export interface ShapeHandler {

@@ -7,7 +7,8 @@
  * @module dsh-pet/src/client/notify
  */
 
-import { frameToToast, truncate, NOTIFY_ICONS as ICON_NAMES, type NotifyFrame } from '../shared/notify';
+import { frameToToast, truncate, NOTIFY_ICONS as ICON_NAMES, type NotifyFrame } from '../shared/notify.ts';
+import { ROUTE_PATH } from '../shared/constants.ts';
 
 let pageVisible = typeof document !== 'undefined' && !document.hidden;
 let pageFocused = typeof document !== 'undefined' && document.hasFocus();
@@ -38,7 +39,7 @@ function isPageActive(): boolean {
 }
 
 /** 图标 URL；pic 路由由宿主提供（`assets/pic` → `/dsh-pet-7340/pic/<file>`）。 */
-const PIC = (name: string): string => '/dsh-pet-7340/pic/' + name + '.png';
+const PIC = (name: string): string => `${ROUTE_PATH}/pic/${name}.png`;
 
 /** 图标 URL 表；文件名以 shared 为单一来源，设置页的测试通知也用它。 */
 export const NOTIFY_ICONS = {
@@ -93,7 +94,7 @@ function toast(title: string, body?: string, icon?: string, sessionId?: string):
   if (!notifyEnabled) return;
   if (isPageActive()) return;
   if (typeof Notification === 'undefined' || Notification.permission !== 'granted') return;
-  console.log('【弹窗】' + title + (body ? '：' + body : ''));
+  console.log('[dsh-pet] 【弹窗】' + title + (body ? '：' + body : ''));
   try {
     const opts: NotificationOptions = {};
     if (body) opts.body = truncate(body);
@@ -139,7 +140,7 @@ export async function requestNotificationPermission(): Promise<PermissionResult>
 /** 读系统通知总开关（成品配置 main 条目）；拉取或解析失败时按开启处理，不阻塞。 */
 async function readNotificationsEnabled(): Promise<boolean> {
   try {
-    const r = await fetch('/dsh-pet-7340/config');
+    const r = await fetch(ROUTE_PATH + '/config');
     if (!r.ok) return true;
     const d = (await r.json().catch(() => null)) as { main?: { notificationsEnabled?: unknown } } | null;
     return typeof d?.main?.notificationsEnabled === 'boolean' ? d.main.notificationsEnabled : true;

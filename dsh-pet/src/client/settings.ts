@@ -5,14 +5,23 @@
  * 样式对齐官方设置页：max-width 720px，全部走 `--dsw-alias-*` 语义 token。
  * @module dsh-pet/src/client/settings
  */
-import { PET_DISPLAYS } from '../shared/config';
-import { DEFAULT_FONT, FONT_PRESETS, FONT_SIZE_MAX, FONT_SIZE_MIN } from '../shared/fonts';
-import { DEFAULT_PHYSICS } from '../shared/physics';
-import { NOTIFY_ICONS, reloadNotifications, requestNotificationPermission, wireNotificationClick } from './notify';
-import type { Corner, FontConfig, FontFamilyId, ModelSelection, Pet, PetDisplay, PhysicsParams } from '../shared/types';
+import { PET_DISPLAYS } from '../shared/config.ts';
+import { DEFAULT_FONT, FONT_PRESETS, FONT_SIZE_MAX, FONT_SIZE_MIN } from '../shared/fonts.ts';
+import { DEFAULT_PHYSICS } from '../shared/physics.ts';
+import { NOTIFY_ICONS, reloadNotifications, requestNotificationPermission, wireNotificationClick } from './notify.ts';
+import type {
+  Corner,
+  FontConfig,
+  FontFamilyId,
+  ModelSelection,
+  Pet,
+  PetDisplay,
+  PhysicsParams,
+} from '../shared/types.ts';
 import type { ChangeEvent, Dispatch, FunctionComponent, SetStateAction } from 'react';
 import type * as ReactNS from 'react';
 import type { jsx } from 'react/jsx-runtime';
+import { ROUTE_PATH } from '../shared/constants.ts';
 
 /** 容器与设置页共享的桥（同一 bundle 单例）：current 是最新成品拍平列表（容器是唯一写入方），
  * reload 是容器注册的重载回调（传成品聚合即直接拍平，缺省由容器自行拉取），template 是 main 条目的首只宠物。 */
@@ -955,7 +964,7 @@ export function makePetConfigSection(rt: {
       profile?: string;
     }>(null);
     useEffect(() => {
-      fetch('/dsh-pet-7340/config/meta')
+      fetch(ROUTE_PATH + '/config/meta')
         .then((r) => (r.ok ? r.json() : null))
         .then((p) => setPaths(p))
         .catch(() => console.warn('[dsh-pet] 读取配置文件路径失败'));
@@ -1035,7 +1044,7 @@ export function makePetConfigSection(rt: {
     useEffect(() => {
       let alive = true;
       const controller = new AbortController();
-      fetch('/dsh-pet-7340/config', { signal: controller.signal })
+      fetch(ROUTE_PATH + '/config', { signal: controller.signal })
         .then((r) => {
           if (!r.ok) throw new Error('HTTP ' + r.status);
           return r.json();
@@ -1057,7 +1066,7 @@ export function makePetConfigSection(rt: {
     // 候选模型清单：一次性拉取（下拉框数据源）。失败只提示、不阻塞——已有配置值照常显示与保存。
     useEffect(() => {
       let alive = true;
-      fetch('/dsh-pet-7340/models')
+      fetch(ROUTE_PATH + '/models')
         .then((r) => (r.ok ? r.json() : Promise.reject(new Error('HTTP ' + r.status))))
         .then((d) => {
           if (!alive) return;
@@ -1205,7 +1214,7 @@ export function makePetConfigSection(rt: {
           font: font,
         };
         // 用户在损坏弹窗里点了确认：带 ?force=1 才允许按白名单重建损坏文件。
-        const res = await fetch('/dsh-pet-7340/config' + (force === true ? '?force=1' : ''), {
+        const res = await fetch(ROUTE_PATH + '/config' + (force === true ? '?force=1' : ''), {
           method: 'PUT',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify(body),
@@ -1266,7 +1275,7 @@ export function makePetConfigSection(rt: {
       try {
         // 同步用户层：POST 把内置默认配置（原文，含注释）整份写入用户配置，响应体同样是成品聚合。
         // 之后与保存走同一条路，没有中间失败态。
-        const res = await fetch('/dsh-pet-7340/config', { method: 'POST' });
+        const res = await fetch(ROUTE_PATH + '/config', { method: 'POST' });
         if (!res.ok) throw new Error('HTTP ' + res.status);
         const merged = (await res.json()) as Record<string, Record<string, unknown>>;
         applyConfig(merged);

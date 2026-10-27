@@ -5,13 +5,13 @@
  * 任何可选能力缺失都只降级功能，绝不让整个插件加载失败。
  * @module dsh-pet/src/client/app
  */
-import { makePetUI } from './pet';
-import { readPose } from './pose';
-import { readProgress } from './progress';
-import { makePetConfigSection, NS, zh, en, petBridge } from './settings';
-import { initNotify } from './notify';
-import { installCommandFaces, type CommandFace, type CommandUiLike } from './command-faces';
-import { installSectionNavIcon } from './nav-icon';
+import { makePetUI } from './pet.ts';
+import { readPose } from './pose.ts';
+import { readProgress } from './progress.ts';
+import { makePetConfigSection, NS, zh, en, petBridge } from './settings.ts';
+import { initNotify } from './notify.ts';
+import { installCommandFaces, type CommandFace, type CommandUiLike } from './command-faces.ts';
+import { installSectionNavIcon } from './nav-icon.ts';
 import type * as ReactNS from 'react';
 import type * as PrimitivesNS from '@deepseek-ai/dsh-client-ui-primitives';
 

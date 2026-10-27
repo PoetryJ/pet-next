@@ -10,22 +10,23 @@
 import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { flattenPetList, readAllConfig } from '../host/config';
-import { dshHomeDir, packageRoot } from '../host/helper-process';
-import { apply } from '../host/index';
-import { defaultLog, setDefaultLogger } from '../host/log-file';
-import { runCheck, packageVersion } from './check';
-import { createStandaloneAi } from './ai-provider';
-import { createRequestSecurity } from './request-security';
-import { writeStandaloneRuntime } from './runtime-state';
+import { flattenPetList, readAllConfig } from '../host/config.ts';
+import { dshHomeDir, packageRoot } from '../host/helper-process.ts';
+import { apply } from '../host/index.ts';
+import { defaultLog, setDefaultLogger } from '../host/log-file.ts';
+import { runCheck, packageVersion } from './check.ts';
+import { createStandaloneAi } from './ai-provider.ts';
+import { createRequestSecurity } from './request-security.ts';
+import { writeStandaloneRuntime } from './runtime-state.ts';
 import {
   createStandaloneContext,
   createStandaloneLogger,
   type RegisteredRoute,
   type StandaloneLogger,
-} from './context';
-import { configPathsFor, describePets, isDesktopVisible, parseArgs, USAGE } from './options';
-import { listenStandaloneServer } from './server';
+} from './context.ts';
+import { configPathsFor, describePets, isDesktopVisible, parseArgs, USAGE } from './options.ts';
+import { listenStandaloneServer } from './server.ts';
+import { ROUTE_PATH } from '../shared/constants.ts';
 
 /** 启动独立模式：先起服务拿到端口，再 apply。 */
 async function run(logger: StandaloneLogger, options: { port: number }): Promise<void> {
@@ -134,7 +135,7 @@ async function run(logger: StandaloneLogger, options: { port: number }): Promise
     '',
     '===== dsh-pet 独立模式（不需要 DSH）=====',
     `  插件        dsh-pet@${packageVersion(packageRoot)}  ${packageRoot}`,
-    `  路由        http://127.0.0.1:${server.port}/dsh-pet-7340/`,
+    `  路由        http://127.0.0.1:${server.port}${ROUTE_PATH}/`,
     `  配置        ${configSource}`,
     `  宠物        ${describePets(pets)}`,
     desktopVisible.length === 0

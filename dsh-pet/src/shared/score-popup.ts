@@ -4,7 +4,7 @@
  * 弹窗显示 +N 分与速度/大小明细，点外或 Esc 立即关闭。
  * @module dsh-pet/src/shared/score-popup
  */
-import { clickScore, SCORE_MIN_SPEED } from './score';
+import { clickScore, SCORE_MIN_SPEED } from './score.ts';
 
 /** 弹窗展示时长（ms）：积分反馈比气泡（10s）短，够读即可。 */
 export const SCORE_POPUP_DURATION_MS = 2200;

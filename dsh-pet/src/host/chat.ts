@@ -11,11 +11,11 @@
  */
 
 import { BlockAssembler, createAssistantMessage, createUserMessage, ReasoningEffortId } from '@deepseek-ai/dsh-llm';
-import { PET_CALL_IDENTITY, noTextReason } from './llm-call';
-import { supportsReasoningOff } from './llm-reasoning';
-import { defaultLog } from './log-file';
-import { extractChatImage, memeCatalog, type MemeEntry } from './memes';
-import { modelCandidates, modelLabel, type ModelRef } from './model-selection';
+import { PET_CALL_IDENTITY, noTextReason } from './llm-call.ts';
+import { supportsReasoningOff } from './llm-reasoning.ts';
+import { defaultLog } from './log-file.ts';
+import { extractChatImage, memeCatalog, type MemeEntry } from './memes.ts';
+import { modelCandidates, modelLabel, type ModelRef } from './model-selection.ts';
 
 /** 生成失败原因（与 shared/whisper.ts 的 WhisperState 失败分支同构）。 */
 export type ChatGenerateResult =

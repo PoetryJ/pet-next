@@ -118,13 +118,7 @@ function handshake(display) {
         head.writeUInt16LE(0, 4);
         head.writeUInt16LE(name.length, 6);
         head.writeUInt16LE(data.length, 8);
-        const setup = Buffer.concat([
-          head,
-          name,
-          Buffer.alloc(pad(name.length)),
-          data,
-          Buffer.alloc(pad(data.length)),
-        ]);
+        const setup = Buffer.concat([head, name, Buffer.alloc(pad(name.length)), data, Buffer.alloc(pad(data.length))]);
 
         let buffer = Buffer.alloc(0);
         const onData = (chunk) => {
@@ -294,5 +288,8 @@ module.exports = { createLinuxPointer, parseRoot };
 if (require.main === module) {
   createLinuxPointer()
     .probe()
-    .then((point) => console.log(JSON.stringify(point)), () => process.exit(1));
+    .then(
+      (point) => console.log(JSON.stringify(point)),
+      () => process.exit(1),
+    );
 }

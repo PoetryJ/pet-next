@@ -1,3 +1,4 @@
+import { ROUTE_PATH } from './constants.ts';
 /**
  * 碎碎念的展示视图：文本 → 气泡行数据，以及配图节点与样式。
  * 不负责取数、生成与失败判定——宿主半侧生成后写进 /state 的 pets.<id>.say，两端只从轮询状态读。
@@ -29,7 +30,7 @@ export function whisperBubbleView(state: WhisperState): WhisperBubbleRow[] {
  *  否则走用户目录与包内 assets/memes；assetRoot 为空则退回两段形式，未打标的宠物与老宿主仍能取到图。
  *  base 已含 /dsh-pet-7340 前缀（与视频的 assetBase 一致），函数内不得再拼一次，否则桌面端图裂。
  *  桌面页面是 file:// 加载的，相对路径会解析成 file:/// 而必然失败，所以桌面传绝对基址。 */
-export function memeImageUrl(name: string, base = '/dsh-pet-7340', assetRoot = ''): string {
+export function memeImageUrl(name: string, base = ROUTE_PATH, assetRoot = ''): string {
   const root = String(assetRoot ?? '').trim();
   const prefix = root ? '/pic/memes/' + encodeURIComponent(root) : '/pic/memes';
   return base + prefix + '/' + encodeURIComponent(name) + '.png';
@@ -69,7 +70,7 @@ export function injectMemeBubbleCss(): void {
  *  @param name - 配图名称（配置 memes 的键），缺省或空白 → null。
  *  @param base - 已含 /dsh-pet-7340 的宿主基址（与视频同规则）：浏览器缺省，桌面传 BASE。
  *  @param assetRoot - 素材根（= 该宠物的条目 key），决定图片去哪个表情包目录链取。 */
-export function createMemeImage(name?: string, base = '/dsh-pet-7340', assetRoot = ''): HTMLImageElement | null {
+export function createMemeImage(name?: string, base = ROUTE_PATH, assetRoot = ''): HTMLImageElement | null {
   const key = String(name ?? '').trim();
   if (!key) return null;
   injectMemeBubbleCss();

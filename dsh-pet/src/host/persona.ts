@@ -7,7 +7,7 @@
  * 必须始终成立：拼装点唯一——不给名字与时间开占位符配置，否则等于出现第二个拼装点。
  * @module dsh-pet/src/host/persona
  */
-import { timeContextOf } from './time-context';
+import { timeContextOf } from './time-context.ts';
 
 /**
  * 某宠物最终生效的人设正文（不含名字与时间）：实例 whisperPrompt → 条目 whisperPrompt → 空串。

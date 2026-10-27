@@ -7,8 +7,8 @@
  *
  * @module dsh-pet/src/host/balance/providers/opencode-go
  */
-import { fetchWithRetry, num, str } from '../internal';
-import type { BalanceProvider } from '../types';
+import { fetchWithRetry, num, str } from '../internal.ts';
+import type { BalanceProvider } from '../types.ts';
 
 /** 各窗口满额度（USD）：滚动 12、周 30、月 60；接口不回传，属业务常量。 */
 const QUOTA_USD = {

@@ -7,11 +7,11 @@
  *
  * @module dsh-pet/src/host/balance/registry
  */
-import { commandCode } from './providers/commandcode';
-import { deepseekAccount } from './providers/deepseek-account';
-import { deepseekOfficial } from './providers/deepseek-official';
-import { opencodeGo } from './providers/opencode-go';
-import type { BalanceProvider, PluginProvider } from './types';
+import { commandCode } from './providers/commandcode.ts';
+import { deepseekAccount } from './providers/deepseek-account.ts';
+import { deepseekOfficial } from './providers/deepseek-official.ts';
+import { opencodeGo } from './providers/opencode-go.ts';
+import type { BalanceProvider, PluginProvider } from './types.ts';
 
 /** 内置服务商：编译期登记，顺序即优先级。 */
 export const BUILTIN_PROVIDERS: BalanceProvider[] = [opencodeGo, commandCode, deepseekOfficial, deepseekAccount];

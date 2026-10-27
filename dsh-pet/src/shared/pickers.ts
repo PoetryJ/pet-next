@@ -4,7 +4,7 @@
  * 不依赖 React / DOM。
  * @module dsh-pet/src/shared/pickers
  */
-import type { Category, EventSlot, Events, Weights } from './types';
+import type { Category, EventSlot, Events, Weights } from './types.ts';
 
 /** 从池里等概率抽一个；exclude 避开某个名字（减少连续重复）。 */
 export const pick = <T>(pool: T[], exclude?: T): T => {

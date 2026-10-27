@@ -6,9 +6,9 @@
  * @module dsh-pet/src/shared/balance/handlers/windows
  */
 
-import { quotaTone } from '../tone';
-import type { BalanceBubbleRow, BalanceView, WindowKey, WindowUsage } from '../types';
-import type { ShapeHandler } from './shape';
+import { quotaTone } from '../tone.ts';
+import type { BalanceBubbleRow, BalanceView, WindowKey, WindowUsage } from '../types.ts';
+import type { ShapeHandler } from './shape.ts';
 
 /**
  * 周与月的窗口展示名，供气泡与联想框文案使用。

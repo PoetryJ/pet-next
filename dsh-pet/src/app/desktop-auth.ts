@@ -8,6 +8,7 @@
  */
 
 import { pathToFileURL } from 'node:url';
+import { ROUTE_PATH } from '../shared/constants.ts';
 
 /** 一次出站请求的最小形态：只声明注入凭证需要读的字段。 */
 interface RequestDetails {
@@ -53,7 +54,7 @@ export function installDesktopAuth(session: DesktopSession, origin: string, rend
       const page = frame ? new URL(frame.url) : undefined;
       if (
         target.origin === origin &&
-        target.pathname.startsWith('/dsh-pet-7340/') &&
+        target.pathname.startsWith(ROUTE_PATH + '/') &&
         frame?.parent === null &&
         page?.protocol === 'file:' &&
         page.origin === 'null' &&

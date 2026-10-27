@@ -1,3 +1,4 @@
+import { ROUTE_PATH } from './constants.ts';
 /**
  * 对话输入弹窗：两端共用同一份 DOM 与交互。
  * 发送走宿主半侧的 /chat，记忆只由宿主读写，所以浏览器与桌面天然共享同一份记忆。
@@ -105,7 +106,7 @@ export function mountChatDialog(opts: {
 }): ChatDialogMount {
   injectChatCss();
   const { petId, surface, x, y, onSent, onClose, clamp } = opts;
-  const baseUrl = opts.baseUrl ?? '/dsh-pet-7340/chat';
+  const baseUrl = opts.baseUrl ?? ROUTE_PATH + '/chat';
   // `surface` 必填（宿主校验）；这个 URL 只用于 POST 发送——GET 读记忆那条路不需要它
   const withPet = baseUrl + '?pet=' + encodeURIComponent(petId) + '&surface=' + surface;
   const c =

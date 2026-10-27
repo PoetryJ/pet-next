@@ -5,7 +5,7 @@
  * 条目级字段必须吹进每只实例：多实例共享所属条目的同一份值。
  * @module dsh-pet/src/shared/config
  */
-import type { Animations, FontConfig, ModelSelection, Pet, PetDisplay, PhysicsParams, Weights } from './types';
+import type { Animations, FontConfig, ModelSelection, Pet, PetDisplay, PhysicsParams, Weights } from './types.ts';
 
 /** 显示位置白名单。 */
 export const PET_DISPLAYS: PetDisplay[] = ['web', 'desktop', 'both', 'none'];

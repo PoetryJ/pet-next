@@ -5,7 +5,7 @@
  * 每级面板平级挂在根容器下、绝不嵌套（嵌套会被父面板的滚动区裁切）；指针留在树内时子面板保持展开。
  * @module dsh-pet/src/shared/menu
  */
-import type { Animations, Category, PetDisplay } from './types';
+import type { Animations, Category, PetDisplay } from './types.ts';
 
 /** 叶子：可点击的菜单项。 */
 export interface MenuLeaf {

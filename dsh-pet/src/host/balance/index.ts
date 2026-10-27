@@ -8,10 +8,10 @@
  *
  * @module dsh-pet/src/host/balance/index
  */
-import { BUILTIN_PROVIDERS, matchBalanceProvider } from './registry';
-import type { AccountBalanceSnapshot, BalanceResult } from './types';
+import { BUILTIN_PROVIDERS, matchBalanceProvider } from './registry.ts';
+import type { AccountBalanceSnapshot, BalanceResult } from './types.ts';
 
-export { BUILTIN_PROVIDERS, listBalanceProviders, matchBalanceProvider, registerBalanceProvider } from './registry';
+export { BUILTIN_PROVIDERS, listBalanceProviders, matchBalanceProvider, registerBalanceProvider } from './registry.ts';
 
 /** 内置服务商名录；沿用此导出名，避免既有调用方改动。 */
 export const BALANCE_PROVIDERS = BUILTIN_PROVIDERS;
@@ -87,8 +87,8 @@ export async function queryBalance(
 }
 
 /** 对外再导出：调用方（宿主与测试）只需认这一个入口。 */
-export { parseAccountBalance } from './providers/deepseek-account';
-export { parseCommandCode } from './providers/commandcode';
+export { parseAccountBalance } from './providers/deepseek-account.ts';
+export { parseCommandCode } from './providers/commandcode.ts';
 export type {
   AccountBalanceSnapshot,
   BalanceFetchContext,
@@ -106,4 +106,4 @@ export type {
   PointsBalance,
   PricingTier,
   WindowsUsage,
-} from './types';
+} from './types.ts';

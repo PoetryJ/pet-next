@@ -7,7 +7,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { Readable } from 'node:stream';
-import { rejectRequest } from './request-security';
+import { rejectRequest } from './request-security.ts';
 
 /** 普通请求的字节上限。 */
 export const MAX_REQUEST_BYTES = 1024 * 1024;

@@ -5,7 +5,7 @@
  * 必须始终成立：整个文件是普通副作用脚本，不能有顶层 ESM import / export（react 由 factory 的 require 取得）。
  * @module dsh-pet/src/client/index
  */
-import { makeFactory } from './app';
+import { makeFactory } from './app.ts';
 
 declare const window: {
   __ModuleLoader__: {

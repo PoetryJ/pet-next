@@ -8,7 +8,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import { createFileLogger } from '../host/log-file';
+import { createFileLogger } from '../host/log-file.ts';
 
 /** 独立模式下余额路由报出的未登记服务商 id。 */
 export const STANDALONE_PROVIDER = 'standalone';

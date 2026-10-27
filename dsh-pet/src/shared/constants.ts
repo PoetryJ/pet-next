@@ -19,6 +19,13 @@ export const SLINGSHOT_DOUBLE_MS = 200;
  *  运行时按「实际 size / 基准」等比缩放，任何缩放下行进距离都与人物自身大小成比例。 */
 export const PET_REF_WIDTH = 462;
 
+/**
+ * 插件的 HTTP 挂载前缀：宿主路由、桌面 Helper 管道、浏览器请求与素材 URL 共用同一段。
+ * 宿主半侧直接 import 本文件（零依赖叶子模块）而不经 shared/index 桶——桶里有 DOM 挂载代码，
+ * 进宿主 bundle 会破坏单文件加载约束。
+ */
+export const ROUTE_PATH = '/dsh-pet-7340';
+
 /** 播放动画扩展名（集中开关）：默认 .webm（VP9-alpha）两端可直接透明播放；
  *  macOS 的 Safari/WKWebView 不认 webm alpha（渲染黑底），需改为 .mov（HEVC-with-Alpha）——
  *  素材从仓库 Release 的 assets-mov tag 取，放进 main-animation/mov/ 后重新构建；

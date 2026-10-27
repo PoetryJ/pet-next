@@ -7,8 +7,8 @@
  * @module dsh-pet/src/shared/balance/handlers/custom
  */
 
-import type { BalanceBubbleRow } from '../types';
-import type { ShapeHandler } from './shape';
+import type { BalanceBubbleRow } from '../types.ts';
+import type { ShapeHandler } from './shape.ts';
 
 /** custom 形态的展示规则：只有百分比与节点树有值，行数据一律为空。 */
 export const customHandler: ShapeHandler = {

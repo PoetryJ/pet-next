@@ -7,12 +7,12 @@
  * @module dsh-pet/src/shared/balance/handlers/index
  */
 
-import type { BalanceShape } from '../types';
-import { customHandler } from './custom';
-import { moneyHandler } from './money';
-import { pointsHandler } from './points';
-import type { ShapeHandler } from './shape';
-import { windowsHandler } from './windows';
+import type { BalanceShape } from '../types.ts';
+import { customHandler } from './custom.ts';
+import { moneyHandler } from './money.ts';
+import { pointsHandler } from './points.ts';
+import type { ShapeHandler } from './shape.ts';
+import { windowsHandler } from './windows.ts';
 
 /** 每种形态的展示规则；新增形态必须在此补齐，否则类型检查报错。 */
 export const HANDLERS: Record<BalanceShape, ShapeHandler> = {

@@ -13,17 +13,18 @@ import {
   type BalanceBubbleRow,
   type BalanceState,
   type CustomNode,
-} from '../shared/balance';
+} from '../shared/balance/index.ts';
 import {
   MEME_BUBBLE_CLASS,
   MEME_IMG_CLASS,
   injectMemeBubbleCss,
   memeImageUrl,
   whisperBubbleView,
-} from '../shared/whisper';
+} from '../shared/whisper.ts';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type * as ReactNS from 'react';
 import type { jsx } from 'react/jsx-runtime';
+import { ROUTE_PATH } from '../shared/constants.ts';
 
 /** 气泡内联样式：白色半透明圆泡加底部小尾巴，盒子尺寸锚字号 `--f`，位置锚宠物尺寸。
  *  width:max-content 不可省：left:50% 的绝对定位盒可用宽度只有包含块一半，shrink-to-fit
@@ -32,7 +33,7 @@ import type { jsx } from 'react/jsx-runtime';
  */
 const bubbleCss = [
   // 本地字体：由 host 从 assets/fonts 提供；font-display:swap 先回退后切换。
-  '@font-face{font-family:"ShangshouSoftCandy";src:url("/dsh-pet-7340/font/上首软糖体.ttf") format("truetype");font-display:swap;font-weight:400}',
+  `@font-face{font-family:"ShangshouSoftCandy";src:url("${ROUTE_PATH}/font/上首软糖体.ttf") format("truetype");font-display:swap;font-weight:400}`,
   '.dsh-pet-bubble{position:absolute;left:50%;transform:translateX(-50%);' +
     'bottom:calc(100% - var(--dsh-pet-size)*0.108);' +
     'width:max-content;min-width:calc(var(--f)*5.7143);max-width:min(calc(var(--f)*16),100%);' +
@@ -273,7 +274,7 @@ export function makeWhisperBubble(rt: {
     const key = String(image ?? '').trim();
     const href = String(url ?? '').trim();
     // 配图二选一：url 直接用，image 按素材根拼路径；判别位在字段名上，不靠 startsWith 嗅探。
-    const src = href || (key ? memeImageUrl(key, '/dsh-pet-7340', assetRoot) : '');
+    const src = href || (key ? memeImageUrl(key, ROUTE_PATH, assetRoot) : '');
     return h('div', {
       className: 'dsh-pet-bubble dsh-pet-whisper' + (src ? ' ' + MEME_BUBBLE_CLASS : '') + (on ? ' is-on' : ''),
       children: src

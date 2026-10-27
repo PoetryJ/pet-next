@@ -6,8 +6,8 @@
  * @module dsh-pet/src/shared/balance/handlers/money
  */
 
-import type { BalanceBubbleRow, BalanceView } from '../types';
-import type { ShapeHandler } from './shape';
+import type { BalanceBubbleRow, BalanceView } from '../types.ts';
+import type { ShapeHandler } from './shape.ts';
 
 /**
  * 各币种按自己的基准算剩余比例，相加后折算成已用百分比。

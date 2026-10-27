@@ -18,27 +18,27 @@ import { join, normalize, resolve, sep } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths';
 import { credentialRef } from '@deepseek-ai/dsh-credentials';
-import { listBalanceProviders, queryBalance, registerBalanceProvider } from './balance/index';
-import { generateWhisper } from './whisper';
-import { automaticWhisperSchedule, type StandaloneWhisperPolicy } from './whisper-policy';
-import { generateChat, type ChatMemoryMessage } from './chat';
-import { configuredModel } from './model-selection';
-import { limitPool, pickMeme, readMemePool } from './memes';
+import { listBalanceProviders, queryBalance, registerBalanceProvider } from './balance/index.ts';
+import { generateWhisper } from './whisper.ts';
+import { automaticWhisperSchedule, type StandaloneWhisperPolicy } from './whisper-policy.ts';
+import { generateChat, type ChatMemoryMessage } from './chat.ts';
+import { configuredModel } from './model-selection.ts';
+import { limitPool, pickMeme, readMemePool } from './memes.ts';
 import {
   decideBroadcast,
   decideBubbleClear,
   normalizeBroadcastAnim,
   normalizeBroadcastDuration,
   normalizeBroadcastText,
-} from './broadcast';
-import { decideAnim } from './anim';
-import { LockStore } from './lock';
-import { createFileLogger, isFileLogger, setDefaultLogger } from './log-file';
-import { MENU_WAIT_MAX_MS, MenuRegistry } from './menu';
-import { decidePosition, decideThrow, positionLeafData } from './motion-cue';
-import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback';
-import { PoseStore, normalizePoseInput } from './pose';
-import { SURFACE_TEXT, displayCovers, normalizeSurface, type Surface } from './surface';
+} from './broadcast.ts';
+import { decideAnim } from './anim.ts';
+import { LockStore } from './lock.ts';
+import { createFileLogger, isFileLogger, setDefaultLogger } from './log-file.ts';
+import { MENU_WAIT_MAX_MS, MenuRegistry } from './menu.ts';
+import { decidePosition, decideThrow, positionLeafData } from './motion-cue.ts';
+import { parsePlaybackPath, parseWaitQuery, PlaybackStore } from './playback.ts';
+import { PoseStore, normalizePoseInput } from './pose.ts';
+import { SURFACE_TEXT, displayCovers, normalizeSurface, type Surface } from './surface.ts';
 import {
   findPetInstance,
   flattenPetList,
@@ -53,7 +53,7 @@ import {
   syncUserConfigFromDefault,
   userConfigUnparsable,
   type ConfigPaths,
-} from './config';
+} from './config.ts';
 import {
   GOAL_UPDATE_TOOL,
   HOST_WORK_STATUS_STATES,
@@ -64,8 +64,8 @@ import {
   WorkStatusStore,
   type HostWorkStatusState,
   type WorkStatusTurnContext,
-} from './work-status';
-import { toolDetailFromEvent } from './tool-detail';
+} from './work-status.ts';
+import { toolDetailFromEvent } from './tool-detail.ts';
 import {
   agentErrorFrame,
   hasBlockingActivity,
@@ -75,10 +75,10 @@ import {
   shouldNotifySession,
   withSessionId,
   type HostNotifyFrame,
-} from './notify-events';
-import { profileNameFrom, storageEntries } from './storage-paths';
-import { parseStateWaitQuery, PollStateStore } from './state';
-import { composeSystemPrompt, petPersona } from './persona';
+} from './notify-events.ts';
+import { profileNameFrom, storageEntries } from './storage-paths.ts';
+import { parseStateWaitQuery, PollStateStore } from './state.ts';
+import { composeSystemPrompt, petPersona } from './persona.ts';
 import {
   HelperProcess,
   defaultElectronExe,
@@ -87,7 +87,8 @@ import {
   ensureElectronDownload,
   hasGraphicalDisplay,
   resolveElectronPath,
-} from './helper-process';
+} from './helper-process.ts';
+import { ROUTE_PATH } from '../shared/constants.ts';
 
 /** 插件行 id（与 cordis.patch.yml 一致） */
 export const name = 'pet';
@@ -102,9 +103,6 @@ const PACKAGE_ROOT_ASSETS = join(PACKAGE_ROOT, 'assets');
 
 /** 包内表情包目录（表情包池的最后一环：assets/memes/<名称>.png） */
 const PACKAGE_MEMES_DIR = join(PACKAGE_ROOT_ASSETS, 'memes');
-
-/** 路由前缀 */
-const ROUTE_PREFIX = '/dsh-pet-7340';
 
 /**
  * 宿主是不是 DSH 桌面应用（Electron 宿主）：判据只用 `process.versions.electron`。
@@ -961,7 +959,7 @@ export function apply(ctx: any): void {
     const siteUrl = ctx.connection.authenticatedUrl(origin);
     // 桌面渲染端也从同一份 handlePetRoute 拿成品配置（每只宠物一个局部小窗口；经管道，不走 HTTP——
     // DSH Desktop 2.0.3+ 会拦插件自拉进程的裸 HTTP 请求，浏览器访问闸门只放行带令牌的请求）
-    const configUrl = `${origin}${ROUTE_PREFIX}/config`;
+    const configUrl = `${origin}${ROUTE_PATH}/config`;
     helper = new HelperProcess(
       {
         electronPath,
@@ -1141,7 +1139,7 @@ export function apply(ctx: any): void {
     signal?: AbortSignal,
   ): Promise<RouteResult> => {
     const url = new URL(rawUrl, 'http://localhost');
-    const rest = decodeURIComponent(url.pathname.slice(ROUTE_PREFIX.length + 1));
+    const rest = decodeURIComponent(url.pathname.slice(ROUTE_PATH.length + 1));
     const run = (): Promise<RouteResult> => dispatchPetRoute(url, rest, method, body, signal);
     if (rest === 'config' || (rest === 'pet-display' && method === 'POST')) {
       const pending = configQueue.then(run, run);
@@ -2204,7 +2202,7 @@ export function apply(ctx: any): void {
     () =>
       ctx.webServer.register({
         kind: 'prefix',
-        path: ROUTE_PREFIX,
+        path: ROUTE_PATH,
         handler: async (req: IncomingMessage, res: ServerResponse) => {
           // 挂起等待（/playback?wait=）期间调用方可能提前断开：据此中止等待，
           // 否则那个等待者要一直留到超时才回收。'close' 在正常应答后也会触发，但那时监听已摘掉。

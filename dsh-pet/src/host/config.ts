@@ -11,7 +11,7 @@
 import { existsSync, mkdirSync, readFileSync, readdirSync, renameSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 
-import { defaultLog } from './log-file';
+import { defaultLog } from './log-file.ts';
 
 /** 位置角落白名单 */
 const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as const;

@@ -7,8 +7,8 @@
  * @module dsh-pet/src/shared/balance/handlers/points
  */
 
-import type { BalanceBubbleRow, BalanceView } from '../types';
-import type { ShapeHandler } from './shape';
+import type { BalanceBubbleRow, BalanceView } from '../types.ts';
+import type { ShapeHandler } from './shape.ts';
 
 /**
  * 与 money 同一套「按基准折算」的数学，数据来自 points 而非 wallets。

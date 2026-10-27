@@ -16,7 +16,7 @@ import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve } from 'node:path';
 
-import type { LoggerLike } from './log-file';
+import type { LoggerLike } from './log-file.ts';
 // `@electron/get` 只在真要下载 Electron 时才用到，故按需动态加载（见 ensureElectronDownload）：
 // 静态 import 会把它连同 got/fs-extra 一串依赖钉进每个产物的启动路径，而独立应用模式下这条路径不执行。
 

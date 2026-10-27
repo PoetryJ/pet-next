@@ -7,9 +7,9 @@
  *
  * @module dsh-pet/src/host/balance/providers/deepseek-account
  */
-import { deepseekFullBalance, deepseekPricingTier } from '../deepseek-common';
-import { money, obj, sumMoney } from '../internal';
-import type { AccountBalanceSnapshot, BalanceProvider, BalanceSuccess } from '../types';
+import { deepseekFullBalance, deepseekPricingTier } from '../deepseek-common.ts';
+import { money, obj, sumMoney } from '../internal.ts';
+import type { AccountBalanceSnapshot, BalanceProvider, BalanceSuccess } from '../types.ts';
 
 /**
  * 账号余额快照 → 成功结果（纯函数，测试可直接喂真实结构）。

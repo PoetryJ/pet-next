@@ -7,8 +7,8 @@
  * @module dsh-pet/src/shared/balance/view
  */
 
-import { HANDLERS } from './handlers';
-import type { BalanceBubbleRow, BalanceState, BalanceUnavailable, CustomNode } from './types';
+import { HANDLERS } from './handlers/index.ts';
+import type { BalanceBubbleRow, BalanceState, BalanceUnavailable, CustomNode } from './types.ts';
 
 /**
  * 不可用状态的气泡行：显式给出原因，绝不伪造数字。

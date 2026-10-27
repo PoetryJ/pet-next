@@ -7,7 +7,7 @@
  * @module dsh-pet/src/shared/balance/notice
  */
 
-import type { BalanceNoticeDecision, BalanceState } from './types';
+import type { BalanceNoticeDecision, BalanceState } from './types.ts';
 
 /**
  * 判定本次是否弹气泡，并给出供下次比较的原因 key。

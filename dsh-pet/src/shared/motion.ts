@@ -5,9 +5,9 @@
  * 依赖共享层的选择函数与显示器几何，保证两端算出同一条路线。
  * @module dsh-pet/src/shared/motion
  */
-import { randomBetween } from './pickers';
-import { rectAtPoint } from './displays';
-import type { Corner, Rect } from './types';
+import { randomBetween } from './pickers.ts';
+import { rectAtPoint } from './displays.ts';
+import type { Corner, Rect } from './types.ts';
 
 /** 一次移动的几何参数（比例坐标）。 */
 export interface MovePlan {

@@ -6,7 +6,7 @@
  *
  * @module dsh-pet/src/host/balance/deepseek-common
  */
-import type { PricingTier } from './types';
+import type { PricingTier } from './types.ts';
 
 /**
  * 余额档位基准（按币种）：余额 ≥ 该值视为未消耗，据此折算已用百分比。

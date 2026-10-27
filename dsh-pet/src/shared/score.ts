@@ -4,7 +4,7 @@
  * 依赖 constants 的基准宠物宽度换算体型加成。
  * @module dsh-pet/src/shared/score
  */
-import { PET_REF_WIDTH } from './constants';
+import { PET_REF_WIDTH } from './constants.ts';
 
 /** 达标速度阈值（px/s）：飞行中被点击时低于它不给分（低速点击维持普通点击动画）。 */
 export const SCORE_MIN_SPEED = 400;

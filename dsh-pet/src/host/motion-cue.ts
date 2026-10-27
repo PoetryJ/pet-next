@@ -8,7 +8,7 @@
  * @module dsh-pet/src/host/motion-cue
  */
 
-import { flattenPetList } from './config';
+import { flattenPetList } from './config.ts';
 
 /** 受理失败的分类（路由原样透出给调用方，与 ./anim 同一套词汇）。 */
 export type MotionFailure = 'bad-request' | 'pet-required' | 'unknown-pet';

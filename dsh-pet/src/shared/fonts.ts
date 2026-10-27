@@ -5,7 +5,7 @@
  * 宿主半侧不能用本模块（DSH 单文件加载约束），其 fontValid 是自包含副本，改清单须两边同步。
  * @module dsh-pet/src/shared/fonts
  */
-import type { FontConfig, FontFamilyId } from './types';
+import type { FontConfig, FontFamilyId } from './types.ts';
 
 /** 一个字体预设：写进配置的 id 与两端共用的 CSS 字体栈。 */
 export interface FontPreset {

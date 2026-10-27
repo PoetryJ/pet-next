@@ -7,13 +7,13 @@
  * @module dsh-pet/src/shared/balance/index
  */
 
-export * from './types';
-export * from './tone';
-export * from './parse';
-export * from './percent';
-export * from './view';
-export * from './notice';
+export * from './types.ts';
+export * from './tone.ts';
+export * from './parse.ts';
+export * from './percent.ts';
+export * from './view.ts';
+export * from './notice.ts';
 
 // 形态展示规则与公共窗口工具。
-export * from './handlers';
-export * from './handlers/windows';
+export * from './handlers/index.ts';
+export * from './handlers/windows.ts';

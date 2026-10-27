@@ -222,10 +222,7 @@ describe('源码守卫 —— helper 的两个兜底必须在位', () => {
   test('#55-1 兜底显示：ready-to-show 之外还要有"加载完成后仍未显示就 show"', () => {
     // 回调可能是单行 `() => win.showInactive()`，也可能多行（多行时先 keepOffTaskbar 再 show）：
     // 只约束"回调内部最终用 showInactive、不抢焦点"，不约束写法本身。
-    assert.ok(
-      /once\('ready-to-show', \(\) => \{?[\s\S]*?win\.showInactive\(\)/.test(main),
-      '显示不得抢其它应用焦点',
-    );
+    assert.ok(/once\('ready-to-show', \(\) => \{?[\s\S]*?win\.showInactive\(\)/.test(main), '显示不得抢其它应用焦点');
     assert.ok(
       /once\('did-finish-load'/.test(main),
       '必须有 did-finish-load 兜底（paintWhenInitiallyHidden:false 时 ready-to-show 永不触发）',

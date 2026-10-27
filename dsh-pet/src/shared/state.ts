@@ -5,8 +5,9 @@
  * 两端共用同一份；首拉只记基线不渲染，否则刷新页面会把旧气泡重放一遍。
  * @module dsh-pet/src/shared/state
  */
-import { toBalanceState, type BalanceState } from './balance';
-import { toWorkStatus, type WorkStatusSnapshot } from './work-status';
+import { toBalanceState, type BalanceState } from './balance/index.ts';
+import { toWorkStatus, type WorkStatusSnapshot } from './work-status.ts';
+import { ROUTE_PATH } from './constants.ts';
 
 /** 一个叶子：计数器 + 载荷；data 为 null 表示还没有数据，消费端跳过。 */
 export interface StateLeaf {
@@ -42,7 +43,7 @@ function normLeaf(value: unknown): StateLeaf | null {
  *  wait 传了就带 ?since=&timeout= 走长轮询：宿主在版本没变时挂起，直到任意叶子被写过或超时；
  *  不传则立刻返回全量。 */
 export async function fetchState(
-  baseUrl = '/dsh-pet-7340/state',
+  baseUrl = ROUTE_PATH + '/state',
   wait?: { since: number; timeoutMs: number },
 ): Promise<PollState | null> {
   try {

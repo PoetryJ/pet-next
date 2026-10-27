@@ -10,11 +10,11 @@
 import { createServer } from 'node:http';
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import type { AddressInfo } from 'node:net';
-import type { RegisteredRoute } from '../standalone/context';
-import { boundedRequest, MAX_REQUEST_BYTES, MAX_SETTINGS_BYTES } from '../standalone/request-body';
-import { rejectRequest, type RequestSecurity } from '../standalone/request-security';
-import { settingsHandler, testHandler, type StandaloneServerOptions } from '../standalone/server';
-import { settingsPage, settingsScript, settingsStyle } from '../standalone/settings-page';
+import type { RegisteredRoute } from '../standalone/context.ts';
+import { boundedRequest, MAX_REQUEST_BYTES, MAX_SETTINGS_BYTES } from '../standalone/request-body.ts';
+import { rejectRequest, type RequestSecurity } from '../standalone/request-security.ts';
+import { settingsHandler, testHandler, type StandaloneServerOptions } from '../standalone/server.ts';
+import { settingsPage, settingsScript, settingsStyle } from '../standalone/settings-page.ts';
 
 /** 路由依赖：安全校验、AI 处理器与两个页面的数据源，全部注入以脱离 Electron 测试。 */
 interface RouterDeps {

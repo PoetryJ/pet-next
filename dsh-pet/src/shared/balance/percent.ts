@@ -7,8 +7,8 @@
  * @module dsh-pet/src/shared/balance/percent
  */
 
-import { HANDLERS } from './handlers';
-import type { BalanceView } from './types';
+import { HANDLERS } from './handlers/index.ts';
+import type { BalanceView } from './types.ts';
 
 /**
  * 取已用百分比（0 = 未消耗，100 = 耗尽）；给不出百分比语义的形态返回 undefined，不替服务商猜一个。

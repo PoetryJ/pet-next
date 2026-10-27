@@ -5,7 +5,7 @@
  * 坐标系由调用方决定，本文件不假定原点在 0；浏览器半侧 overlay 只有一块屏，退化为单矩形。
  * @module dsh-pet/src/shared/displays
  */
-import type { Rect } from './types';
+import type { Rect } from './types.ts';
 
 /** 矩形右缘（不含）。 */
 export const rectRight = (r: Rect): number => r.x + r.width;

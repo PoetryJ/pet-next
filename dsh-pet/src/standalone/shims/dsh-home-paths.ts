@@ -8,4 +8,4 @@
  */
 
 /** 转调插件自己的主目录解析，保证与 DSH 内运行同口径。 */
-export { dshHomeDir as resolveDshHome } from '../../host/helper-process';
+export { dshHomeDir as resolveDshHome } from '../../host/helper-process.ts';

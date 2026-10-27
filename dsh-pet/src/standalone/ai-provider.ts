@@ -7,11 +7,11 @@
  * @module dsh-pet/src/standalone/ai-provider
  */
 import { z } from 'zod';
-import type { StandaloneLogger } from './context';
-import { createAiConfig } from './ai-config';
-import type { StandaloneAiPublicSettings } from './ai-config';
-import { isAuthenticationFailure, isRateLimitFailure, sdkTextStream } from './ai-transport';
-import type { AiFetch, AiRequest, AiTransportEvent } from './ai-transport';
+import type { StandaloneLogger } from './context.ts';
+import { createAiConfig } from './ai-config.ts';
+import type { StandaloneAiPublicSettings } from './ai-config.ts';
+import { isAuthenticationFailure, isRateLimitFailure, sdkTextStream } from './ai-transport.ts';
+import type { AiFetch, AiRequest, AiTransportEvent } from './ai-transport.ts';
 
 /** 伪 ctx 与模型选择器里的服务商标识。 */
 const PROVIDER = 'standalone';

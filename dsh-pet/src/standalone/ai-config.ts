@@ -7,7 +7,7 @@
  * @module dsh-pet/src/standalone/ai-config
  */
 import { z } from 'zod';
-import { readAiSettings, writeAiSettings } from './ai-storage';
+import { readAiSettings, writeAiSettings } from './ai-storage.ts';
 
 /** 对外可见的设置视图：密钥只以 hasKey 表示。 */
 export interface StandaloneAiPublicSettings {

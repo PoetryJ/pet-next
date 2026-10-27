@@ -10,7 +10,7 @@
  * @module dsh-pet/src/host/anim
  */
 
-import { findPetInstance } from './config';
+import { findPetInstance } from './config.ts';
 
 /** 点播失败的分类；路由原样透出给调用方。 */
 export type AnimFailure = 'bad-request' | 'pet-required' | 'unknown-pet' | 'unknown-animation';

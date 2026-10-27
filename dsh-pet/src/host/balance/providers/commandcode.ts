@@ -7,8 +7,8 @@
  *
  * @module dsh-pet/src/host/balance/providers/commandcode
  */
-import { fetchWithRetry, looseNum, num, obj, queryString, readWindow } from '../internal';
-import type { BalanceProvider, BalanceSuccess, WindowsUsage } from '../types';
+import { fetchWithRetry, looseNum, num, obj, queryString, readWindow } from '../internal.ts';
+import type { BalanceProvider, BalanceSuccess, WindowsUsage } from '../types.ts';
 
 /** 控制面基址（/alpha/* 固定在根域名）。 */
 const API_BASE = 'https://api.commandcode.ai';

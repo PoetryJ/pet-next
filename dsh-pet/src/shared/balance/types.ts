@@ -6,7 +6,7 @@
  * @module dsh-pet/src/shared/balance/types
  */
 
-import type { QuotaTone } from './tone';
+import type { QuotaTone } from './tone.ts';
 
 /**
  * 展示形态：三种内置形态加一种完全自定义，不含任何服务商信息。

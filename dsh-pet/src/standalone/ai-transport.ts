@@ -8,7 +8,7 @@
  */
 import OpenAI from 'openai';
 import Anthropic from '@anthropic-ai/sdk';
-import type { StandaloneAiSettings } from './ai-config';
+import type { StandaloneAiSettings } from './ai-config.ts';
 
 /** fetch 的形状，便于测试替换。 */
 export type AiFetch = typeof globalThis.fetch;

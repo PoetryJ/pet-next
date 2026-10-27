@@ -9,16 +9,16 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { join } from 'node:path';
 
-import { flattenPetList, readAllConfig } from '../host/config';
+import { flattenPetList, readAllConfig } from '../host/config.ts';
 import {
   dshHomeDir,
   electronLandingDir,
   hasGraphicalDisplay,
   packageRoot,
   resolveElectronPath,
-} from '../host/helper-process';
-import type { StandaloneLogger } from './context';
-import { configPathsFor, describePets, isDesktopVisible } from './options';
+} from '../host/helper-process.ts';
+import type { StandaloneLogger } from './context.ts';
+import { configPathsFor, describePets, isDesktopVisible } from './options.ts';
 
 /** 读包版本，读不到时返回 unknown。 */
 export function packageVersion(root: string): string {

@@ -13,16 +13,16 @@ import {
   isEventAnim,
   poolIncludes,
   nextWorkStatusAnim,
-} from '../shared/pickers';
-import { planMove } from '../shared/motion';
-import { flattenConfigPets, isWebVisible } from '../shared/config';
+} from '../shared/pickers.ts';
+import { planMove } from '../shared/motion.ts';
+import { flattenConfigPets, isWebVisible } from '../shared/config.ts';
 import {
   balanceEventIndex,
   balancePercent,
   customViews,
   decideBalanceNotice,
   type BalanceState,
-} from '../shared/balance';
+} from '../shared/balance/index.ts';
 // 轮询状态：页面唯一的数据来源与渲染入口，拉取、拍平、比对都在 shared。
 import {
   fetchState,
@@ -41,11 +41,12 @@ import {
   type SayCue,
   type LockState,
   type PetFacing,
-} from '../shared/state';
-import { WORK_STATUS_INDEX, type WorkStatusSnapshot } from '../shared/work-status';
-import { makeBalanceBubble, makeWhisperBubble } from './bubble';
-import { clickScore, SCORE_MIN_SPEED, mountScorePopup, spawnScoreBurst } from '../shared/score-popup';
+} from '../shared/state.ts';
+import { WORK_STATUS_INDEX, type WorkStatusSnapshot } from '../shared/work-status.ts';
+import { makeBalanceBubble, makeWhisperBubble } from './bubble.ts';
+import { clickScore, SCORE_MIN_SPEED, mountScorePopup, spawnScoreBurst } from '../shared/score-popup.ts';
 import {
+  ROUTE_PATH,
   CANVAS_H,
   FEET_Y,
   HIT_BOX,
@@ -53,7 +54,7 @@ import {
   PET_REF_WIDTH,
   ANIMATION_EXT,
   SLINGSHOT_DOUBLE_MS,
-} from '../shared/constants';
+} from '../shared/constants.ts';
 // 统一右键菜单：与桌面共用同一份组件（src/shared/menu）。
 import {
   buildMenuTree,
@@ -66,17 +67,17 @@ import {
   type MenuLeaf,
   type MenuMoreItem,
   type MenuNode,
-} from '../shared/menu';
+} from '../shared/menu.ts';
 // 悬浮提示：与桌面共用样式与摆位判据。
-import { TOOLTIP_CLASS, TOOLTIP_CSS, TOOLTIP_GAP_RATIO, tooltipPlacement } from '../shared/tooltip';
+import { TOOLTIP_CLASS, TOOLTIP_CSS, TOOLTIP_GAP_RATIO, tooltipPlacement } from '../shared/tooltip.ts';
 // 对话弹窗：与桌面共用组件，记忆由 host 的 /chat 读写。
-import { mountChatDialog } from '../shared/chat';
-import { registerPose } from './pose';
-import { registerProgress } from './progress';
+import { mountChatDialog } from '../shared/chat.ts';
+import { registerPose } from './pose.ts';
+import { registerProgress } from './progress.ts';
 // 字体换算只在 shared 一处，与桌面端共用，避免两端漂移。
-import { fontStackOf, resolveFontPx } from '../shared/fonts';
-import { petBridge } from './settings';
-import { notifyFromFrame } from './notify';
+import { fontStackOf, resolveFontPx } from '../shared/fonts.ts';
+import { petBridge } from './settings.ts';
+import { notifyFromFrame } from './notify.ts';
 
 // 拖拽抛掷物理：纯计算在 shared/physics.ts，两端共用。
 import {
@@ -100,8 +101,8 @@ import {
   type DragSample,
   type PetCollisionSlot,
   type ThrowState,
-} from '../shared/physics';
-import type { Animations, Corner, Pet, PhysicsParams, Weights } from '../shared/types';
+} from '../shared/physics.ts';
+import type { Animations, Corner, Pet, PhysicsParams, Weights } from '../shared/types.ts';
 import type * as ReactNS from 'react';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type { jsx } from 'react/jsx-runtime';
@@ -118,7 +119,7 @@ export type RuntimePet = Pet & {
 let resolvedExt: string | null = null;
 
 /** 点击音效：单例 audio，100ms 内连点只响一次，播放失败一律静默。 */
-const CLICK_SOUND_URL = '/dsh-pet-7340/sound/click-duck.wav';
+const CLICK_SOUND_URL = ROUTE_PATH + '/sound/click-duck.wav';
 const CLICK_SOUND_VOLUME = 0.5;
 const CLICK_SOUND_THROTTLE_MS = 100;
 let clickAudio: HTMLAudioElement | null = null;
@@ -185,8 +186,8 @@ const css = [
   '.dsh-pet-video.is-front{opacity:1}',
   // 触屏拖拽必需：缺 touch-action:none 时浏览器会把手势判成滚动并触发 pointercancel；
   // 两条 -webkit-* 抑制长按选中与 iOS 长按系统菜单。
-  '.dsh-pet-hit{position:absolute;pointer-events:auto;cursor:url("/dsh-pet-7340/pic/cursor-grab.png") 16 16, grab;z-index:1;touch-action:none;-webkit-user-select:none;-webkit-touch-callout:none}',
-  '.dsh-pet-hit.dragging{cursor:url("/dsh-pet-7340/pic/cursor-grabbing.png") 16 16, grabbing}',
+  `.dsh-pet-hit{position:absolute;pointer-events:auto;cursor:url("${ROUTE_PATH}/pic/cursor-grab.png") 16 16, grab;z-index:1;touch-action:none;-webkit-user-select:none;-webkit-touch-callout:none}`,
+  `.dsh-pet-hit.dragging{cursor:url("${ROUTE_PATH}/pic/cursor-grabbing.png") 16 16, grabbing}`,
   '@media (prefers-reduced-motion: reduce){.dsh-pet-video{transition:none}}',
   // 统一右键菜单样式，与桌面注入同一份。
   MENU_CSS,
@@ -409,7 +410,7 @@ export function makePetUI(rt: {
      */
     const reportPlayback = (playbackId: string, status: string, reason?: string): void => {
       void postAction(
-        '/dsh-pet-7340/playback/' + encodeURIComponent(playbackId) + '/report',
+        ROUTE_PATH + '/playback/' + encodeURIComponent(playbackId) + '/report',
         reason === undefined ? { status } : { status, reason },
       ).then((ok: boolean) => {
         if (!ok) {
@@ -465,7 +466,8 @@ export function makePetUI(rt: {
       // name 形态按「素材根 + 名字」拼路径，后续 fetch + blob 两条路共用。
       const assetUrl =
         cueUrl ??
-        '/dsh-pet-7340/thumb/' +
+        ROUTE_PATH +
+          '/thumb/' +
           encodeURIComponent(cfg.assetRoot ?? cfg.id) +
           '/' +
           encodeURIComponent(next) +
@@ -1608,7 +1610,7 @@ export function makePetUI(rt: {
           lockTimerRef.current = null;
         }
         applyFreeze(false);
-        void postAction('/dsh-pet-7340/lock/release?pet=' + encodeURIComponent(cfg.id), { force: true });
+        void postAction(ROUTE_PATH + '/lock/release?pet=' + encodeURIComponent(cfg.id), { force: true });
       }
       // 抓取速度日志：在 stopThrow 之前读，静止时记录 0。
       const grabState = throwStateRef.current;
@@ -1871,7 +1873,7 @@ export function makePetUI(rt: {
         // 第三方菜单项只上报 owner、label 与当前宠物 id，具体动作由注册方查询。
         const owner = leaf.owner ?? '';
         if (owner !== '') {
-          postAction('/dsh-pet-7340/menu/click', { owner, label: leaf.label, pet: cfg.id }).catch((e: unknown) =>
+          postAction(ROUTE_PATH + '/menu/click', { owner, label: leaf.label, pet: cfg.id }).catch((e: unknown) =>
             console.warn('[dsh-pet] 第三方菜单点击上报失败', e),
           );
         }
@@ -1880,7 +1882,7 @@ export function makePetUI(rt: {
       if (leaf.action === 'show-balance') {
         // 查看余额：动作端点让 host 刷新并写入 /state，页面什么都不用做。
         console.info('[dsh-pet] 菜单查看余额 pet=' + cfg.id);
-        postAction('/dsh-pet-7340/balance')
+        postAction(ROUTE_PATH + '/balance')
           .then((ok: boolean) => {
             if (!ok) console.warn('[dsh-pet] 余额刷新动作未成功 pet=' + cfg.id);
           })
@@ -1891,7 +1893,7 @@ export function makePetUI(rt: {
         // 手动碎碎念：动作端点不回文本，文本随版本变化由长轮询送达，不受 whisperEnabled 限制。
         console.info('[dsh-pet] 菜单触发碎碎念 pet=' + cfg.id);
         // surface 必填：本页面就是网页端。
-        postAction('/dsh-pet-7340/whisper?pet=' + encodeURIComponent(cfg.id) + '&surface=web')
+        postAction(ROUTE_PATH + '/whisper?pet=' + encodeURIComponent(cfg.id) + '&surface=web')
           .then((ok: boolean) => {
             if (!ok) console.warn('[dsh-pet] 碎碎念手动触发失败 pet=' + cfg.id);
           })
@@ -1905,7 +1907,7 @@ export function makePetUI(rt: {
         const hitRect = stageRef.current?.querySelector('.dsh-pet-hit')?.getBoundingClientRect();
         chatRef.current = mountChatDialog({
           petId: cfg.id,
-          baseUrl: '/dsh-pet-7340/chat',
+          baseUrl: ROUTE_PATH + '/chat',
           surface: 'web',
           x: hitRect ? hitRect.right + 6 : window.innerWidth - 256,
           y: hitRect ? hitRect.top + 6 : 8,
@@ -1924,7 +1926,7 @@ export function makePetUI(rt: {
         const display = leaf.display;
         if (!display) return;
         console.info('[dsh-pet] 菜单切换显示位置 pet=' + cfg.id + ' display=' + display);
-        void fetch('/dsh-pet-7340/pet-display', {
+        void fetch(ROUTE_PATH + '/pet-display', {
           method: 'POST',
           headers: { 'content-type': 'application/json' },
           body: JSON.stringify({ id: cfg.id, display }),
@@ -2195,7 +2197,7 @@ export function makePetUI(rt: {
       /** 拉取成品聚合：host readAllConfig 的输出，客户端零校验零兜底。 */
       const loadMerged = async (): Promise<Record<string, Record<string, unknown>>> => {
         // cache:'no-store' 与 fetchState 同口径，避免「版本变化后重拉」拿到旧值。
-        const r = await fetch('/dsh-pet-7340/config', { cache: 'no-store' });
+        const r = await fetch(ROUTE_PATH + '/config', { cache: 'no-store' });
         if (!r.ok) throw new Error('config HTTP ' + r.status);
         return (await r.json()) as Record<string, Record<string, unknown>>;
       };

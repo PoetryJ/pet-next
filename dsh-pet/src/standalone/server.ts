@@ -9,13 +9,13 @@
 import { timingSafeEqual } from 'node:crypto';
 import { createServer } from 'node:http';
 import type { IncomingMessage, Server as HttpServer, ServerResponse } from 'node:http';
-import type { RegisteredRoute, StandaloneLogger } from './context';
-import { createRequestSecurity, rejectRequest, secureResponse } from './request-security';
-import type { RequestSecurity } from './request-security';
-import { boundedRequest, MAX_REQUEST_BYTES, MAX_SETTINGS_BYTES } from './request-body';
-import { publicSettings, validateSettings } from './settings';
-import type { StandaloneSettingsService } from './settings';
-import { settingsPage, settingsScript, settingsStyle } from './settings-page';
+import type { RegisteredRoute, StandaloneLogger } from './context.ts';
+import { createRequestSecurity, rejectRequest, secureResponse } from './request-security.ts';
+import type { RequestSecurity } from './request-security.ts';
+import { boundedRequest, MAX_REQUEST_BYTES, MAX_SETTINGS_BYTES } from './request-body.ts';
+import { publicSettings, validateSettings } from './settings.ts';
+import type { StandaloneSettingsService } from './settings.ts';
+import { settingsPage, settingsScript, settingsStyle } from './settings-page.ts';
 
 /** 默认监听端口。 */
 export const DEFAULT_STANDALONE_PORT = 3080;
