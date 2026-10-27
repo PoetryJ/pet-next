@@ -17,6 +17,14 @@ const QUERY_POINTER = 38;
 /** QueryPointer 应答固定 32 字节 */
 const REPLY_BYTES = 32;
 
+/**
+ * 三处等待的超时上限（毫秒）。X 服务器就在本机，正常都在毫秒级；卡住只可能是 X 侧已死或套接字被挂起。
+ * 超时必须丢掉整条连接重来：留在半死连接上，inFlight 会一直为真，宠物永久停在旧坐标。
+ */
+const CONNECT_TIMEOUT_MS = 500;
+const HANDSHAKE_TIMEOUT_MS = 1000;
+const QUERY_TIMEOUT_MS = 500;
+
 /** 从 Xauthority 里取本 display 的 MIT-MAGIC-COOKIE-1；没有则返回 null（匿名连接） */
 function readCookie(display) {
   const file = process.env.XAUTHORITY || path.join(os.homedir(), '.Xauthority');
@@ -73,7 +81,11 @@ function connect(display) {
         if (index < paths.length) attempt();
         else reject(error);
       };
+      // 只在连接阶段设超时：连上后必须置 0，否则空闲的轮询连接会被当成超时踢掉
+      socket.setTimeout(CONNECT_TIMEOUT_MS);
+      socket.once('timeout', () => fail(new Error('X11 connect timeout')));
       socket.once('connect', () => {
+        socket.setTimeout(0);
         socket.off('error', fail);
         resolve(socket);
       });
@@ -126,6 +138,7 @@ function handshake(display) {
           if (buffer.length < 8) return;
           if (buffer[0] !== 1) {
             cleanup();
+            socket.destroy();
             reject(new Error('X11 setup failed, status=' + buffer[0]));
             return;
           }
@@ -141,9 +154,18 @@ function handshake(display) {
         };
         const onError = (error) => {
           cleanup();
+          socket.destroy();
           reject(error);
         };
+        // 握手也是等待：X 侧不回 setup 应答时不能让 ensure() 永远挂着
+        const timeout = setTimeout(() => {
+          cleanup();
+          socket.destroy();
+          reject(new Error('X11 handshake timeout'));
+        }, HANDSHAKE_TIMEOUT_MS);
+        timeout.unref?.();
         const cleanup = () => {
+          clearTimeout(timeout);
           socket.off('data', onData);
           socket.off('error', onError);
         };
@@ -217,7 +239,23 @@ function createLinuxPointer(options = {}) {
     return ensure().then(
       () =>
         new Promise((resolve, reject) => {
-          pending = { resolve, reject };
+          // 应答可能永远不来（X 侧卡死）：超时即失败，由调用方 reset 掉整条连接。
+          // 迟到的应答会留在 buffer 里被下一次查询当成自己的结果，只能靠重连清掉。
+          const timer = setTimeout(() => {
+            pending = null;
+            reject(new Error('X11 QueryPointer timeout'));
+          }, QUERY_TIMEOUT_MS);
+          timer.unref?.();
+          pending = {
+            resolve: (point) => {
+              clearTimeout(timer);
+              resolve(point);
+            },
+            reject: (error) => {
+              clearTimeout(timer);
+              reject(error);
+            },
+          };
           const req = Buffer.alloc(8);
           req[0] = QUERY_POINTER;
           req.writeUInt16LE(2, 2);
@@ -258,28 +296,36 @@ function createLinuxPointer(options = {}) {
     },
     /** 单次查询（自检/测试用） */
     probe: () =>
-      handshake(display).then(({ socket: s, root: r }) => {
-        return new Promise((resolve, reject) => {
-          let buffer = Buffer.alloc(0);
-          const onData = (chunk) => {
-            buffer = Buffer.concat([buffer, chunk]);
-            if (buffer.length < REPLY_BYTES) return;
-            s.off('data', onData);
-            s.destroy();
-            resolve({ x: buffer.readInt16LE(16), y: buffer.readInt16LE(18) });
-          };
-          s.on('data', onData);
-          s.on('error', (error) => {
-            s.destroy();
-            reject(error);
-          });
-          const req = Buffer.alloc(8);
-          req[0] = QUERY_POINTER;
-          req.writeUInt16LE(2, 2);
-          req.writeUInt32LE(r, 4);
-          s.write(req);
-        });
-      }),
+      handshake(display).then(
+        ({ socket: s, root: r }) =>
+          new Promise((resolve, reject) => {
+            let buffer = Buffer.alloc(0);
+            const timer = setTimeout(() => {
+              s.destroy();
+              reject(new Error('X11 QueryPointer timeout'));
+            }, QUERY_TIMEOUT_MS);
+            timer.unref?.();
+            const onData = (chunk) => {
+              buffer = Buffer.concat([buffer, chunk]);
+              if (buffer.length < REPLY_BYTES) return;
+              clearTimeout(timer);
+              s.off('data', onData);
+              s.destroy();
+              resolve({ x: buffer.readInt16LE(16), y: buffer.readInt16LE(18) });
+            };
+            s.on('data', onData);
+            s.on('error', (error) => {
+              clearTimeout(timer);
+              s.destroy();
+              reject(error);
+            });
+            const req = Buffer.alloc(8);
+            req[0] = QUERY_POINTER;
+            req.writeUInt16LE(2, 2);
+            req.writeUInt32LE(r, 4);
+            s.write(req);
+          }),
+      ),
   };
 }
 

@@ -8,6 +8,7 @@
 import type { IncomingMessage, ServerResponse } from 'node:http';
 import { ROUTE_PATH } from '../../shared/constants.ts';
 import { readBody, sendFile, sendJson, sendText, type RouteResult } from '../http.ts';
+import { failureBody } from '../routes/result.ts';
 import { createPetRouter } from '../routes/index.ts';
 import type { PetRouteDeps } from '../routes/types.ts';
 import type { HostContext } from './context.ts';
@@ -89,7 +90,15 @@ export function registerHttpRoute(ctx: HostContext, handlePetRoute: HttpRouteHan
             res.off('close', onClose);
             // 连接已断（挂起等待被中止后也可能撞上）→ 不再写，避免二次抛错
             if (!res.destroyed && !res.writableEnded) {
-              sendJson(res, 500, { error: e instanceof Error ? e.message : String(e) });
+              // 请求体超限与客户端中断是用户侧问题，不能报成 500；断连时连响应都写不出去。
+              const code = (e as { code?: string }).code;
+              if (code === 'body-too-large')
+                sendJson(res, 413, failureBody('payload-too-large', 'request body too large'));
+              else if (code !== 'client-aborted') {
+                // 未预期异常：真实原因只进日志，响应里只回分类文案（可能含绝对路径，不外泄）
+                ctx.logger?.warn?.(`[dsh-pet] route failed: ${e instanceof Error ? e.message : String(e)}`);
+                sendJson(res, 500, failureBody('internal-error', 'dsh-pet: internal error'));
+              }
             }
           }
         },

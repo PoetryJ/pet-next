@@ -103,12 +103,51 @@ export type RouteResult =
   /** 无需应答：调用方在挂起等待期间已断开（见 /playback 的等待分支）——消费方直接收尾，不写 */
   | { kind: 'none' };
 
-/** 收集请求体（文本） */
+/** 请求体上限（字节）：写端点只收 JSON 配置与指令，1MiB 足够，超限直接 413。 */
+export const MAX_BODY_BYTES = 1024 * 1024;
+
+/**
+ * 收集请求体（文本）。
+ *
+ * 带上限与断连处理：客户端半途断开时必须让 Promise 落地，否则处理器永远挂着、内存只增不减。
+ *
+ * @param req - 请求对象。
+ * @returns 请求体文本。
+ * @throws {Error} 超过 {@link MAX_BODY_BYTES} 时带 `code: 'body-too-large'`；连接提前断开时带 `code: 'client-aborted'`。
+ */
 export function readBody(req: IncomingMessage): Promise<string> {
   return new Promise((resolve2, reject) => {
     const chunks: Buffer[] = [];
-    req.on('data', (c: Buffer) => chunks.push(c));
-    req.on('end', () => resolve2(Buffer.concat(chunks).toString('utf8')));
-    req.on('error', reject);
+    let size = 0;
+    let settled = false;
+
+    /**
+     * 落地一次：'close' 在正常应答后也会触发，靠标志位拒绝二次落地。
+     * 不摘监听——请求对象随连接回收，摘监听反而要求调用方提供完整的 on/off 对（测试桩通常只有 on）。
+     */
+    const settle = (finish: () => void): void => {
+      if (settled) return;
+      settled = true;
+      finish();
+    };
+    const onData = (chunk: Buffer): void => {
+      size += chunk.length;
+      if (size > MAX_BODY_BYTES) {
+        settle(() => reject(Object.assign(new Error('request body too large'), { code: 'body-too-large' })));
+        req.destroy();
+        return;
+      }
+      chunks.push(chunk);
+    };
+    const onEnd = (): void => settle(() => resolve2(Buffer.concat(chunks).toString('utf8')));
+    const onError = (error: Error): void => settle(() => reject(error));
+    const onAborted = (): void =>
+      settle(() => reject(Object.assign(new Error('client aborted'), { code: 'client-aborted' })));
+
+    req.on('data', onData);
+    req.on('end', onEnd);
+    req.on('error', onError);
+    req.on('close', onAborted);
+    req.on('aborted', onAborted);
   });
 }

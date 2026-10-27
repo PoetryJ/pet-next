@@ -53,17 +53,18 @@ async function put(body: string, query = '') {
   return { status: response.status, body: (await response.json()) as Record<string, unknown> };
 }
 
-test('config save errors: malformed JSON is still a 400 and never writes a file', async () => {
+test('config save errors: malformed JSON is 400 + invalid-json and never writes a file', async () => {
   const result = await put('{');
   assert.equal(result.status, 400);
-  assert.equal(result.body.error, 'invalid JSON body');
+  assert.equal(result.body.reason, 'invalid-json');
   assert.equal(existsSync(file), false);
 });
 
-test('config save errors: invalid fields remain a 400 and leave storage unchanged', async () => {
+test('config save errors: invalid fields are 200 + bad-request and leave storage unchanged', async () => {
   const result = await put(JSON.stringify({ pets: [{ ...pet, size: -1 }] }));
-  assert.equal(result.status, 400);
-  assert.match(String(result.body.error), /^invalid pet config:/);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.reason, 'bad-request');
+  assert.match(String(result.body.message), /^invalid pet config:/);
   assert.equal(existsSync(file), false);
 });
 
@@ -71,17 +72,19 @@ test('config save errors: corrupt-file confirmation still prevents an overwrite'
   writeFileSync(file, '{');
   t.after(() => rmSync(file, { force: true }));
   const result = await put(JSON.stringify({ pets: [pet] }));
-  assert.equal(result.status, 409);
+  assert.equal(result.status, 200);
+  assert.equal(result.body.reason, 'user-config-unparsable');
   assert.equal(result.body.needConfirm, true);
   assert.equal(readFileSync(file, 'utf8'), '{');
 });
 
-test('config save errors: an I/O failure is a 500 with details only in the server log', async (t) => {
+test('config save errors: an I/O failure is 200 + generate-error with details only in the server log', async (t) => {
   mkdirSync(file);
   t.after(() => rmSync(file, { recursive: true, force: true }));
   const result = await put(JSON.stringify({ pets: [pet] }), '?force=1');
-  assert.equal(result.status, 500);
-  assert.equal(result.body.error, 'failed to save config');
+  assert.equal(result.status, 200);
+  assert.equal(result.body.reason, 'generate-error');
+  assert.equal(result.body.message, 'failed to save config');
   assert.ok(warnings.some((m) => m.includes('config save failed:') && m.includes('main-config.jsonc')));
   assert.equal(JSON.stringify(result.body).includes(home), false);
 });

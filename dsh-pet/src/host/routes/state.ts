@@ -9,6 +9,7 @@ import { parseStateWaitQuery } from '../state.ts';
 import { type RouteResult } from '../http.ts';
 import { HOST_WORK_STATUS_STATES, TASK_TEXT_MAX, type HostWorkStatusState } from '../work-status.ts';
 import type { PetRouteDeps, RouteInput } from './types.ts';
+import { failResult, invalidJson, methodNotAllowed, okResult, payloadTooLarge } from './result.ts';
 
 /** 轮询状态领域：未命中返回 undefined，命中返回应答。 */
 export async function handleStateRoutes(deps: PetRouteDeps, input: RouteInput): Promise<RouteResult | undefined> {
@@ -19,7 +20,7 @@ export async function handleStateRoutes(deps: PetRouteDeps, input: RouteInput): 
   // 只读、无副作用；某个服务商列模型失败（适配器不支持 / 网络）只让它空着，不拖垮整张清单。
   // 一个实时路由都没注册时回落到 listConfigurableProviders，免得下拉框空着。
   if (rest === 'models') {
-    if (method !== 'GET') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    if (method !== 'GET') return methodNotAllowed();
     try {
       const llm = ctx.llm as
         | {
@@ -51,9 +52,10 @@ export async function handleStateRoutes(deps: PetRouteDeps, input: RouteInput): 
           return { ...p, models };
         }),
       );
-      return { kind: 'json', status: 200, obj: { providers: catalog } };
+      return okResult({ providers: catalog });
     } catch (e) {
-      return { kind: 'json', status: 500, obj: { error: e instanceof Error ? e.message : String(e) } };
+      // 模型目录取不到是依赖不可用（宿主没提供 llm 适配器 / 全部列模型失败），不是传输层故障
+      return failResult('generate-error', e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -63,15 +65,16 @@ export async function handleStateRoutes(deps: PetRouteDeps, input: RouteInput): 
   // 长轮询：带 `?since=&timeout=`（成对必填）时，版本与当前相同就挂起，直到任意叶子被写过或超时；
   // 不带 = 立刻返回全量。等待语义与 GET /playback/{id} 的 wait 同一套（上限同值、断线同一个 signal）。
   if (rest === 'state') {
-    if (method !== 'GET') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    if (method !== 'GET') return methodNotAllowed();
     const headers = { 'cache-control': 'no-cache, no-store' };
     const parsed = parseStateWaitQuery(url.searchParams.get('since'), url.searchParams.get('timeout'));
-    if (parsed.kind === 'error') return { kind: 'json', status: 400, obj: { error: parsed.error } };
+    // since/timeout 是业务参数：给错了是调用方的问题，但仍属「请求已进处理器」
+    if (parsed.kind === 'error') return failResult('bad-request', parsed.error);
     const current = state.read();
     // 两者都没传 → 立刻返回；已经有新东西 → 也立刻返回（别白等一整个 timeout）。
     // timeout=0 走挂起分支，下一拍就醒，等价「立刻返回」，这里不特判。
     if (parsed.kind === 'none' || current.counter !== parsed.since) {
-      return { kind: 'json', status: 200, obj: current, headers };
+      return okResult(current, headers);
     }
     const since = parsed.since;
     return await new Promise<RouteResult>((resolveWait) => {
@@ -86,7 +89,7 @@ export async function handleStateRoutes(deps: PetRouteDeps, input: RouteInput): 
       const cancel = state.wait({
         since,
         timeoutMs: parsed.timeoutMs,
-        onWake: () => settle({ kind: 'json', status: 200, obj: state.read(), headers }),
+        onWake: () => settle(okResult(state.read(), headers)),
       });
       // 调用方断开：取消等待者（清掉它的超时定时器），以「无需应答」收尾。
       const onAbort = (): void => {
@@ -109,21 +112,19 @@ export async function handleStateRoutes(deps: PetRouteDeps, input: RouteInput): 
       if (workStatus.clear(EXTERNAL_WORK_SESSION)) publishWorkStatus();
       return { kind: 'text', status: 204, body: '' };
     }
-    if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
-    if (Buffer.byteLength(body ?? '', 'utf8') > 8 * 1024)
-      return { kind: 'json', status: 413, obj: { error: 'body too large' } };
+    if (method !== 'POST') return methodNotAllowed();
+    if (Buffer.byteLength(body ?? '', 'utf8') > 8 * 1024) return payloadTooLarge('body too large');
     let parsed: unknown;
     try {
       parsed = JSON.parse(body ?? '');
     } catch {
-      return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      return invalidJson();
     }
-    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed))
-      return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return invalidJson();
     const payload = parsed as { state?: unknown; task?: unknown };
     const state = payload.state;
     if (typeof state !== 'string' || !(HOST_WORK_STATUS_STATES as readonly string[]).includes(state))
-      return { kind: 'json', status: 400, obj: { error: 'invalid state' } };
+      return failResult('bad-request', `state 必须是 ${HOST_WORK_STATUS_STATES.join(' / ')} 之一`);
     let task: string | null | undefined;
     if (Object.prototype.hasOwnProperty.call(payload, 'task')) {
       if (payload.task === null) {
@@ -133,29 +134,21 @@ export async function handleStateRoutes(deps: PetRouteDeps, input: RouteInput): 
         if (trimmed === '') {
           task = null;
         } else if (Array.from(trimmed).length > TASK_TEXT_MAX) {
-          return {
-            kind: 'json',
-            status: 400,
-            obj: { error: `task too long (max ${TASK_TEXT_MAX} code points)` },
-          };
+          return failResult('bad-request', `task too long (max ${TASK_TEXT_MAX} code points)`);
         } else {
           task = trimmed;
         }
       } else {
-        return { kind: 'json', status: 400, obj: { error: 'invalid task' } };
+        return failResult('bad-request', 'invalid task');
       }
     }
     workStatus.setState(EXTERNAL_WORK_SESSION, state as HostWorkStatusState, nextExternalWorkSeq());
     if (task !== undefined) workStatus.setTask(EXTERNAL_WORK_SESSION, task);
     publishWorkStatus();
-    return {
-      kind: 'json',
-      status: 200,
-      obj: {
-        state: workStatus.stateOf(EXTERNAL_WORK_SESSION) ?? state,
-        task: workStatus.taskOf(EXTERNAL_WORK_SESSION),
-      },
-    };
+    return okResult({
+      state: workStatus.stateOf(EXTERNAL_WORK_SESSION) ?? state,
+      task: workStatus.taskOf(EXTERNAL_WORK_SESSION),
+    });
   }
 
   return undefined;

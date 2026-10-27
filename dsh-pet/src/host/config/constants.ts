@@ -5,6 +5,8 @@
  * 必须始终成立：取值域与 shared/types 的联合类型一一对应，改一处必须同步另一处。
  * @module dsh-pet/src/host/config/constants
  */
+import { FONT_PRESETS } from '../../shared/fonts.ts';
+import { PET_DISPLAYS } from '../../shared/config.ts';
 import { defaultLog } from '../log-file.ts';
 
 /** 位置角落白名单 */
@@ -12,28 +14,12 @@ const CORNERS = ['top-left', 'top-right', 'bottom-left', 'bottom-right'] as cons
 
 export const CORNER_SET: ReadonlySet<string> = new Set(CORNERS);
 
-/** display 白名单（导出：宿主路由 POST /pet-display 写单只宠物的显示位置时复用同一份枚举，
- *  读写两侧必须同一份规则，不在路由里另写一个 Set） */
-const PET_DISPLAYS = ['web', 'desktop', 'both', 'none'] as const;
-
+/** display 白名单（导出：宿主路由 POST /pet-display 写单只宠物的显示位置时复用同一份枚举）。
+ *  唯一来源是 shared/config 的 PET_DISPLAYS，读写两侧必须同一份规则，不在路由里另写一个 Set。 */
 export const PET_DISPLAY_SET: ReadonlySet<string> = new Set(PET_DISPLAYS);
 
-/** font.family 白名单（预设 id）——必须与 src/shared/fonts.ts 的 FONT_PRESETS 保持一致：
- *  host 不能 import src/shared，这里是那份清单的自包含副本，加/删字体预设时两边都要改。 */
-export const FONT_FAMILY_SET: ReadonlySet<string> = new Set([
-  'candy',
-  'yahei',
-  'youyuan',
-  'kaiti',
-  'simsun',
-  'comic',
-  'system',
-]);
-
-/** font.size 合法区间（px，含端点）——与 src/shared/fonts.ts 的 FONT_SIZE_MIN / FONT_SIZE_MAX 同一口径 */
-export const FONT_SIZE_MIN = 4;
-
-export const FONT_SIZE_MAX = 200;
+/** font.family 白名单：唯一来源是 shared/fonts 的 FONT_PRESETS，宿主只取 id 做校验。 */
+export const FONT_FAMILY_SET: ReadonlySet<string> = new Set(FONT_PRESETS.map((preset) => preset.id));
 
 /** id 禁用的字符（Windows 文件名保留符 + 控制字符，防配置值逃逸文件路径）。
  *  同时被 thumb 路由的 petId 校验复用：那里同样是「标识符不得当路径片段」。 */

@@ -17,14 +17,17 @@
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
-import { readFileSync } from 'node:fs';
+import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 
 /** 包内文件源码（守卫用；相对 src/host/ 解析） */
 const readSource = (rel: string): string => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
 
-/** 路由源码：/reload 与 /config 写接口分居两个领域模块（见 routes/） */
-const routeSource = readSource('./routes/config.ts') + '\n' + readSource('./routes/desktop.ts');
+/** 路由源码：扫整个目录而不是写死文件名——领域拆分与搬迁不该让守卫误报 */
+const routeSource = readdirSync(fileURLToPath(new URL('./routes/', import.meta.url)))
+  .filter((name) => name.endsWith('.ts') && !name.endsWith('.test.ts'))
+  .map((name) => readSource('./routes/' + name))
+  .join('\n');
 const host = readSource('./index.ts') + '\n' + routeSource;
 const sprite = readSource('../../runtime/electron-helper/sprite.js');
 const clientPet = readSource('../client/pet.ts');
@@ -60,7 +63,8 @@ describe('桌面端「重载配置」—— 菜单 → 宿主重启 Helper', () 
   });
 
   test('requestRestart 是唯一的重启入口：两个 /config 写接口、/reload 与 /pet-display 都走它', () => {
-    const calls = host.match(/void requestRestart\(\)/g) ?? [];
+    // 调用点可能写作 `void requestRestart()` 或 `void deps.requestRestart()`（看该模块有没有解构）
+    const calls = host.match(/void (?:deps\.)?requestRestart\(\)/g) ?? [];
     assert.equal(calls.length, 4, 'PUT /config、POST /config、POST /reload、POST /pet-display 都应走 requestRestart()');
   });
 

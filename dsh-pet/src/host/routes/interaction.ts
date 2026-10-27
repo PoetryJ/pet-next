@@ -15,6 +15,7 @@ import {
 } from '../broadcast.ts';
 import type { PetRouteDeps, RouteInput } from './types.ts';
 import type { RouteResult } from '../http.ts';
+import { failResult, invalidJson, methodNotAllowed, okResult } from './result.ts';
 
 /** 会话交互领域：未命中返回 undefined，命中返回应答。 */
 export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteInput): Promise<RouteResult | undefined> {
@@ -25,15 +26,15 @@ export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteIn
   // POST /lock/release?pet= 释放。一把锁、全有全无：占用期间除持锁者外全静音。
   // 与 /playback 的分工：那个是「这次点播播完没有」的回执，这个是「这段时间归谁控制」的租约。
   // 锁自己占一个叶子（pets.<id>.lock）：宿主停不掉正在播的视频，「完全静止」最终由渲染端执行。
-  // 失败一律 HTTP 200 + ok:false；只有 405 / 400 不是 200。
+  // 失败一律 HTTP 200 + 失败实体；方法错与坏 JSON 由协议构造器给真实状态码。
   if (rest === 'lock' || rest === 'lock/release') {
     const isRelease = rest === 'lock/release';
-    if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    if (method !== 'POST') return methodNotAllowed();
     let parsed: unknown;
     try {
       parsed = JSON.parse(body ?? 'null');
     } catch {
-      return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      return invalidJson();
     }
     const o = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
     try {
@@ -45,32 +46,22 @@ export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteIn
       if (isRelease) {
         const d = lock.release({ petId, lockId: o.lockId, force: o.force });
         if (!d.ok) {
-          const obj: Record<string, unknown> = { ok: false, reason: d.reason, message: d.message };
-          if (d.reason === 'lock-lost') obj.cause = d.cause;
-          return { kind: 'json', status: 200, obj };
+          return failResult(d.reason, d.message, d.reason === 'lock-lost' ? { cause: d.cause } : undefined);
         }
         // 幂等：当前没有锁同样回 ok（「让锁消失」这个意图在空状态下已经成立）
-        return { kind: 'json', status: 200, obj: { ok: true } };
+        return okResult({ ok: true });
       }
       const d = lock.acquire({ petId, lockId: o.lockId, ttl: o.ttl });
       if (!d.ok) {
-        const obj: Record<string, unknown> = { ok: false, reason: d.reason, message: d.message };
-        if (d.reason === 'locked') obj.expiresAt = d.expiresAt; // 让对方知道何时能重试
-        if (d.reason === 'lock-lost') obj.cause = d.cause;
-        return { kind: 'json', status: 200, obj };
+        const extra: Record<string, unknown> = {};
+        if (d.reason === 'locked') extra.expiresAt = d.expiresAt; // 让对方知道何时能重试
+        if (d.reason === 'lock-lost') extra.cause = d.cause;
+        return failResult(d.reason, d.message, extra);
       }
-      return {
-        kind: 'json',
-        status: 200,
-        obj: { ok: true, lockId: d.lockId, petId: d.petId, expiresAt: d.expiresAt },
-      };
+      return okResult({ ok: true, lockId: d.lockId, petId: d.petId, expiresAt: d.expiresAt });
     } catch (e) {
       // 配置读取失败等（安装损坏）→ 显式失败，不静默（与其他动作端点同一口径）
-      return {
-        kind: 'json',
-        status: 200,
-        obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
-      };
+      return failResult('generate-error', e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -78,31 +69,19 @@ export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteIn
   // pets.<id>.say（与命令气泡、对话回复同一个叶子），同时随响应带回。
   // 手动语义不受 whisperEnabled 门控：那个字段只关自动周期。
   if (rest === 'whisper') {
-    if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    if (method !== 'POST') return methodNotAllowed();
     try {
       // pet 必填且必须真实存在：空串会让人设/配图按 main 条目取、生成结果写进没人消费的
       // `pets[""].say`，还回 ok:true（钱花了、话丢了、调用方以为成功）。
       const who = requirePet(url.searchParams, () => readAllConfig(configPaths), { surface: true });
       if (!who.ok) return who.res;
       const r = await publishWhisper(who.petId);
-      if (r.ok) {
-        return {
-          kind: 'json',
-          status: 200,
-          obj: { ok: true, text: r.text, ...(r.image ? { image: r.image } : {}) },
-        };
-      }
+      if (r.ok) return okResult({ ok: true, text: r.text, ...(r.image ? { image: r.image } : {}) });
       // 真实 reason 原样透出（独立模式是 `provider-missing`，见 ./whisper 的联合体）——
       // 不再把一切失败糊成 generate-error，调用方据此能分清「没配模型」与「生成炸了」。
-      const obj: Record<string, unknown> = { ok: false, reason: r.reason };
-      if (r.message) obj.message = r.message;
-      return { kind: 'json', status: 200, obj };
+      return failResult(r.reason, r.message ?? '生成失败');
     } catch (e) {
-      return {
-        kind: 'json',
-        status: 200,
-        obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
-      };
+      return failResult('generate-error', e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -113,27 +92,19 @@ export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteIn
   // scheme 由宿主卡在 http/https；宿主不做代理（跨域由浏览器强制）。
   // duration 缺省 10s、0 = 不显示、负数/非有限数拒绝；anim 只有严格 false 才关闭。
   if (rest === 'broadcast') {
-    if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    if (method !== 'POST') return methodNotAllowed();
     let parsed: unknown;
     try {
       parsed = JSON.parse(body ?? 'null');
     } catch {
-      return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      return invalidJson();
     }
     const o = parsed && typeof parsed === 'object' ? (parsed as Record<string, unknown>) : {};
     // 空文本不需要读配置就能判定：先短路，别为一个必然失败的请求去碰磁盘
-    if (!normalizeBroadcastText(o.text)) {
-      return { kind: 'json', status: 200, obj: { ok: false, reason: 'bad-request', message: 'text 为空' } };
-    }
+    if (!normalizeBroadcastText(o.text)) return failResult('bad-request', 'text 为空');
     // duration 同理：判定不需要配置，先短路（anim 没有非法值，宽松口径下永远有结论）
     const duration = normalizeBroadcastDuration(o.duration);
-    if (duration === null) {
-      return {
-        kind: 'json',
-        status: 200,
-        obj: { ok: false, reason: 'bad-request', message: 'duration 必须是 ≥0 的有限数字（毫秒）' },
-      };
-    }
+    if (duration === null) return failResult('bad-request', 'duration 必须是 ≥0 的有限数字（毫秒）');
     const anim = normalizeBroadcastAnim(o.anim);
     try {
       const cfg = readAllConfig(configPaths);
@@ -147,7 +118,7 @@ export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteIn
         anim,
         memeDirs: memeDirsFor,
       });
-      if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+      if (!d.ok) return failResult(d.reason, d.message);
       // 显示端对齐：不满足 → pet-not-displayed（+ 实际 display），早于锁门禁
       const noSurface = surfaceBlocked(cfg, d.petId, url.searchParams);
       if (noSurface) return noSurface;
@@ -159,14 +130,10 @@ export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteIn
       // 配图两种形态二选一（判定层保证）：url 形态写 url，名称形态写池内规范名，都没有则纯文本。
       const pic = d.url !== undefined ? { url: d.url } : d.image !== undefined ? { image: d.image } : {};
       state.writePet(d.petId, 'say', { text: d.text, ...pic, duration: d.duration, anim: d.anim });
-      return { kind: 'json', status: 200, obj: { ok: true } };
+      return okResult({ ok: true });
     } catch (e) {
       // 配置读取失败等（安装损坏）→ 显式失败，不静默
-      return {
-        kind: 'json',
-        status: 200,
-        obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
-      };
+      return failResult('generate-error', e instanceof Error ? e.message : String(e));
     }
   }
 
@@ -175,26 +142,22 @@ export async function handleInteractionRoutes(deps: PetRouteDeps, input: RouteIn
   // 空文本判成非法、整拍跳过）。只收说话气泡，余额/工作状态气泡与 anim/position/throw 都不动。
   // 幂等：没有气泡也回 {ok:true}。
   if (rest === 'bubble/clear') {
-    if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    if (method !== 'POST') return methodNotAllowed();
     try {
       const cfg = readAllConfig(configPaths);
       const d = decideBubbleClear({
         cfg,
         requested: String(url.searchParams.get('pet') ?? ''),
       });
-      if (!d.ok) return { kind: 'json', status: 200, obj: { ok: false, reason: d.reason, message: d.message } };
+      if (!d.ok) return failResult(d.reason, d.message);
       const noSurface = surfaceBlocked(cfg, d.petId, url.searchParams);
       if (noSurface) return noSurface;
       const blocked = lockBlocked(d.petId, url.searchParams);
       if (blocked) return blocked;
       state.writePet(d.petId, 'say', { clear: true });
-      return { kind: 'json', status: 200, obj: { ok: true } };
+      return okResult({ ok: true });
     } catch (e) {
-      return {
-        kind: 'json',
-        status: 200,
-        obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
-      };
+      return failResult('generate-error', e instanceof Error ? e.message : String(e));
     }
   }
 

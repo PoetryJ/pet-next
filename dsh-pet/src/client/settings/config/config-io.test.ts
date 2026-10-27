@@ -161,24 +161,24 @@ describe('saveConfig —— 写配置', () => {
     );
   });
 
-  test('409：返回损坏结果并带出宿主给的真实写入路径', async () => {
+  test('user-config-unparsable：返回损坏结果并带出宿主给的真实写入路径', async () => {
     await withFetch(
-      () => json({ userFile: 'C:/x/main-config.jsonc' }, 409),
+      () => json({ ok: false, reason: 'user-config-unparsable', userFile: 'C:/x/main-config.jsonc' }),
       async () => {
         assert.deepEqual(await saveConfig(body, true), { kind: 'corrupt', userFile: 'C:/x/main-config.jsonc' });
       },
     );
     await withFetch(
-      () => new Response('boom', { status: 409 }),
+      () => json({ ok: false, reason: 'user-config-unparsable' }),
       async () => {
-        assert.deepEqual(await saveConfig(body, true), { kind: 'corrupt', userFile: null }, '响应体坏了也不能抛');
+        assert.deepEqual(await saveConfig(body, true), { kind: 'corrupt', userFile: null }, '没有 userFile 时也不能抛');
       },
     );
   });
 
-  test('400 是校验失败、其余非 2xx 是通用错误、网络错误也是通用错误', async () => {
+  test('bad-request 是校验失败、其余否定实体与非 2xx 是通用错误、网络错误也是通用错误', async () => {
     await withFetch(
-      () => json({}, 400),
+      () => json({ ok: false, reason: 'bad-request' }),
       async () => {
         assert.deepEqual(await saveConfig(body, false), { kind: 'invalid' });
       },

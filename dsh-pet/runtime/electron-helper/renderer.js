@@ -38,6 +38,8 @@ async function loadConfig() {
   const res = await fetch(BASE + '/config', { cache: 'no-store' });
   if (!res.ok) throw new Error(`config http ${res.status}`);
   const merged = await res.json();
+  // 接口统一 200 + 实体：失败时状态码仍是 200，得看体里的 ok。
+  if (merged && merged.ok === false) throw new Error('config ' + String(merged.reason ?? 'failed'));
   return {
     pets: S.flattenConfigPets(merged),
     // 拖拽抛掷物理参数（顶层全局，所有宠物共用；合并器已填内置默认）

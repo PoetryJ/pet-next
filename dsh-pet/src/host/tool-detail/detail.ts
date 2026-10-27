@@ -27,7 +27,16 @@ import {
   TOOL_RULES,
   UNKNOWN_TOOL_LINE,
 } from './copy.ts';
-import type { ToolCopy, ToolRule } from './copy.ts';
+
+/**
+ * 按外部给的键查表，只认自有属性。
+ *
+ * 表是普通对象，而键来自模型给的工具名与命令名：`constructor` / `toString` / `__proto__`
+ * 会命中原型链，查回来的不是文案而是函数。这类名字没有特殊语义，一律按「表里没有」处理。
+ */
+function own<T>(table: Readonly<Record<string, T>>, key: string): T | undefined {
+  return Object.prototype.hasOwnProperty.call(table, key) ? table[key] : undefined;
+}
 
 /**
  * `pwsh` 的文案：按命令名（必要时加子命令）查表，查不到走兜底。
@@ -48,7 +57,7 @@ function pwshDetail(args: Record<string, unknown> | null): string | null {
   // 子命令：命令名后面第一个「像子命令」的词（跳过开关与参数值）
   const subAt = tokens.findIndex((token, index) => index > nameAt && SUBCOMMAND_LIKE.test(token));
   const sub = subAt < 0 ? null : (tokens[subAt] as string).toLowerCase();
-  const lines = (sub === null ? undefined : COMMAND_COPY[`${lookup} ${sub}`]) ?? COMMAND_COPY[lookup];
+  const lines = (sub === null ? undefined : own(COMMAND_COPY, `${lookup} ${sub}`)) ?? own(COMMAND_COPY, lookup);
   if (lines !== undefined) return clip(pickLine(lines));
   // 命令名本身太长（Get-NetTCPConnection 这种）→ 退回不带名字的兜底
   if (Array.from(rawCmd).length > TARGET_DISPLAY_MAX) return clip(COMMAND_NAME_TOO_LONG);
@@ -69,10 +78,10 @@ export function toolDetailFromEvent(
   const args = parseArgs(event?.data?.arguments);
   // pwsh 走命令表（它没有「文件目标」，目标就是命令本身）
   if (name === 'pwsh') return pwshDetail(args);
-  const entry = TOOL_COPY[name] as ToolCopy | undefined;
+  const entry = own(TOOL_COPY, name);
   // 未知工具：不猜参数，也不报工具名
   if (entry === undefined) return clip(UNKNOWN_TOOL_LINE);
-  const rule = TOOL_RULES[name] as ToolRule | undefined;
+  const rule = own(TOOL_RULES, name);
   const line = pickLine(entry.lines);
   // workflow 这类整句不带对象的，直接给（不需要目标）
   if (!line.includes('{target}')) return clip(line);

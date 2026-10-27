@@ -1,13 +1,16 @@
 /**
  * 右键菜单样式：只列选择器与规则，注入由挂载侧统一负责。
  *
- * 不含交互逻辑；尺寸与颜色走宿主的 --dsw-* 设计变量。
- * 必须始终成立：不得出现字面色值，全部走 token。
+ * 不含交互逻辑。菜单是覆盖在网页与桌面内容之上的浮层，需要固定对比度，所以自带一套
+ * 浅色调色盘、不读宿主 `--dsw-*` 变量：跟随主题会在深色背景上糊成一片，桌面渲染进程
+ * 也不注入那组 token，两端看起来会不一样。
+ * 必须始终成立：菜单配色只出现在本文件，调用方不得另行覆盖。
  * @module dsh-pet/src/shared/menu/css
  */
 
 /** 菜单样式 —— 两端注入同一份。每级面板是独立的绝对定位盒子，位置由 JS 内联写入，互不嵌套。 */
 export const MENU_CSS = [
+  // 浮层固定浅色：对比度与两端口径一致，优先于跟随宿主主题。
   '.dsh-pet-menu{position:fixed;left:0;top:0;z-index:2147483000;color:#2b2b2b;font-size:13px;line-height:1.5;',
   "font-family:'Microsoft YaHei UI','Segoe UI','PingFang SC',sans-serif;user-select:none;pointer-events:auto}",
   '.dsh-pet-menu,.dsh-pet-menu *{box-sizing:border-box}',

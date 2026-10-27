@@ -82,7 +82,10 @@ export async function loadConfig(signal?: AbortSignal): Promise<MergedConfig | n
   try {
     const response = await fetch(ROUTE_PATH + '/config', signal === undefined ? {} : { signal });
     if (!response.ok) return null;
-    return (await response.json()) as MergedConfig;
+    const body = (await response.json()) as MergedConfig & { ok?: unknown };
+    // 业务失败也是 200：ok:false 不是成品配置，按读不到处理（否则会拿失败体去拍平）
+    if (body.ok === false) return null;
+    return body;
   } catch {
     return null;
   }
@@ -134,14 +137,22 @@ export async function saveConfig(body: Record<string, unknown>, force: boolean):
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify(body),
     });
-    // 409 = 宿主损坏预检拦下：白名单重建会把文件里剩下的内容整份丢掉，必须让用户决定。
-    if (response.status === 409) {
-      const info = (await response.json().catch(() => null)) as { userFile?: unknown } | null;
-      return { kind: 'corrupt', userFile: typeof info?.userFile === 'string' ? info.userFile : null };
+    // 接口统一 200 + 实体：失败看体里的 ok/reason，状态码只兜传输层故障。
+    const payload = (await response.json().catch(() => null)) as {
+      ok?: unknown;
+      reason?: unknown;
+      userFile?: unknown;
+    } | null;
+    if (payload && payload.ok === false) {
+      // 损坏预检拦下：白名单重建会把文件里剩下的内容整份丢掉，必须让用户决定。
+      if (payload.reason === 'user-config-unparsable') {
+        return { kind: 'corrupt', userFile: typeof payload.userFile === 'string' ? payload.userFile : null };
+      }
+      if (payload.reason === 'bad-request' || payload.reason === 'invalid-json') return { kind: 'invalid' };
+      return { kind: 'error' };
     }
-    if (response.status === 400) return { kind: 'invalid' };
     if (!response.ok) return { kind: 'error' };
-    return { kind: 'ok', merged: (await response.json()) as MergedConfig };
+    return { kind: 'ok', merged: payload as MergedConfig };
   } catch {
     return { kind: 'error' };
   }

@@ -8,6 +8,7 @@
 import { MENU_WAIT_MAX_MS } from '../menu.ts';
 import type { PetRouteDeps, RouteInput } from './types.ts';
 import type { RouteResult } from '../http.ts';
+import { failResult, invalidJson, methodNotAllowed, okResult } from './result.ts';
 
 /** 第三方菜单领域：未命中返回 undefined，命中返回应答。 */
 export async function handleMenuRoutes(deps: PetRouteDeps, input: RouteInput): Promise<RouteResult | undefined> {
@@ -21,56 +22,46 @@ export async function handleMenuRoutes(deps: PetRouteDeps, input: RouteInput): P
   if (rest === 'menu/item') {
     if (method === 'DELETE') {
       const result = menuRegistry.clear(url.searchParams.get('owner') ?? '');
-      if (!result.ok) {
-        return { kind: 'json', status: 200, obj: { ok: false, reason: result.reason, message: result.message } };
-      }
+      if (!result.ok) return failResult(result.reason, result.message);
       state.writeSection('menu', { items: menuRegistry.snapshot() });
-      return { kind: 'json', status: 200, obj: { ok: true, removed: result.removed } };
+      return okResult({ ok: true, removed: result.removed });
     }
-    if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    if (method !== 'POST') return methodNotAllowed();
     let parsed: unknown;
     try {
       parsed = JSON.parse(body ?? '');
     } catch {
-      return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      return invalidJson();
     }
     const result = menuRegistry.register(parsed);
-    if (!result.ok) {
-      return { kind: 'json', status: 200, obj: { ok: false, reason: result.reason, message: result.message } };
-    }
+    if (!result.ok) return failResult(result.reason, result.message);
     // 写入会唤醒所有挂起的长轮询；两端拿到新 counter 就重拼菜单（下一次右键即生效）
     state.writeSection('menu', { items: menuRegistry.snapshot() });
-    return { kind: 'json', status: 200, obj: { ok: true } };
+    return okResult({ ok: true });
   }
 
   if (rest === 'menu/events') {
-    if (method !== 'GET') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    if (method !== 'GET') return methodNotAllowed();
     const owner = url.searchParams.get('owner') ?? '';
     const rawWait = Number(url.searchParams.get('wait') ?? '0');
     const waitMs = Number.isFinite(rawWait) && rawWait > 0 ? Math.min(rawWait, MENU_WAIT_MAX_MS) : 0;
     // 挂起等待期间调用方断开：不额外处理（最多白挂 MENU_WAIT_MAX_MS，无状态残留）
     const events = await menuRegistry.poll(owner, waitMs);
     // owner 不存在（没注册过 / 被清除了 / 宿主重启过）：业务失败，仍是 200
-    if (events === null) {
-      return {
-        kind: 'json',
-        status: 200,
-        obj: { ok: false, reason: 'unknown-owner', message: '这个 owner 没有注册，重新注册即可' },
-      };
-    }
-    return { kind: 'json', status: 200, obj: { ok: true, events } };
+    if (events === null) return failResult('unknown-owner', '这个 owner 没有注册，重新注册即可');
+    return okResult({ ok: true, events });
   }
 
   if (rest === 'menu/click') {
-    if (method !== 'POST') return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
+    if (method !== 'POST') return methodNotAllowed();
     let parsed: unknown;
     try {
       parsed = JSON.parse(body ?? '');
     } catch {
-      return { kind: 'json', status: 400, obj: { error: 'invalid JSON body' } };
+      return invalidJson();
     }
     // delivered=false（项已不在）= 正常竞态：渲染端拿的是上一拍快照，仍回 200
-    return { kind: 'json', status: 200, obj: menuRegistry.click(parsed) };
+    return okResult(menuRegistry.click(parsed));
   }
 
   return undefined;

@@ -57,6 +57,16 @@ info:
     - **要触发行为** → `POST` 对应动作端点，收到 `ok` 后**立刻**再 `GET /state` 一次，
       即可 0 延迟拿到结果（不必等下一个轮询周期）。
 
+    状态码约定（全插件统一）：
+
+    - **业务失败 → `200`**：请求进到处理器并给出了结论（缺参、未知宠物、被占用、生成失败、
+      配置解析不了），一律 `200` + `FailureResponse`，`reason` 说明是哪一种。
+      调用方按 `reason` 分支，**不要用状态码判断业务**。
+    - **协议失败 → 真实状态码**：路径不存在 `404`、方法不对 `405`、请求体不是合法 JSON `400`、
+      请求体超限 `413`、未预期异常 `500`。这些判定发生在业务之前，响应体仍是同一个失败实体。
+    - **素材端点**（`/thumb`、`/pic`、`/font`、`/sound`、`/notify-icon`）返回文件流：
+      成功是二进制，找不到就是 `404` 纯文本，**不套**失败实体。
+
   license:
     name: MIT
     identifier: MIT
@@ -168,7 +178,7 @@ paths:
           description: |
             调用方手里那份 S 的版本号（= 上一拍响应里的顶层 `counter`）。
             与当前不同 → 立刻返回；相同 → 挂起。`0` 合法（"我手里什么都没有"）。
-            与 `timeout` **成对必填**：只传一个 → HTTP 400。
+            与 `timeout` **成对必填**：只传一个 → `200` + `reason: bad-request`。
           schema:
             type: integer
             format: int64
@@ -179,7 +189,7 @@ paths:
           required: false
           description: |
             挂起等待的封顶时长（毫秒），只接受 `0..10000` 的**非负整数**。
-            `0` 合法（等价"立刻返回"）。与 `since` **成对必填**：只传一个 → HTTP 400。
+            `0` 合法（等价"立刻返回"）。与 `since` **成对必填**：只传一个 → `200` + `reason: bad-request`。
           schema:
             type: integer
             minimum: 0
@@ -187,7 +197,12 @@ paths:
           example: 1000
       responses:
         "200":
-          description: 当前状态（长轮询时：等到了变化，或等到了超时）
+          description: |
+            当前状态（长轮询时：等到了变化，或等到了超时）。
+
+            `since` / `timeout` 非法（只传一个、非整数、负数、超过 10000）同样是 `200`，
+            此时响应体是 `{ "ok": false, "reason": "bad-request", "message": "..." }`——
+            参数错误也是处理器给出的结论。
           headers:
             cache-control:
               description: 恒为 `no-cache, no-store`
@@ -196,19 +211,11 @@ paths:
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/PollState"
-        "400":
-          description: |
-            `since`/`timeout` 非法（只传一个、非整数、负数、超过 10000）。
-            响应体是 `{ "error": "..." }`，附明确原因。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/PollState"
+                  - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
-        "500":
-          $ref: "#/components/responses/InternalError"
 
   /dsh-pet-7340/work-status:
     post:
@@ -245,25 +252,31 @@ paths:
                     - type: "null"
       responses:
         "200":
-          description: 写入被接受；返回当前外部槽的状态与任务文案。
+          description: |
+            写入被接受；返回当前外部槽的状态与任务文案。
+
+            `state` 未知 / `task` 类型不对 / 超过 40 个码点 → 同样是 `200` +
+            `{ "ok": false, "reason": "bad-request", "message": "..." }`。
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/WorkStatusSnapshot"
+                oneOf:
+                  - $ref: "#/components/schemas/WorkStatusSnapshot"
+                  - $ref: "#/components/schemas/FailureResponse"
         "400":
-          description: JSON 非法 / state 未知 / task 类型不对或超过 40 个码点。
+          description: "请求体不是合法 JSON（`reason: invalid-json`）。"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
         "413":
-          description: 请求体超过 8 KiB。
+          description: "请求体超过 8 KiB（`reason: payload-too-large`）。"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/FailureResponse"
     delete:
       tags: [Action]
       operationId: clearWorkStatus
@@ -1251,7 +1264,8 @@ paths:
         （`matched: false`）。`wait` 支持**逗号列表**——终态有三个，只等 `ended` 会在失败时
         **白等一整个 timeout**，建议写 `wait=ended,failed,cancelled`。两个都不传则立刻返回。
 
-        **生命周期**：终态记录保留约 60 秒后清理，之后查询回 404。宿主重启后全部失效
+        **生命周期**：终态记录保留约 60 秒后清理，之后查询回 `200` +
+        `reason: unknown-playback`。宿主重启后全部失效
         （编号只保证一次运行内唯一）。
 
         **与 `/state` 无关**：播放记录是 **per-caller 资源**（只有发起那次点播的调用方关心、
@@ -1270,7 +1284,7 @@ paths:
           required: false
           description: |
             要等的状态，逗号分隔（如 `ended,failed,cancelled`）。**必须与 `timeout` 同时出现**，
-            只填一个回 400。当前状态已在其中时**立刻返回**（不会白等）。
+            只填一个回 `200` + `reason: bad-request`。当前状态已在其中时**立刻返回**（不会白等）。
             可取值即五个状态名（`accepted` / `playing` / `ended` / `failed` / `cancelled`）。
           schema:
             type: string
@@ -1280,7 +1294,7 @@ paths:
           required: false
           description: |
             最多挂起多少毫秒（`0`–`10000`）。`0` 合法（下一拍立刻返回）。
-            **必须与 `wait` 同时出现**；非整数 / 负数 / 超过上限一律回 400。
+            **必须与 `wait` 同时出现**；非整数 / 负数 / 超过上限一律回 `200` + `reason: bad-request`。
           schema:
             type: integer
             minimum: 0
@@ -1290,58 +1304,15 @@ paths:
         "200":
           description: |
             播放记录。`matched` 表示是否等到了 `wait` 里的状态（不传 `wait` 时恒为 `false`）。
+
+            编号不存在或已过期 → `200` + `reason: unknown-playback`；
+            `wait` / `timeout` 参数非法 → `200` + `reason: bad-request`。
           content:
             application/json:
               schema:
-                type: object
-                required: [playbackId, petId, name, status, createdAt, updatedAt, matched]
-                properties:
-                  playbackId:
-                    type: string
-                  petId:
-                    type: string
-                    description: 目标桌宠 id
-                  name:
-                    type: string
-                    description: 动画名（即素材文件名）
-                  status:
-                    type: string
-                    enum: [accepted, playing, ended, failed, cancelled]
-                  createdAt:
-                    type: integer
-                    description: 受理时刻（epoch 毫秒）
-                  updatedAt:
-                    type: integer
-                    description: 最近一次状态变化时刻（epoch 毫秒）
-                  endedAt:
-                    type: integer
-                    description: 只在 status 为 `ended` 时出现（进入终态的时刻）
-                  reason:
-                    type: string
-                    description: |
-                      只在 `failed` / `cancelled` 时出现。当前取值：`asset-load`（素材没拿到）/
-                      `decode-error`（解码失败）/ `play-rejected`（自动播放被拒）/
-                      `busy`（移动系统占用，本次点播没能播起来）/ `superseded`（被打断或顶掉）/
-                      `frozen`（被**占用锁**冻结打断——解冻走的是回 idle / 恢复档位，**不会把它接回来**，
-                      所以它确实不会再播完，是"打断"而不是"暂停"）。
-                  matched:
-                    type: boolean
-                    description: '`true` = 等到了 `wait` 里的状态；`false` = 超时返回'
-        "400":
-          description: |
-            参数非法，`{ "error": "..." }`：`wait` 与 `timeout` 未成对
-            （`wait and timeout must be used together`）、`wait` 含非法状态名
-            （`invalid wait status: xxx`）、`timeout` 不是 0–10000 的整数（`invalid timeout ...`）。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: '编号不存在或已过期（`{ "error": "unknown playback" }`）'
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/PlaybackRecord"
+                  - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
 
@@ -1411,22 +1382,21 @@ paths:
           description: |
             恒为 200：`{ "ok": true }`。**状态已更新**与**幂等忽略**（终态后的上报、同状态重复上报）
             都算成功——对上报方来说"已经这样了"就是成功。
+
+            编号不存在或已过期 → `200` + `reason: unknown-playback`；
+            状态名非法（含 `accepted`）→ `200` + `reason: bad-request`。
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/OkResponse"
+                oneOf:
+                  - $ref: "#/components/schemas/OkResponse"
+                  - $ref: "#/components/schemas/FailureResponse"
         "400":
-          description: '非法状态名（含 `accepted`）或请求体不是合法 JSON'
+          description: "请求体不是合法 JSON（`reason: invalid-json`）。"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
-        "404":
-          description: '编号不存在或已过期（`{ "error": "unknown playback" }`）'
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
 
@@ -1552,21 +1522,21 @@ paths:
         覆盖。没有一份对所有宠物生效的全局动画池。
       responses:
         "200":
-          description: 成品配置（顶层为条目名 → 该条目配置对象）
+          description: |
+            成品配置（顶层为条目名 → 该条目配置对象）。
+
+            读配置失败（安装损坏 / IO）是业务结论：同样是 `200` +
+            `{ "ok": false, "reason": "generate-error", "message": "..." }`。
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  $ref: "#/components/schemas/PetConfigEntry"
+                oneOf:
+                  - type: object
+                    additionalProperties:
+                      $ref: "#/components/schemas/PetConfigEntry"
+                  - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
-        "500":
-          description: 配置文件损坏或读取失败
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
     put:
       tags: [Config]
       operationId: saveConfig
@@ -1584,8 +1554,8 @@ paths:
           **不会抹掉**你手写的精调配置（`whisperPrompt`/`memes`/`eventsRefreshSec` 等）。
           白名单字段也只在请求体**真的传了**时才算白名单：没传就走透传，不会被抹成默认值。
         - 用户层文件**存在但连 JSONC 都解析不了**（真损坏）时，默认**先不写盘**，
-          返回 `409` 让调用方确认——因为白名单重建会把文件里剩下的内容整份丢掉且静默。
-          确认要重建时加 `?force=1`。
+          返回 `200` + `reason: user-config-unparsable`（带 `needConfirm`、`userFile`）让调用方确认——
+          因为白名单重建会把文件里剩下的内容整份丢掉且静默。确认要重建时加 `?force=1`。
         - 保存成功后宿主会**异步**重启桌面 Helper（`display`/`size` 等可能变化），
           不阻塞响应。
       parameters:
@@ -1624,52 +1594,28 @@ paths:
                   chatImageEnabled: true
       responses:
         "200":
-          description: 保存成功，返回保存后的成品聚合
-          content:
-            application/json:
-              schema:
-                type: object
-                additionalProperties:
-                  $ref: "#/components/schemas/PetConfigEntry"
-        "400":
           description: |
-            请求体非法。可能是 JSON 解析失败（`invalid JSON body`），
-            或字段校验不通过（`invalid pet config`：`id` 非字符串/为空/去除首尾空白后重复/超 64 字/含文件名非法字符、
-            `size` 非正数、`balanceEnabled` 非布尔、`display` 不在枚举内、
-            `position.corner` 不在枚举内、`marginX`/`marginY` 非数字等）。
+            保存成功 → 保存后的成品聚合。
+
+            **业务失败** → `{ "ok": false, "reason": "...", "message": "..." }`，`reason` 取值
+            `bad-request`（宠物配置非法）、`user-config-unparsable`（带 `needConfirm`、`userFile`）、
+            `generate-error`（写盘失败，细节只进日志）。
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                oneOf:
+                  - type: object
+                    additionalProperties:
+                      $ref: "#/components/schemas/PetConfigEntry"
+                  - $ref: "#/components/schemas/FailureResponse"
+        "400":
+          description: "请求体不是合法 JSON（`reason: invalid-json`）。"
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
-        "409":
-          description: |
-            用户层配置损坏且未带 `?force=1`。调用方应弹窗询问用户，
-            取消则不动文件，确认后带 `?force=1` 重试。
-          content:
-            application/json:
-              schema:
-                type: object
-                required: [error, needConfirm, userFile]
-                properties:
-                  error:
-                    type: string
-                    const: user config is unparsable
-                  needConfirm:
-                    type: boolean
-                    const: true
-                  userFile:
-                    type: string
-                    description: 损坏的用户配置文件绝对路径
-        "500":
-          description: 配置保存或重新读取失败，具体原因记录在服务端日志中。
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
-              example:
-                error: failed to save config
     post:
       tags: [Config]
       operationId: syncConfigFromDefault
@@ -1682,21 +1628,21 @@ paths:
         写盘后异步重启桌面 Helper，并返回新的成品聚合。
       responses:
         "200":
-          description: 同步成功，返回新的成品聚合
+          description: |
+            同步成功 → 新的成品聚合。
+
+            **业务失败** → `200` + `{ "ok": false, "reason": "generate-error", "message": "..." }`
+            （默认文件缺失 / 用户目录不可写：显式失败，绝不静默留下半个配置文件）。
           content:
             application/json:
               schema:
-                type: object
-                additionalProperties:
-                  $ref: "#/components/schemas/PetConfigEntry"
+                oneOf:
+                  - type: object
+                    additionalProperties:
+                      $ref: "#/components/schemas/PetConfigEntry"
+                  - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
-        "500":
-          description: 内置默认文件缺失，或用户目录不可写（绝不静默留下半个配置文件）
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
 
   /dsh-pet-7340/pet-display:
     post:
@@ -1743,9 +1689,8 @@ paths:
         "200":
           description: |
             **改动成功** → 改动后的成品聚合（与 `GET /config` 同一份）；
-            **业务失败** → `{ ok: false, reason, message }`。两者都是 200，靠 body 区分
-            （成功体没有 `ok` 字段，失败体 `ok` 恒为 `false`）——业务错误不用 400/404 表达，
-            否则调用方会把业务结论当成传输层故障。
+            **业务失败** → `{ ok: false, reason, message }`（留给业务结论，不用 400/404 表达，
+            否则调用方会把业务结论当成传输层故障）。
 
             `reason` 取值：`pet-required`（缺 `id` / 空串 / 全空白）、`bad-request`（`display`
             不在枚举内 / 该层宠物配置非法）、`unknown-pet`（找不到这只宠物，含因 id 与其它条目
@@ -1760,11 +1705,11 @@ paths:
                       $ref: "#/components/schemas/PetConfigEntry"
                   - $ref: "#/components/schemas/FailureResponse"
         "400":
-          description: '请求体不是合法 JSON（`{ "error": "invalid JSON body" }`）——协议层错误，只有它是 400'
+          description: "请求体不是合法 JSON（`reason: invalid-json`）。"
           content:
             application/json:
               schema:
-                $ref: "#/components/schemas/ErrorResponse"
+                $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
 
@@ -1778,7 +1723,7 @@ paths:
         告诉你配置和各类数据到底落在哪、日志文件在哪，以及卸载命令该用哪个 profile。
       responses:
         "200":
-          description: 路径清单
+          description: 路径清单。本端点只读路径与环境，不做业务判断，因此没有失败实体。
           content:
             application/json:
               schema:
@@ -1829,25 +1774,23 @@ paths:
         - 服务商/模型的 `name` 缺失时回落为 `id`。
       responses:
         "200":
-          description: 服务商与模型清单
+          description: |
+            服务商与模型清单。取不到清单是依赖不可用（宿主没提供 llm 适配器 / 全部列模型失败），
+            同样是 `200` + `{ "ok": false, "reason": "generate-error", "message": "..." }`。
           content:
             application/json:
               schema:
-                type: object
-                required: [providers]
-                properties:
-                  providers:
-                    type: array
-                    items:
-                      $ref: "#/components/schemas/Provider"
+                oneOf:
+                  - type: object
+                    required: [providers]
+                    properties:
+                      providers:
+                        type: array
+                        items:
+                          $ref: "#/components/schemas/Provider"
+                  - $ref: "#/components/schemas/FailureResponse"
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
-        "500":
-          description: 读取服务商清单失败
-          content:
-            application/json:
-              schema:
-                $ref: "#/components/schemas/ErrorResponse"
 
   /dsh-pet-7340/reload:
     post:
@@ -2384,18 +2327,18 @@ components:
 
   responses:
     MethodNotAllowed:
-      description: '该方法不被支持（`{ "error": "method not allowed" }`）'
+      description: '该方法不被支持：`405` + `{ "ok": false, "reason": "method-not-allowed", "message": "..." }`'
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: "#/components/schemas/FailureResponse"
 
     InternalError:
-      description: 宿主内部错误
+      description: '宿主未预期异常：`500` + `{ "ok": false, "reason": "internal-error", "message": "..." }`（真实原因只进宿主日志）'
       content:
         application/json:
           schema:
-            $ref: "#/components/schemas/ErrorResponse"
+            $ref: "#/components/schemas/FailureResponse"
 
   schemas:
     OkResponse:
@@ -2451,6 +2394,13 @@ components:
 
             实况（`GET /pose`）另有一个：`pose-unavailable` 配置上在桌面显示，但还没收到过渲染端
             上报（桌面端没起来 / 刚重启）。
+
+            回执与第三方菜单另有：`unknown-playback`（编号不存在或已过期）、
+            `unknown-owner`（这个 owner 没注册过）。宿主能力缺失是 `unsupported`。
+            用户层配置损坏是 `user-config-unparsable`（带 `needConfirm`、`userFile`）。
+
+            协议失败的原因（`invalid-json` / `method-not-allowed` / `payload-too-large` /
+            `internal-error`）同样出现在这个实体里，只是状态码不是 200。
           enum:
             [
               bad-request,
@@ -2460,11 +2410,15 @@ components:
               unknown-pet,
               unknown-image,
               unknown-animation,
+              unknown-owner,
+              unknown-playback,
               locked,
               lock-required,
               lock-lost,
               pet-not-displayed,
               pose-unavailable,
+              unsupported,
+              user-config-unparsable,
             ]
         cause:
           type: string
@@ -2495,6 +2449,43 @@ components:
       properties:
         error:
           type: string
+
+    PlaybackRecord:
+      type: object
+      description: 一次点播的记录（`GET /playback/{id}` 的响应体即它的浅拷贝 + `matched`）。
+      required: [playbackId, petId, name, status, createdAt, updatedAt, matched]
+      properties:
+        playbackId:
+          type: string
+        petId:
+          type: string
+          description: 目标桌宠 id
+        name:
+          type: string
+          description: 动画名（即素材文件名）
+        status:
+          type: string
+          enum: [accepted, playing, ended, failed, cancelled]
+        createdAt:
+          type: integer
+          description: 受理时刻（epoch 毫秒）
+        updatedAt:
+          type: integer
+          description: 最近一次状态变化时刻（epoch 毫秒）
+        endedAt:
+          type: integer
+          description: 只在 status 为 `ended` 时出现（进入终态的时刻）
+        reason:
+          type: string
+          description: |
+            只在 `failed` / `cancelled` 时出现。当前取值：`asset-load`（素材没拿到）/
+            `decode-error`（解码失败）/ `play-rejected`（自动播放被拒）/
+            `busy`（移动系统占用，本次点播没能播起来）/ `superseded`（被打断或顶掉）/
+            `frozen`（被**占用锁**冻结打断——解冻走的是回 idle / 恢复档位，**不会把它接回来**，
+            所以它确实不会再播完，是"打断"而不是"暂停"）。
+        matched:
+          type: boolean
+          description: '`true` = 等到了 `wait` 里的状态；`false` = 超时返回'
 
     PollState:
       type: object

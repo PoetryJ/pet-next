@@ -3,7 +3,8 @@
  *   ① 文案是数据表里的候选句（随机挑一句），且必须带具体对象名；
  *   ② 命令按「命令 / 命令+子命令」查表；没有语义的命令（npm / python / node）走兜底；
  *   ③ 复合命令（`;` `|` `&&` 换行）一律返回 null，让前端回落配置文案；
- *   ④ 安全边界：命令参数（含凭据）不上屏、超大 arguments 不解析、非法 JSON 不抛；
+ *   ④ 安全边界：命令参数（含凭据）不上屏、超大 arguments 不解析、非法 JSON 不抛、
+ *      原型链上的名字不命中表；
  *   ⑤ 不该出现的工具（todo_write / ask_user_question / goal 系）→ null。
  *
  * 跑法：node --experimental-strip-types --test src/host/tool-detail.test.ts
@@ -180,6 +181,23 @@ describe('安全与健壮性', () => {
     assert.equal(toolDetailFromEvent({ data: { name: 123 } }), null);
     assert.equal(toolDetailFromEvent({ data: { name: 'edit', arguments: '{not json' } }), null);
     assert.equal(toolDetailFromEvent({ data: { name: 'edit', arguments: '[]' } }), null);
+  });
+
+  test('原型链上的名字不命中表：constructor / toString / __proto__ 按未知处理', () => {
+    for (const name of ['constructor', 'toString', '__proto__', 'valueOf']) {
+      assert.equal(toolDetailFromEvent(call(name)), '这工具是干嘛的', name);
+    }
+    oneOf(toolDetailFromEvent(call('pwsh', { command: 'constructor' })), [
+      '跑一下 constructor 咯',
+      'constructor 跑起来了',
+      '让 constructor 干点活',
+    ]);
+    // 命令表同理：`git constructor` 命中通用 git 文案，不把 `constructor` 当子命令
+    oneOf(toolDetailFromEvent(call('pwsh', { command: 'git constructor' })), [
+      '折腾折腾 git 仓库',
+      '跟 git 打个交道',
+      'git 这边动一动',
+    ]);
   });
 
   test('arguments 直接是对象（非字符串）也认', () => {

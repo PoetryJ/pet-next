@@ -105,7 +105,7 @@ test('real plugin chat routes cannot bypass the standalone capability using enco
   }
 });
 
-test('config pet IDs: duplicate IDs return 400 without creating a user file', async (t) => {
+test('config pet IDs: duplicate IDs return 200 + bad-request without creating a user file', async (t) => {
   const file = configPathsFor(packageRoot, home).userFile;
   assert.equal(existsSync(file), false);
   t.after(() => rmSync(file, { force: true }));
@@ -123,9 +123,10 @@ test('config pet IDs: duplicate IDs return 400 without creating a user file', as
       headers: { 'content-type': 'application/json' },
       body: JSON.stringify({ pets: [pet, { ...pet, id, name: 'second' }] }),
     });
-    assert.equal(response.status, 400);
-    const body = (await response.json()) as { error: string };
-    assert.match(body.error, /^invalid pet config:/);
+    assert.equal(response.status, 200);
+    const body = (await response.json()) as { reason: string; message: string };
+    assert.equal(body.reason, 'bad-request');
+    assert.match(body.message, /^invalid pet config:/);
     assert.equal(existsSync(file), false);
   }
 });
@@ -172,12 +173,13 @@ describe('插件宿主半边在独立模式下跑起来了', () => {
 });
 
 describe('配置与素材不可达时的口径 —— 显式失败，不静默兜底', () => {
-  test('包内默认配置读不到（源码形态）→ /config 500 + 错误正文', async () => {
+  test('包内默认配置读不到（源码形态）→ /config 200 + generate-error 实体', async () => {
     const response = await get('/dsh-pet-7340/config');
-    assert.equal(response.status, 500, '读不到配置必须显式失败：静默返回空配置会让桌宠"看起来正常但什么都没有"');
-    const body = response.json() as { error?: string };
-    assert.equal(typeof body.error, 'string');
-    assert.ok((body.error ?? '').length > 0, '错误正文必须可读');
+    assert.equal(response.status, 200, '接口统一 200，失败放在实体里：静默返回空配置会让桌宠"看起来正常但什么都没有"');
+    const body = response.json() as { ok?: boolean; reason?: string; message?: string };
+    assert.equal(body.ok, false);
+    assert.equal(body.reason, 'generate-error');
+    assert.ok((body.message ?? '').length > 0, '错误正文必须可读');
   });
 
   test('thumb 的路由安全口径经真实 HTTP 仍然成立', async () => {

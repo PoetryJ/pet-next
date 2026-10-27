@@ -115,7 +115,10 @@ export function createPetMulti(
         // cache:'no-store' 与 fetchState 同口径，避免「版本变化后重拉」拿到旧值。
         const r = await fetch(ROUTE_PATH + '/config', { cache: 'no-store' });
         if (!r.ok) throw new Error('config HTTP ' + r.status);
-        return (await r.json()) as Record<string, Record<string, unknown>>;
+        const body = (await r.json()) as Record<string, unknown>;
+        // 业务失败也是 200：ok:false 的体不是成品配置，别拿它去拍平（会静默退化成默认配置）
+        if (body.ok === false) throw new Error('config: ' + String(body.reason ?? 'failed'));
+        return body as Record<string, Record<string, unknown>>;
       };
       (async () => {
         try {

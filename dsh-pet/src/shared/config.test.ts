@@ -96,10 +96,15 @@ describe('flattenConfigPets —— 成品 → 渲染列表的唯一填充点', (
     const clientPet = readSource('../client/pet.ts') + '\n' + readSource('../client/pet/multi.ts');
     const clientSettings =
       readSource('../client/settings.ts') + '\n' + readSource('../client/settings/config/config-io.ts');
+    // 写入分居三个文件（读 / 保存 / 单宠显示位置）：路径搬迁不该让守卫失效，故按文件全读进来。
     const host =
       readSource('../host/index.ts') +
       '\n' +
       readSource('../host/routes/config.ts') +
+      '\n' +
+      readSource('../host/routes/config-save.ts') +
+      '\n' +
+      readSource('../host/routes/config-display.ts') +
       '\n' +
       readSource('../host/routes/state.ts');
 
@@ -117,12 +122,14 @@ describe('flattenConfigPets —— 成品 → 渲染列表的唯一填充点', (
     // ② 容器必须经 flattenConfigPets 拿条目级字段
     assert.ok(/flattenConfigPets/.test(clientPet), '容器必须用 flattenConfigPets 拍平成品聚合');
     // ③ host 的 GET / PUT / POST /config 与 POST /pet-display 都返回成品聚合——调用方拿写接口的
-    //    响应直接拍平，不自己拼字段，也不再补一次 GET（补拉的那一次可能拿到陈旧配置）
-    const returns = host.match(/obj: readAllConfig\(configPaths\)/g) ?? [];
+    //    响应直接拍平，不自己拼字段，也不再补一次 GET（补拉的那一次可能拿到陈旧配置）。
+    //    这条只能读源码：源码形态下包内默认配置不可达，写路径的成功态构造不出来
+    //    （见 standalone/integration.test.ts 的「配置不可达」口径），属于登记在案的文本基线。
+    const returns = host.match(/okResult\(readAllConfig\((?:deps\.)?configPaths\)/g) ?? [];
     assert.equal(returns.length, 4, 'GET / PUT / POST /config 与 POST /pet-display 都应返回成品聚合');
     // 只扫 /config 那一段：动作端点（POST /balance 等）返回 { ok: true } 是对的（动作不带数据，
     // 数据只有 /state 一个出口），全文件扫描会把它们误判成"config 写接口返回了 ok:true"。
-    const configBlock = /if \(rest === 'config'\) \{([\s\S]*?)\n {2}\}/.exec(host)?.[1] ?? '';
+    const configBlock = /if \(input\.rest === 'config'\) \{([\s\S]*?)\n {2}\}/.exec(host)?.[1] ?? '';
     assert.ok(configBlock.length > 0, '必须能定位到 /config 路由段（守卫失效即无意义）');
     assert.ok(
       !/obj: \{ ok: true \}/.test(configBlock),

@@ -8,7 +8,7 @@
  */
 import type { IncomingMessage, ServerResponse } from 'node:http';
 
-import { createFileLogger } from '../host/log-file.ts';
+import { createLlmFacade, createOfflineLlm, type StandaloneModelService } from './llm-facade.ts';
 
 /** 独立模式下余额路由报出的未登记服务商 id。 */
 export const STANDALONE_PROVIDER = 'standalone';
@@ -29,19 +29,6 @@ export interface RegisteredRoute {
   path: string;
   /** 真实 Node HTTP handler，自行写响应头与正文。 */
   handler: (req: IncomingMessage, res: ServerResponse) => unknown;
-}
-
-/** ctx.llm 替身的契约，形状必须与 DSH 一致。 */
-export interface StandaloneModelService {
-  currentSelection(): { provider: string; model: string };
-  listProviders(): unknown[];
-  listModels(provider: string): Promise<unknown[]>;
-  resolveModelInfo(provider?: string, model?: string, signal?: AbortSignal): Promise<unknown>;
-  stream(options: unknown): AsyncIterable<unknown>;
-  isReady(): boolean;
-  canWhisper(): boolean;
-  getSettings(): { whisperIntervalSec: number };
-  dispose(): void;
 }
 
 /** 创建伪 ctx 的选项。 */
@@ -76,33 +63,65 @@ export interface StandaloneContext {
   dispose(): Promise<void>;
 }
 
-/** 创建独立模式日志器的选项。 */
-export interface StandaloneLoggerOptions {
-  /** 落盘文件；不给则只写控制台。 */
-  file?: string;
+/**
+ * webServer 替身：插件按前缀注册路由，独立模式的 server 再按同一份数组匹配。
+ *
+ * 端口用 getter 读取：服务先监听、端口确定之后才 apply，构造时取值会固定成 0。
+ */
+function createWebServer(routes: RegisteredRoute[], portOf: () => number) {
+  return {
+    get port(): number {
+      return portOf();
+    },
+    register(spec: RegisteredRoute): () => void {
+      routes.push({ kind: spec.kind, path: spec.path, handler: spec.handler });
+      return () => {
+        const index = routes.findIndex((route) => route.handler === spec.handler);
+        if (index >= 0) routes.splice(index, 1);
+      };
+    },
+  };
 }
 
-/** 创建独立模式日志器：给了文件就落盘，否则只写控制台。 */
-export function createStandaloneLogger(options: StandaloneLoggerOptions = {}): StandaloneLogger {
-  if (options.file) {
-    // 这个 logger 会挂到伪 ctx.logger 上：插件据此复用同一个文件出口，
-    // 不再自建第二个写同一文件的 logger，避免两份缓冲互相踩。
-    return createFileLogger({
-      file: options.file,
-      base: console,
-      debugEnabled: process.env.DSH_PET_LOG_DEBUG === '1',
-    });
-  }
-  const stamp = (): string => new Date().toISOString().replace('T', ' ').slice(0, 19);
-  const write = (level: string, message: string): void => {
-    console.log(`[dsh-pet-standalone ${stamp()}] ${level} ${message}`);
+/**
+ * Cordis 的 effect 语义：跑一次注册函数并收集它返回的释放函数。
+ * 单项失败只记录并打日志，不让整个插件起不来。
+ */
+function createEffectRunner(
+  disposers: Array<() => unknown>,
+  failures: string[],
+  logger: StandaloneLogger,
+): (fn: () => unknown) => unknown {
+  return (fn) => {
+    try {
+      const dispose = fn();
+      if (typeof dispose === 'function') disposers.push(dispose as () => unknown);
+      return dispose;
+    } catch (error) {
+      const message = error instanceof Error ? error.message : String(error);
+      failures.push(message);
+      logger.error(`初始化某项失败（已跳过）：${message}`);
+      return undefined;
+    }
   };
+}
+
+/**
+ * Cordis 的 provide / get 语义：先查注册表，再回落到伪 ctx 自身的属性。
+ * 独立模式把可选能力直接挂在伪 ctx 上，不回落会把本来就有的能力判成没有。
+ */
+function createServiceRegistry(services: Map<string, unknown>, attrs: () => Record<string, unknown>) {
   return {
-    info: (message) => write('INFO ', message),
-    warn: (message) => write('WARN ', message),
-    error: (message) => write('ERROR', message),
-    debug: (message) => {
-      if (process.env.DSH_PET_STANDALONE_DEBUG === '1') write('DEBUG', message);
+    provide(name: string, value: unknown): () => void {
+      services.set(name, value);
+      return () => {
+        if (services.get(name) === value) services.delete(name);
+      };
+    },
+    get(name: string): unknown {
+      const registered = services.get(name);
+      if (registered !== undefined) return registered;
+      return attrs()[name];
     },
   };
 }
@@ -123,54 +142,11 @@ export function createStandaloneContext(options: StandaloneContextOptions): Stan
   let disposed = false;
 
   const portOf = (): number => (typeof options.port === 'function' ? options.port() : options.port);
-
-  const webServer = {
-    /** 读取时取值：服务先监听、端口确定后才 apply。 */
-    get port(): number {
-      return portOf();
-    },
-    register(spec: RegisteredRoute): () => void {
-      routes.push({ kind: spec.kind, path: spec.path, handler: spec.handler });
-      return () => {
-        const index = routes.findIndex((route) => route.handler === spec.handler);
-        if (index >= 0) routes.splice(index, 1);
-      };
-    },
-  };
+  const webServer = createWebServer(routes, portOf);
 
   const context: Record<string, unknown> = {
-    /**
-     * 与 Cordis 同语义：跑一次注册函数并收集它返回的释放函数。
-     * 单项失败只记录并打日志，不让整个插件起不来。
-     */
-    effect(fn: () => unknown): unknown {
-      try {
-        const dispose = fn();
-        if (typeof dispose === 'function') disposers.push(dispose as () => unknown);
-        return dispose;
-      } catch (error) {
-        const message = error instanceof Error ? error.message : String(error);
-        failures.push(message);
-        logger.error(`初始化某项失败（已跳过）：${message}`);
-        return undefined;
-      }
-    },
-    /** 对外服务注册（Cordis 的 provide 语义），返回释放函数。 */
-    provide(name: string, value: unknown): () => void {
-      services.set(name, value);
-      return () => {
-        if (services.get(name) === value) services.delete(name);
-      };
-    },
-    /**
-     * 服务查找：先查注册表，再回落到 ctx 自身的属性。
-     * 独立模式把可选能力直接挂在伪 ctx 上，不回落会把本来就有的能力判成没有。
-     */
-    get(name: string): unknown {
-      const registered = services.get(name);
-      if (registered !== undefined) return registered;
-      return (this as unknown as Record<string, unknown>)[name];
-    },
+    effect: createEffectRunner(disposers, failures, logger),
+    ...createServiceRegistry(services, () => context),
     /** 独立模式没有 DSH 会话事件：不订阅，工作状态保持空闲。 */
     on(): () => void {
       return () => {};
@@ -195,35 +171,7 @@ export function createStandaloneContext(options: StandaloneContextOptions): Stan
         ai?.currentSelection() ?? { provider: STANDALONE_PROVIDER, model: '' },
     },
     credentials: { resolve: async (): Promise<undefined> => undefined },
-    llm: ai
-      ? {
-          listProviders: () => ai.listProviders(),
-          listModels: (provider: string) => ai.listModels(provider),
-          resolveModelInfo: (provider?: string, model?: string, signal?: AbortSignal) =>
-            ai.resolveModelInfo(provider, model, signal),
-          stream: (request: unknown) => ai.stream(request),
-        }
-      : {
-          listProviders: (): unknown[] => [],
-          listModels: async (): Promise<unknown[]> => [],
-          /**
-           * 模型元数据查询：契约是异步的，替身也必须返回 Promise。
-           * 同步返回 undefined 时，任何 .then() 都会立刻炸。
-           */
-          resolveModelInfo: async (): Promise<undefined> => undefined,
-          // 契约要求 AsyncIterable：写成 async 函数会让 for await 立刻抛 TypeError，
-          // 且被拒的 Promise 无人接管，可能直接终止进程。
-          // 不用 async function*：只抛错不 yield 会被 require-yield 拦下。
-          stream: (): AsyncIterable<never> => ({
-            [Symbol.asyncIterator](): AsyncIterator<never> {
-              return {
-                next: async (): Promise<IteratorResult<never>> => {
-                  throw new Error('dsh-pet standalone: 独立模式未接入模型（碎碎念/对话不可用）');
-                },
-              };
-            },
-          }),
-        },
+    llm: ai ? createLlmFacade(ai) : createOfflineLlm(),
   };
 
   return {

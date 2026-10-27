@@ -9,6 +9,7 @@ import { LockStore } from '../lock.ts';
 import { PoseStore } from '../pose.ts';
 import { SURFACE_TEXT, displayCovers, normalizeSurface, type Surface } from '../surface.ts';
 import { type RouteResult } from '../http.ts';
+import { failResult } from '../routes/result.ts';
 import { findPetInstance } from '../config.ts';
 import type { HostSetup } from './setup.ts';
 
@@ -39,10 +40,7 @@ export function createPetLookup(deps: PetLookupInput) {
   const surfaceParam = (params: URLSearchParams): { ok: true; want: Surface } | { ok: false; res: RouteResult } => {
     const want = normalizeSurface(params.get('surface'));
     if (want !== null) return { ok: true, want };
-    return {
-      ok: false,
-      res: { kind: 'json', status: 200, obj: { ok: false, reason: 'bad-request', message: SURFACE_TEXT } },
-    };
+    return { ok: false, res: failResult('bad-request', SURFACE_TEXT) };
   };
 
   /**
@@ -53,16 +51,9 @@ export function createPetLookup(deps: PetLookupInput) {
   const surfaceMismatch = (pet: Record<string, unknown>, petId: string, want: Surface): RouteResult | null => {
     const display = String(pet.display ?? '');
     if (displayCovers(want, display)) return null;
-    return {
-      kind: 'json',
-      status: 200,
-      obj: {
-        ok: false,
-        reason: 'pet-not-displayed',
-        message: petId + ' 的显示模式是 ' + display + '，不满足 surface=' + want,
-        display,
-      },
-    };
+    return failResult('pet-not-displayed', petId + ' 的显示模式是 ' + display + '，不满足 surface=' + want, {
+      display,
+    });
   };
 
   /**
@@ -100,7 +91,7 @@ export function createPetLookup(deps: PetLookupInput) {
     | { ok: false; res: RouteResult } => {
     const fail = (reason: 'pet-required' | 'unknown-pet', message: string): { ok: false; res: RouteResult } => ({
       ok: false,
-      res: { kind: 'json', status: 200, obj: { ok: false, reason, message } },
+      res: failResult(reason, message),
     });
     const petId = String(params.get('pet') ?? '').trim();
     if (!petId) return fail('pet-required', 'pet 必填：要指定操作哪只桌宠');
@@ -130,14 +121,7 @@ export function createPetLookup(deps: PetLookupInput) {
   const lockBlocked = (petId: string, params: URLSearchParams): RouteResult | null => {
     const g = lock.gate(petId, String(params.get('lock') ?? ''));
     if (g.ok) return null;
-    return {
-      kind: 'json',
-      status: 200,
-      obj:
-        g.reason === 'lock-lost'
-          ? { ok: false, reason: g.reason, cause: g.cause, message: g.message }
-          : { ok: false, reason: g.reason, message: g.message },
-    };
+    return failResult(g.reason, g.message, g.reason === 'lock-lost' ? { cause: g.cause } : undefined);
   };
   return { lock, pose, surfaceBlocked, requirePet, lockBlocked };
 }

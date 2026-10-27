@@ -41,8 +41,18 @@ const MENU_TARGETS: ReadonlySet<string> = new Set<string>(['web', 'desktop', 'bo
 /** 缺省 target = 两端都显示（= 加这个字段之前的行为）。 */
 const DEFAULT_TARGET: MenuTarget = 'both';
 
+/** 注册/清除失败的原因：原样进响应体的 `reason`，取值由路由层的失败实体约束。 */
+export type MenuFailure =
+  | 'bad-request'
+  | 'invalid-owner'
+  | 'invalid-labels'
+  | 'invalid-label'
+  | 'invalid-target'
+  | 'too-many-items'
+  | 'too-many-owners';
+
 /** 注册结果：业务失败按插件口径回 `{ ok:false, reason, message }`（HTTP 200），不是 400。 */
-export type MenuRegisterResult = { ok: true } | { ok: false; reason: string; message: string };
+export type MenuRegisterResult = { ok: true } | { ok: false; reason: MenuFailure; message: string };
 
 /** 校验一个显示用字符串：必须是 string、trim 后非空、不超长、无控制字符。 */
 function displayText(value: unknown, max: number): string | null {
@@ -130,7 +140,7 @@ export class MenuRegistry {
    * 幂等：owner 本来就不存在 → `removed: 0`，仍算成功，调用方重试注销时不该看到错误。
    * 挂在该 owner 上的长轮询会被叫醒，醒来后查不到 owner → 路由回 `unknown-owner`。
    */
-  clear(rawOwner: unknown): { ok: true; removed: number } | { ok: false; reason: string; message: string } {
+  clear(rawOwner: unknown): { ok: true; removed: number } | { ok: false; reason: MenuFailure; message: string } {
     const owner = displayText(rawOwner, OWNER_MAX);
     if (owner === null) {
       return { ok: false, reason: 'invalid-owner', message: `owner 必须是 1–${OWNER_MAX} 字符的字符串（禁控制字符）` };

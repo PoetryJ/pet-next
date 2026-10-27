@@ -215,19 +215,28 @@ describe('/state + /balance —— 轮询统一状态与余额动作端点', () 
     assert.equal((await call('/dsh-pet-7340/state', 'POST')).status, 405);
   });
 
-  test('只传 since / 只传 timeout → 400（成对必填，与 /playback 的 wait/timeout 同一套约定）', async () => {
-    assert.equal((await call('/dsh-pet-7340/state?since=0')).status, 400);
-    assert.equal((await call('/dsh-pet-7340/state?timeout=1000')).status, 400);
+  test('只传 since / 只传 timeout → 200 + bad-request（成对必填，与 /playback 的 wait/timeout 同一套约定）', async () => {
+    for (const q of ['since=0', 'timeout=1000']) {
+      const r = await call('/dsh-pet-7340/state?' + q);
+      assert.equal(r.status, 200, q);
+      const body = JSON.parse(r.body) as { ok: boolean; reason: string };
+      assert.equal(body.ok, false);
+      assert.equal(body.reason, 'bad-request');
+    }
   });
 
-  test('非法 since / timeout → 400（非整数、负数、小数、超上限）', async () => {
+  test('非法 since / timeout → 200 + bad-request（非整数、负数、小数、超上限）', async () => {
     for (const q of [
       'since=abc&timeout=1000',
       'since=-1&timeout=1000',
       'since=0&timeout=99999',
       'since=0&timeout=1.5',
     ]) {
-      assert.equal((await call('/dsh-pet-7340/state?' + q)).status, 400, q);
+      const r = await call('/dsh-pet-7340/state?' + q);
+      assert.equal(r.status, 200, q);
+      const body = JSON.parse(r.body) as { ok: boolean; reason: string };
+      assert.equal(body.ok, false, q);
+      assert.equal(body.reason, 'bad-request', q);
     }
   });
 
@@ -703,15 +712,17 @@ describe('?rounds= —— 非法值 bad-request，合法值不误杀（issue #14
   });
 });
 
-describe('/pet-display —— 业务失败一律 200 + ok:false（不用 400/404 表达业务结论）', () => {
-  test('GET → 405（写端点；方法错是协议层错误，照旧不是 200）', async () => {
-    assert.equal((await call('/dsh-pet-7340/pet-display')).status, 405);
+describe('/pet-display —— 业务失败 200 + 实体，协议失败用真实状态码', () => {
+  test('GET → 405 + method-not-allowed（方法错是协议失败，不由 handler 决定）', async () => {
+    const r = await call('/dsh-pet-7340/pet-display');
+    assert.equal(r.status, 405);
+    assert.equal((JSON.parse(r.body) as { reason: string }).reason, 'method-not-allowed');
   });
 
-  test('请求体不是合法 JSON → 400（协议层错误，与其它端点同一口径）', async () => {
+  test('请求体不是合法 JSON → 400 + invalid-json（协议失败）', async () => {
     const r = await call('/dsh-pet-7340/pet-display', 'POST', '{ 不是 json');
     assert.equal(r.status, 400);
-    assert.match(r.body, /invalid JSON body/);
+    assert.equal((JSON.parse(r.body) as { reason: string }).reason, 'invalid-json');
   });
 
   test('缺 id → 200 + pet-required（与 9 条 ?pet= 路由同一对词汇）', async () => {
@@ -769,16 +780,22 @@ describe('/work-status —— 外部写入工作状态', () => {
     assert.equal(again.status, 204);
   });
 
-  test('非法输入 → 400；GET → 405；body 超限 → 413', async () => {
-    const bad = [
-      '{',
-      JSON.stringify({ state: 'nope' }),
-      JSON.stringify({ state: 'working', task: 42 }),
-      JSON.stringify({ state: 'working', task: 'x'.repeat(41) }),
-    ];
-    for (const body of bad) {
+  test('坏 JSON → 400；业务参数非法 → 200 + bad-request；GET → 405；body 超限 → 413', async () => {
+    const malformed = await call('/dsh-pet-7340/work-status', 'POST', '{');
+    assert.equal(malformed.status, 400, '坏 JSON 是协议失败');
+    assert.equal((JSON.parse(malformed.body) as { reason: string }).reason, 'invalid-json');
+
+    for (const payload of [
+      { state: 'nope' },
+      { state: 'working', task: 42 },
+      { state: 'working', task: 'x'.repeat(41) },
+    ]) {
+      const body = JSON.stringify(payload);
       const r = await call('/dsh-pet-7340/work-status', 'POST', body);
-      assert.equal(r.status, 400, body.slice(0, 60));
+      assert.equal(r.status, 200, body.slice(0, 60));
+      const parsed = JSON.parse(r.body) as { ok: boolean; reason: string };
+      assert.equal(parsed.ok, false);
+      assert.equal(parsed.reason, 'bad-request');
     }
     assert.equal((await call('/dsh-pet-7340/work-status')).status, 405);
     const big = await call(

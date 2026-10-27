@@ -5,7 +5,8 @@
  * 必须始终成立：校验规则与读取侧同一套，写回时不得放宽。
  * @module dsh-pet/src/host/config/validate
  */
-import { FONT_FAMILY_SET, FONT_SIZE_MAX, FONT_SIZE_MIN } from './constants.ts';
+import { FONT_SIZE_MAX, FONT_SIZE_MIN } from '../../shared/fonts.ts';
+import { FONT_FAMILY_SET } from './constants.ts';
 
 /** animations 段完整性校验（与旧 assertAnimationsHost 同一套规则；不 throw，非法返回 false） */
 function animationsValid(a: unknown): boolean {

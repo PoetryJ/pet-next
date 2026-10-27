@@ -8,6 +8,7 @@
 import { readAllConfig, sliceMemoryRounds } from '../config.ts';
 import type { PetRouteDeps, RouteInput } from './types.ts';
 import type { RouteResult } from '../http.ts';
+import { failResult, invalidJson, methodNotAllowed, okResult } from './result.ts';
 
 /** 对话领域：未命中返回 undefined，命中返回应答。 */
 export async function handleChatRoutes(deps: PetRouteDeps, input: RouteInput): Promise<RouteResult | undefined> {
@@ -18,9 +19,7 @@ export async function handleChatRoutes(deps: PetRouteDeps, input: RouteInput): P
   // POST /chat 携带历史生成回复并写入记忆，回复同时写 S 的 pets.<id>.say。
   // 记忆唯一读写方是 host（memory.json），浏览器与桌面天然共享同一份。
   if (rest === 'chat') {
-    if (method !== 'GET' && method !== 'POST') {
-      return { kind: 'json', status: 405, obj: { error: 'method not allowed' } };
-    }
+    if (method !== 'GET' && method !== 'POST') return methodNotAllowed();
     try {
       // `?rounds=`：GET 专属的查看参数——只决定这次读多少轮（不写记忆，也不改变后续对话
       // 往上下文里带多少，所以 POST 不认它）。与 surface 同一处境：参数级校验放在读盘之前。
@@ -29,11 +28,7 @@ export async function handleChatRoutes(deps: PetRouteDeps, input: RouteInput): P
       if (roundsRaw !== null && roundsRaw.trim() !== '') {
         const n = Number(roundsRaw);
         if (!Number.isInteger(n) || n < 0 || n > 200) {
-          return {
-            kind: 'json',
-            status: 200,
-            obj: { ok: false, reason: 'bad-request', message: 'rounds 必须是 0–200 的整数（不传则用配置）' },
-          };
+          return failResult('bad-request', 'rounds 必须是 0–200 的整数（不传则用配置）');
         }
         roundsOverride = n;
       }
@@ -59,31 +54,24 @@ export async function handleChatRoutes(deps: PetRouteDeps, input: RouteInput): P
         const rounds = roundsOverride ?? memoryRounds(who.conf);
         // 与 chatWithPet 同一语义：rounds = 0 → 空历史（slice(-0) 会返回整个数组，见上）
         const messages = sliceMemoryRounds(list, rounds);
-        return { kind: 'json', status: 200, obj: { ok: true, messages, rounds } };
+        return okResult({ ok: true, messages, rounds });
       }
       if (method === 'POST') {
-        const parsed = (JSON.parse(body ?? 'null') as Record<string, unknown> | null) ?? {};
+        let parsed: Record<string, unknown>;
+        try {
+          parsed = (JSON.parse(body ?? 'null') as Record<string, unknown> | null) ?? {};
+        } catch {
+          return invalidJson();
+        }
         const text = typeof parsed.text === 'string' ? parsed.text.trim() : '';
-        if (!text) {
-          return { kind: 'json', status: 200, obj: { ok: false, reason: 'bad-request', message: '消息为空' } };
-        }
-        if (text.length > 2000) {
-          return {
-            kind: 'json',
-            status: 200,
-            obj: { ok: false, reason: 'bad-request', message: '消息过长（限 2000 字）' },
-          };
-        }
+        if (!text) return failResult('bad-request', '消息为空');
+        if (text.length > 2000) return failResult('bad-request', '消息过长（限 2000 字）');
         const result = await chatWithPet(petId, text);
-        return { kind: 'json', status: 200, obj: result };
+        return okResult(result);
       }
     } catch (e) {
       // 配置已由 readAllConfig 保证正确（不再有 config-error 分支）；其余（IO/LLM）→ generate-error
-      return {
-        kind: 'json',
-        status: 200,
-        obj: { ok: false, reason: 'generate-error', message: e instanceof Error ? e.message : String(e) },
-      };
+      return failResult('generate-error', e instanceof Error ? e.message : String(e));
     }
   }
 

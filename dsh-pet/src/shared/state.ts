@@ -51,11 +51,13 @@ export async function fetchState(
     const res = await fetch(url, { cache: 'no-store' });
     if (!res.ok) return null;
     const raw = (await res.json().catch(() => null)) as {
+      ok?: unknown;
       counter?: unknown;
       sections?: unknown;
       pets?: unknown;
     } | null;
-    if (!raw || typeof raw !== 'object') return null;
+    // 业务失败也是 200：`ok:false` 的体不是快照，按失败处理（否则会被当成「空状态」成功一次）
+    if (!raw || typeof raw !== 'object' || raw.ok === false) return null;
     const sections: Record<string, StateLeaf> = {};
     const rawSections =
       raw.sections && typeof raw.sections === 'object' ? (raw.sections as Record<string, unknown>) : {};

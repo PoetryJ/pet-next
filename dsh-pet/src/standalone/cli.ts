@@ -18,12 +18,8 @@ import { runCheck, packageVersion } from './check.ts';
 import { createStandaloneAi } from './ai-provider.ts';
 import { createRequestSecurity } from './request-security.ts';
 import { writeStandaloneRuntime } from './runtime-state.ts';
-import {
-  createStandaloneContext,
-  createStandaloneLogger,
-  type RegisteredRoute,
-  type StandaloneLogger,
-} from './context.ts';
+import { createStandaloneContext, type RegisteredRoute, type StandaloneLogger } from './context.ts';
+import { createStandaloneLogger } from './logger.ts';
 import { configPathsFor, describePets, isDesktopVisible, parseArgs, USAGE } from './options.ts';
 import { listenStandaloneServer } from './server.ts';
 import { ROUTE_PATH } from '../shared/constants.ts';
