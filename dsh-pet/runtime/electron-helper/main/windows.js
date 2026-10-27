@@ -9,6 +9,7 @@
 const path = require('node:path');
 const { pointerZone, decideWindowIgnore } = require('../pointer-target.js');
 const { TOPMOST_WATCHDOG_ENABLED, TOPMOST_WATCHDOG_TICK_MS } = require('../topmost-watchdog.js');
+const { TASKBAR_WATCHDOG_TICK_MS, shouldRunTaskbarWatchdog } = require('../taskbar-watchdog.js');
 
 /** 兜底通道的光标轮询间隔（ms）。 */
 const POINTER_POLL_MS = 60;
@@ -26,6 +27,7 @@ const POINTER_POLL_MS = 60;
  * @param deps.platform - 托盘与置顶的平台差异（tray-platform.js 的判定）。
  * @param deps.shouldReassertTopmost - 看门狗的纯判定。
  * @param deps.topmostLevel - 平台对应的置顶层级。
+ * @param deps.taskbarWatchdogEnabled - 任务栏看门狗总开关（main.js 按 DSH_PET_TASKBAR_WATCHDOG 传入）。
  */
 function createWindows({
   BrowserWindow,
@@ -38,6 +40,7 @@ function createWindows({
   platform,
   shouldReassertTopmost,
   topmostLevel,
+  taskbarWatchdogEnabled,
 }) {
   /** 窗口表：petId -> BrowserWindow */
   const windows = new Map();
@@ -112,13 +115,35 @@ function createWindows({
     return { width: Math.round(size) + m * 2, height: Math.round(height + bottomPad) + m * 2 };
   }
 
-  /** 把窗口从任务栏摘掉：show 后 Shell 会异步重建按钮，紧跟一次 0ms 的第二次调用才算数。 */
-  function keepOffTaskbar(win) {
+  /** 单次重申（幂等）：show 的异步重建路径与看门狗共用。 */
+  function reassertTaskbar(win) {
     if (!win || win.isDestroyed()) return;
     win.setSkipTaskbar(true);
-    setTimeout(() => {
-      if (!win.isDestroyed()) win.setSkipTaskbar(true);
-    }, 0);
+  }
+
+  /** 把窗口从任务栏摘掉：show 后 Shell 会异步重建按钮，紧跟一次 0ms 的第二次调用才算数。 */
+  function keepOffTaskbar(win) {
+    reassertTaskbar(win);
+    setTimeout(() => reassertTaskbar(win), 0);
+  }
+
+  /** 看门狗定时器句柄；null 表示未启动。 */
+  let taskbarWatchdogTimer = null;
+
+  /** 启动任务栏看门狗：仅 Windows 且总开关开启；重复调用无副作用。 */
+  function startTaskbarWatchdog() {
+    if (taskbarWatchdogTimer || !shouldRunTaskbarWatchdog(process.platform, taskbarWatchdogEnabled)) return;
+    taskbarWatchdogTimer = setInterval(() => {
+      for (const win of windows.values()) reassertTaskbar(win);
+    }, TASKBAR_WATCHDOG_TICK_MS);
+    taskbarWatchdogTimer.unref?.();
+  }
+
+  /** 停止看门狗：进程退出前调用，避免定时器拖住退出。 */
+  function stopTaskbarWatchdog() {
+    if (!taskbarWatchdogTimer) return;
+    clearInterval(taskbarWatchdogTimer);
+    taskbarWatchdogTimer = null;
   }
 
   /** 穿透兜底泵：正规翻转链路只有 forward 鼠标钩子，它在 Windows 上可能静默失效。 */
@@ -261,6 +286,7 @@ function createWindows({
     const geo = deskGeometry();
     const scale = dpi.petScale();
     for (const pet of petsFromEnv()) windows.set(pet.id, createPetWindow(pet, geo, scale));
+    startTaskbarWatchdog();
   }
 
   return {
@@ -271,6 +297,7 @@ function createWindows({
     updatePetState,
     broadcastPetStates,
     keepOffTaskbar,
+    stopTaskbarWatchdog,
     setPointerFallbackPaused: (paused) => {
       pointerFallbackPaused = paused;
     },

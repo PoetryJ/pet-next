@@ -36,6 +36,8 @@ const {
   shouldReassertTopmost,
   topmostLevel,
 } = require('./topmost-watchdog.js');
+// 任务栏看门狗：Windows 上 skipTaskbar 只是一次性 DeleteTab，shell 重建任务栏后按钮复现（见 taskbar-watchdog.js）
+const { taskbarWatchdogEnabledFromEnv } = require('./taskbar-watchdog.js');
 // 宿主存活判定：宿主退出 → 管道断开 → 自己退，绝不弹框、绝不留僵尸
 const { HOST_POLL_MS, hostIsGone, isBrokenPipeError, parseHostPid } = require('./host-liveness.js');
 // 全局 DPI 线性化的纯判定与换算（平台例外见该文件头）
@@ -198,6 +200,7 @@ const petWindows = createWindows({
   platform: TRAY_PLATFORM,
   shouldReassertTopmost,
   topmostLevel,
+  taskbarWatchdogEnabled: taskbarWatchdogEnabledFromEnv(process.env.DSH_PET_TASKBAR_WATCHDOG),
 });
 /** 托盘：显示开关与退出入口。 */
 const tray = createTray({
@@ -282,6 +285,7 @@ app.whenReady().then(() => {
 // 退出时销毁托盘图标：不销毁会在 Windows 通知区留下「幽灵图标」（鼠标划过才消失）。
 // 宿主改 display 时是 SIGTERM/SIGKILL 硬杀，Windows 上拦不到，所以这条只覆盖优雅退出。
 app.on('before-quit', () => {
+  petWindows.stopTaskbarWatchdog();
   if (!tray.exists()) return;
   try {
     tray.destroy();
