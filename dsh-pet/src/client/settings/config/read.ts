@@ -23,6 +23,10 @@ export interface MainConfigPatch {
   chatImageEnabled?: boolean;
   confineToScreen?: boolean;
   trayEnabled?: boolean;
+  /** 语音播报总开关；缺省表示这次响应里没有可信值。 */
+  voiceEnabled?: boolean;
+  /** 语音音色 id（宿主已按白名单校验，客户端原样展示）。 */
+  voiceName?: string;
   /** 物理参数：成品已按「内置默认 ← 用户层」填满，缺子键再用内置默认兜底一次。 */
   physics?: PhysicsParams;
   /** 字体：同物理参数。 */
@@ -67,6 +71,8 @@ export function readMainConfig(merged: MergedConfig): MainConfigPatch | null {
   if (typeof main.chatImageEnabled === 'boolean') patch.chatImageEnabled = main.chatImageEnabled;
   if (typeof main.confineToScreen === 'boolean') patch.confineToScreen = main.confineToScreen;
   if (typeof main.trayEnabled === 'boolean') patch.trayEnabled = main.trayEnabled;
+  if (typeof main.voiceEnabled === 'boolean') patch.voiceEnabled = main.voiceEnabled;
+  if (typeof main.voiceName === 'string') patch.voiceName = main.voiceName;
   if (main.physics && typeof main.physics === 'object') {
     patch.physics = { ...DEFAULT_PHYSICS, ...(main.physics as PhysicsParams) };
   }

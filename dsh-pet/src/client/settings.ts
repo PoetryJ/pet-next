@@ -5,6 +5,7 @@
  * 保存与同步都全量写用户层，再把宿主返回的成品交给容器重渲染——两条路都无需刷新页面。
  * @module dsh-pet/src/client/settings
  */
+import { ROUTE_PATH } from '../shared/constants.ts';
 import { DEFAULT_FONT } from '../shared/fonts.ts';
 import { DEFAULT_PHYSICS } from '../shared/physics.ts';
 import type { FontConfig, ModelSelection, PhysicsParams } from '../shared/types.ts';
@@ -20,6 +21,7 @@ import { makeGlobalCard, type GlobalFlagKey, type GlobalFlags } from './settings
 import { makeLoadStatus } from './settings/load-status.ts';
 import { makeModelCard, type ModelFieldKey } from './settings/model-card.ts';
 import { makeModelPicker } from './settings/picker/index.ts';
+import { makeVoicePicker } from './settings/picker/voice-picker.ts';
 import { runNotificationTest } from './settings/notify-test.ts';
 import { makeKindTabs } from './settings/kind-tabs.ts';
 import { makePathsCards } from './settings/paths-cards.ts';
@@ -32,6 +34,7 @@ import { useConfigLoad } from './settings/config/index.ts';
 import { usePetList } from './settings/use-pet-list.ts';
 import { useRemoteData } from './settings/use-remote-data.ts';
 import { makeUiKit } from './settings/ui.ts';
+import { makeVoiceCard, type VoiceOption } from './settings/voice-card.ts';
 
 // 字典与桥的真源都在 settings/ 里：宿主的 locale 注册、容器与测试夹具都经这里取，不各自深路径引用。
 export { NS, zh, en } from './settings/locales.ts';
@@ -56,10 +59,12 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
   // 卡片在 settings/ 里各自成文件，这里只造一次实例：组件类型必须跨渲染稳定，
   // 否则选择器的浮层状态（打开 / 搜索词 / 高亮）每次渲染都会丢。
   const ModelPicker = makeModelPicker({ h, useState, useEffect, useRef, t });
+  const VoicePicker = makeVoicePicker({ h, useState, useEffect, useRef, t });
   const PetTabs = makePetTabs({ h, t });
   const KindTabs = makeKindTabs({ h, t });
   const PetCard = makePetCard(rt);
   const GlobalCard = makeGlobalCard(rt);
+  const VoiceCard = makeVoiceCard(rt, VoicePicker);
   const FontCard = makeFontCard(rt);
   const ModelCard = makeModelCard(rt, ModelPicker);
   const PhysicsCard = makePhysicsCard(rt);
@@ -98,6 +103,20 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
     // 一次性拉取的宿主数据：落盘位置（两张路径卡）与候选模型清单（下拉框）。
     const { paths, catalog, catalogFailed } = useRemoteData(rt);
 
+    // 音色列表：与配置无关的一次性拉取，失败留空即可（下拉会只显示当前值）。
+    useEffect(() => {
+      let alive = true;
+      void fetch(ROUTE_PATH + '/voice/voices')
+        .then((response) => (response.ok ? response.json() : null))
+        .then((body: { voices?: VoiceOption[] } | null) => {
+          if (alive && body && Array.isArray(body.voices)) setVoiceOptions(body.voices);
+        })
+        .catch(() => undefined);
+      return () => {
+        alive = false;
+      };
+    }, []);
+
     // 系统通知总开关：与其余全局开关同构，切换只改本地状态、随「保存」整包写入。
     // 不做即时写入：PUT /config 会重启桌面 Helper，全部桌面宠物窗口重建（拖拽落点清空、宠物跳回角落）。
     // 引擎重读放在保存成功后（persist 里调 reloadNotifications），保存后即时生效、无需刷新。
@@ -111,6 +130,11 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
     const [confineScreen, setConfineScreen] = useState(false);
     // 系统托盘开关（全局）：随「保存」一起提交；宿主半侧据此决定建不建托盘、没桌面宠物时还值不值得常驻 Helper。
     const [trayEnabled, setTrayEnabled] = useState(true);
+    // 语音播报开关与音色（全局默认）：随「保存」整包写入；初值即内置默认，加载后用成品值覆盖。
+    const [voiceEnabled, setVoiceEnabled] = useState(false);
+    const [voiceName, setVoiceName] = useState('zh-CN-XiaoyiNeural');
+    // 可选音色：来自宿主 /voice/voices，拉不到就留空——下拉只显示当前值，绝不硬编码音色 id。
+    const [voiceOptions, setVoiceOptions] = useState<VoiceOption[]>([]);
     // 物理参数（全局）：只改本地状态，随「保存」整包写入；初值仅占位，成品加载成功后才允许编辑与保存。
     const [physics, setPhysics] = useState<PhysicsParams>({ ...DEFAULT_PHYSICS });
     // 字体（全局默认）：与 physics 同一套语义；初值仅占位，成品加载成功后才允许编辑与保存。
@@ -137,6 +161,8 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
         if (patch.chatImageEnabled !== undefined) setChatImage(patch.chatImageEnabled);
         if (patch.confineToScreen !== undefined) setConfineScreen(patch.confineToScreen);
         if (patch.trayEnabled !== undefined) setTrayEnabled(patch.trayEnabled);
+        if (patch.voiceEnabled !== undefined) setVoiceEnabled(patch.voiceEnabled);
+        if (patch.voiceName !== undefined) setVoiceName(patch.voiceName);
         if (patch.physics !== undefined) setPhysics(patch.physics);
         if (patch.font !== undefined) setFont(patch.font);
         if (patch.whisperModel !== undefined) setWhisperModel(patch.whisperModel);
@@ -209,6 +235,8 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
         chatImageEnabled: chatImage,
         confineToScreen: confineScreen,
         trayEnabled,
+        voiceEnabled,
+        voiceName,
         physics,
         whisperModel,
         chatModel,
@@ -279,6 +307,14 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
           onRemove: requestRemove,
         }),
         h(GlobalCard, { busy, values: globalFlags, onChange: setGlobalFlag }),
+        h(VoiceCard, {
+          busy,
+          enabled: voiceEnabled,
+          voiceName,
+          voices: voiceOptions,
+          onToggle: setVoiceEnabled,
+          onVoiceChange: setVoiceName,
+        }),
         h(FontCard, { busy, font, onChange: patchFont }),
         h(ModelCard, {
           busy,

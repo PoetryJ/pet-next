@@ -33,6 +33,10 @@ export interface SaveFields {
   chatImageEnabled: boolean;
   confineToScreen: boolean;
   trayEnabled: boolean;
+  /** 语音播报总开关。 */
+  voiceEnabled: boolean;
+  /** 语音音色 id（白名单内的四个之一）。 */
+  voiceName: string;
   physics: PhysicsParams;
   whisperModel: ModelSelection;
   chatModel: ModelSelection;
@@ -63,6 +67,8 @@ export function buildSaveBody(fields: SaveFields): Record<string, unknown> {
     chatImageEnabled: fields.chatImageEnabled,
     confineToScreen: fields.confineToScreen,
     trayEnabled: fields.trayEnabled,
+    voiceEnabled: fields.voiceEnabled,
+    voiceName: fields.voiceName,
     physics: fields.physics,
     whisperModel: fields.whisperModel,
     chatModel: fields.chatModel,

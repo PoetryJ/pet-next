@@ -229,6 +229,8 @@ describe('buildSaveBody —— 请求体字段', () => {
       chatImageEnabled: false,
       confineToScreen: false,
       trayEnabled: true,
+      voiceEnabled: true,
+      voiceName: 'zh-CN-XiaoyiNeural',
       physics: {},
       whisperModel: { provider: '', model: '' },
       chatModel: { provider: '', model: '' },
@@ -248,6 +250,8 @@ describe('buildSaveBody —— 请求体字段', () => {
       'pets',
       'physics',
       'trayEnabled',
+      'voiceEnabled',
+      'voiceName',
       'whisperImageEnabled',
       'whisperModel',
     ]);

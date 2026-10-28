@@ -93,6 +93,12 @@ export function saveUserConfig(
   if (cie !== undefined && typeof cie !== 'boolean') return null;
   const cts = o.confineToScreen;
   if (cts !== undefined && typeof cts !== 'boolean') return null;
+  // 语音播报开关与音色（全局）：与上面几个布尔同语义；音色必须落在白名单内，
+  // 校验直接复用读取侧的 topFieldValid，读写同一份规则。
+  const ve = o.voiceEnabled;
+  if (ve !== undefined && typeof ve !== 'boolean') return null;
+  const vn = o.voiceName;
+  if (vn !== undefined && !topFieldValid('voiceName', vn)) return null;
   // 系统托盘开关（全局，仅桌面模式）：与上面几个全局布尔同语义——传了必须是布尔，没传走透传保留。
   const te = o.trayEnabled;
   if (te !== undefined && typeof te !== 'boolean') return null;
@@ -134,6 +140,8 @@ export function saveUserConfig(
   if (wie !== undefined) outConfig.whisperImageEnabled = wie;
   if (cie !== undefined) outConfig.chatImageEnabled = cie;
   if (cts !== undefined) outConfig.confineToScreen = cts;
+  if (ve !== undefined) outConfig.voiceEnabled = ve;
+  if (vn !== undefined) outConfig.voiceName = vn;
   if (te !== undefined) outConfig.trayEnabled = te;
   if (ph !== undefined) outConfig.physics = ph;
   if (fo !== undefined) outConfig.font = fo;
@@ -152,6 +160,8 @@ export function saveUserConfig(
   if (wie !== undefined) bodyOwned.add('whisperImageEnabled');
   if (cie !== undefined) bodyOwned.add('chatImageEnabled');
   if (cts !== undefined) bodyOwned.add('confineToScreen');
+  if (ve !== undefined) bodyOwned.add('voiceEnabled');
+  if (vn !== undefined) bodyOwned.add('voiceName');
   if (te !== undefined) bodyOwned.add('trayEnabled');
   if (ph !== undefined) bodyOwned.add('physics');
   if (fo !== undefined) bodyOwned.add('font');

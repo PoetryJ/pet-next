@@ -6,6 +6,7 @@
  * @module dsh-pet/src/host/config/validate
  */
 import { FONT_SIZE_MAX, FONT_SIZE_MIN } from '../../shared/fonts.ts';
+import { isKnownVoice } from '../voice/voices.ts';
 import { FONT_FAMILY_SET } from './constants.ts';
 
 /** animations 段完整性校验（与旧 assertAnimationsHost 同一套规则；不 throw，非法返回 false） */
@@ -140,6 +141,12 @@ export function topFieldValid(key: string, value: unknown): boolean {
       return typeof value === 'boolean';
     case 'whisperImageEnabled':
       return typeof value === 'boolean';
+    case 'voiceEnabled':
+      // 语音播报开关（全局布尔）：只决定念不念，不影响气泡与记忆
+      return typeof value === 'boolean';
+    case 'voiceName':
+      // 音色必须是白名单内的 id；写错即非法，读取侧回落到默认音色并告警
+      return typeof value === 'string' && isKnownVoice(value);
     case 'chatImageEnabled':
       return typeof value === 'boolean';
     case 'confineToScreen':
