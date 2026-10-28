@@ -56,8 +56,8 @@ python encode_thumbs.py      # 转码 640×360 播放变体 → step04/
 # 把 step04 的播放变体同步进插件包（webm 直接 cp）
 cp step04/*.webm dsh-pet/assets/webm/   # 播放格式（VP9-alpha）
 
-# 本地安装插件（--profile 填实际在用的那个：dsh web → web；
-# 桌面应用（Electron 版）改用应用内「插件管理」，见「快速开始（安装插件）」；
+# 本地安装插件（--profile 填实际在用的那个：dsh web → web，桌面应用 → desktop；
+# 详见 INSTALL.md 的「从源码安装」；
 # file: 指向插件目录 dsh-pet/dsh-pet）
 dsh plugin --profile web add file:D:/path/to/dsh-pet/dsh-pet
 ```
