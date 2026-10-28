@@ -9,6 +9,7 @@ import { LOGO_URL } from './api.ts';
 import { makePetChatPanel, type ChatPanelRuntime } from './panel.ts';
 import { injectPanelCss } from './styles.ts';
 import { PET_CHAT_COMMAND_ID, registerPetChatShortcut } from './shortcut.ts';
+import { disposeTip } from './tooltip.ts';
 
 /** 标签实现身份；同时也是正文与标题插槽的 key。 */
 const TAB_ID = 'dsh-pet-chat';
@@ -102,6 +103,7 @@ export function registerPetChatTab(ctx: PetChatTabHost, rt: ChatPanelRuntime): (
   return () => {
     shortcut.dispose();
     disposeType();
+    disposeTip();
     disposeCss();
   };
 }

@@ -19,6 +19,8 @@ export const SIZE = {
   imgMaxH: 180,
   preview: 48,
   hairline: 2,
+  /** 播报按钮生成中的转圈直径；与 11px 的时间文字同高，不压过文字。 */
+  spinner: 12,
   tabPadY: 3,
   tabPadX: 12,
   toolPadY: 2,
@@ -32,6 +34,13 @@ export const SIZE = {
   send: 34,
   pillPadY: 4,
   pill: 999,
+  /** 悬浮提示气泡的内边距（纵、横）；与设置页的 data-tip 气泡一致。 */
+  tipPadY: 6,
+  tipPadX: 10,
+  /** 悬浮提示气泡的最大宽度：一行放不下就省略，不做换行（换行会让宽度随位置跳变）。 */
+  tipMaxW: 260,
+  /** 人设卷帘里正文的最大高度：人设没有长度上限，超过就在这块内部滚动。 */
+  personaMaxH: 200,
 } as const;
 
 /** 输入框自动长高的上限（px）；超过就内部滚动。 */

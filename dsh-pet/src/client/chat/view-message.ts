@@ -7,17 +7,18 @@
 import { attachmentUrl, LOGO_URL, memeUrl, type ChatMessageView } from './api.ts';
 import type { ChatPanelRuntime } from './runtime.ts';
 import { formatStamp } from './stamp.ts';
+import { tipAttrs } from './tooltip.ts';
 import type { ChatPanelState } from './types.ts';
 
 /** 语音播报按钮：贴在时间右边，三种状态一眼可分——可播 / 生成中转圈 / 播放中高亮。 */
 function speakNode(h: ChatPanelRuntime['h'], text: string, ts: number, state: ChatPanelState): unknown {
   const phase = state.speaking?.ts === ts ? state.speaking.phase : 'idle';
-  const title = phase === 'loading' ? '正在生成语音…' : phase === 'playing' ? '正在播放' : '播放这句';
+  const label = phase === 'loading' ? '正在生成语音…' : phase === 'playing' ? '正在播放' : '播放这句';
   return h('button', {
     type: 'button',
     className: 'pet-chat-speak is-' + phase,
-    title,
-    'aria-label': title,
+    'aria-label': label,
+    ...tipAttrs(label),
     onClick: (event: { stopPropagation: () => void }) => {
       // 多选模式下整轮可点：这里必须拦一下，否则点喇叭会顺手切换选中
       event.stopPropagation();
@@ -131,7 +132,8 @@ export function messageNode(
             : h('button', {
                 type: 'button',
                 className: 'pet-chat-img-btn',
-                title: '点开看大图',
+                'aria-label': '点开看大图',
+                ...tipAttrs('点开看大图'),
                 onClick: () => onOpenImage(image),
                 children: h('img', { className: 'pet-chat-img', src: image, alt: '对话图片', loading: 'lazy' }),
               }),

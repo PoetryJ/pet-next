@@ -30,11 +30,47 @@ export function orphansNode(h: ChatPanelRuntime['h'], state: ChatPanelState): un
   });
 }
 
+/** 卷帘块与按钮共用的 id：`aria-controls` 要指向它。 */
+const PERSONA_PANEL_ID = 'pet-chat-persona';
+
+/** 「人设」按钮：点一下展开 / 收起工具栏下方那块卷帘。 */
+function personaButton(h: ChatPanelRuntime['h'], state: ChatPanelState): unknown {
+  return h('button', {
+    type: 'button',
+    className: 'pet-chat-tool',
+    'aria-expanded': String(state.personaOpen),
+    'aria-controls': PERSONA_PANEL_ID,
+    onClick: () => state.togglePersona(),
+    children: '人设',
+  });
+}
+
+/**
+ * 人设卷帘：当前这只宠物实际在用的那段正文。
+ *
+ * 在正常流里展开，把消息列表顶下去——人设可以很长，浮在对话上会挡住内容。
+ * 收起时保留 DOM 只把高度归零，否则没有展开过渡可播。
+ */
+export function personaNode(h: ChatPanelRuntime['h'], state: ChatPanelState): unknown {
+  return h('div', {
+    id: PERSONA_PANEL_ID,
+    className: 'pet-chat-persona' + (state.personaOpen ? ' is-open' : ''),
+    'aria-hidden': String(!state.personaOpen),
+    children: [
+      h('div', {
+        className: 'pet-chat-persona-clip',
+        children: [h('div', { className: 'pet-chat-persona-body', children: state.persona })],
+      }),
+    ],
+  });
+}
+
 /** 工具栏：多选开关、删除选中（带数量）与清空历史；删除都先走面板内确认条。 */
 export function toolsNode(h: ChatPanelRuntime['h'], state: ChatPanelState): unknown {
   return h('div', {
     className: 'pet-chat-tools',
     children: [
+      personaButton(h, state),
       h('button', {
         type: 'button',
         className: 'pet-chat-tool',

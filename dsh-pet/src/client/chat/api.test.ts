@@ -16,6 +16,7 @@ import {
   groupRounds,
   memeUrl,
   memoryBoundaryIndex,
+  personaText,
   toChatMessages,
 } from './api.ts';
 
@@ -217,5 +218,51 @@ describe('fetchChatConfig —— 同一份 /config 里带出记忆轮数', () =>
     } finally {
       globalThis.fetch = original;
     }
+  });
+
+  test('同一次请求带回每只宠物的人设：实例级优先，没有就用所属条目那份', async () => {
+    const body = {
+      main: {
+        pets: [
+          { id: 'main', name: '主宠' },
+          { id: 'cat', name: '猫', whisperPrompt: '我自己的人设' },
+        ],
+        whisperPrompt: '条目默认人设',
+      },
+      pack: { pets: [{ id: 'pig', name: '猪' }], whisperPrompt: '种类人设' },
+    };
+    const original = globalThis.fetch;
+    globalThis.fetch = (async () => new Response(JSON.stringify(body), { status: 200 })) as typeof fetch;
+    try {
+      const config = await fetchChatConfig();
+      assert.deepEqual(config.personaByPet, {
+        main: '条目默认人设',
+        cat: '我自己的人设',
+        pig: '种类人设',
+      });
+    } finally {
+      globalThis.fetch = original;
+    }
+  });
+});
+
+describe('personaText —— 面板显示哪一份人设', () => {
+  test('实例级非空白 → 用实例原文（替换条目那份，保留排版）', () => {
+    assert.equal(personaText('  我的猫娘人设\n第二行 ', '条目人设'), '  我的猫娘人设\n第二行 ');
+  });
+
+  test('实例级纯空白或缺失 → 回落到所属条目顶层那份', () => {
+    assert.equal(personaText('   ', '条目人设'), '条目人设');
+    assert.equal(personaText(undefined, '条目人设'), '条目人设');
+  });
+
+  test('两处都没有 → 空串（内置默认由配置合并保证，这里不凭空造文案）', () => {
+    assert.equal(personaText(undefined, undefined), '');
+    assert.equal(personaText('', ''), '');
+  });
+
+  test('非字符串的脏值 → 按没写处理，不把对象显示给用户', () => {
+    assert.equal(personaText({ text: '对象' }, '条目人设'), '条目人设');
+    assert.equal(personaText(undefined, 42), '');
   });
 });

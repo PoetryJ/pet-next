@@ -33,6 +33,10 @@ export interface PanelData {
   readonly previewUrl: string | undefined;
   /** 条目（素材根）→ 该条目保留的对话轮数；来自同一份 `/config`。 */
   readonly roundsByEntry: Readonly<Record<string, number>>;
+  /** 宠物 id → 实际在用的人设正文；与轮数出自同一份 `/config`。 */
+  readonly personas: Readonly<Record<string, string>>;
+  /** 「人设」卷帘是否展开：收起时内容留在 DOM 里、高度归零，展开过渡才播得起来。 */
+  readonly personaOpen: boolean;
   /** 正在点播的那一轮与阶段；null = 没有在播。同一时刻只播一条。 */
   readonly speaking: { readonly ts: number; readonly phase: 'loading' | 'playing' } | null;
 }
@@ -52,6 +56,12 @@ export interface ChatPanelState extends PanelData {
   readonly assetRoot: string;
   /** 当前条目保留的轮数（`chatMemoryRounds`）；配置里没有时不画记忆边界线。 */
   readonly memoryRounds: number | undefined;
+  /** 当前这只宠物实际在用的人设正文；空串 = 实例与条目都没写。 */
+  readonly persona: string;
+  /** 展开 / 收起人设卷帘。 */
+  readonly togglePersona: () => void;
+  /** 收起人设卷帘（Esc）。 */
+  readonly closePersona: () => void;
   /** 消息列表容器：滚动到底部要用。 */
   readonly listRef: { current: HTMLDivElement | null };
   /** 输入框：内容变高时要直接改它的 height。 */

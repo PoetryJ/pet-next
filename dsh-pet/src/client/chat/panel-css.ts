@@ -57,6 +57,40 @@ export const PANEL_CSS = `
   flex: 0 0 auto;
 }
 
+/* 人设卷帘：展开时把消息列表顶下去，而不是浮在对话上——人设可以很长，浮层会挡住内容。
+   0fr → 1fr 是唯一不用量高度的展开过渡；夹层负责裁剪，正文层才放内边距与边框，
+   否则收起时 padding 与 border 仍在，留下一道缝。 */
+.pet-chat-persona {
+  display: grid;
+  grid-template-rows: 0fr;
+  flex: 0 0 auto;
+  transition: grid-template-rows var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+
+.pet-chat-persona.is-open {
+  grid-template-rows: 1fr;
+}
+
+.pet-chat-persona-clip {
+  min-height: 0;
+  overflow: hidden;
+}
+
+.pet-chat-persona-body {
+  max-height: ${px(SIZE.personaMaxH)};
+  overflow-y: auto;
+  padding: ${px(SIZE.bubblePadY)} ${px(SIZE.bubblePadX)};
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-s-14);
+  line-height: 1.6;
+  /* 人设正文自己带换行与缩进：保留排版，长单词与 URL 也要能断开 */
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
 .pet-chat-orphans {
   display: flex;
   align-items: center;
@@ -336,7 +370,9 @@ export const PANEL_CSS = `
   opacity: 1;
 }
 
-/* 生成中：只有上半圈带色的细环，靠旋转表达「在生成」 */
+/* 生成中：只有上半圈带色的细环，靠旋转表达「在生成」。
+   尺寸与时间文字同高；border-box + flex:none 是必须的：默认 content-box 会把描边算在尺寸外，
+   而在 flex 行里被压缩时环会变成椭圆，看着就是个「奇怪的圆角方块」。 */
 .pet-chat-speak.is-loading {
   opacity: 0.9;
   cursor: default;
@@ -344,8 +380,10 @@ export const PANEL_CSS = `
 
 .pet-chat-speak.is-loading::before {
   content: '';
-  width: ${px(SIZE.hairline * 8)};
-  height: ${px(SIZE.hairline * 8)};
+  box-sizing: border-box;
+  flex: none;
+  width: ${px(SIZE.spinner)};
+  height: ${px(SIZE.spinner)};
   border: 1.5px solid var(--dsw-alias-border-l2);
   border-top-color: var(--dsw-alias-label-secondary);
   border-radius: 50%;
@@ -492,5 +530,28 @@ export const PANEL_CSS = `
 .pet-chat-send:disabled {
   opacity: 0.45;
   cursor: default;
+}
+
+/* 悬浮提示气泡：挂在 body 上按光标定位（见 ./tooltip），不在 .pet-chat 里，
+   所以字体与颜色全部自带——气泡是深色底，两种主题下都靠白字与背景的对比度读。 */
+.pet-chat-tip {
+  position: fixed;
+  z-index: 2147483000;
+  max-width: ${px(SIZE.tipMaxW)};
+  padding: ${px(SIZE.tipPadY)} ${px(SIZE.tipPadX)};
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-tooltip-bg);
+  color: var(--dsw-static-neutral-00);
+  font: var(--dsw-font-xxs-12);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+
+.pet-chat-tip.is-on {
+  opacity: 1;
 }
 `;

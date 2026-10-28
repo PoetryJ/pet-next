@@ -41,7 +41,13 @@ export function createChatEffects(rt: ChatPanelRuntime): (input: ChatEffectsInpu
           // 孤儿历史与配置一起拉：配置里还带着每个条目的记忆轮数（记忆边界线要用）
           const [config, orphans] = await Promise.all([fetchChatConfig(), fetchOrphans().catch(() => [])]);
           const first = config.pets[0]?.id ?? '';
-          patch({ pets: config.pets, roundsByEntry: config.roundsByEntry, petId: first, orphans });
+          patch({
+            pets: config.pets,
+            roundsByEntry: config.roundsByEntry,
+            personas: config.personaByPet,
+            petId: first,
+            orphans,
+          });
           await reload(first);
         } catch (error) {
           fail(error);

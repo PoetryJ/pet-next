@@ -125,20 +125,37 @@ export function memeUrl(name: string, assetRoot: string): string {
   return ROUTE_PATH + '/pic/memes/' + prefix + encodeURIComponent(name) + '.png';
 }
 
-/** 面板需要的配置：宠物列表 + 每个条目保留的对话轮数。 */
+/** 面板需要的配置：宠物列表 + 每个条目保留的对话轮数 + 每只宠物的人设正文。 */
 export interface ChatConfig {
   readonly pets: Pet[];
   /** 条目（素材根）→ 该条目配置的 `chatMemoryRounds`；缺失的条目不出现在表里。 */
   readonly roundsByEntry: Readonly<Record<string, number>>;
+  /** 宠物 id → 实际在用的人设正文；取值口径见 {@link personaText}。 */
+  readonly personaByPet: Readonly<Record<string, string>>;
 }
 
 /**
- * 拉成品配置：拍平宠物列表，同时把每个条目的对话记忆轮数带出来。
+ * 一只宠物实际在用的人设正文。
+ *
+ * 两级：实例级非空白优先（**替换**所属条目那份，不是拼接），否则用条目顶层那份
+ * ——main 条目的条目顶层就是内置默认那句，所以正常配置下不会是空串。
+ *
+ * @param own - `pets[].whisperPrompt`；缺省或纯空白视为没写。
+ * @param entry - 所属条目顶层 `whisperPrompt`；非字符串按没写处理。
+ * @returns 实例级原文（保留排版，不 trim）或条目那份；两处都没有时是空串。
+ */
+export function personaText(own: unknown, entry: unknown): string {
+  if (typeof own === 'string' && own.trim() !== '') return own;
+  return typeof entry === 'string' ? entry : '';
+}
+
+/**
+ * 拉成品配置：拍平宠物列表，同时把每个条目的对话记忆轮数与每只宠物的人设带出来。
  *
  * 设置页读的是同一份 `/config`（`merged.main.chatMemoryRounds`），这里按条目取，
  * 面板才能知道「最近几轮才算桌宠的记忆」——不额外发请求，也不在客户端抄一份默认值。
  *
- * @returns 宠物列表与条目轮数表。
+ * @returns 宠物列表、条目轮数表与宠物人设表。
  * @throws 配置请求失败或响应不是成品聚合时。
  */
 export async function fetchChatConfig(): Promise<ChatConfig> {
@@ -153,7 +170,13 @@ export async function fetchChatConfig(): Promise<ChatConfig> {
     const rounds = Number(conf?.chatMemoryRounds);
     if (Number.isFinite(rounds) && rounds >= 0) roundsByEntry[entry] = Math.floor(rounds);
   }
-  return { pets: flattenConfigPets(merged), roundsByEntry };
+  const pets = flattenConfigPets(merged);
+  const personaByPet: Record<string, string> = {};
+  for (const pet of pets) {
+    const entry = merged[pet.assetRoot ?? '']?.whisperPrompt;
+    personaByPet[pet.id] = personaText(pet.whisperPrompt, entry);
+  }
+  return { pets, roundsByEntry, personaByPet };
 }
 
 /**

@@ -32,6 +32,8 @@ const INITIAL: PanelData = {
   visibleRounds: PAGE_ROUNDS,
   previewUrl: undefined,
   roundsByEntry: {},
+  personas: {},
+  personaOpen: false,
   speaking: null,
 };
 
@@ -84,6 +86,9 @@ export function createPetChatState(rt: ChatPanelRuntime): () => ChatPanelState {
       petName: pet?.name || '宠',
       assetRoot: pet?.assetRoot ?? '',
       memoryRounds: data.roundsByEntry[pet?.assetRoot ?? ''],
+      persona: data.personas[data.petId] ?? '',
+      togglePersona: () => patch({ personaOpen: !data.personaOpen }),
+      closePersona: () => patch({ personaOpen: false }),
       listRef,
       draftRef,
       pickPet: (petId: string) => {
