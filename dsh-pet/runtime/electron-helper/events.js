@@ -291,6 +291,8 @@ function applySayLeaf(petId, leaf) {
     if (said.kind === 'clear') s.clearWhisper();
     else s.showWhisper(said.text, said.image, said.url, said.duration, said.anim);
   }
+  // 只有本窗口点过菜单/发过对话才播：标记在发起端，没发起的窗口读到空标记就不出声
+  if (said.kind === 'say') S.playPendingVoice(said.text);
 }
 
 /** 工作状态叶子 → 各宠物切档位动画 + 气泡（含回到空闲：state=null 用于收起常驻气泡） */
@@ -403,6 +405,12 @@ async function pollStateOnce() {
 function startLoops() {
   if (loopsStarted) return;
   loopsStarted = true;
+
+  // 语音状态一变就重绘气泡：转圈 → 喇叭（或退回无角标）要立刻反映出来，
+  // 不能等到下一条消息把气泡重画。桌面端没有 react，只能靠订阅手动重绘。
+  S.subscribeVoiceState(() => {
+    for (const s of sprites) s.renderBubble();
+  });
 
   // 统一轮询是自调度的长轮询（请求 → 处理 → 立刻再请求）：宿主在版本没变时挂起，空闲时
   // 1 请求/秒，叶子一变立刻收到。本窗口只装一只宠物，所以每个窗口各跑一份；全局计数器意味着

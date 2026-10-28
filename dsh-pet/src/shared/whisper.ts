@@ -51,6 +51,15 @@ export const MEME_BUBBLE_CSS = [
     'width:calc(var(--m)*7.4725);max-width:100%;height:auto;border-radius:calc(var(--m)*0.5714);' +
     'margin:0 auto calc(var(--m)*0.3736);object-fit:cover;pointer-events:none;user-select:none}',
   '.pet-bubble.has-img,.dsh-pet-bubble.has-img{min-width:0}',
+  // 语音状态角标：两端共用；绝对定位在气泡右下角，不参与文字排版、不撑高气泡。
+  '.dsh-pet-voice-badge{position:absolute;right:calc(var(--f,21px)*0.25);bottom:calc(var(--f,21px)*0.15);' +
+    'width:calc(var(--f,21px)*0.66);height:calc(var(--f,21px)*0.66);display:flex;align-items:center;' +
+    'justify-content:center;font-size:calc(var(--f,21px)*0.5);line-height:1;opacity:.65;pointer-events:none}',
+  // 加载态：只有上半圈有颜色的细环，靠旋转表达「在转」。
+  '.dsh-pet-voice-badge.is-loading::before{content:"";width:calc(var(--f,21px)*0.5);height:calc(var(--f,21px)*0.5);' +
+    'border:1.5px solid rgba(43,43,43,.22);border-top-color:rgba(43,43,43,.7);border-radius:50%;' +
+    'animation:dsh-pet-voice-spin .8s linear infinite}',
+  '@keyframes dsh-pet-voice-spin{to{transform:rotate(360deg)}}',
 ].join('');
 
 /** 只注入一次（页面已有同一标记则跳过）。 */

@@ -100,6 +100,16 @@ Object.assign(PetSprite.prototype, {
       line.className = 'pet-bub-row';
       line.textContent = this.whisperView[0]?.text ?? '';
       this.bubble.appendChild(line);
+      // 语音状态角标：只在手动触发的播报上出现（idle 时什么都不加）
+      const voice = S.getVoiceState();
+      if (voice !== 'idle') {
+        S.injectMemeBubbleCss(); // 角标样式与配图同一份 CSS，两端共用
+        const badge = document.createElement('span');
+        badge.className = 'dsh-pet-voice-badge' + (voice === 'loading' ? ' is-loading' : '');
+        badge.setAttribute('aria-hidden', 'true');
+        if (voice === 'ready') badge.textContent = '🔊';
+        this.bubble.appendChild(badge);
+      }
     } else if (this.balanceState && S.customViews(this.balanceState)) {
       // custom 形态：第三方自己的节点树。页索引取当前页；页数变少时夹到最后一页，不显示残页。
       const views = S.customViews(this.balanceState);

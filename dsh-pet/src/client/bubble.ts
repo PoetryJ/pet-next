@@ -253,7 +253,14 @@ export function makeBalanceBubble(rt: {
  */
 export function makeWhisperBubble(rt: {
   h: typeof jsx;
-}): (props: { text: string; image?: string; url?: string; assetRoot?: string; on: boolean }) => ReactNode {
+}): (props: {
+  text: string;
+  image?: string;
+  url?: string;
+  assetRoot?: string;
+  on: boolean;
+  voiceState?: 'idle' | 'loading' | 'ready';
+}) => ReactNode {
   const { h } = rt;
   injectBubbleCss();
   injectMemeBubbleCss();
@@ -264,32 +271,45 @@ export function makeWhisperBubble(rt: {
     url,
     assetRoot,
     on,
+    voiceState = 'idle',
   }: {
     text: string;
     image?: string;
     url?: string;
     assetRoot?: string;
     on: boolean;
+    voiceState?: 'idle' | 'loading' | 'ready';
   }) {
     const rows = whisperBubbleView({ ok: true, text, ts: 0 });
     const key = String(image ?? '').trim();
     const href = String(url ?? '').trim();
     // 配图二选一：url 直接用，image 按素材根拼路径；判别位在字段名上，不靠 startsWith 嗅探。
     const src = href || (key ? memeImageUrl(key, ROUTE_PATH, assetRoot) : '');
+    const body = src
+      ? [
+          h('img', {
+            key: 'img',
+            className: MEME_IMG_CLASS,
+            // 名称形态拼本页路由前缀；url 形态是完整地址，与本页 origin 无关。
+            src,
+            alt: key || href,
+          }),
+          rowsToNodes(h, rows),
+        ]
+      : rowsToNodes(h, rows);
     return h('div', {
       className: 'dsh-pet-bubble dsh-pet-whisper' + (src ? ' ' + MEME_BUBBLE_CLASS : '') + (on ? ' is-on' : ''),
-      children: src
-        ? [
-            h('img', {
-              key: 'img',
-              className: MEME_IMG_CLASS,
-              // 名称形态拼本页路由前缀；url 形态是完整地址，与本页 origin 无关。
-              src,
-              alt: key || href,
-            }),
-            rowsToNodes(h, rows),
-          ]
-        : rowsToNodes(h, rows),
+      children: voiceState === 'idle' ? body : [body, voiceBadgeNode(h, voiceState)],
     });
   };
+}
+
+/** 语音状态角标：只在手动触发的播报上出现，右下角绝对定位，不参与文字排版。 */
+function voiceBadgeNode(h: typeof jsx, state: 'loading' | 'ready'): ReactNode {
+  return h('span', {
+    key: 'voice',
+    className: 'dsh-pet-voice-badge' + (state === 'loading' ? ' is-loading' : ''),
+    'aria-hidden': 'true',
+    children: state === 'loading' ? null : '🔊',
+  });
 }

@@ -153,6 +153,9 @@ Object.assign(PetSprite.prototype, {
   // 挂着的长轮询送达。手动触发不受 whisperEnabled 限制（该字段只关自动周期）。
   showWhisperFromMenu() {
     // surface 必填：本窗口就是桌面端
+    // 桌面窗口是 file://，语音接口得走 bridge 绝对地址；标记归本端，周期碎碎念没有标记所以不播。
+    S.setVoiceBase(BASE);
+    S.markVoicePending();
     S.postAction(WHISPER_URL + '?pet=' + encodeURIComponent(this.pet.id) + '&surface=desktop')
       .then((ok) => {
         if (!ok) console.warn('[dsh-pet] 菜单碎碎念：生成动作未成功 pet=' + this.pet.id);
@@ -172,6 +175,8 @@ Object.assign(PetSprite.prototype, {
       this.chatClose = null;
       return; // 已开着：先关旧的
     }
+    // 语音接口同样走 bridge 地址；对话的待播标记由 shared/chat/send 在发送时打
+    S.setVoiceBase(BASE);
     const m = S.mountChatDialog({
       petId: this.pet.id,
       baseUrl: BASE + '/chat',

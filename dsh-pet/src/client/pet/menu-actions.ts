@@ -9,6 +9,7 @@ import type { MenuLeaf } from '../../shared/menu.ts';
 import { ROUTE_PATH } from '../../shared/constants.ts';
 import type { Animations } from '../../shared/types.ts';
 import { postAction } from '../../shared/state.ts';
+import { markVoicePending } from '../../shared/voice.ts';
 import { setMenuClick } from '../menu-service.ts';
 
 /** 菜单派发的依赖。 */
@@ -112,6 +113,8 @@ export function createMenuActions(deps: MenuActionDeps): MenuActions {
     if (leaf.action === 'whisper') {
       // 手动碎碎念：文本随长轮询送达，不受 whisperEnabled 限制；surface 必填，本页面就是网页端。
       console.info('[dsh-pet] 菜单触发碎碎念 pet=' + petId);
+      // 手动入口才播语音：标记归本端，周期触发的碎碎念没有标记，因此静音。
+      markVoicePending();
       fireAction(ROUTE_PATH + '/whisper?pet=' + encodeURIComponent(petId) + '&surface=web', '碎碎念手动触发');
       return;
     }

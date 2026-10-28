@@ -6,6 +6,7 @@
  * @module dsh-pet/src/client/pet/card/bubble-slots
  */
 import { customViews, type BalanceState } from '../../../shared/balance/index.ts';
+import { subscribeVoiceState, type VoiceState } from '../../../shared/voice.ts';
 import { BUBBLE_DURATION_MS } from '../timings.ts';
 import type { Dispatch, ReactNode, SetStateAction } from 'react';
 import type * as ReactNS from 'react';
@@ -170,6 +171,11 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
     const [workOn, setWorkOn] = useState(false);
     const [workText, setWorkText] = useState<string | null>(null);
     const workTimerRef = useRef<number | null>(null);
+    // 语音播报状态：只在手动触发的那一句上有值，气泡据此显示转圈 / 喇叭
+    const [voiceState, setVoiceState] = useState<VoiceState>('idle');
+
+    // 订阅是模块级单例：卸载时必须退订，否则旧卡片会被后续状态推送重渲染
+    useEffect(() => subscribeVoiceState(setVoiceState), []);
 
     // 卸载后不再 setState：三个计时器都在这里清。
     useEffect(
@@ -263,6 +269,7 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
               url: whisperUrl,
               assetRoot: input.assetRoot,
               on: whisperOn,
+              voiceState,
             });
       }
       // 终态与非终态共用同一个组件，差别只在停留时长与优先级。

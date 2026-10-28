@@ -42,6 +42,7 @@ import type { WorkStatusSnapshot } from '../../shared/work-status.ts';
 import type { PetCardProps } from './card/props.ts';
 import type { PetRuntime, RuntimePet } from './types.ts';
 import { setClickSoundEnabled } from './click-sound.ts';
+import { setVoiceConfig } from '../../shared/voice.ts';
 import { runStatePoll } from './state-poll.ts';
 import { setMenuItems } from '../menu-service.ts';
 import { setStateSnapshot } from '../state-service.ts';
@@ -115,6 +116,8 @@ export function createPetMulti(
         }
         // 点击音效开关只读 main 条目，非 true 一律静音。
         setClickSoundEnabled(main.clickSoundEnabled === true);
+        // 语音开关与音色同源：缺字段即「不播」，不在端上兜默认值。
+        setVoiceConfig(main.voiceName, main.voiceEnabled);
         const flattened = flattenConfigPets(merged);
         petBridge.current = flattened;
         // 「添加宠物」模板取 main 条目的 pets[0]。
