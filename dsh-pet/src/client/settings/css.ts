@@ -40,6 +40,19 @@ const SETTINGS_CSS = [
   '.dsh-pet-cfg__cardHead{display:flex;align-items:center;gap:6px;min-height:20px}',
   '.dsh-pet-cfg__cardTitle{font-size:13px;font-weight:500;color:var(--dsw-alias-label-primary)}',
 
+  // 折叠卡（高级配置 / 卸载与存储）：标题行常驻，正文收进裁剪层。
+  // 卡片自身的 gap 归零，头与正文的间距改由正文内层的 padding-top 提供——收起时随裁剪一起消失，底部不留空缝。
+  '.dsh-pet-cfg__card.is-fold{gap:0}',
+  '.dsh-pet-cfg__foldToggle{display:flex;align-items:center;gap:6px;flex:1 1 auto;min-width:0;min-height:20px;padding:0;border:none;border-radius:4px;background:transparent;color:inherit;font:inherit;text-align:left;cursor:pointer;outline:none}',
+  '.dsh-pet-cfg__foldToggle:focus-visible{box-shadow:0 0 0 2px var(--dsw-focus-ring-color,var(--dsw-alias-state-business-primary))}',
+  // 箭头用小三角而不是字符：不依赖字体、缩进也不受行高影响。
+  '.dsh-pet-cfg__chevron{flex:none;margin-left:auto;width:0;height:0;border-left:4px solid transparent;border-right:4px solid transparent;border-top:5px solid currentColor;color:var(--dsw-alias-label-tertiary);transition:transform .12s}',
+  '.dsh-pet-cfg__chevron.is-open{transform:rotate(180deg)}',
+  '.dsh-pet-cfg__fold{display:grid;grid-template-rows:0fr;transition:grid-template-rows .12s ease}',
+  '.dsh-pet-cfg__card.is-open .dsh-pet-cfg__fold{grid-template-rows:1fr}',
+  '.dsh-pet-cfg__foldClip{min-height:0;overflow:hidden}',
+  '.dsh-pet-cfg__foldBody{display:flex;flex-direction:column;gap:10px;padding-top:10px}',
+
   '.dsh-pet-cfg__grid3{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:10px 16px;align-items:end}',
   '.dsh-pet-cfg__grid4{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px 16px;align-items:end}',
   '.dsh-pet-cfg__grid2{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:10px 16px;align-items:end}',
@@ -73,6 +86,8 @@ const SETTINGS_CSS = [
 
   // 问号：气泡的一个圆形宿主外观。
   '.dsh-pet-cfg__q{display:inline-flex;align-items:center;justify-content:center;flex:none;width:14px;height:14px;border:1px solid var(--dsw-alias-label-tertiary);border-radius:50%;color:var(--dsw-alias-label-tertiary);font-size:10px;font-style:normal;line-height:1;cursor:help;user-select:none}',
+  // 折叠卡把问号放进了标题按钮里：包一层 span 以便单独拦截点击（点问号只出气泡、不开合）。
+  '.dsh-pet-cfg__qWrap{display:inline-flex;flex:none;align-items:center}',
 
   '.dsh-pet-cfg__btn{border:1px solid var(--dsw-alias-border-l2);background:transparent;color:var(--dsw-alias-label-primary);border-radius:8px;padding:4px 14px;font:inherit;font-size:12px;line-height:20px;cursor:pointer;white-space:nowrap}',
   // 实心主按钮必须排除在通用 hover 外：半透明 hover 会顶掉 button-info-fill，让蓝色按钮一悬停就发白；
