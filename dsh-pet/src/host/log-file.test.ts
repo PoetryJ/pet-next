@@ -1,21 +1,25 @@
 /**
  * 统一日志落盘的行为测试（src/host/log-file.ts）。
  *
- * 钉住四件容易写错的事：
+ * 钉住五件容易写错的事：
  *   ① 缓冲语义：没到阈值/间隔就不碰盘（否则「每秒一次写」的承诺就是假的）；
  *   ② 批量落盘：达到阈值后一次写完，行里有时间戳与级别；
  *   ③ 单文件截断：超过 maxBytes 只保留尾部 keepBytes，且保留的是最新内容；
- *   ④ 脱敏：令牌形态不得原样进文件。
+ *   ④ 脱敏：令牌形态不得原样进文件；
+ *   ⑤ 进程退出：批次已出缓冲、尚未提交时退出，日志既不丢也不重复（子进程验证）。
  *
  * 全部用真实临时目录 + 真实 fs（不 mock）：本模块的价值就在文件行为，mock 掉就没意义了。
  */
 import { after, before, describe, test } from 'node:test';
 import assert from 'node:assert/strict';
+import { spawnSync } from 'node:child_process';
 import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
 import { createFileLogger, formatLogLine, redactSensitive, tailForTrim } from './log-file.ts';
+
+const LOGGER_URL = new URL('./log-file.ts', import.meta.url).href;
 
 let dir = '';
 
@@ -165,5 +169,77 @@ describe('createFileLogger', () => {
     const text = readFileSync(file, 'utf8');
     assert.match(text, /x-dsh-pet-token: \*\*\*/);
     assert.ok(!text.includes('abcdefghijklmnopqrstuvwx'));
+  });
+});
+
+/**
+ * 在子进程里跑一段日志脚本，等进程退出后返回落盘内容。
+ * 退出路径只能在真实进程里验证：同进程的 flush/dispose 看不到 exit 时的行为。
+ */
+function logFromChild(script: string): string {
+  const childDir = mkdtempSync(join(tmpdir(), 'dsh-pet-log-exit-'));
+  // 父目录故意不存在：首次退出时也要能自己建出来
+  const file = join(childDir, 'nested', 'logs.txt');
+  try {
+    const child = spawnSync(
+      process.execPath,
+      ['--experimental-strip-types', '--input-type=module', '-e', script, file, LOGGER_URL],
+      { encoding: 'utf8', timeout: 10_000 },
+    );
+    assert.equal(child.status, 0, child.stderr || String(child.error));
+    return existsSync(file) ? readFileSync(file, 'utf8') : '';
+  } finally {
+    rmSync(childDir, { recursive: true, force: true });
+  }
+}
+
+/** 断言 `item-0…item-{count-1}` 恰好各出现一次且顺序一致。 */
+function assertItemsInOrder(text: string, count: number): void {
+  const items = [...text.matchAll(/\[info\] item-(\d+)/g)].map((match) => Number(match[1]));
+  assert.deepEqual(items, [...Array(count).keys()], '日志应完整、顺序一致且不重复');
+}
+
+describe('进程退出', () => {
+  test('写入 64 条后立即退出：批次边界上的日志全部落盘', () => {
+    const text = logFromChild(`
+      const { createFileLogger } = await import(process.argv[2]);
+      const log = createFileLogger({ file: process.argv[1] });
+      for (let index = 0; index < 64; index += 1) log.info('item-' + index);
+      process.exit(0);
+    `);
+    assertItemsInOrder(text, 64);
+  });
+
+  test('写入 65 条后立即退出：在途批次与缓冲里的行都不丢', () => {
+    const text = logFromChild(`
+      const { createFileLogger } = await import(process.argv[2]);
+      const log = createFileLogger({ file: process.argv[1] });
+      for (let index = 0; index < 65; index += 1) log.info('item-' + index);
+      process.exit(0);
+    `);
+    assertItemsInOrder(text, 65);
+  });
+
+  test('dispose 后立即退出：补写完整，重复 dispose 不重复写', () => {
+    const text = logFromChild(`
+      const { createFileLogger } = await import(process.argv[2]);
+      const log = createFileLogger({ file: process.argv[1] });
+      for (let index = 0; index < 64; index += 1) log.info('item-' + index);
+      log.dispose();
+      log.dispose();
+      process.exit(0);
+    `);
+    assertItemsInOrder(text, 64);
+  });
+
+  test('dispose 之后记录的日志也落盘', () => {
+    const text = logFromChild(`
+      const { createFileLogger } = await import(process.argv[2]);
+      const log = createFileLogger({ file: process.argv[1] });
+      log.dispose();
+      log.info('item-0');
+      process.exit(0);
+    `);
+    assertItemsInOrder(text, 1);
   });
 });
