@@ -45,8 +45,8 @@ export function createSessionNotify(deps: SessionNotifyInput) {
   const lastTodoText = new Map<string, string | null>();
 
   /**
-   * 每会话「正在跑、且气泡上有具体描述」的工具数（不是布尔）：并行调用时先返回的那个不该把
-   * 仍在中途的另一个描述顶掉。只统计拿到了目标的调用——没写出描述就不该占位。
+   * 每会话「气泡上写着具体描述」的计数：只有拿到目标的调用加一，任何工具返回都减一——它不追踪
+   * 具体调用，并行时明细可能与在途调用对不上；气泡是氛围而非进度条，不为此建调用级账本。
    */
   const toolsInFlight = new Map<string, number>();
 

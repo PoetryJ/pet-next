@@ -144,7 +144,8 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
         workStatus.setTask(sessionId, detail);
       } else if (type === 'tool/result') {
         if ((toolsInFlight.get(sessionId) ?? 0) > 0) bumpToolsInFlight(sessionId, -1);
-        // 占位全清空：把气泡还给最近一条 todo 文案（没有就 null → 回落档位文案）
+        // 归零只代表计数器归零（减数不区分是哪个调用返回），不代表在途调用都已结束；
+        // 此时把气泡还给最近一条 todo 文案，没有就 null → 回落档位文案。
         if ((toolsInFlight.get(sessionId) ?? 0) === 0) {
           workStatus.setTask(sessionId, lastTodoText.get(sessionId) ?? null);
         }
