@@ -144,10 +144,12 @@ const dpi = createDpi({
 /** bridge 模式：DSH_PET_BRIDGE=1（宿主注入）。开启时注册 dsh-pet-bridge scheme + 管道转发 */
 const BRIDGE = process.env.DSH_PET_BRIDGE === '1';
 
-/** 「打开网站」这一项的去向（宿主按自身形态注入）：
- *  'desktop' = 宿主是 DSH 桌面应用 → 唤起桌面应用主窗口；
- *  'site'    = dsh web / 独立模式 / 手写 start-desktop（无该变量）→ 原行为：默认浏览器打开站点。 */
-const OPEN_TARGET = process.env.DSH_PET_OPEN_TARGET === 'desktop' ? 'desktop' : 'site';
+/** 菜单首项的去向（宿主按自身形态注入）：
+ *  'desktop'    = DSH 桌面应用 → 唤起应用主窗口；
+ *  'standalone' = 独立模式 → 打开本机 AI 设置页；
+ *  'web'        = dsh web / 手写 start-desktop（无该变量）→ 默认浏览器打开站点。 */
+const OPEN_TARGET_RAW = process.env.DSH_PET_OPEN_TARGET;
+const OPEN_TARGET = OPEN_TARGET_RAW === 'desktop' || OPEN_TARGET_RAW === 'standalone' ? OPEN_TARGET_RAW : 'web';
 /** 协议行前缀（与 helper-process.ts 的 BRIDGE_PREFIX 一致） */
 const BRIDGE_PREFIX = 'dsh-pet-bridge:';
 

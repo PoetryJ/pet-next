@@ -14,7 +14,7 @@ const { decideWindowIgnore } = require('../pointer-target.js');
  * @param deps.ipcMain - Electron ipcMain。
  * @param deps.petWindows - 窗口能力（state 与方法）。
  * @param deps.shell - Electron shell（打开站点）。
- * @param deps.openTarget - 菜单首项的去向：desktop 唤起桌面应用 / site 打开本机 AI 设置页。
+ * @param deps.openTarget - 菜单首项的去向：desktop 唤起桌面应用；其余形态交给默认浏览器打开已鉴权地址。
  * @param deps.petRoute - 宠物路由前缀。
  */
 function registerIpc({ ipcMain, petWindows, shell, openTarget, petRoute }) {
@@ -133,7 +133,7 @@ function registerIpc({ ipcMain, petWindows, shell, openTarget, petRoute }) {
     petWindows.state.inputRegions.set(win.id, { dragging: input.dragging === true, rects });
   });
 
-  // 右键菜单首项（打开软件 / 打开 AI 设置）：交给系统默认浏览器（等效网页里 Ctrl+点击链接），不建专属窗口——
+  // 右键菜单首项（打开软件 / 打开 AI 设置 / 打开网站）：交给系统默认浏览器（等效网页里 Ctrl+点击链接），不建专属窗口——
   // 宠物窗口是透明小窗，不该承载常规网页浏览。URL 由渲染端从 configUrl 推导。
   const openSite = (url) => {
     // 宿主注入的已鉴权站点 URL（含本进程启动令牌）：DSH 只在 GET / 接受它并换发浏览器 Cookie，

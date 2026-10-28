@@ -1,23 +1,16 @@
 /**
- * 菜单首项按宿主形态自动分派的契约测试（宿主 = DSH 桌面应用 / dsh web）。
+ * 菜单首项按宿主形态自动分派的契约测试（宿主 = DSH 桌面应用 / dsh web / 独立模式）。
  *
- * 需求：同一个工具项，宿主是桌面应用时要"打开桌面端"（把主窗口叫回前台），宿主是 web 时是
- * "打开 AI 设置"（本机设置页）。两半各自构建、无法互相 import，所以按本仓库既有做法读源码断言。
- *
- * 链路（改名/改判据只改一侧即失败）：
- *   宿主 index.ts 判 isDesktopHost → 注入 DSH_PET_OPEN_TARGET=desktop|site
- *   → helper main.js 读该变量（并沿 query 透给渲染端）→ desktop: shell.openExternal('dsh://open')，
- *     site: 原行为 shell.openExternal(站点 URL) → 渲染端据此改菜单文案。
- *
- * 为什么是 `dsh://open` 而不是 spawn 宿主 exe：DSH 桌面端自己 app.setAsDefaultProtocolClient('dsh') 并
- * 注册了 open-url → focusPrimaryWindow()，Windows 上再启动一次则由单实例锁把 second-instance 交给
- * 现有实例（claimDesktopSingleInstance(app, () => focusPrimaryWindow())）。spawn exe 会继承宿主的
- * ELECTRON_RUN_AS_NODE=1（起出来是 node 而非界面），还要自己探测安装路径——协议两样都不用管。
+ * 需求：三种形态下同一个工具项要有三种去向与文案——桌面应用「打开软件」（把主窗口叫回前台）、
+ * 独立模式「打开 AI 设置」（本机设置页）、dsh web「打开网站」（DSH 站点）。
+ * 判定逻辑已抽成纯函数 {@link resolveOpenTarget}，直接断言行为；两侧装配（宿主注入与 helper 解析）
+ * 各自构建、无法互相 import，仍用源码断言守住接线。
  */
 import { test, describe } from 'node:test';
 import assert from 'node:assert/strict';
 import { readdirSync, readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
+import { resolveOpenTarget } from './plugin/desktop/spawn.ts';
 
 /** 包内文件源码（守卫用；相对 src/host/ 解析） */
 const readSource = (rel: string): string => readFileSync(fileURLToPath(new URL(rel, import.meta.url)), 'utf8');
@@ -45,24 +38,50 @@ const sprite = [
     readSource('../../runtime/electron-helper/sprite/' + name),
   ),
 ].join('\n');
+const appMain = readSource('../app/main.ts');
 const standaloneContext = readSource('../standalone/context.ts');
 
-describe('菜单首项按宿主形态自动分派', () => {
-  test('宿主：桌面应用判定 + 形态注入', () => {
+describe('resolveOpenTarget：形态判定', () => {
+  test('Electron 宿主：无论地址指向哪里都是 desktop', () => {
+    assert.equal(resolveOpenTarget('http://127.0.0.1:3080/', true), 'desktop');
+    assert.equal(
+      resolveOpenTarget('http://127.0.0.1:31380/standalone-ai/#token=test-only', true),
+      'desktop',
+      '桌面应用下不该因为设置页地址被误判成独立模式',
+    );
+  });
+
+  test('独立模式：地址落在本机设置页 → standalone', () => {
+    assert.equal(resolveOpenTarget('http://127.0.0.1:31380/standalone-ai/#token=test-only', false), 'standalone');
+  });
+
+  test('web 宿主：站点根地址 → web，不能被顺带判成独立模式', () => {
+    assert.equal(
+      resolveOpenTarget('http://127.0.0.1:3080/#token=test-only', false),
+      'web',
+      'dsh web 打开的是 DSH 站点，菜单应显示「打开网站」',
+    );
+  });
+});
+
+describe('装配接线：宿主注入 → helper 解析 → 渲染端文案', () => {
+  test('宿主：桌面应用判定 + 三态注入', () => {
     assert.ok(
       /const isDesktopHost = \(\): boolean => Boolean\(process\.versions\.electron\)/.test(host),
       '宿主必须用 process.versions.electron 判定形态（桌面应用以 ELECTRON_RUN_AS_NODE 跑，该字段仍在；dsh web 是纯 Node）',
     );
     assert.ok(
-      /DSH_PET_OPEN_TARGET: isDesktopHost\(\) \? 'desktop' : 'site'/.test(host),
-      'launchHelper 必须把形态注入 Helper（否则桌面宿主下仍只会打开浏览器站点）',
+      /DSH_PET_OPEN_TARGET: resolveOpenTarget\(siteUrl, isDesktopHost\(\)\)/.test(host),
+      'launchHelper 必须注入三态（只注入 desktop/site 会让 web 与独立模式共用一档）',
     );
   });
 
-  test('helper 主进程：desktop 走 dsh:// 协议，site 保持原行为', () => {
+  test('helper 主进程：三态解析，未注入回落 web（旧行为）', () => {
     assert.ok(
-      /const OPEN_TARGET = process\.env\.DSH_PET_OPEN_TARGET === 'desktop' \? 'desktop' : 'site'/.test(main),
-      "main.js 必须把非 'desktop' 一律当 'site'（旧宿主 / 独立模式 / 手写 start-desktop 行为不得变）",
+      /const OPEN_TARGET_RAW = process\.env\.DSH_PET_OPEN_TARGET;\s*const OPEN_TARGET = OPEN_TARGET_RAW === 'desktop' \|\| OPEN_TARGET_RAW === 'standalone' \? OPEN_TARGET_RAW : 'web'/.test(
+        main,
+      ),
+      "非 desktop/standalone 一律回落 'web'（手写 start-desktop 无该变量时行为不得变）",
     );
     assert.ok(/openTarget: OPEN_TARGET/.test(main), '形态要沿窗口 query 透到渲染端（文案在那里决定）');
     assert.ok(/shell\.openExternal\('dsh:\/\/open'\)/.test(main), '桌面宿主必须走 dsh://open 唤起应用窗口');
@@ -76,22 +95,35 @@ describe('菜单首项按宿主形态自动分派', () => {
     );
     assert.ok(
       (main.match(/dsh:\/\/open/g) ?? []).length === 1,
-      'dsh://open 只允许出现在 desktop 分支里（site 形态不得被顺带改成唤起应用）',
+      'dsh://open 只允许出现在 desktop 分支里（standalone/web 不得被顺带改成唤起应用）',
     );
   });
 
-  test('helper 渲染端：文案随形态变，动作名不变', () => {
+  test('helper 渲染端：三态文案查表，动作名不变', () => {
     assert.ok(
-      /const OPEN_TARGET = params\.get\('openTarget'\) === 'desktop' \? 'desktop' : 'site'/.test(constants),
-      "constants.js 必须从 query 读形态且默认 'site'",
+      /const OPEN_TARGET_RAW = params\.get\('openTarget'\);\s*const OPEN_TARGET = OPEN_TARGET_RAW === 'desktop' \|\| OPEN_TARGET_RAW === 'standalone' \? OPEN_TARGET_RAW : 'web'/.test(
+        constants,
+      ),
+      "constants.js 必须从 query 读三态且默认 'web'",
     );
     assert.ok(
-      /label: OPEN_TARGET === 'desktop' \? '打开软件' : '打开 AI 设置',\s*action: 'open-site'/.test(sprite),
-      '菜单文案要跟着变（独立模式打开的是本机 AI 设置页），但 action 仍是 open-site（另一端只认这个动作名；hint 只是视觉提示，允许夹在中间换行）',
+      /\{ desktop: '打开软件', standalone: '打开 AI 设置', web: '打开网站' \}/.test(sprite),
+      '三种形态必须有三种文案，web 不得再显示「打开 AI 设置」',
+    );
+    assert.ok(
+      /label: OPEN_LABEL\[OPEN_TARGET\],\s*action: 'open-site'/.test(sprite),
+      '文案由查表决定，但 action 仍是 open-site（另一端只认这个动作名；hint 只是视觉提示，允许夹在中间换行）',
     );
   });
 
-  test('独立模式不注入该变量 → 自动回落 site（不破坏"不打开 DSH 也能养桌宠"）', () => {
-    assert.ok(!/DSH_PET_OPEN_TARGET/.test(standaloneContext), '独立模式必须不注入形态：默认 site，行为与以前一致');
+  test('独立模式：App 显式标 standalone，CLI 由地址判定，不另注入形态', () => {
+    assert.ok(
+      /process\.env\.DSH_PET_OPEN_TARGET = 'standalone'/.test(appMain),
+      '独立 App 不经 spawn，必须自己把形态标成 standalone（否则回落 web，文案又变回「打开网站」）',
+    );
+    assert.ok(
+      !/DSH_PET_OPEN_TARGET/.test(standaloneContext),
+      '独立模式伪 ctx 不注入形态：App 归 main.ts，CLI 归 spawn 的地址判定',
+    );
   });
 });

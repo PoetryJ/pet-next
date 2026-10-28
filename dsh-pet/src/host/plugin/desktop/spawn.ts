@@ -30,6 +30,23 @@ export type DesktopSpawnInput = Pick<
 /** 宿主是不是 DSH 桌面应用（Electron 宿主）。 */
 const isDesktopHost = (): boolean => Boolean(process.versions.electron);
 
+/** 菜单首项去向：desktop 唤起桌面应用，standalone 打开本机 AI 设置页，web 打开 DSH 站点。 */
+export type OpenTarget = 'desktop' | 'standalone' | 'web';
+
+/**
+ * 由宿主形态与已鉴权地址判定菜单首项去向。
+ *
+ * 独立模式与 web 宿主都不在 Electron 里，只能靠地址形状区分：独立模式的已鉴权地址固定落在本机
+ * 设置页，web 宿主指向站点根。判错会让菜单文案与实际打开的目标对不上。
+ * @param siteUrl - 交给浏览器的已鉴权地址（独立模式含本机设置页路径）。
+ * @param desktopHost - 宿主是否为 DSH 桌面应用。
+ * @returns 注入给 Helper 的形态值。
+ */
+export function resolveOpenTarget(siteUrl: string, desktopHost: boolean): OpenTarget {
+  if (desktopHost) return 'desktop';
+  return siteUrl.includes('/standalone-ai/') ? 'standalone' : 'web';
+}
+
 /**
  * 创建 Helper 进程的拉起与停止句柄：进程内宿主直接跳过，其余按需下载 Electron 后 spawn 并退避重试。
  */
@@ -98,12 +115,13 @@ export function createDesktopSpawn(deps: DesktopSpawnInput) {
         electronPath,
         env: {
           DSH_PET_CONFIG_URL: configUrl,
-          // 已鉴权站点 URL（含本进程启动令牌）：只供 helper 的「打开网站」使用，任何日志都不许出现它
+          // 已鉴权站点 URL（含本进程启动令牌）：只供 helper 的「打开」首项使用，任何日志都不许出现它
           DSH_PET_SITE_URL: siteUrl,
-          // 宿主形态决定工具项「打开网站」的去向（同名菜单项，两端两种语义）：
-          //   desktop = 宿主是 DSH 桌面应用 → 唤起桌面应用主窗口（helper 走 dsh://open，见 main.js）
-          //   site    = dsh web / 独立模式 → 系统默认浏览器打开站点
-          DSH_PET_OPEN_TARGET: isDesktopHost() ? 'desktop' : 'site',
+          // 宿主形态决定菜单首项的去向与文案（同名「打开」项，三种形态三种语义）：
+          //   desktop    = DSH 桌面应用 → 唤起应用主窗口（helper 走 dsh://open）
+          //   standalone = 独立模式 → 本机 AI 设置页
+          //   web        = dsh web → DSH 站点
+          DSH_PET_OPEN_TARGET: resolveOpenTarget(siteUrl, isDesktopHost()),
           DSH_PET_SCALE: '1',
           // 打开 bridge 协议：main.js 注册 dsh-pet-bridge scheme，把渲染端请求经管道转给宿主
           DSH_PET_BRIDGE: '1',
