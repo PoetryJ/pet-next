@@ -9,6 +9,25 @@ import type { ChatPanelRuntime } from './runtime.ts';
 import { formatStamp } from './stamp.ts';
 import type { ChatPanelState } from './types.ts';
 
+/** 语音播报按钮：贴在时间右边，三种状态一眼可分——可播 / 生成中转圈 / 播放中高亮。 */
+function speakNode(h: ChatPanelRuntime['h'], text: string, ts: number, state: ChatPanelState): unknown {
+  const phase = state.speaking?.ts === ts ? state.speaking.phase : 'idle';
+  const title = phase === 'loading' ? '正在生成语音…' : phase === 'playing' ? '正在播放' : '播放这句';
+  return h('button', {
+    type: 'button',
+    className: 'pet-chat-speak is-' + phase,
+    title,
+    'aria-label': title,
+    onClick: (event: { stopPropagation: () => void }) => {
+      // 多选模式下整轮可点：这里必须拦一下，否则点喇叭会顺手切换选中
+      event.stopPropagation();
+      if (phase === 'idle') state.speakRound(ts, text);
+    },
+    // 生成中由 CSS 的 ::before 画转圈，按钮本身不放字符
+    children: phase === 'loading' ? null : '🔊',
+  });
+}
+
 /**
  * 头像：宠物用插件 logo，我是一只 Q 版小脸（圆脸 + 呆毛 + 腮红 + 星星）。
  *
@@ -170,7 +189,11 @@ export function roundNode(
           round.ts > 0
             ? h('div', {
                 className: 'pet-chat-time ' + (round.assistant === undefined ? 'is-me' : 'is-pet'),
-                children: formatStamp(round.ts, Date.now()),
+                children: [
+                  formatStamp(round.ts, Date.now()),
+                  // 只有回答那句能点播：用户自己的话没有语音
+                  round.assistant === undefined ? null : speakNode(h, round.assistant.text, round.ts, state),
+                ],
               })
             : null,
         ],

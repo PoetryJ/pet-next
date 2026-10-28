@@ -137,6 +137,70 @@ async function loadConfigOnce(): Promise<void> {
   }
 }
 
+/** 手动点播时正在响的那个音频；新的一句先掐掉旧的，避免两句话叠在一起。 */
+let manualAudio: HTMLAudioElement | null = null;
+
+/** 手动点播对外暴露的阶段；`idle` = 没在放（含被打断与失败）。 */
+export type SpeakPhase = 'idle' | 'loading' | 'playing';
+
+/** 手动点播的世代号：新的点播会作废旧请求的阶段回调，避免旧回调清掉新状态。 */
+let manualSeq = 0;
+
+/**
+ * 手动播报一句（对话面板的喇叭按钮用）。
+ *
+ * 与自动播报有两点不同：不看待播标记（用户点的就是这一句），也不受总开关限制——
+ * 开关管的是「自动念不念」，用户主动点播是明确意图。音色仍取配置值。
+ *
+ * @param text - 要念的正文。
+ * @param onPhase - 阶段回调：请求合成时 `loading`、音频就绪开始播时 `playing`、结束或失败 `idle`。
+ */
+export function speakText(text: string, onPhase?: (phase: SpeakPhase) => void): void {
+  if (!text) return;
+  void playManual(text, onPhase);
+}
+
+/** 请求合成并播放手动点播；失败静默，不打断面板交互。 */
+async function playManual(text: string, onPhase?: (phase: SpeakPhase) => void): Promise<void> {
+  const token = ++manualSeq;
+  await loadConfigOnce();
+  if (manualAudio) {
+    manualAudio.pause();
+    manualAudio = null;
+  }
+  if (token !== manualSeq) return; // 等配置期间又被点了一次：这次直接让位
+  onPhase?.('loading');
+  try {
+    const response = await fetch(voiceBase + '/voice/speak', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ text, ...(voiceName ? { voice: voiceName } : {}) }),
+    });
+    if (token !== manualSeq) return;
+    if (!response.ok || !(response.headers.get('content-type') ?? '').includes('audio')) {
+      onPhase?.('idle');
+      return;
+    }
+    const objectUrl = URL.createObjectURL(await response.blob());
+    if (token !== manualSeq) return;
+    const audio = new Audio(objectUrl);
+    audio.onended = () => {
+      URL.revokeObjectURL(objectUrl);
+      if (manualAudio === audio) {
+        manualAudio = null;
+        onPhase?.('idle');
+      }
+    };
+    audio.onerror = () => URL.revokeObjectURL(objectUrl);
+    manualAudio = audio;
+    onPhase?.('playing');
+    await audio.play();
+  } catch {
+    /* 手动点播失败静默：面板里还有文字，不能弹错误打断阅读 */
+    if (token === manualSeq) onPhase?.('idle');
+  }
+}
+
 /** 请求合成并播放；任何一步失败都静默收场，状态回 idle（气泡上不留假图标）。 */
 async function speak(text: string): Promise<void> {
   try {

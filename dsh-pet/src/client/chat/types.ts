@@ -33,6 +33,8 @@ export interface PanelData {
   readonly previewUrl: string | undefined;
   /** 条目（素材根）→ 该条目保留的对话轮数；来自同一份 `/config`。 */
   readonly roundsByEntry: Readonly<Record<string, number>>;
+  /** 正在点播的那一轮与阶段；null = 没有在播。同一时刻只播一条。 */
+  readonly speaking: { readonly ts: number; readonly phase: 'loading' | 'playing' } | null;
 }
 
 /** 需要二次确认的破坏性操作：用面板内的确认条，不用浏览器原生 `confirm`。 */
@@ -73,6 +75,8 @@ export interface ChatPanelState extends PanelData {
   /** 关闭图片放大。 */
   readonly closeImage: () => void;
   readonly setDraft: (text: string) => void;
+  /** 点播某一轮的回答：请求合成 → 播放 → 归位，阶段写进 {@link PanelData.speaking}。 */
+  readonly speakRound: (ts: number, text: string) => void;
   readonly pickFile: (file: File) => void;
   readonly clearAttachment: () => void;
   readonly send: () => void;

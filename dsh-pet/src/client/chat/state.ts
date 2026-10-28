@@ -5,6 +5,7 @@
  * 用一个 state 对象装全部字段——切换宠物要同时清空消息与勾选，拆成多个 useState 会露出中间态。
  * @module dsh-pet/src/client/chat/state
  */
+import { speakText } from '../../shared/voice.ts';
 import { fetchHistory, groupRounds } from './api.ts';
 import { createHistoryActions, createSendActions, createShellActions } from './actions.ts';
 import { createChatEffects } from './effects.ts';
@@ -31,6 +32,7 @@ const INITIAL: PanelData = {
   visibleRounds: PAGE_ROUNDS,
   previewUrl: undefined,
   roundsByEntry: {},
+  speaking: null,
 };
 
 /**
@@ -102,6 +104,15 @@ export function createPetChatState(rt: ChatPanelRuntime): () => ChatPanelState {
           selected: data.selected.includes(ts) ? data.selected.filter((one) => one !== ts) : [...data.selected, ts],
         }),
       setDraft: (draft: string) => patch({ draft }),
+      speakRound: (ts: number, text: string) => {
+        // 阶段回调只写「仍是这一轮」的状态：被别的一条顶掉时，旧请求的 idle 不能清掉新状态
+        speakText(text, (phase) => {
+          setData((prev) => {
+            if (phase === 'idle') return prev.speaking?.ts === ts ? { ...prev, speaking: null } : prev;
+            return { ...prev, speaking: { ts, phase } };
+          });
+        });
+      },
       clearAttachment: () => patch({ attachment: undefined }),
       showImage: (previewUrl: string) => patch({ previewUrl }),
       closeImage: () => patch({ previewUrl: undefined }),

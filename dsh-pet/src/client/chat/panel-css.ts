@@ -304,9 +304,65 @@ export const PANEL_CSS = `
 }
 
 .pet-chat-time {
+  display: inline-flex;
+  align-items: center;
+  gap: ${px(SIZE.gap)};
   margin-top: ${px(SIZE.hairline)};
   font: var(--dsw-font-xxxs-11);
   color: var(--dsw-alias-label-caption);
+}
+
+/* 时间右边的播报按钮：与时间同字号，靠透明度与颜色表意，不占额外行高 */
+.pet-chat-speak {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: ${px(SIZE.hairline * 12)};
+  height: ${px(SIZE.hairline * 12)};
+  border: 0;
+  padding: 0;
+  background: transparent;
+  font: inherit;
+  line-height: 1;
+  color: inherit;
+  cursor: pointer;
+  opacity: 0.55;
+  transition:
+    opacity 0.15s,
+    color 0.15s;
+}
+
+.pet-chat-speak:hover {
+  opacity: 1;
+}
+
+/* 生成中：只有上半圈带色的细环，靠旋转表达「在生成」 */
+.pet-chat-speak.is-loading {
+  opacity: 0.9;
+  cursor: default;
+}
+
+.pet-chat-speak.is-loading::before {
+  content: '';
+  width: ${px(SIZE.hairline * 8)};
+  height: ${px(SIZE.hairline * 8)};
+  border: 1.5px solid var(--dsw-alias-border-l2);
+  border-top-color: var(--dsw-alias-label-secondary);
+  border-radius: 50%;
+  animation: pet-chat-spin 0.8s linear infinite;
+}
+
+/* 播放中：主色 + 满不透明，和「可播放」明显区分 */
+.pet-chat-speak.is-playing {
+  opacity: 1;
+  color: var(--dsw-alias-state-business-primary);
+  cursor: default;
+}
+
+@keyframes pet-chat-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .pet-chat-time.is-pet {
