@@ -100,7 +100,7 @@ export interface DragCard {
   box: () => BoxPoint | null;
   /** 写回包围盒位置。 */
   setBox: (box: BoxPoint) => void;
-  /** 原地放下：提交归一化中心。 */
+  /** 原地放下：提交夹取后的归一化中心。 */
   commitPlace: (box: BoxPoint) => void;
 }
 
@@ -349,7 +349,7 @@ export function createDrag(card: () => DragCard): Drag {
       c.startFlight(box.x, box.y, vx, vy);
       return;
     }
-    // 原地放下：提交归一化中心，由 React 按根节点样式重排位置。
+    // 原地放下：夹到可见下限后提交归一化中心；根节点位置由 commitPlace 直接写，不依赖重渲染。
     c.commitPlace(box);
   };
 

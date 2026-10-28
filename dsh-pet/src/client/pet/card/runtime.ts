@@ -99,11 +99,17 @@ export function createCardRuntime(rt: PetRuntime) {
     // 配置变化即时跟随，容器重新合并或设置页保存后触发。
     useEffect(() => {
       actions.setSize(cfg.size);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- setter 稳定，变化原因只有配置尺寸
+    }, [cfg.size]);
+
+    useEffect(() => {
       actions.setCorner(cfg.position.corner);
       actions.setMargin({ x: cfg.position.marginX, y: cfg.position.marginY });
-      // 三个写入口是卡状态容器转出的 useState setter，身份稳定；进依赖只会让 effect 每次渲染重跑。
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- setter 稳定，变化原因只有这四个配置字段
-    }, [cfg.size, cfg.position.corner, cfg.position.marginX, cfg.position.marginY]);
+      // 改位置是明确的「放这里」：清掉会话内的拖拽位置，让配置重新生效——
+      // 这也是设置页把跑出视口的宠物叫回来的通道。只调大小不在此列，不该丢位置。
+      actions.setCustomPos(null);
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- setter 稳定，变化原因只有这三个位置字段
+    }, [cfg.position.corner, cfg.position.marginX, cfg.position.marginY]);
 
     // 三种气泡的单槽：显隐、停留计时与优先级都在 bubble-slots，这里只喂视图输入。
     const bubbles = useBubbleSlots({

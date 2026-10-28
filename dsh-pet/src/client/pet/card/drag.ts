@@ -5,7 +5,7 @@
  * @module dsh-pet/src/client/pet/card/drag
  */
 import { createDrag, type Drag, type DragCard } from '../motion/drag.ts';
-import { boxToRatio } from '../motion/geometry.ts';
+import { boxToRatio, clampReachableBox } from '../motion/geometry.ts';
 import { playClickSound } from '../click-sound.ts';
 import type { CardLive } from './live.ts';
 import type { CardMotion } from './motion.ts';
@@ -99,10 +99,20 @@ export function createCardDrag(rt: CardDragRuntime) {
         box: () => motion.box(),
         setBox: (box) => motion.setBox(box),
         commitPlace: (box) => {
-          const { halfW, halfH } = motion.metrics();
-          setCustomPos(
-            boxToRatio(box, { width: window.innerWidth, height: window.innerHeight }, { w: halfW, h: halfH }),
-          );
+          const metrics = motion.metrics();
+          const viewport = { width: window.innerWidth, height: window.innerHeight };
+          const half = { w: metrics.halfW, h: metrics.halfH };
+          const reached = clampReachableBox(box, viewport, metrics);
+          // 拖拽期间 follow 直接改 DOM；夹取后的比例可能与上次渲染相同，React 会跳过 style 写入。
+          const rootEl = root();
+          if (rootEl) {
+            rootEl.style.left = reached.x + 'px';
+            rootEl.style.top = reached.y + 'px';
+            rootEl.style.right = 'auto';
+            rootEl.style.bottom = 'auto';
+          }
+          motion.setBox(reached);
+          setCustomPos(boxToRatio(reached, viewport, half));
         },
       };
     };

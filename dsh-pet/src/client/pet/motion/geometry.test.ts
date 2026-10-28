@@ -1,12 +1,22 @@
 /**
  * 宠物盒几何（src/client/pet/motion/geometry.ts）的契约测试：中心与包围盒两个方向互逆、
- * 度量随宽度线性缩放、命中区按画布换算，以及舞台与根节点的内联样式。
+ * 度量随宽度线性缩放、命中区按画布换算、舞台与根节点的内联样式，以及越界摆放的可见下限。
  */
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
 import { HIT_BOX } from '../../../shared/constants.ts';
-import { boxToRatio, centerToBox, derivePetMetrics, PET_HIT_STYLE, petRootStyle, petStageStyle } from './geometry.ts';
+import { bodyPixelBox } from '../../../shared/physics.ts';
+import {
+  boxToRatio,
+  centerToBox,
+  clampReachableBox,
+  derivePetMetrics,
+  MIN_REACHABLE_PX,
+  PET_HIT_STYLE,
+  petRootStyle,
+  petStageStyle,
+} from './geometry.ts';
 
 const viewport = { width: 1280, height: 800 };
 const half = { w: 130, h: 73 };
@@ -121,5 +131,64 @@ describe('PET_HIT_STYLE —— 命中区换算成百分比', () => {
     const height = parseFloat(PET_HIT_STYLE.height as string);
     assert.ok(left >= 0 && top >= 0, '左上角应在盒内');
     assert.ok(left + width <= 100 + 1e-9 && top + height <= 100 + 1e-9, '右下角应不出盒');
+  });
+});
+
+describe('clampReachableBox —— 越界摆放的可见下限', () => {
+  const size = 462;
+  const { bottomPad } = derivePetMetrics(size);
+  const inset = bodyPixelBox({ x: 0, y: 0, size, bottomPad });
+
+  /** 命中区与视口的交集尺寸（px），即「还剩多少点得到」。 */
+  function visible(box: { x: number; y: number }): { w: number; h: number } {
+    const body = bodyPixelBox({ x: box.x, y: box.y, size, bottomPad });
+    return {
+      w: Math.min(body.right, viewport.width) - Math.max(body.left, 0),
+      h: Math.min(body.bottom, viewport.height) - Math.max(body.top, 0),
+    };
+  }
+
+  test('右侧越界：命中区右缘超出视口 → 推回到只剩 24px 可见', () => {
+    const box = clampReachableBox({ x: 5000, y: 200 }, viewport, { size, bottomPad });
+    assert.equal(box.x, viewport.width - inset.left - MIN_REACHABLE_PX, '左缘应推到命中区留出下限');
+    assert.ok(Math.abs(visible(box).w - MIN_REACHABLE_PX) < 1e-9, `可见宽应为 ${MIN_REACHABLE_PX}`);
+    assert.equal(box.y, 200, '未越界的那一轴不动');
+  });
+
+  test('左侧越界：命中区左缘超出视口 → 推回到只剩 24px 可见', () => {
+    const box = clampReachableBox({ x: -5000, y: 200 }, viewport, { size, bottomPad });
+    assert.equal(box.x, MIN_REACHABLE_PX - inset.right, '右缘应推到命中区留出下限');
+    assert.ok(Math.abs(visible(box).w - MIN_REACHABLE_PX) < 1e-9, `可见宽应为 ${MIN_REACHABLE_PX}`);
+  });
+
+  test('底部越界：命中区底边低于视口 → 推回到只剩 24px 可见', () => {
+    const box = clampReachableBox({ x: 200, y: 5000 }, viewport, { size, bottomPad });
+    assert.equal(box.y, viewport.height - inset.top - MIN_REACHABLE_PX, '顶边应推到命中区留出下限');
+    assert.ok(Math.abs(visible(box).h - MIN_REACHABLE_PX) < 1e-9, `可见高应为 ${MIN_REACHABLE_PX}`);
+  });
+
+  test('顶部越界：命中区顶边高于视口 → 推回到只剩 24px 可见', () => {
+    const box = clampReachableBox({ x: 200, y: -5000 }, viewport, { size, bottomPad });
+    assert.equal(box.y, MIN_REACHABLE_PX - inset.bottom, '底边应推到命中区留出下限');
+    assert.ok(Math.abs(visible(box).h - MIN_REACHABLE_PX) < 1e-9, `可见高应为 ${MIN_REACHABLE_PX}`);
+  });
+
+  test('未越界：原样返回 → 不做任何位移', () => {
+    const inside = { x: 400, y: 300 };
+    assert.deepEqual(clampReachableBox(inside, viewport, { size, bottomPad }), inside);
+  });
+
+  test('极窄视口 + 小宠物：区间反向 → 该轴居中，不夹到错误一侧', () => {
+    const narrow = { width: 5, height: 800 };
+    const tiny = 100;
+    const box = clampReachableBox({ x: 5000, y: 200 }, narrow, { size: tiny, bottomPad: 0 });
+    assert.equal(box.x, (narrow.width - tiny) / 2, '容不下两倍下限时应按盒居中');
+  });
+
+  test('四角越界：两轴各自夹取 → 角上仍留 24px', () => {
+    const box = clampReachableBox({ x: 5000, y: 5000 }, viewport, { size, bottomPad });
+    const seen = visible(box);
+    assert.ok(Math.abs(seen.w - MIN_REACHABLE_PX) < 1e-9, `可见宽应为 ${MIN_REACHABLE_PX}`);
+    assert.ok(Math.abs(seen.h - MIN_REACHABLE_PX) < 1e-9, `可见高应为 ${MIN_REACHABLE_PX}`);
   });
 });

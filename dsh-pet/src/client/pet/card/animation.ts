@@ -7,6 +7,7 @@
 import { createOwnAnimation, type OwnAnimation, type OwnAnimationDeps } from '../animation/animation.ts';
 import { registerPose } from '../../pose.ts';
 import { registerProgress } from '../../progress.ts';
+import { boxToRatio, centerToBox, clampReachableBox, derivePetMetrics } from '../motion/geometry.ts';
 import type { CardLive } from './live.ts';
 import type { CardStateApi } from './state.ts';
 import type { RuntimePet } from '../types.ts';
@@ -97,8 +98,20 @@ export function createCardAnimation(rt: CardAnimationRuntime) {
     useEffect(() => {
       // 槽对象身份稳定（useRef 一次），字段每渲染就地更新；捕获一份给清理用，避免读 .current。
       const services = live.current;
-      // 视口变化要按新尺寸重算根节点位置，否则改窗口大小后宠物停在旧比例上。
-      const onResize = () => card.actions.setCustomPos((prev) => (prev ? { ...prev } : prev));
+      // 视口变化要按新尺寸重算根节点位置，否则改窗口大小后宠物停在旧比例上；
+      // 重算后再压一次可见下限，缩窗把宠物挤到视口外时能自愈。
+      const onResize = () =>
+        card.actions.setCustomPos((prev) => {
+          if (!prev) return prev;
+          // 读 cfgRef 而不是闭包里的 card.state：本效果只注册一次，渲染期快照是初始尺寸。
+          const { size } = cfgRef.current;
+          const { halfW, halfH, bottomPad } = derivePetMetrics(size);
+          const viewport = { width: window.innerWidth, height: window.innerHeight };
+          const half = { w: halfW, h: halfH };
+          const box = centerToBox(prev, viewport, half);
+          // 必须返回新对象：视口变了就得重渲染，返回同一引用 React 会跳过，位置不会重算。
+          return { ...boxToRatio(clampReachableBox(box, viewport, { size, bottomPad }), viewport, half) };
+        });
       window.addEventListener('resize', onResize);
       // 把本页这只宠物的实时位置与朝向注册给只读服务 petApi7340（见 ../pose）；
       // 消费者按需读闭包，拖拽、抛掷中途也能拿到当前值，不是快照。

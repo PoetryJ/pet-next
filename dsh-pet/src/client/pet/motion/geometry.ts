@@ -2,9 +2,11 @@
  * 宠物盒的几何：由宽度推出半宽半高、脚垫与左右余量，并换算归一化中心 ↔ 包围盒左上角。
  * 位置指令用归一化比例、拖拽与抛掷用左上角像素，两个方向必须互逆，否则松手会跳位。
  * 纯计算：视口、盒尺寸与画布基准都由调用方传入，不读 `window`。
+ * 换算本身不夹取；越界摆放的可见下限由 {@link clampReachableBox} 在提交位置时保证。
  * @module dsh-pet/src/client/pet/motion/geometry
  */
 import { CANVAS_H, FEET_Y, HIT_BOX } from '../../../shared/constants.ts';
+import { bodyPixelBox } from '../../../shared/physics.ts';
 import type { CSSProperties } from 'react';
 
 /** 视口尺寸。 */
@@ -82,6 +84,50 @@ export function boxToRatio(box: BoxPoint, viewport: Viewport, half: HalfSize): C
   return { rx: (box.x + half.w) / viewport.width, ry: (box.y + half.h) / viewport.height };
 }
 
+/** 越界摆放的可见下限（px）：命中区留在视口内至少这么多，右键才点得到。 */
+export const MIN_REACHABLE_PX = 24;
+
+/**
+ * 把越界摆放的盒子收到「命中区至少还可见 {@link MIN_REACHABLE_PX}」。
+ *
+ * 只压单轴的一侧，不要求完整可见：宠物仍能挂在边缘，只是不会整只消失。
+ *
+ * @param box - 待提交的盒左上角（px）。
+ * @param viewport - 视口尺寸。
+ * @param body - 命中区的两个输入：宠物宽度与舞台脚垫。
+ * @returns 夹取后的盒左上角；本来就在范围内时原值返回。
+ */
+export function clampReachableBox(
+  box: BoxPoint,
+  viewport: Viewport,
+  body: { size: number; bottomPad: number },
+): BoxPoint {
+  // 命中区相对盒原点的偏移直接问 bodyPixelBox：本文件不重复 HIT_BOX 的比例换算。
+  const inset = bodyPixelBox({ x: 0, y: 0, size: body.size, bottomPad: body.bottomPad });
+  const minX = MIN_REACHABLE_PX - inset.right;
+  const maxX = viewport.width - inset.left - MIN_REACHABLE_PX;
+  const minY = MIN_REACHABLE_PX - inset.bottom;
+  const maxY = viewport.height - inset.top - MIN_REACHABLE_PX;
+  const height = (body.size * 9) / 16;
+  return {
+    x: clampAxis(box.x, minX, maxX, (viewport.width - body.size) / 2),
+    y: clampAxis(box.y, minY, maxY, (viewport.height - height) / 2),
+  };
+}
+
+/**
+ * 单轴夹取：视口与命中区加起来还容不下两倍下限时区间反向，改为居中，避免夹到错误的一侧。
+ *
+ * @param value - 待夹坐标（px）。
+ * @param lo - 允许下限（px）。
+ * @param hi - 允许上限（px）。
+ * @param centered - 区间反向时的居中坐标（px）。
+ * @returns 夹取后的坐标（px）。
+ */
+function clampAxis(value: number, lo: number, hi: number, centered: number): number {
+  return lo > hi ? centered : Math.min(Math.max(value, lo), hi);
+}
+
 /** 舞台内联样式：拖拽中取消脚垫位移，让视频贴着指针走。 */
 export function petStageStyle(dragging: boolean, bottomPad: number): CSSProperties {
   return dragging ? { transform: 'none' } : { transform: 'translateY(' + bottomPad + 'px)' };
@@ -91,7 +137,7 @@ export function petStageStyle(dragging: boolean, bottomPad: number): CSSProperti
  * 根节点的定位内联样式。
  *
  * 有 customPos 时按归一化中心换算成 px 定位；没有时返回空对象，交给角落与边距的 CSS 变量定位。
- * 拖拽落点即松手位置，不做边界夹取；漫游与抛掷的目标自身已界内。
+ * 此处只做换算，不夹取：落点保留「挂在边缘」的自由，可见下限在提交位置时由 {@link clampReachableBox} 保证。
  *
  * @param customPos - 用户拖拽后的归一化中心；null 表示仍按角落定位。
  * @param viewport - 视口尺寸。
