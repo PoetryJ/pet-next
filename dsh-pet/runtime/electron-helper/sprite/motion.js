@@ -12,7 +12,7 @@ Object.assign(PetSprite.prototype, {
     const pm = this.pendingMove;
     if (!pm || this.moveRef !== null) return;
     this.pendingMove = null;
-    const { startRatio, startYRatio, targetRatio, dir, totalRatio, leadSec, tailSec } = pm;
+    const { startRatio, startYRatio, targetRatio, leadSec, tailSec } = pm;
     const duration = Number.isFinite(el.duration) && el.duration > 0 ? el.duration : 10.09;
     const travelWindow = Math.max(0.1, duration - leadSec - tailSec);
     const token = ++this.moveToken;
@@ -24,7 +24,9 @@ Object.assign(PetSprite.prototype, {
       let ratioX;
       if (t <= leadSec) ratioX = startRatio;
       else if (t >= duration - tailSec) ratioX = targetRatio;
-      else ratioX = startRatio + dir * totalRatio * ((t - leadSec) / travelWindow);
+      // 按规划落点插值而不是 dir × 距离：minDist/maxDist 为负时符号必须保留，
+      // 否则规划往左、驱动往右，走完再跳回原本的方向。
+      else ratioX = startRatio + (targetRatio - startRatio) * ((t - leadSec) / travelWindow);
       // 移动的是窗口（宠物包围盒跟随），sprite 在本窗口内不动
       this.sendBounds(ratioX * W - this.halfW, startYRatio * H - this.halfH);
       if (t < duration - tailSec) {

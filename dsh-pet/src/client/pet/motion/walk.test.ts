@@ -185,6 +185,32 @@ describe('createWalk —— 按播放时间推进', () => {
       frames.restore();
     }
   });
+  test('负距离：向 facing 反方向走 → 行进中在起点左侧，结束停在左侧', () => {
+    const frames = withFakeFrames();
+    try {
+      const negative = {
+        default: { minDist: -120, maxDist: -80, margin: 16, leadSec: 0.2, tailSec: 0.3 },
+        actions: [{ name: 'walk1' }],
+      } as unknown as MovesConfig;
+      const { walk, root, commits } = harness({ moves: () => negative });
+      walk.tryMove();
+      const video = fakeVideo(10);
+      walk.start(video);
+
+      const startX = 0.5 * viewport.width - metrics.halfW;
+      video.currentTime = 3; // 行进中：应已离开起点、且落在起点左侧
+      frames.tick();
+      assert.ok(parseFloat(root.style.left) < startX, `负距离应往左走：${root.style.left}`);
+
+      video.currentTime = 9.8; // 收脚：停在规划落点，不跳回起点右侧
+      frames.tick();
+      assert.equal(commits.length, 1);
+      assert.ok(commits[0]!.rx < 0.5, `目标应在起点左侧：${commits[0]!.rx}`);
+    } finally {
+      frames.restore();
+    }
+  });
+
   test('每帧回写包围盒：与写进 DOM 的 left 同源', () => {
     const frames = withFakeFrames();
     try {

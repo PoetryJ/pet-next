@@ -91,7 +91,9 @@ export function createWalk(deps: WalkDeps): Walk {
       let ratioX: number;
       if (t <= move.leadSec) ratioX = move.startRatio;
       else if (t >= duration - move.tailSec) ratioX = move.targetRatio;
-      else ratioX = move.startRatio + move.dir * move.totalRatio * ((t - move.leadSec) / travelWindow);
+      // 按规划落点插值而不是 dir × 距离：minDist/maxDist 为负时符号必须保留，
+      // 否则规划往左、驱动往右，走完再跳回原本的方向。
+      else ratioX = move.startRatio + (move.targetRatio - move.startRatio) * ((t - move.leadSec) / travelWindow);
       const box = { x: ratioX * W - halfW, y: move.startYRatio * H - halfH };
       const rootEl = deps.root();
       if (rootEl) {
