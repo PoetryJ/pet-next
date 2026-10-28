@@ -33,12 +33,7 @@ export function makePhysicsCard(rt: SettingsRuntime): FunctionComponent<PhysicsC
     const { busy, physics } = props;
 
     /** 物理参数的一格：标签与问号在上、数字输入在下。 */
-    const physField = (
-      key: 'gravity' | 'restitution' | 'groundFriction' | 'throwPower',
-      step: string,
-      min: string,
-      end = false,
-    ) =>
+    const physField = (key: 'gravity' | 'restitution' | 'groundFriction' | 'throwPower', step: string, min: string) =>
       field(
         t('physics.' + key),
         h('input', {
@@ -51,7 +46,6 @@ export function makePhysicsCard(rt: SettingsRuntime): FunctionComponent<PhysicsC
           onChange: (e: ChangeEvent<HTMLInputElement>) => props.onChange({ [key]: Number(e.target.value) }),
         }),
         t('physics.' + key + 'Hint'),
-        end,
       );
 
     return h('div', {
@@ -64,7 +58,7 @@ export function makePhysicsCard(rt: SettingsRuntime): FunctionComponent<PhysicsC
             physField('gravity', '50', '0'),
             physField('restitution', '0.01', '0'),
             physField('groundFriction', '0.1', '0'),
-            physField('throwPower', '0.05', '0.05', true),
+            physField('throwPower', '0.05', '0.05'),
           ],
         }),
         h('div', {
@@ -73,13 +67,7 @@ export function makePhysicsCard(rt: SettingsRuntime): FunctionComponent<PhysicsC
             toggleCell('physicsCeilingBounce', physics.ceilingBounce, busy, (v) =>
               props.onChange({ ceilingBounce: v }),
             ),
-            toggleCell(
-              'physicsPetCollision',
-              physics.petCollision,
-              busy,
-              (v) => props.onChange({ petCollision: v }),
-              true,
-            ),
+            toggleCell('physicsPetCollision', physics.petCollision, busy, (v) => props.onChange({ petCollision: v })),
           ],
         }),
       ],

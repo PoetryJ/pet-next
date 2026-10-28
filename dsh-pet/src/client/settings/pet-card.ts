@@ -140,7 +140,6 @@ export function makePetCard(rt: SettingsRuntime): FunctionComponent<PetCardProps
                 children: PET_DISPLAYS.map((d) => h('option', { key: d, value: d, children: t('display.' + d) })),
               }),
               t('displayHint'),
-              true,
             ),
           ],
         }),
@@ -169,7 +168,6 @@ export function makePetCard(rt: SettingsRuntime): FunctionComponent<PetCardProps
               t('marginY'),
               numInput('marginY', pet.position.marginY, busy, (v) => props.onChange({ position: { marginY: v } })),
               t('marginYHint'),
-              true,
             ),
           ],
         }),
@@ -182,7 +180,7 @@ export function makePetCard(rt: SettingsRuntime): FunctionComponent<PetCardProps
             toggleCell('workStatusEnabled', !!pet.workStatusEnabled, busy, (v) =>
               props.onChange({ workStatusEnabled: v }),
             ),
-            toggleCell('fixedEnabled', !!pet.fixedEnabled, busy, (v) => props.onChange({ fixedEnabled: v }), true),
+            toggleCell('fixedEnabled', !!pet.fixedEnabled, busy, (v) => props.onChange({ fixedEnabled: v })),
           ],
         }),
 

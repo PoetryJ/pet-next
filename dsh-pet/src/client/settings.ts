@@ -29,6 +29,7 @@ import { makePetCard } from './settings/pet-card.ts';
 import { makePetTabs } from './settings/pet-tabs.ts';
 import { createWriteFlow } from './settings/config/index.ts';
 import { makePhysicsCard } from './settings/physics-card.ts';
+import { attachTipLayer } from './settings/tip-layer.ts';
 import type { SettingsRuntime } from './settings/runtime.ts';
 import { useConfigLoad } from './settings/config/index.ts';
 import { usePetList } from './settings/use-pet-list.ts';
@@ -102,6 +103,9 @@ export function makePetConfigSection(rt: SettingsRuntime): FunctionComponent<{ c
     } = usePetList(rt, setDialog);
     // 一次性拉取的宿主数据：落盘位置（两张路径卡）与候选模型清单（下拉框）。
     const { paths, catalog, catalogFailed } = useRemoteData(rt);
+
+    // 说明气泡：挂 body 摆位（伪元素会被窗口边缘与滚动容器裁掉），随页面卸载一起拆。
+    useEffect(() => attachTipLayer(), []);
 
     // 音色列表：与配置无关的一次性拉取，失败留空即可（下拉会只显示当前值）。
     useEffect(() => {

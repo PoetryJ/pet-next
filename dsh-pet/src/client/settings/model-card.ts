@@ -72,7 +72,7 @@ export function makeModelCard(
       );
 
     /** 「AI 模型」的一格：标签与问号在上、单下拉选择器在下。 */
-    const modelCell = (key: ModelFieldKey, value: ModelSelection, end = false) => {
+    const modelCell = (key: ModelFieldKey, value: ModelSelection) => {
       const label = t(key === 'whisperModel' ? 'whisperModelLabel' : 'chatModelLabel');
       return field(
         label,
@@ -85,7 +85,6 @@ export function makeModelCard(
           onChange: (next: ModelSelection) => props.onModelChange(key, next),
         }),
         t('modelFieldHint'),
-        end,
       );
     };
 
@@ -102,7 +101,7 @@ export function makeModelCard(
           : null,
         h('div', {
           className: 'dsh-pet-cfg__grid2',
-          children: [modelCell('whisperModel', props.whisperModel), modelCell('chatModel', props.chatModel, true)],
+          children: [modelCell('whisperModel', props.whisperModel), modelCell('chatModel', props.chatModel)],
         }),
         h('div', {
           className: 'dsh-pet-cfg__grid4',

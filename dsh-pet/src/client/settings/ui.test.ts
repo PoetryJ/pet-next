@@ -4,7 +4,7 @@
  * 三条契约：
  *   1. 说明一律走 `data-tip` 气泡属性，且带说明的字段必须同时有可读的 `aria-label`；
  *   2. 开关格的勾选态与禁用态透传给原生 checkbox，切换只回传布尔值；
- *   3. `end` 只影响气泡方向（多一个 `data-tip-end`），不影响其它结构。
+ *   3. 没有说明时不留空的问号，也不给无说明的元素加 `data-tip`。
  *
  * 用假的 `h` 记录节点树（不引 jsdom）。
  */
@@ -56,10 +56,10 @@ describe('field —— 字段', () => {
     assert.equal(label.props.children, '大小');
   });
 
-  test('end：气泡改为右对齐', () => {
-    const field = ui.field('大小', h('input', {}), '说明', true);
+  test('问号不挂 data-tip-end：气泡靠 tip-layer 自动翻边，不再分左右', () => {
+    const field = ui.field('大小', h('input', {}), '说明');
     const [question] = byClass(field, 'dsh-pet-cfg__q');
-    assert.equal(question.props['data-tip-end'], '');
+    assert.equal(question.props['data-tip-end'], undefined);
   });
 });
 

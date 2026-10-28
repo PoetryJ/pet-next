@@ -30,13 +30,13 @@ export interface GlobalCardProps {
   onChange: (key: GlobalFlagKey, value: boolean) => void;
 }
 
-/** 开关的展示顺序与文案键；`end` 的用右对齐气泡（栅格右列）。 */
-const TOGGLES: Array<{ key: GlobalFlagKey; label: string; end?: boolean }> = [
+/** 开关的展示顺序与文案键。 */
+const TOGGLES: Array<{ key: GlobalFlagKey; label: string }> = [
   { key: 'notificationsEnabled', label: 'notifyToggle' },
   { key: 'clickSoundEnabled', label: 'clickSoundToggle' },
   { key: 'whisperImageEnabled', label: 'whisperImageToggle' },
   { key: 'chatImageEnabled', label: 'chatImageToggle' },
-  { key: 'confineToScreen', label: 'confineToggle', end: true },
+  { key: 'confineToScreen', label: 'confineToggle' },
   { key: 'trayEnabled', label: 'trayToggle' },
 ];
 
@@ -58,12 +58,8 @@ export function makeGlobalCard(rt: SettingsRuntime): FunctionComponent<GlobalCar
         h('div', {
           className: 'dsh-pet-cfg__grid4',
           children: TOGGLES.map((toggle) =>
-            toggleCell(
-              toggle.label,
-              props.values[toggle.key],
-              props.busy,
-              (value) => props.onChange(toggle.key, value),
-              toggle.end,
+            toggleCell(toggle.label, props.values[toggle.key], props.busy, (value) =>
+              props.onChange(toggle.key, value),
             ),
           ),
         }),

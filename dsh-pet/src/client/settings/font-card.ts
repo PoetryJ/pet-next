@@ -66,7 +66,6 @@ export function makeFontCard(rt: SettingsRuntime): FunctionComponent<FontCardPro
                 onChange: (e: ChangeEvent<HTMLInputElement>) => props.onChange({ size: Number(e.target.value) }),
               }),
               t('fontSizeHint'),
-              true,
             ),
           ],
         }),
