@@ -26,6 +26,15 @@ export async function handleAssetsRoutes(deps: PetRouteDeps, input: RouteInput):
   // font / pic 是扁平的 /<scope>/<file>，只有 thumb 是 /<scope>/<petId>/<file>：先拆 scope 再各自拆剩余段。
   const [scope, ...restParts] = rest.split('/');
 
+  // 插件 logo：/logo → 包内 assets/logo.png。只放行这一个文件——不把 assets 根开放成静态目录
+  // （同目录还有 config.jsonc）。对话面板拿它当宠物头像。
+  if (scope === 'logo') {
+    if (restParts.length > 0) return { kind: 'text', status: 400, body: 'dsh-pet: expected /dsh-pet-7340/logo' };
+    const logo = resolveExisting(join(PACKAGE_ROOT, 'assets'), 'logo.png');
+    if (logo === undefined) return { kind: 'text', status: 404, body: 'dsh-pet: logo not found' };
+    return { kind: 'file', file: logo, contentType: MIME['.png'] ?? 'image/png' };
+  }
+
   if (scope === 'font') {
     const fontRoot = join(PACKAGE_ROOT, 'assets', 'fonts');
     const fontFile = resolveExisting(fontRoot, restParts.join('/'));

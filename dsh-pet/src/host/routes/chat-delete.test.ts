@@ -29,6 +29,8 @@ function makeDeps(): { deps: PetRouteDeps; calls: DeleteCall[] } {
       calls.push({ petId, ...(ts === undefined ? {} : { ts }) });
       return { ok: true as const, removed: 2 };
     },
+    orphanHistory: async () => [{ entry: 'main', petId: 'gone', messages: 4, lastTs: 1000 }],
+    deleteOrphans: async () => ({ ok: true as const, pets: 1, messages: 4 }),
   } as unknown as PetRouteDeps;
   return { deps, calls };
 }
@@ -95,5 +97,33 @@ describe('DELETE /chat —— 删除对话记忆', () => {
     const b = body(await handleChatRoutes(failing, del()));
     assert.equal(b.ok, false);
     assert.equal(b.reason, 'unknown-pet');
+  });
+});
+
+describe('/chat/memory —— 已删宠物的残留历史', () => {
+  /** 一次 /chat/memory 请求；不需要 pet 参数。 */
+  const memory = (method = 'GET'): RouteInput => ({
+    url: new URL('http://127.0.0.1/dsh-pet-7340/chat/memory'),
+    rest: 'chat/memory',
+    method,
+  });
+
+  test('GET 列出残留：只给条数与最后时间，不给正文', async () => {
+    const { deps } = makeDeps();
+    const b = body(await handleChatRoutes(deps, memory()));
+    assert.equal(b.ok, true);
+    assert.deepEqual(b.orphans, [{ entry: 'main', petId: 'gone', messages: 4, lastTs: 1000 }]);
+  });
+
+  test('DELETE 一次清空全部残留，回删掉的宠物数与消息数', async () => {
+    const { deps } = makeDeps();
+    const b = body(await handleChatRoutes(deps, memory('DELETE')));
+    assert.deepEqual(b, { ok: true, pets: 1, messages: 4 });
+  });
+
+  test('其它方法 → 405（这对端点只读列表与清空）', async () => {
+    const { deps } = makeDeps();
+    const result = await handleChatRoutes(deps, memory('POST'));
+    assert.equal((result as { status: number }).status, 405);
   });
 });

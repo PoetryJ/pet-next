@@ -20,6 +20,18 @@ export async function handleChatRoutes(deps: PetRouteDeps, input: RouteInput): P
   const { configPaths, log, memoryPath, memoryRounds, readMemory, requirePet } = deps;
   const { body, method, rest, url } = input;
 
+  // 已删宠物的残留历史：配置里已经没有这只宠物，GET /chat 读不到它，也就清不掉。
+  // GET 列出（只给条数与最后时间，不给正文），DELETE 一次性清空。
+  if (rest === 'chat/memory') {
+    if (method !== 'GET' && method !== 'DELETE') return methodNotAllowed();
+    try {
+      if (method === 'DELETE') return okResult(await deps.deleteOrphans());
+      return okResult({ ok: true, orphans: await deps.orphanHistory() });
+    } catch (e) {
+      return failResult('generate-error', e instanceof Error ? e.message : String(e));
+    }
+  }
+
   // 对话：GET /chat 读最近记忆窗口（截尾 chatMemoryRounds 轮，一次读、不是轮询），
   // POST /chat 携带历史生成回复并写入记忆，DELETE /chat 删除记忆（按轮或整只）。
   // 记忆唯一读写方是 host（memory.json），浏览器与桌面天然共享同一份。

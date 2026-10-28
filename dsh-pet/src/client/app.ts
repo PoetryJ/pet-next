@@ -14,6 +14,7 @@ import { makePetConfigSection, NS, zh, en, petBridge } from './settings.ts';
 import { initNotify } from './notify.ts';
 import { installCommandFaces, type CommandFace, type CommandUiLike } from './command-faces.ts';
 import { installSectionNavIcon } from './nav-icon.ts';
+import { registerPetChatTab } from './chat/register.ts';
 import type * as ReactNS from 'react';
 import type * as PrimitivesNS from '@deepseek-ai/dsh-client-ui-primitives';
 
@@ -172,6 +173,32 @@ export function makeFactory(): (require: (mod: string) => any) => any {
           PetConfigSection,
         );
       });
+
+      // 右侧栏「桌宠对话」：可选能力，服务缺失时只告警，不影响其它部位。
+      // 确认弹窗用平台原语（primitives 缺失时面板内部退化为内联确认条）。
+      // 整体再兜一层：任何注册异常都不许拖垮插件激活（否则整个 Web 端进不去）。
+      ctx.effect(() => {
+        try {
+          return registerPetChatTab(ctx, {
+            h,
+            useEffect,
+            useRef,
+            useState,
+            ...(primitives === undefined
+              ? {}
+              : {
+                  ui: {
+                    Modal: primitives.Modal,
+                    Button: primitives.Button,
+                    ImageLightbox: primitives.ImageLightbox,
+                  },
+                }),
+          });
+        } catch (error) {
+          console.error('[dsh-pet] 右侧栏对话面板注册失败（已忽略，不影响启动）：', error);
+          return () => {};
+        }
+      }, 'dsh-pet: sidebar chat tab');
     }
 
     module.exports = { apply, inject, name };

@@ -557,6 +557,16 @@ describe('pic/memes 路由 —— 表情包素材归属（与 thumb 同一套语
   });
 });
 
+describe('/logo —— 插件 logo（对话面板的宠物头像）', () => {
+  test('只接受裸路径：多一段就 400，不把 assets 根开放成静态目录', async () => {
+    assert.equal((await call('/dsh-pet-7340/logo/x.png')).status, 400);
+  });
+
+  test('源码形态下包内 assets 不可达 → 404（真实安装里读 assets/logo.png）', async () => {
+    assert.equal((await call('/dsh-pet-7340/logo')).status, 404);
+  });
+});
+
 describe('pic/memes 路由 —— 素材根不得当路径片段（与 thumb 同一条不变式）', () => {
   test('%5C 反斜杠穿越（Windows）→ 400，且绝不读到用户根之外', async () => {
     const r = await call('/dsh-pet-7340/pic/memes/..%5C..%5C..%5Coutside-memes/leak.png');

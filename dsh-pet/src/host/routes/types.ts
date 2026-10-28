@@ -129,6 +129,10 @@ export interface PetRouteDeps {
     petId: string,
     ts?: readonly number[],
   ) => Promise<{ ok: true; removed: number } | { ok: false; reason: 'unknown-pet'; message: string }>;
+  /** 已删宠物残留的记忆桶（配置里已没有这只宠物）。 */
+  readonly orphanHistory: () => Promise<{ entry: string; petId: string; messages: number; lastTs: number }[]>;
+  /** 清掉所有已删宠物的历史。 */
+  readonly deleteOrphans: () => Promise<{ ok: true; pets: number; messages: number }>;
   /** 用户动画目录（按扩展名）。 */
   readonly userRootFor: (ext: string) => string;
   /** 包内动画目录（按扩展名）。 */

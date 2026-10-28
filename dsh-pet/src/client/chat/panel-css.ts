@@ -1,0 +1,440 @@
+/**
+ * 对话面板的 CSS 文本：只在这里写选择器与 token，不出现字面色值。
+ *
+ * 尺寸统一走 ./metrics 的 {@link SIZE}（CSS 与输入框自动长高共用一份），
+ * 与 styles.ts 分开是因为这里是纯字符串：改样式时 diff 只落在这里。
+ * @module dsh-pet/src/client/chat/panel-css
+ */
+import { px, SIZE } from './metrics.ts';
+
+/** 面板样式（选择器前缀 `pet-chat`，避免与 DSH 或其它插件撞名）。 */
+export const PANEL_CSS = `
+.pet-chat {
+  display: flex;
+  flex-direction: column;
+  height: 100%;
+  min-height: 0;
+  gap: ${px(SIZE.gapWide)};
+  padding: ${px(SIZE.pad)} ${px(SIZE.pad)} ${px(SIZE.padBottom)};
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-s-14);
+}
+
+.pet-chat-tabs {
+  display: flex;
+  flex-wrap: wrap;
+  gap: ${px(SIZE.gapTight)};
+  flex: 0 0 auto;
+}
+
+.pet-chat-tab {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  border-radius: var(--dsw-radius-md);
+  padding: ${px(SIZE.tabPadY)} ${px(SIZE.tabPadX)};
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+  transition: background var(--ds-transition-duration-fast) var(--ds-ease-in-out),
+    color var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+
+.pet-chat-tab:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.pet-chat-tab[aria-pressed="true"] {
+  background: var(--dsw-alias-bg-multi-select);
+  border-color: var(--dsw-alias-border-l3);
+  color: var(--dsw-alias-label-primary);
+  font-weight: 500;
+}
+
+.pet-chat-tools {
+  display: flex;
+  justify-content: flex-end;
+  gap: ${px(SIZE.gapTight)};
+  flex: 0 0 auto;
+}
+
+.pet-chat-orphans {
+  display: flex;
+  align-items: center;
+  gap: ${px(SIZE.gap)};
+  flex: 0 0 auto;
+  padding: ${px(SIZE.gapTight)} ${px(SIZE.tabPadX)};
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-bg-multi-select);
+  color: var(--dsw-alias-label-secondary);
+  font: var(--dsw-font-xxs-12);
+}
+
+.pet-chat-confirm {
+  display: flex;
+  align-items: center;
+  gap: ${px(SIZE.gap)};
+  flex: 0 0 auto;
+  padding: ${px(SIZE.gapTight)} ${px(SIZE.tabPadX)};
+  border-radius: var(--dsw-radius-md);
+  background: var(--dsw-alias-interactive-bg-hover-danger);
+  color: var(--dsw-alias-label-primary);
+  font: var(--dsw-font-xxs-12);
+}
+
+.pet-chat-danger {
+  flex: 0 0 auto;
+  border: none;
+  border-radius: var(--dsw-radius-sm);
+  background: var(--dsw-alias-state-error-primary);
+  color: var(--dsw-alias-label-primary-foreground);
+  padding: ${px(SIZE.toolPadY)} ${px(SIZE.tabPadX)};
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+  transition: background var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+
+.pet-chat-danger:hover {
+  background: var(--dsw-alias-state-error-secondary);
+}
+
+.pet-chat-confirm-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: ${px(SIZE.gap)};
+}
+
+/* 指南页卡片图标：框架给的槽位只按图标尺寸排版，所以让 logo 铺满它 */
+.pet-chat-guide-icon {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  border-radius: var(--dsw-radius-xs);
+  display: block;
+}
+
+.pet-chat-tool {
+  border: 1px solid var(--dsw-alias-border-l2);
+  background: transparent;
+  color: var(--dsw-alias-label-secondary);
+  border-radius: var(--dsw-radius-sm);
+  padding: ${px(SIZE.toolPadY)} ${px(SIZE.toolPadX)};
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+}
+
+.pet-chat-tool:hover:not(:disabled) {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.pet-chat-tool[aria-pressed="true"] {
+  background: var(--dsw-alias-bg-multi-select);
+  border-color: var(--dsw-alias-border-l3);
+  color: var(--dsw-alias-label-primary);
+}
+
+.pet-chat-tool:disabled {
+  opacity: 0.5;
+  cursor: default;
+}
+
+.pet-chat-list {
+  flex: 1 1 auto;
+  min-height: 0;
+  overflow-y: auto;
+  display: flex;
+  flex-direction: column;
+  gap: ${px(SIZE.listGap)};
+  padding-right: ${px(SIZE.hairline)};
+}
+
+.pet-chat-older {
+  display: flex;
+  justify-content: center;
+  flex: 0 0 auto;
+}
+
+.pet-chat-older-btn {
+  border: none;
+  border-radius: ${px(SIZE.pill)};
+  background: var(--dsw-alias-interactive-bg-hover);
+  color: var(--dsw-alias-label-secondary);
+  padding: ${px(SIZE.pillPadY)} ${px(SIZE.tabPadX)};
+  font: var(--dsw-font-xxs-12);
+  cursor: pointer;
+  transition: background var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+
+.pet-chat-older-btn:hover {
+  background: var(--dsw-alias-interactive-bg-active);
+}
+
+.pet-chat-older-note {
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxs-12);
+  padding: ${px(SIZE.pillPadY)} 0;
+}
+
+.pet-chat-memory {
+  display: flex;
+  align-items: center;
+  gap: ${px(SIZE.gap)};
+  flex: 0 0 auto;
+  color: var(--dsw-alias-label-caption);
+  font: var(--dsw-font-xxxs-11);
+}
+
+/* 线本身用伪元素画，文字居中：视觉上是「一条带说明的分隔线」 */
+.pet-chat-memory::before,
+.pet-chat-memory::after {
+  content: '';
+  flex: 1 1 auto;
+  border-top: 1px dashed var(--dsw-alias-border-l3);
+}
+
+.pet-chat-memory-note {
+  flex: 0 0 auto;
+}
+
+.pet-chat-round {
+  display: flex;
+  align-items: flex-start;
+  gap: ${px(SIZE.gap)};
+}
+
+/* 多选模式：整轮是一张可点卡片；选中给浅底，未选中透明（与豆包的选中样式一致） */
+.pet-chat-round.is-selecting {
+  padding: ${px(SIZE.gapTight)} ${px(SIZE.gapWide)};
+  border-radius: var(--dsw-radius-md);
+  cursor: pointer;
+  transition: background var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+
+.pet-chat-round.is-selecting:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.pet-chat-round.is-selected {
+  background: var(--dsw-alias-bg-multi-select);
+}
+
+.pet-chat-pick {
+  flex: 0 0 auto;
+  padding-top: ${px(SIZE.gapTight)};
+  opacity: 0.55;
+  cursor: pointer;
+}
+
+.pet-chat-pick:hover {
+  opacity: 1;
+}
+
+.pet-chat-round-body {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: ${px(SIZE.gap)};
+}
+
+.pet-chat-msg {
+  display: flex;
+  flex-direction: row;
+  align-items: flex-start;
+  gap: ${px(SIZE.gap)};
+  max-width: 92%;
+}
+
+.pet-chat-msg.is-me {
+  align-self: flex-end;
+  flex-direction: row-reverse;
+}
+
+.pet-chat-msg.is-pet {
+  align-self: flex-start;
+}
+
+.pet-chat-avatar {
+  flex: 0 0 auto;
+  width: ${px(SIZE.avatar)};
+  height: ${px(SIZE.avatar)};
+  border-radius: 50%;
+  object-fit: cover;
+}
+
+.pet-chat-msg.is-pet .pet-chat-avatar {
+  border: 1px solid var(--dsw-alias-border-l2);
+}
+
+.pet-chat-bubble {
+  padding: ${px(SIZE.bubblePadY)} ${px(SIZE.bubblePadX)};
+  border-radius: var(--dsw-radius-md);
+  word-break: break-word;
+  line-height: 1.6;
+}
+
+.pet-chat-text {
+  white-space: pre-wrap;
+}
+
+.pet-chat-msg.is-me .pet-chat-bubble {
+  background: var(--dsw-specific-bubble);
+  color: var(--dsw-alias-label-primary);
+}
+
+.pet-chat-msg.is-pet .pet-chat-bubble {
+  background: var(--dsw-alias-bg-module-platform);
+  color: var(--dsw-alias-label-primary);
+}
+
+.pet-chat-img-btn {
+  display: block;
+  margin-top: ${px(SIZE.gapTight)};
+  padding: 0;
+  border: none;
+  background: none;
+  cursor: zoom-in;
+}
+
+.pet-chat-img {
+  display: block;
+  max-width: ${px(SIZE.imgMaxW)};
+  max-height: ${px(SIZE.imgMaxH)};
+  border-radius: var(--dsw-radius-sm);
+  object-fit: contain;
+}
+
+.pet-chat-time {
+  margin-top: ${px(SIZE.hairline)};
+  font: var(--dsw-font-xxxs-11);
+  color: var(--dsw-alias-label-caption);
+}
+
+.pet-chat-time.is-pet {
+  align-self: flex-start;
+  /* 与宠物气泡左沿对齐：让时间明显属于这一轮的回答，而不是下一轮提问的开头 */
+  margin-left: ${px(SIZE.avatar + SIZE.gap)};
+}
+
+.pet-chat-time.is-me {
+  align-self: flex-end;
+}
+
+.pet-chat-hint {
+  color: var(--dsw-alias-label-tertiary);
+  font: var(--dsw-font-xxs-12);
+}
+
+.pet-chat-error {
+  color: var(--dsw-alias-state-error-primary);
+  font: var(--dsw-font-xxs-12);
+}
+
+.pet-chat-composer {
+  flex: 0 0 auto;
+  display: flex;
+  flex-direction: column;
+  gap: ${px(SIZE.gapTight)};
+  padding: ${px(SIZE.composerPad)} ${px(SIZE.pad)} ${px(SIZE.composerPadBottom)};
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: var(--dsw-radius-xl);
+  background: var(--dsw-specific-input-major);
+  transition: border-color var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+
+.pet-chat-composer:focus-within {
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
+.pet-chat-preview {
+  display: flex;
+  align-items: center;
+  gap: ${px(SIZE.gap)};
+}
+
+.pet-chat-preview-img {
+  width: ${px(SIZE.preview)};
+  height: ${px(SIZE.preview)};
+  object-fit: cover;
+  border-radius: var(--dsw-radius-sm);
+  border: 1px solid var(--dsw-alias-border-l2);
+}
+
+.pet-chat-preview-meta {
+  font: var(--dsw-font-xxxs-11);
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.pet-chat-input {
+  width: 100%;
+  resize: none;
+  border: none;
+  background: transparent;
+  color: var(--dsw-alias-label-primary);
+  padding: 0;
+  min-height: ${px(SIZE.inputMinH)};
+  max-height: ${px(SIZE.inputMaxH)};
+  overflow-y: auto;
+  font: var(--dsw-font-s-14);
+  outline: none;
+}
+
+.pet-chat-input::placeholder {
+  color: var(--dsw-alias-label-tertiary);
+}
+
+.pet-chat-composer-bar {
+  display: flex;
+  align-items: center;
+  gap: ${px(SIZE.gap)};
+}
+
+.pet-chat-attach {
+  display: inline-flex;
+  align-items: center;
+  gap: ${px(SIZE.hairline)};
+  border: 1px solid var(--dsw-alias-border-l2);
+  border-radius: ${px(SIZE.pill)};
+  padding: ${px(SIZE.pillPadY)} ${px(SIZE.tabPadX)};
+  font: var(--dsw-font-xxs-12);
+  color: var(--dsw-alias-label-secondary);
+  cursor: pointer;
+  user-select: none;
+  transition: background var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+
+.pet-chat-attach:hover {
+  background: var(--dsw-alias-interactive-bg-hover);
+}
+
+.pet-chat-file {
+  display: none;
+}
+
+.pet-chat-composer-spacer {
+  flex: 1 1 auto;
+}
+
+.pet-chat-send {
+  flex: 0 0 auto;
+  width: ${px(SIZE.send)};
+  height: ${px(SIZE.send)};
+  display: grid;
+  place-items: center;
+  border: none;
+  border-radius: 50%;
+  background: var(--dsw-alias-button-info-fill);
+  color: var(--dsw-alias-label-primary-foreground);
+  cursor: pointer;
+  transition: background var(--ds-transition-duration-fast) var(--ds-ease-in-out),
+    opacity var(--ds-transition-duration-fast) var(--ds-ease-in-out);
+}
+
+.pet-chat-send:hover:not(:disabled) {
+  background: var(--dsw-alias-button-info-hover);
+}
+
+.pet-chat-send:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+`;

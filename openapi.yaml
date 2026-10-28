@@ -1629,6 +1629,79 @@ paths:
         "405":
           $ref: "#/components/responses/MethodNotAllowed"
 
+  /dsh-pet-7340/chat/memory:
+    get:
+      tags: [Action]
+      operationId: listOrphanChatMemory
+      summary: 列出已删宠物残留的对话历史
+      description: |
+        宠物从配置里删掉后，`memory.json` 里它的历史仍会保留；这类分桶既不在 `GET /chat` 的
+        可达范围（那里要求宠物存在），也不会自己消失。这个端点把它们列出来，**只给条数与最后时间，
+        不返回正文**。
+      responses:
+        "200":
+          description: |
+            恒为 200。成功 `{ ok: true, orphans }`；读取失败是 `{ ok: false, reason: 'generate-error' }`。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [ok, orphans]
+                    properties:
+                      ok:
+                        type: boolean
+                        const: true
+                      orphans:
+                        type: array
+                        description: 每个残留分桶一条；没有残留时为空数组
+                        items:
+                          type: object
+                          required: [entry, petId, messages, lastTs]
+                          properties:
+                            entry:
+                              type: string
+                              description: 所属条目（素材根）
+                            petId:
+                              type: string
+                            messages:
+                              type: integer
+                              description: 该分桶残留的消息条数
+                            lastTs:
+                              type: integer
+                              format: int64
+                              description: 最后一条消息的时间戳（毫秒）；没有消息时为 0
+                  - $ref: "#/components/schemas/FailureResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+    delete:
+      tags: [Action]
+      operationId: clearOrphanChatMemory
+      summary: 清空已删宠物残留的对话历史
+      description: 一次清掉所有「配置里已不存在、但记忆里还有」的分桶，**不可撤销**。
+      responses:
+        "200":
+          description: |
+            恒为 200。成功 `{ ok: true, pets, messages }`（删掉的宠物数与消息条数，没有残留时都是 0）；
+            失败是 `{ ok: false, reason: 'generate-error' }`。
+          content:
+            application/json:
+              schema:
+                oneOf:
+                  - type: object
+                    required: [ok, pets, messages]
+                    properties:
+                      ok:
+                        type: boolean
+                        const: true
+                      pets:
+                        type: integer
+                      messages:
+                        type: integer
+                  - $ref: "#/components/schemas/FailureResponse"
+        "405":
+          $ref: "#/components/responses/MethodNotAllowed"
+
   /dsh-pet-7340/config:
     get:
       tags: [Config]
@@ -2144,6 +2217,27 @@ paths:
             text/plain:
               schema:
                 type: string
+
+  /dsh-pet-7340/logo:
+    get:
+      tags: [Assets]
+      operationId: getLogo
+      summary: 获取插件 logo
+      description: |
+        包内 `assets/logo.png`。只放行这一个文件——`assets/` 根下还有配置文件，不开放成静态目录，
+        所以路径不接受额外段（多一段是 400）。对话面板用它当宠物头像。
+      responses:
+        "200":
+          description: PNG 图片
+          content:
+            image/png:
+              schema:
+                type: string
+                format: binary
+        "400":
+          description: 路径带了额外段（`text/plain`）。
+        "404":
+          description: 包内没有 logo（安装损坏，`text/plain`）。
 
   "/dsh-pet-7340/sound/{file}":
     get:
@@ -2702,7 +2796,7 @@ components:
             所以它确实不会再播完，是"打断"而不是"暂停"）。
         matched:
           type: boolean
-          description: '`true` = 等到了 `wait` 里的状态；`false` = 超时返回'
+          description: "`true` = 等到了 `wait` 里的状态；`false` = 超时返回"
 
     PollState:
       type: object

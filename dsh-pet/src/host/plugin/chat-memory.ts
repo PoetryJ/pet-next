@@ -13,6 +13,7 @@ import { findPetInstance, readAllConfig, removeRoundsByTs, sliceMemoryRounds } f
 import type { PetImageRef } from '../image-attachment.ts';
 import { limitPool, pickMeme, readMemePool } from '../memes.ts';
 import { generateWhisper } from '../whisper.ts';
+import { createMemoryOrphans } from './memory-orphans.ts';
 import { configuredModel } from '../model-selection.ts';
 import type { HostSetup } from './setup.ts';
 import type { HostContext } from './context.ts';
@@ -259,6 +260,15 @@ export function createChatMemory(deps: ChatMemoryInput) {
       return { ok: true as const, removed };
     });
 
+  /** 已删宠物残留历史的查询与清理（判定与读写细节见 ./memory-orphans）。 */
+  const { orphanHistory, deleteOrphans } = createMemoryOrphans({
+    configPaths,
+    readMemory,
+    writeMemory,
+    withLock: withMemoryLock,
+    log,
+  });
+
   /** 当前活跃宠物 id（会话事件写入，余额与碎念读取）。 */
   const getActivePetId = (): string => activePetId;
 
@@ -274,6 +284,8 @@ export function createChatMemory(deps: ChatMemoryInput) {
     publishWhisper,
     chatWithPet,
     deleteHistory,
+    orphanHistory,
+    deleteOrphans,
     getActivePetId,
     setActivePetId,
   };
