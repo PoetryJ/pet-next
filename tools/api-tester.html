@@ -826,6 +826,9 @@
           <span class="ico">💬</span><span>对话</span>
           <span class="badge" id="nav-chat-badge"></span>
         </button>
+        <button type="button" data-view="voice">
+          <span class="ico">🔊</span><span>语音</span>
+        </button>
         <button type="button" data-view="settings">
           <span class="ico">⚙️</span><span>设置</span>
         </button>
@@ -1648,6 +1651,74 @@
                 <input type="file" id="chat-image-input" accept="image/png,image/jpeg,image/webp,image/gif" hidden>
               </div>
             </div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ── 语音 ── -->
+      <section class="view" id="view-voice">
+        <div class="card">
+          <div class="card-head">
+            <h2>接口自检</h2>
+            <span class="hint">发的是真实请求，结果同时进右侧活动日志</span>
+          </div>
+          <div class="card-body">
+            <div class="card-desc">
+              两个端点：<span class="mono">GET /voice/voices</span> 返回可用音色，
+              <span class="mono">POST /voice/speak</span> 返回 mp3。参数错误、队列满、上游失败都是
+              <b>200 + <span class="mono">{ ok: false, reason }</span></b>，只有请求体不是 JSON 才是 400。
+            </div>
+            <div style="display:flex;gap:8px;margin-top:12px;flex-wrap:wrap">
+              <button type="button" class="btn" id="voice-probe">① 拉音色列表</button>
+              <button type="button" class="btn primary" id="voice-speak">② 合成并播放</button>
+              <button type="button" class="btn ghost" id="voice-stop">停止</button>
+            </div>
+            <div style="margin-top:12px">
+              <div class="kv"><span class="k">最近一次结果</span><span class="v" id="voice-result">—</span></div>
+              <div class="kv"><span class="k">耗时 / 类型 / 大小</span><span class="v" id="voice-meta">—</span></div>
+            </div>
+            <audio id="voice-audio" controls style="width:100%;margin-top:12px;display:none"></audio>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>合成参数</h2>
+            <span class="hint">音色列表来自 /voice/voices，不硬编码</span>
+          </div>
+          <div class="card-body">
+            <div class="field">
+              <label for="voice-text">文本（trim 后非空，上限 500 字，超了直接报 bad-request）</label>
+              <textarea id="voice-text" rows="3">今天也要加油哦，我在旁边陪着你。这个 PR 叫 feat desktop，全屏游戏的时候会自动隐藏桌宠。</textarea>
+            </div>
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(180px,1fr));gap:12px;margin-top:10px">
+              <div class="field">
+                <label for="voice-select">音色</label>
+                <select id="voice-select"><option value="">（先拉列表）</option></select>
+              </div>
+              <div class="field">
+                <label for="voice-rate">语速</label>
+                <select id="voice-rate">
+                  <option value="+0%">+0%（默认）</option>
+                  <option value="-10%">-10%</option>
+                  <option value="-20%">-20%</option>
+                  <option value="+10%">+10%</option>
+                </select>
+              </div>
+            </div>
+            <div class="card-desc" style="margin-top:10px">
+              同一「音色 + 语速 + 文本」只会合成一次，再点会命中缓存（耗时明显变短）。
+            </div>
+          </div>
+        </div>
+
+        <div class="card">
+          <div class="card-head">
+            <h2>音色列表</h2>
+            <span class="hint" id="voice-count"></span>
+          </div>
+          <div class="card-body">
+            <div id="voice-list"><div class="empty-note">还没拉取</div></div>
           </div>
         </div>
       </section>
@@ -3239,7 +3310,7 @@
     // 视图切换
     // ═══════════════════════════════════════════════════════════════
 
-    const TITLES = { overview: "桌宠总览", action: "动作", menu: "其他", state: "实时状态", chat: "对话", settings: "设置" };
+    const TITLES = { overview: "桌宠总览", action: "动作", menu: "其他", state: "实时状态", chat: "对话", voice: "语音", settings: "设置" };
 
     async function showView(v) {
       document.querySelectorAll(".nav button").forEach((b) => b.classList.toggle("active", b.dataset.view === v));
@@ -3251,10 +3322,128 @@
         v === "menu" ? "外部写入工作状态的两种测试；下方保留原有第三方菜单演示" :
         v === "state" ? "宿主每秒发布的每个状态位（叶子），以及原始 JSON" :
         v === "chat" ? "回复会同时出现在桌宠气泡里" :
+        v === "voice" ? "真实调用宿主语音接口；失败以 200 + reason 返回" :
         v === "settings" ? "改动会写入用户配置文件" : "";
       if (v === "chat") { await loadChat(); $("chat-input").focus(); }
+      if (v === "voice" && !voiceLoaded) await loadVoices(false);
       if (v === "settings") { if (!draft) renderSettingsPets(); }
     }
+
+    // ═══════════════════════════════════════════════════════════════
+    // 语音
+    // ═══════════════════════════════════════════════════════════════
+
+    /** 是否已经成功拉过音色列表；进视图时只自动拉一次 */
+    let voiceLoaded = false;
+    /** 当前播放中的 blob URL；换下一段前先释放，避免泄漏 */
+    let voiceObjectUrl = "";
+
+    /** 把一次语音调用的结论写到结果行（失败标红） */
+    function showVoiceResult(ok, text, meta) {
+      const line = $("voice-result");
+      line.textContent = text;
+      line.style.color = ok ? "var(--ok)" : "var(--bad)";
+      $("voice-meta").textContent = meta;
+    }
+
+    /** 拉音色列表并渲染下拉与表格；report=false 时只做静默初始化 */
+    async function loadVoices(report) {
+      const out = await GET("/voice/voices");
+      if (!out.ok || !out.body || !Array.isArray(out.body.voices)) {
+        const reason = (out.body && out.body.reason) || out.error || "HTTP " + out.status;
+        if (report) showVoiceResult(false, "失败：" + reason, out.ms + "ms");
+        return;
+      }
+      const voices = out.body.voices;
+      voiceLoaded = true;
+      const select = $("voice-select");
+      select.innerHTML = "";
+      for (const voice of voices) {
+        const option = document.createElement("option");
+        option.value = voice.id;
+        option.textContent = voice.name + "（" + voice.tag + "）";
+        if (voice.default) option.selected = true;
+        select.appendChild(option);
+      }
+      const list = $("voice-list");
+      list.innerHTML = "";
+      for (const voice of voices) {
+        const row = el("div", "kv");
+        row.appendChild(el("span", "k", voice.name + " · " + voice.tag));
+        row.appendChild(el("span", "v mono", voice.id));
+        list.appendChild(row);
+      }
+      $("voice-count").textContent = voices.length + " 个";
+      if (report) showVoiceResult(true, "成功：拿到 " + voices.length + " 个音色", out.ms + "ms");
+    }
+
+    /** 停掉播放并释放 blob URL */
+    function stopVoice() {
+      const audio = $("voice-audio");
+      audio.pause();
+      audio.currentTime = 0;
+      audio.style.display = "none";
+      if (voiceObjectUrl) URL.revokeObjectURL(voiceObjectUrl);
+      voiceObjectUrl = "";
+    }
+
+    /** 合成并播放；二进制走 fetch + blob，失败体是 JSON */
+    async function speakVoice() {
+      const text = $("voice-text").value.trim();
+      if (!text) {
+        showVoiceResult(false, "失败：文本为空", "未发请求");
+        return;
+      }
+      const body = { text };
+      const voice = $("voice-select").value;
+      if (voice) body.voice = voice;
+      const rate = $("voice-rate").value;
+      if (rate) body.rate = rate;
+
+      stopVoice();
+      const url = PREFIX + "/voice/speak";
+      const t0 = performance.now();
+      let res;
+      try {
+        res = await fetch(url, {
+          method: "POST",
+          headers: { "content-type": "application/json" },
+          body: JSON.stringify(body),
+        });
+      } catch (error) {
+        const ms = Math.round(performance.now() - t0);
+        logActivity("POST", url, { ok: false, status: 0, ms, error: error.message });
+        showVoiceResult(false, "失败：请求没发出去", ms + "ms · " + error.message);
+        return;
+      }
+      const ms = Math.round(performance.now() - t0);
+      const type = res.headers.get("content-type") || "";
+      if (!type.includes("audio")) {
+        const payload = await res.json().catch(() => null);
+        const reason = (payload && payload.reason) || "HTTP " + res.status;
+        const message = (payload && payload.message) || "";
+        logActivity("POST", url, { ok: res.ok, status: res.status, ms });
+        showVoiceResult(false, "失败：" + reason, ms + "ms · " + (message || type));
+        return;
+      }
+      const blob = await res.blob();
+      voiceObjectUrl = URL.createObjectURL(blob);
+      const audio = $("voice-audio");
+      audio.src = voiceObjectUrl;
+      audio.style.display = "block";
+      logActivity("POST", url, { ok: true, status: res.status, ms });
+      const meta = ms + "ms · " + type + " · " + blob.size + " 字节";
+      try {
+        await audio.play();
+        showVoiceResult(true, "成功：mp3 已就绪，正在播放", meta);
+      } catch {
+        showVoiceResult(true, "成功：mp3 已就绪（浏览器拦了自动播放，点播放器）", meta);
+      }
+    }
+
+    $("voice-probe").addEventListener("click", () => void loadVoices(true));
+    $("voice-speak").addEventListener("click", () => void speakVoice());
+    $("voice-stop").addEventListener("click", stopVoice);
 
     // ═══════════════════════════════════════════════════════════════
     // 事件绑定

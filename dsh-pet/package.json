@@ -100,6 +100,7 @@
     "node": ">=22.12.0"
   },
   "dependencies": {
+    "@andresaya/edge-tts": "^1.9.1",
     "@anthropic-ai/sdk": "0.135.0",
     "@electron-internal/extract-zip": "^1.0.5",
     "@electron/get": "^5.1.0",

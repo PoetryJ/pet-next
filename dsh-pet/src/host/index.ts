@@ -18,6 +18,7 @@ import { createSessionNotify } from './plugin/session-notify.ts';
 import { createPetLookup } from './plugin/pet-lookup.ts';
 import { createDownloadReport } from './plugin/download-report.ts';
 import { createWorkStatusBridge } from './plugin/work-status-bridge.ts';
+import { createVoiceService } from './voice/speak.ts';
 import type { PetRouteDeps } from './routes/types.ts';
 
 /** 插件行 id（与 cordis.patch.yml 一致） */
@@ -93,6 +94,8 @@ export function apply(ctx: any): void {
     ...desktopHelper,
     ...sessionNotify,
     ctx,
+    // 语音合成：缓存落 userRoot，失败只留日志，不打断宿主
+    voice: createVoiceService({ userRoot, log }),
   };
   const httpRoute = createHttpRoute(deps);
   registerHttpRoute(ctx, httpRoute.handlePetRoute);

@@ -39,7 +39,8 @@ export type ResultReason =
   | 'unknown-pet'
   | 'unknown-playback'
   | 'unsupported'
-  | 'user-config-unparsable';
+  | 'user-config-unparsable'
+  | 'voice-busy';
 
 /** 失败实体：状态码不参与判断，200 与 4xx 共用这个形状。 */
 export interface FailureEntity {

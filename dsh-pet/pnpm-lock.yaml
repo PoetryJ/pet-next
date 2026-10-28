@@ -11,6 +11,9 @@ importers:
 
   .:
     dependencies:
+      '@andresaya/edge-tts':
+        specifier: ^1.9.1
+        version: 1.9.1
       '@anthropic-ai/sdk':
         specifier: 0.135.0
         version: 0.135.0(zod@4.6.7)
@@ -52,7 +55,7 @@ importers:
         version: 5.1.0(supports-color@7.2.0)
       openai:
         specifier: 7.39.0
-        version: 7.39.0(undici@7.30.0)(zod@4.6.7)
+        version: 7.39.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7)
       zod:
         specifier: 4.6.7
         version: 4.6.7
@@ -110,6 +113,11 @@ importers:
         version: 8.67.0(eslint@10.9.0(jiti@2.7.0)(supports-color@7.2.0))(supports-color@7.2.0)(typescript@5.5.2)
 
 packages:
+
+  '@andresaya/edge-tts@1.9.1':
+    resolution: {integrity: sha512-40SXhBNvyNOAlGrroG7Is12vo4P0MNDV3GC6gaBcjoWvEbUx9CJy1KE1ZcK5XscWnYtZH/q9E4EI9QR0TYCaHQ==}
+    engines: {bun: '>=0.5.0'}
+    hasBin: true
 
   '@anthropic-ai/sdk@0.135.0':
     resolution: {integrity: sha512-WWrdL57JhU5KoynpTjt9GXK6k7ud9nPw2uw/Trn+oBXh6s0KpjhAccWZm2Qxw08ARYG1UDQj5iC+JO42j1rt/g==}
@@ -1283,6 +1291,10 @@ packages:
   combined-stream@1.0.8:
     resolution: {integrity: sha512-FQN4MRfuJeHf7cBbBMJFXhKSDq+2kAArBlmRBvcvFE5BB1HZKXtSFASDhdlz9zOYwxh8lDdnvmMOe/+5cdoEdg==}
     engines: {node: '>= 0.8'}
+
+  commander@12.1.0:
+    resolution: {integrity: sha512-Vw8qHK3bZM9y/P10u3Vib8o/DdkvA2OtPtZvD871QKjy74Wj1WSKFILMPRPSdUSx5RFK1arlJzEtA4PkFgnbuA==}
+    engines: {node: '>=18'}
 
   commander@5.1.0:
     resolution: {integrity: sha512-P0CysNDQ7rtVw4QIQtm+MRxV66vKFSvlsQvGYXZWR3qFU0jlMKHZZZgw8e+8DSah4UDKMqnknRDQz+xuQXQ/Zg==}
@@ -2629,6 +2641,18 @@ packages:
   wrappy@1.0.2:
     resolution: {integrity: sha512-l4Sp/DRseor9wL6EvV2+TuQn63dMkPjZ/sp9XkghTEbV9KlPS1xUsZ3u7/IQO4wxtcFB4bgpQPRcR3QCvezPcQ==}
 
+  ws@8.22.0:
+    resolution: {integrity: sha512-Ydggc987+RO0AnWtZ/7Wq9FtNvcrL1b/RO0ud9mWjUPgDrsAAwQSF51sm2hm1XofbU/4jkpGEsLFsZZxU+1DOg==}
+    engines: {node: '>=10.0.0'}
+    peerDependencies:
+      bufferutil: ^4.0.1
+      utf-8-validate: '>=5.0.2'
+    peerDependenciesMeta:
+      bufferutil:
+        optional: true
+      utf-8-validate:
+        optional: true
+
   xmlbuilder@15.1.1:
     resolution: {integrity: sha512-yMqGBqtXyeN1e3TGYvgNgDVZ3j84W4cwkOXQswghol6APgZWaff9lnbvN7MHYJOiXsvGPXtjTYJEiC9J2wv9Eg==}
     engines: {node: '>=8.0'}
@@ -2674,6 +2698,14 @@ packages:
     resolution: {integrity: sha512-g8W2D2kU6a8untc053fX1uVBKzM7yqAxW/3zwk83+6RyF2+SKOuV+c0wBDhUwzV1PaGapmZH+rmcUzPf+3CGwg==}
 
 snapshots:
+
+  '@andresaya/edge-tts@1.9.1':
+    dependencies:
+      commander: 12.1.0
+      ws: 8.22.0
+    transitivePeerDependencies:
+      - bufferutil
+      - utf-8-validate
 
   '@anthropic-ai/sdk@0.135.0(zod@4.6.7)':
     dependencies:
@@ -3918,6 +3950,8 @@ snapshots:
     dependencies:
       delayed-stream: 1.0.0
 
+  commander@12.1.0: {}
+
   commander@5.1.0: {}
 
   commander@9.5.0:
@@ -4763,9 +4797,10 @@ snapshots:
     dependencies:
       wrappy: 1.0.2
 
-  openai@7.39.0(undici@7.30.0)(zod@4.6.7):
+  openai@7.39.0(undici@7.30.0)(ws@8.22.0)(zod@4.6.7):
     optionalDependencies:
       undici: 7.30.0
+      ws: 8.22.0
       zod: 4.6.7
 
   optionator@0.9.4:
@@ -5322,6 +5357,8 @@ snapshots:
       strip-ansi: 7.2.0
 
   wrappy@1.0.2: {}
+
+  ws@8.22.0: {}
 
   xmlbuilder@15.1.1: {}
 
