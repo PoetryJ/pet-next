@@ -41,30 +41,103 @@ export function resolveExisting(root: string, rel: string): string | undefined {
   return candidate && existsSync(candidate) ? candidate : undefined;
 }
 
+/** 单段字节区间（闭区间）。 */
+export type ByteRange = { readonly start: number; readonly end: number };
+
+/** Range 判定：命中区间、越界（回 416）、忽略（回整份 200）。 */
+export type RangeDecision = ByteRange | 'unsatisfiable' | null;
+
+/**
+ * 解析单段 `Range` 头。
+ *
+ * 只接受 `bytes=<start>-<end>`、`bytes=<start>-`、`bytes=-<suffix>` 三种单段形式。多段、单位不符、
+ * 语法非法返回 null（回整份）；起点越界或 start > end 返回 'unsatisfiable'（回 416）。
+ * @param header - 请求头原值，可能为 undefined。
+ * @param totalBytes - 文件总字节数；非正数时一律忽略 Range。
+ * @returns 闭区间、'unsatisfiable' 或 null。
+ */
+export function parseRange(header: string | undefined, totalBytes: number): RangeDecision {
+  if (!header || totalBytes <= 0) return null;
+  const match = /^bytes=(\d*)-(\d*)$/.exec(header.trim());
+  if (!match) return null;
+  const startText = match[1] ?? '';
+  const endText = match[2] ?? '';
+  if (startText === '' && endText === '') return null;
+
+  if (startText === '') {
+    // 后缀形式：bytes=-N，取末尾 N 字节
+    const suffixLength = Number(endText);
+    if (!Number.isFinite(suffixLength) || suffixLength <= 0) return null;
+    return { start: Math.max(0, totalBytes - suffixLength), end: totalBytes - 1 };
+  }
+
+  const start = Number(startText);
+  const end = endText === '' ? totalBytes - 1 : Number(endText);
+  if (!Number.isFinite(start) || !Number.isFinite(end)) return null;
+  if (start > end || start >= totalBytes) return 'unsatisfiable';
+  return { start, end: Math.min(end, totalBytes - 1) };
+}
+
 /**
  * 流式返回一个文件（带 Content-Type / 长度 / 缓存头）。
  *
  * Content-Length 必须取自正在读的那个 fd（open 事件里 fstat）：先 stat 再另开流，会在素材被覆盖/
  * 截断时声明长度大于实际字节，响应永远不结束也不报错（浏览器 stalled、视频 loadeddata 永不触发）。
  * 同一个 fd 的 fstat 拿到的大小与随后读出的字节天然一致。
+ *
+ * 支持单段 Range：视频会中途按 `Range: bytes=N-` 补数据，回整份会让播放器把整份当后半段拼，
+ * 解到错位处提前 ended（动作被截断）。
  */
-export function sendFile(res: ServerResponse, file: string, contentType: string): void {
+export function sendFile(req: IncomingMessage, res: ServerResponse, file: string, contentType: string): void {
   const stream = createReadStream(file);
   stream.once('open', (fd) => {
     if (res.destroyed || res.writableEnded) {
       stream.destroy(); // 客户端在开流前就放弃了
       return;
     }
+    let totalBytes: number;
     try {
-      res.writeHead(200, {
-        'content-type': contentType,
-        'content-length': fstatSync(fd).size,
-        'cache-control': 'public, max-age=3600',
-      });
+      totalBytes = fstatSync(fd).size;
     } catch {
       // 极端情况下 fstat 拿不到：不发长度头，交给 Node 用 chunked 收尾（长度天然一致，只是没声明）
       res.writeHead(200, { 'content-type': contentType, 'cache-control': 'public, max-age=3600' });
+      stream.pipe(res);
+      return;
     }
+    const decision = parseRange(req.headers.range, totalBytes);
+    if (decision === 'unsatisfiable') {
+      stream.destroy();
+      res.writeHead(416, {
+        'content-type': contentType,
+        'content-range': `bytes */${totalBytes}`,
+        'accept-ranges': 'bytes',
+        'cache-control': 'public, max-age=3600',
+      });
+      res.end();
+      return;
+    }
+    if (decision !== null) {
+      // 命中区间：createReadStream 不能从中途开始，所以按 start/end 重开；长度用 fstat 的总长算，与切片一致
+      stream.destroy();
+      const ranged = createReadStream(file, { start: decision.start, end: decision.end });
+      res.writeHead(206, {
+        'content-type': contentType,
+        'content-length': decision.end - decision.start + 1,
+        'content-range': `bytes ${decision.start}-${decision.end}/${totalBytes}`,
+        'accept-ranges': 'bytes',
+        'cache-control': 'public, max-age=3600',
+      });
+      ranged.pipe(res);
+      ranged.on('error', () => res.destroy());
+      res.on('close', () => ranged.destroy());
+      return;
+    }
+    res.writeHead(200, {
+      'content-type': contentType,
+      'content-length': totalBytes,
+      'accept-ranges': 'bytes',
+      'cache-control': 'public, max-age=3600',
+    });
     stream.pipe(res);
   });
   // 读失败（文件被删/权限/被占用）：直接断连，让客户端立刻看到失败，而不是无限等待

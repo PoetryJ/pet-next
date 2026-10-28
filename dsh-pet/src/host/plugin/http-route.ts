@@ -89,7 +89,7 @@ export function registerHttpRoute(ctx: HostContext, handlePetRoute: HttpRouteHan
             else if (result.kind === 'text') sendText(res, result.status, result.body);
             else if (result.kind === 'none') {
               /* 调用方已断开：不再写（写了会抛） */
-            } else sendFile(res, result.file, result.contentType); // 非 async：流在 open 后自己 pipe，错误内部收口
+            } else sendFile(req, res, result.file, result.contentType); // 非 async：流在 open 后自己 pipe，错误内部收口
           } catch (e) {
             res.off('close', onClose);
             // 连接已断（挂起等待被中止后也可能撞上）→ 不再写，避免二次抛错

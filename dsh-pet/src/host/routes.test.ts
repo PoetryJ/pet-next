@@ -142,6 +142,8 @@ before(() => {
         {
           method,
           url,
+          // 真实 IncomingMessage 恒有 headers；sendFile 用它读 Range
+          headers: {},
           on: (event: string, cb: (chunk?: Buffer) => void) => {
             if (event === 'data' && body !== undefined) queueMicrotask(() => cb(Buffer.from(body, 'utf8')));
             if (event === 'end') queueMicrotask(() => cb());

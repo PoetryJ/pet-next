@@ -8,6 +8,7 @@
  */
 
 const fsPromises = require('node:fs/promises');
+const { parseRange } = require('../range.js');
 
 /**
  * 造 bridge 通道。
@@ -96,10 +97,33 @@ function createBridge({ isBridge, prefix, origin, token }) {
     const headers = { 'access-control-allow-origin': '*' }; // 渲染端页面是 file:// 源，scheme 跨源需 CORS
     if (resp.contentType) headers['content-type'] = resp.contentType;
     if (resp.file) {
-      // 素材：直接读盘返回（宿主已解析好绝对路径；带 range 让视频能拖动进度条）
+      // 素材：直接读盘返回（宿主已解析好绝对路径）。视频会中途按 `Range: bytes=N-` 补数据，
+      // 回整份会让播放器把整份当后半段拼，解到错位处提前 ended（动作被截断）。
       try {
         const data = await fsPromises.readFile(resp.file);
-        return new Response(new Uint8Array(data), { status: resp.status || 200, headers });
+        const decision = parseRange(request.headers.get('range'), data.length);
+        if (decision === 'unsatisfiable') {
+          return new Response(null, {
+            status: 416,
+            headers: { ...headers, 'content-range': `bytes */${data.length}`, 'accept-ranges': 'bytes' },
+          });
+        }
+        if (decision !== null) {
+          const slice = data.subarray(decision.start, decision.end + 1);
+          return new Response(new Uint8Array(slice), {
+            status: 206,
+            headers: {
+              ...headers,
+              'content-length': String(slice.length),
+              'content-range': `bytes ${decision.start}-${decision.end}/${data.length}`,
+              'accept-ranges': 'bytes',
+            },
+          });
+        }
+        return new Response(new Uint8Array(data), {
+          status: resp.status || 200,
+          headers: { ...headers, 'content-length': String(data.length), 'accept-ranges': 'bytes' },
+        });
       } catch (e) {
         console.error('[dsh-pet-desktop-helper] bridge file read failed:', resp.file, e);
         return new Response('dsh-pet: asset read failed', { status: 500, headers });
