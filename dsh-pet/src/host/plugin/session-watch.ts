@@ -14,7 +14,7 @@ import {
   shouldNotifySession,
   withSessionId,
 } from '../notify-events.ts';
-import type { SessionNotify } from './session-notify.ts';
+import type { SessionNotify, ToolCallKey, ToolCallLedger } from './session-notify.ts';
 import type { WorkStatusBridge } from './work-status-bridge.ts';
 import type { HostSetup } from './setup.ts';
 import type { HostContext } from './context.ts';
@@ -23,8 +23,7 @@ import type { HostContext } from './context.ts';
 export type SessionWatchInput = {
   /** 宿主上下文（apply 收到的那一个）。 */
   ctx: HostContext;
-} & Pick<SessionNotify, 'bumpToolsInFlight'> &
-  Pick<SessionNotify, 'cancelTerminalCleanup'> &
+} & Pick<SessionNotify, 'cancelTerminalCleanup'> &
   Pick<SessionNotify, 'lastTodoText'> &
   Pick<SessionNotify, 'notifyActivityTimers'> &
   Pick<WorkStatusBridge, 'publishWorkStatus'> &
@@ -36,11 +35,104 @@ export type SessionWatchInput = {
   Pick<SessionNotify, 'turnFlags'> &
   Pick<HostSetup, 'workStatus'>;
 
+/** 一次工具事件在记账表里的形态：调用开始（带详情）或结果返回（按标识移除一条）。 */
+type ToolPhase =
+  | { kind: 'call'; detail: string; callId: ToolCallKey | undefined }
+  | { kind: 'result'; callId: ToolCallKey | undefined };
+
+/** 记账之后气泡的去向。 */
+type ToolPhaseOutcome = {
+  /** 要写进气泡的文案；`undefined` = 本次不改文案，`null` = 清空回落到档位文案。 */
+  task?: string | null;
+  /** 是否还有带描述的操作在跑：为真时把档位压回 working，避免结果档盖住没干完的活。 */
+  keepWorking: boolean;
+};
+
+/** 记账所需的一次工具事件输入。 */
+type TrackInput = {
+  /** 事件类型，只有 `tool/call` 与 `tool/result` 会进记账表。 */
+  type: string;
+  /** 本次事件的调用标识；缺失时由记账层用临时 Symbol 占位。 */
+  callId: ToolCallKey | undefined;
+  /** `tool/call` 的详情文案；`null` 表示这次调用没有可展示的描述。 */
+  detail: string | null;
+  /** 该会话最近一条 todo 文案，表清空后回落到它。 */
+  lastTodo: string | null;
+};
+
+/**
+ * 取本次工具事件的调用标识。
+ *
+ * `tool/call` 的标识在 `data.callId`，`tool/result` 在 `data.message.source.callId`
+ * （`ToolResultMessage.source` 由 `ToolMessageSource` 保证必带）。
+ *
+ * @returns 非空字符串标识；缺失或类型不对时 `undefined`，交给记账层用临时 Symbol 占位。
+ */
+function toolCallIdOf(event: unknown): ToolCallKey | undefined {
+  const data = (event as { data?: { callId?: unknown; message?: { source?: { callId?: unknown } } } } | null)?.data;
+  const raw = data?.message?.source?.callId ?? data?.callId;
+  return typeof raw === 'string' && raw !== '' ? raw : undefined;
+}
+
+/**
+ * 更新一个会话的在途调用表，算出气泡该显示什么。
+ *
+ * @param ledger - 每会话在途调用表；本函数原地修改。
+ * @param sessionId - 会话标识。
+ * @param phase - 本次是调用开始还是结果返回，以及对应的调用标识。
+ * @param lastTodo - 表清空后回落到的 todo 文案。
+ * @returns 气泡文案与是否仍在工作。
+ */
+function trackToolPhase(
+  ledger: ToolCallLedger,
+  sessionId: string,
+  phase: ToolPhase,
+  lastTodo: string | null,
+): ToolPhaseOutcome {
+  if (phase.kind === 'call') {
+    let pending = ledger.get(sessionId);
+    if (!pending) ledger.set(sessionId, (pending = new Map()));
+    pending.set(phase.callId ?? Symbol(), phase.detail);
+    return { task: phase.detail, keepWorking: true };
+  }
+  const pending = ledger.get(sessionId);
+  // 缺标识的结果只释放一个匿名条目：不猜它是哪个具名调用，宁可少记一条也不删错别人的。
+  const key = phase.callId ?? [...(pending?.keys() ?? [])].find((id) => typeof id === 'symbol');
+  if (key !== undefined) pending?.delete(key);
+  const remaining = [...(pending?.values() ?? [])];
+  if (pending?.size === 0) ledger.delete(sessionId);
+  const active = remaining.pop();
+  if (active !== undefined) return { task: active, keepWorking: true };
+  return { task: lastTodo, keepWorking: false };
+}
+
+/**
+ * 把一次工具事件落进记账表。
+ *
+ * @param ledger - 每会话在途调用表；本函数原地修改。
+ * @param sessionId - 会话标识。
+ * @param input - 事件类型、调用标识与详情文案。
+ * @returns 记账结果；没有可展示详情且不是结果事件时返回 `undefined`（气泡不因它改文案）。
+ */
+function trackToolEvent(ledger: ToolCallLedger, sessionId: string, input: TrackInput): ToolPhaseOutcome | undefined {
+  if (input.detail !== null) {
+    return trackToolPhase(
+      ledger,
+      sessionId,
+      { kind: 'call', detail: input.detail, callId: input.callId },
+      input.lastTodo,
+    );
+  }
+  if (input.type === 'tool/result') {
+    return trackToolPhase(ledger, sessionId, { kind: 'result', callId: input.callId }, input.lastTodo);
+  }
+  return undefined;
+}
+
 /** 注册会话事件监听；返回的清理函数由 ctx.effect 收集。 */
 export function registerSessionWatch(deps: SessionWatchInput): void {
   const {
     ctx,
-    bumpToolsInFlight,
     cancelTerminalCleanup,
     lastTodoText,
     notifyActivityTimers,
@@ -73,7 +165,7 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
         // 缓存无条件更新：工具跑完要靠它把气泡恢复回来（见下方 tool/call 的接线）
         lastTodoText.set(sessionId, text);
         // 工具正在执行时不覆盖气泡：「修改 index.ts」比清单里那句更能说明此刻在动什么
-        if ((toolsInFlight.get(sessionId) ?? 0) > 0) return;
+        if ((toolsInFlight.get(sessionId)?.size ?? 0) > 0) return;
         if (workStatus.has(sessionId)) {
           workStatus.setTask(sessionId, text);
           publishWorkStatus(); // 任务文案变化也要写 S（气泡内容靠它更新）
@@ -113,7 +205,7 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
           turnFlags.set(sessionId, flags);
         }
       }
-      const next = reduceWorkStatus(
+      let next = reduceWorkStatus(
         event as { type?: string; data?: Record<string, unknown> & { reason?: { kind?: string } } },
         turnFlags.get(sessionId),
       );
@@ -137,19 +229,16 @@ export function registerSessionWatch(deps: SessionWatchInput): void {
       // 顺序反了这一句会被静默丢弃（不报错，最难查的那种）。
       const detail =
         type === 'tool/call' ? toolDetailFromEvent(event as { data?: { name?: unknown; arguments?: unknown } }) : null;
+      const outcome = trackToolEvent(toolsInFlight, sessionId, {
+        type,
+        callId: toolCallIdOf(event),
+        detail,
+        lastTodo: lastTodoText.get(sessionId) ?? null,
+      });
+      // 还有操作没完就把档位压回 working：结果档与「仍在执行」的文案同时出现会自相矛盾。
+      if (outcome?.keepWorking) next = 'working';
       const changed = workStatus.setState(sessionId, next, seq);
-      if (detail !== null) {
-        // 有具体描述才「占位」：占位期间 todo/write 不覆盖它（见 todo/write 分支）
-        bumpToolsInFlight(sessionId, 1);
-        workStatus.setTask(sessionId, detail);
-      } else if (type === 'tool/result') {
-        if ((toolsInFlight.get(sessionId) ?? 0) > 0) bumpToolsInFlight(sessionId, -1);
-        // 归零只代表计数器归零（减数不区分是哪个调用返回），不代表在途调用都已结束；
-        // 此时把气泡还给最近一条 todo 文案，没有就 null → 回落档位文案。
-        if ((toolsInFlight.get(sessionId) ?? 0) === 0) {
-          workStatus.setTask(sessionId, lastTodoText.get(sessionId) ?? null);
-        }
-      }
+      if (outcome?.task !== undefined) workStatus.setTask(sessionId, outcome.task);
       publishWorkStatus(); // 档位或文案变了 → 写 S（内容没变时它自己会短路，不产生多余写入）
       // 同会话同状态不重复更新（防刷屏）：写已经落定，这里只负责跳过终态清理的重排
       if (!changed) return;

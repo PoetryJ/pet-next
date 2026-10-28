@@ -60,7 +60,6 @@ export function apply(ctx: any): void {
     terminalTimers,
     lastTodoText,
     toolsInFlight,
-    bumpToolsInFlight,
     cancelTerminalCleanup,
     scheduleTerminalCleanup,
     notifyActivityTimers,
@@ -100,7 +99,6 @@ export function apply(ctx: any): void {
 
   registerSessionWatch({
     ctx,
-    bumpToolsInFlight,
     cancelTerminalCleanup,
     lastTodoText,
     notifyActivityTimers,
