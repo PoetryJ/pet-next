@@ -13,6 +13,8 @@
  */
 import { MOCK_BALANCE_PROVIDERS } from './mock-balance.js';
 import { createMockAdapter } from './mock-adapter.js';
+import { createMockVoiceProvider } from './mock-voice.js';
+import { VOICE_ROUTE, handleVoiceRoute } from './voice-route.js';
 
 /** Cordis 插件名（诊断与日志里显示）。 */
 export const name = 'cordis-probe';
@@ -75,6 +77,42 @@ export function apply(ctx) {
     } catch (e) {
       warn('余额服务商 ' + def.id, e);
     }
+  }
+
+  // 4) 语音：默认关闭，打开后 register 一个「固定提示音」的合成实现。
+  // 注册在宿主、按钮在页面，两半没有直接通道，所以额外开一个最小路由给页面点。
+  const voice = ctx.get('petApi7340', false)?.voice;
+  if (!voice) return;
+  /** 已打开的注销函数；null = 当前关闭。 */
+  let disposeVoice = null;
+
+  /** 打开/关闭 mock 语音；幂等，重复调用不会叠加注册。 */
+  const setVoiceOn = (on) => {
+    if (on && !disposeVoice) disposeVoice = voice.register(createMockVoiceProvider());
+    if (!on && disposeVoice) {
+      disposeVoice();
+      disposeVoice = null;
+    }
+    return on;
+  };
+
+  // 插件卸载时确保注销：否则 mock 语音会赖在宿主里，之后的 /voice/speak 一直走提示音
+  ctx.effect(() => () => {
+    setVoiceOn(false);
+  });
+
+  const webServer = ctx.get('webServer', false);
+  if (!webServer) return;
+  try {
+    ctx.effect(() =>
+      webServer.register({
+        kind: 'prefix',
+        path: VOICE_ROUTE,
+        handler: (req, res) => handleVoiceRoute(req, res, { isOn: () => disposeVoice !== null, setOn: setVoiceOn }),
+      }),
+    );
+  } catch (e) {
+    warn('语音开关路由', e);
   }
 }
 

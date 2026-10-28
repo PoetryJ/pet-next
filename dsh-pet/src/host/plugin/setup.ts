@@ -10,6 +10,7 @@ import { existsSync } from 'node:fs';
 import { join } from 'node:path';
 import { resolveDshHome } from '@deepseek-ai/dsh-home-paths';
 import { listBalanceProviders, registerBalanceProvider } from '../balance/index.ts';
+import { listVoiceProviders, registerVoiceProvider } from '../voice/registry.ts';
 import { migrateUserConfig, type ConfigPaths } from '../config.ts';
 import { createFileLogger, isFileLogger, setDefaultLogger, type FileLogger, type LoggerLike } from '../log-file.ts';
 import { MenuRegistry } from '../menu.ts';
@@ -176,6 +177,12 @@ export function createHostSetup(ctx: HostSetupContext): HostSetup {
     balance: {
       register: registerBalanceProvider,
       list: listBalanceProviders,
+    },
+    // 语音：第三方注册自己的合成实现，非空时合成走它、空则走内置 edge。
+    // 同样只给 register（返回 disposer）与 list，不给 unregister。
+    voice: {
+      register: registerVoiceProvider,
+      list: listVoiceProviders,
     },
   });
 

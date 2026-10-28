@@ -22,15 +22,17 @@ export function cachePath(userRoot: string, key: string): string {
 /**
  * 计算缓存键。
  *
- * 三个输入都影响音频内容，所以都进哈希；`text` 不做归一化——同一句话多一个空格就是
- * 另一份音频，宁可多存也不冒「听起来不对」的风险。
- * @param voice - 音色 id。
+ * 四个输入都影响音频内容。`source` 是合成来源——内置实现的 id 或第三方 provider 的 id：
+ * 不含它的话，切换实现后会命中上一家的旧音频，听起来像「注册了没生效」。
+ * `text` 不做归一化——同一句话多一个空格就是另一份音频，宁可多存也不冒「听起来不对」的风险。
+ * @param source - 合成来源。
+ * @param voice - 音色 id；第三方实现没有音色概念，传空串。
  * @param rate - 语速表达式（如 `+0%`）。
  * @param text - 待合成文本。
  * @returns 十六进制 sha1。
  */
-export function cacheKey(voice: string, rate: string, text: string): string {
-  return createHash('sha1').update(`${voice}\n${rate}\n${text}`).digest('hex');
+export function cacheKey(source: string, voice: string, rate: string, text: string): string {
+  return createHash('sha1').update(`${source}\n${voice}\n${rate}\n${text}`).digest('hex');
 }
 
 /**

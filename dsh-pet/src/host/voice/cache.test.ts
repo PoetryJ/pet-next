@@ -19,12 +19,13 @@ async function withDir(run: (dir: string) => Promise<void>): Promise<void> {
   }
 }
 
-test('cacheKey：同输入稳定，音色/语速/文本任一不同即不同', () => {
-  const base = cacheKey('zh-CN-XiaoxiaoNeural', '+0%', '你好');
-  assert.equal(base, cacheKey('zh-CN-XiaoxiaoNeural', '+0%', '你好'), '同输入必须稳定');
-  assert.notEqual(base, cacheKey('zh-CN-YunxiNeural', '+0%', '你好'));
-  assert.notEqual(base, cacheKey('zh-CN-XiaoxiaoNeural', '+10%', '你好'));
-  assert.notEqual(base, cacheKey('zh-CN-XiaoxiaoNeural', '+0%', '你好 '), '空格不归一化');
+test('cacheKey：同输入稳定，来源/音色/语速/文本任一不同即不同', () => {
+  const base = cacheKey('edge', 'zh-CN-XiaoxiaoNeural', '+0%', '你好');
+  assert.equal(base, cacheKey('edge', 'zh-CN-XiaoxiaoNeural', '+0%', '你好'), '同输入必须稳定');
+  assert.notEqual(base, cacheKey('my-tts', 'zh-CN-XiaoxiaoNeural', '+0%', '你好'), '换实现不能命中旧音频');
+  assert.notEqual(base, cacheKey('edge', 'zh-CN-YunxiNeural', '+0%', '你好'));
+  assert.notEqual(base, cacheKey('edge', 'zh-CN-XiaoxiaoNeural', '+10%', '你好'));
+  assert.notEqual(base, cacheKey('edge', 'zh-CN-XiaoxiaoNeural', '+0%', '你好 '), '空格不归一化');
 });
 
 test('cachePath：固定落在 userRoot/voice-cache 下并用 .mp3 结尾', () => {

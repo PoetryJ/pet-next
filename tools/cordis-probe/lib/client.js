@@ -50,6 +50,9 @@
   /** 样式表去重标记（与 dsh-pet 同一套 `data-plugin-css` 约定）。 */
   const STYLE_TAG = 'dsh-cordis-probe/probe.css';
 
+  /** 宿主开出的语音开关路由：GET 读状态、POST 翻转。 */
+  const VOICE_ROUTE = '/cordis-probe-voice';
+
   /** 探测不到服务归属时的兜底服务名（保持面板永远可用）。 */
   const FALLBACK_SERVICES = ['petApi7340'];
 
@@ -275,8 +278,24 @@
         const head = el('div', 'cp-head');
         head.appendChild(el('span', 'cp-title', 'Cordis 服务探针'));
         const refreshBtn = el('button', 'cp-btn', '刷新');
+        // 语音开关：注册在宿主（Node），按钮在这一页，两半没有直接通道，所以走宿主开的小路由。
+        // 默认关闭；点一次翻转一次，文案跟着服务端返回的状态走。
+        const voiceBtn = el('button', 'cp-btn', '语音：关');
+        const syncVoiceBtn = async (method) => {
+          try {
+            const res = await fetch(VOICE_ROUTE, { method });
+            const body = await res.json();
+            voiceBtn.textContent = '语音：' + (body.on === true ? '开' : '关');
+            write(body.on === true ? 'mock 语音已打开：再让桌宠说一句，会听到一声提示音。' : 'mock 语音已关闭：合成回到内置实现。');
+          } catch (e) {
+            write('语音开关请求失败：' + (e instanceof Error ? e.message : String(e)), true);
+          }
+        };
+        voiceBtn.addEventListener('click', () => void syncVoiceBtn('POST'));
+        void syncVoiceBtn('GET');
         const closeBtn = el('button', 'cp-btn', '×');
         head.appendChild(refreshBtn);
+        head.appendChild(voiceBtn);
         head.appendChild(closeBtn);
         root.appendChild(head);
 

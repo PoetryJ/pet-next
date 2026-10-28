@@ -6,9 +6,10 @@
  * 不负责把 mp3 交给客户端：那是路由与 bridge 的事。
  * @module dsh-pet/src/host/voice/speak
  */
-import { stat } from 'node:fs/promises';
+import { stat, writeFile } from 'node:fs/promises';
 import { cacheKey, cachePath, ensureCacheDir, pruneCache } from './cache.ts';
 import { VoiceSynthError, synthesize, type SynthInput } from './edge.ts';
+import { BUILTIN_VOICE_ID, activeVoiceProvider, type VoiceProvider } from './registry.ts';
 import { DEFAULT_VOICE, VOICES, isKnownVoice, type VoiceInfo } from './voices.ts';
 
 /** 单次请求允许的最大文本长度（字符，按 UTF-16 计）。 */
@@ -22,6 +23,8 @@ const RATE_PATTERN = /^[+-]\d{1,3}%$/;
 const RATE_MIN_PERCENT = -50;
 /** 语速上界（百分比）。 */
 const RATE_MAX_PERCENT = 100;
+/** 第三方实现的单次合成上限（ms）：与内置同口径，避免一句卡住串行队列。 */
+const PROVIDER_TIMEOUT_MS = 15_000;
 
 /** 一次合成的输入（已校验）。 */
 interface SpeakInput {
@@ -112,7 +115,11 @@ export function createVoiceService(options: {
     const parsed = parseSpeakInput(raw);
     if (!parsed.ok) return { ok: false, reason: 'bad-request', message: parsed.message };
     const { text, voice, rate } = parsed.value;
-    const target = cachePath(userRoot, cacheKey(voice, rate, text));
+    // 每次请求现查一次：第三方可能运行中才注册、也可能被卸载，启动快照会漏掉这两种
+    const provider = activeVoiceProvider();
+    const source = provider ? provider.id : BUILTIN_VOICE_ID;
+    // 第三方没有音色概念，缓存键里把 voice 置空；来源进键，换实现不会命中旧音频
+    const target = cachePath(userRoot, cacheKey(source, provider ? '' : voice, rate, text));
     const cached = await findCached(target);
     if (cached) return { ok: true, file: cached };
     if (queueUsed >= MAX_QUEUE) {
@@ -121,7 +128,8 @@ export function createVoiceService(options: {
     try {
       await enqueue(async () => {
         const dir = await ensureCacheDir(userRoot);
-        await synthesizeImpl({ text, voice, rate, target });
+        if (provider) await synthesizeWithProvider(provider, { text, voice, rate, target });
+        else await synthesizeImpl({ text, voice, rate, target });
         // 淘汰放在成功之后：失败时不该为腾地方而删掉还能用的缓存
         await pruneCache(dir);
       });
@@ -136,4 +144,39 @@ export function createVoiceService(options: {
   }
 
   return { listVoices: () => VOICES, speak };
+}
+
+/** 给一个 Promise 套超时；超时 reject，原 Promise 不被取消（provider 自己该处理放弃）。 */
+function withTimeout<T>(task: Promise<T>, timeoutMs: number): Promise<T> {
+  return new Promise<T>((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error('voice provider timed out')), timeoutMs);
+    timer.unref?.();
+    task.then(
+      (value) => {
+        clearTimeout(timer);
+        resolve(value);
+      },
+      (error) => {
+        clearTimeout(timer);
+        reject(error);
+      },
+    );
+  });
+}
+
+/**
+ * 用第三方实现合成并落盘。
+ *
+ * 空字节按失败处理：0 字节文件会被 {@link findCached} 的 `size > 0` 跳过，
+ * 于是每次请求都重新合成、每次又得到空文件，白烧上游。
+ */
+async function synthesizeWithProvider(provider: VoiceProvider, input: SynthInput): Promise<void> {
+  let bytes: Uint8Array;
+  try {
+    bytes = await withTimeout(provider.synthesize({ text: input.text, rate: input.rate }), PROVIDER_TIMEOUT_MS);
+  } catch (error) {
+    throw new VoiceSynthError(error instanceof Error ? error.message : String(error));
+  }
+  if (bytes.length === 0) throw new VoiceSynthError('voice provider returned empty audio');
+  await writeFile(input.target, bytes);
 }

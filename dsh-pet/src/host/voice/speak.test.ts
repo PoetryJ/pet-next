@@ -8,6 +8,7 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { test } from 'node:test';
 import { VoiceSynthError, type SynthInput } from './edge.ts';
+import { registerVoiceProvider } from './registry.ts';
 import { MAX_TEXT_CHARS, createVoiceService, type VoiceService } from './speak.ts';
 
 /** 造一个隔离的语音服务；`synthesize` 缺省写一个假 mp3。 */
@@ -129,4 +130,47 @@ test('队列已满：后续请求判 voice-busy，而不是无限排队', () => 
     },
     () => gate,
   );
+});
+
+test('注册了第三方实现：合成走它，内置一次都不调', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-pet-voice-provider-'));
+  let edgeCalls = 0;
+  let providerCalls = 0;
+  const dispose = registerVoiceProvider({
+    id: 'my-tts',
+    name: '我的语音',
+    synthesize: async () => {
+      providerCalls += 1;
+      return new Uint8Array([1, 2, 3]);
+    },
+  });
+  try {
+    const voice = createVoiceService({
+      userRoot: root,
+      synthesize: async () => {
+        edgeCalls += 1;
+      },
+    });
+    const result = await voice.speak({ text: '你好' });
+    assert.equal(result.ok, true);
+    assert.equal(providerCalls, 1, '应该走第三方实现');
+    assert.equal(edgeCalls, 0, '注册之后不该再调内置');
+  } finally {
+    dispose();
+    await rm(root, { recursive: true, force: true });
+  }
+});
+
+test('第三方返回空字节：判 generate-error，不留下 0 字节文件', async () => {
+  const root = await mkdtemp(join(tmpdir(), 'dsh-pet-voice-empty-'));
+  const dispose = registerVoiceProvider({ id: 'my-tts', name: '我的语音', synthesize: async () => new Uint8Array() });
+  try {
+    const voice = createVoiceService({ userRoot: root, synthesize: async () => undefined });
+    const result = await voice.speak({ text: '你好' });
+    assert.equal(result.ok, false);
+    assert.equal(result.ok === false ? result.reason : '', 'generate-error');
+  } finally {
+    dispose();
+    await rm(root, { recursive: true, force: true });
+  }
 });
