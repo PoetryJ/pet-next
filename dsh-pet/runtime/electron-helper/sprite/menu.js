@@ -15,10 +15,11 @@ Object.assign(PetSprite.prototype, {
     this.stopThrow(); // 菜单弹出前停住飞行中的宠物
     this.stopMove(); // 菜单悬停期间宠物不漫游
     // 桌面专属工具根项 + 共享菜单树（动作 → 分类 → 具体动画）。碎碎念/对话无条件显示：手动触发
-    // 不受 whisperEnabled 限制（该字段只影响自动轮询）。首项文案随宿主形态变：桌面宿主说「打开软件」。
+    // 不受 whisperEnabled 限制（该字段只影响自动轮询）。首项文案随宿主形态变：桌面宿主说「打开软件」，
+    // 独立模式打开的是本机 AI 设置页（不是外网站点），说「打开 AI 设置」。
     const tools = [
       {
-        label: OPEN_TARGET === 'desktop' ? '打开软件' : '打开网站',
+        label: OPEN_TARGET === 'desktop' ? '打开软件' : '打开 AI 设置',
         action: 'open-site',
         hint: OPEN_SHORTCUT_HINT,
       },

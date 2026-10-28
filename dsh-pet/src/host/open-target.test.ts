@@ -1,8 +1,8 @@
 /**
- * 「打开网站」按宿主形态自动分派的契约测试（宿主 = DSH 桌面应用 / dsh web）。
+ * 菜单首项按宿主形态自动分派的契约测试（宿主 = DSH 桌面应用 / dsh web）。
  *
- * 需求：同一个工具项，宿主是桌面应用时要"打开桌面端"（把主窗口叫回前台），宿主是 web 时才是
- * "打开网站"（浏览器打开站点）。两半各自构建、无法互相 import，所以按本仓库既有做法读源码断言。
+ * 需求：同一个工具项，宿主是桌面应用时要"打开桌面端"（把主窗口叫回前台），宿主是 web 时是
+ * "打开 AI 设置"（本机设置页）。两半各自构建、无法互相 import，所以按本仓库既有做法读源码断言。
  *
  * 链路（改名/改判据只改一侧即失败）：
  *   宿主 index.ts 判 isDesktopHost → 注入 DSH_PET_OPEN_TARGET=desktop|site
@@ -47,7 +47,7 @@ const sprite = [
 ].join('\n');
 const standaloneContext = readSource('../standalone/context.ts');
 
-describe('「打开网站」按宿主形态自动分派', () => {
+describe('菜单首项按宿主形态自动分派', () => {
   test('宿主：桌面应用判定 + 形态注入', () => {
     assert.ok(
       /const isDesktopHost = \(\): boolean => Boolean\(process\.versions\.electron\)/.test(host),
@@ -86,8 +86,8 @@ describe('「打开网站」按宿主形态自动分派', () => {
       "constants.js 必须从 query 读形态且默认 'site'",
     );
     assert.ok(
-      /label: OPEN_TARGET === 'desktop' \? '打开软件' : '打开网站',\s*action: 'open-site'/.test(sprite),
-      '菜单文案要跟着变，但 action 仍是 open-site（另一端只认这个动作名；hint 只是视觉提示，允许夹在中间换行）',
+      /label: OPEN_TARGET === 'desktop' \? '打开软件' : '打开 AI 设置',\s*action: 'open-site'/.test(sprite),
+      '菜单文案要跟着变（独立模式打开的是本机 AI 设置页），但 action 仍是 open-site（另一端只认这个动作名；hint 只是视觉提示，允许夹在中间换行）',
     );
   });
 
