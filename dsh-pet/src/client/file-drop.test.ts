@@ -9,8 +9,15 @@
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
 
-import { claimFileDragOver, claimFileDrop } from './file-drop.ts';
-import type { DragLike } from './file-drop.ts';
+import {
+  claimFileDragEnter,
+  claimFileDragOver,
+  claimFileDrop,
+  DROP_TARGET_CLASS,
+  markDropTarget,
+  unmarkDropTarget,
+} from './file-drop.ts';
+import type { DragLike, DropTargetLike } from './file-drop.ts';
 
 /** 只造判定用到的两个字段：实现不读 File 的其它成员。 */
 const file = (type: string, name: string): File => ({ type, name }) as File;
@@ -54,6 +61,26 @@ function withFakeWindow(run: (events: string[]) => void): void {
     delete globals.window;
   }
 }
+
+describe('claimFileDragEnter', () => {
+  test('带文件进入落点：阻断冒泡并收起宿主遮罩', () => {
+    withFakeWindow((events) => {
+      const { event, calls } = dragOf([file('image/png', 'a.png')]);
+      assert.equal(claimFileDragEnter(event), true, '带文件应该认领');
+      assert.deepEqual(calls, { prevent: 0, stop: 1 }, '只断冒泡，默认行为留给 dragover 处理');
+      assert.deepEqual(events, ['dragend'], '应该替宿主收起整页遮罩');
+    });
+  });
+
+  test('纯文本拖拽进入落点：不认领，不动事件也不动遮罩', () => {
+    withFakeWindow((events) => {
+      const { event, calls } = dragOf([], false);
+      assert.equal(claimFileDragEnter(event), false, '不是文件拖拽不该认领');
+      assert.deepEqual(calls, { prevent: 0, stop: 0 }, '不认领就不能动事件');
+      assert.deepEqual(events, [], '不认领就不该碰宿主的遮罩');
+    });
+  });
+});
 
 describe('claimFileDragOver', () => {
   test('带文件的拖拽经过：认领并同时拦默认行为与冒泡', () => {
@@ -108,6 +135,97 @@ describe('claimFileDrop', () => {
       const { event } = dragOf([], false);
       claimFileDrop(event);
       assert.deepEqual(events, [], '不属于自己的拖放不该派发 dragend');
+    });
+  });
+});
+
+/** 最小 DOM 替身：只实现高亮用到的 classList 与 contains。 */
+class FakeElement {
+  readonly classes = new Set<string>();
+  readonly children: FakeElement[] = [];
+  readonly classList = {
+    add: (one: string): void => {
+      this.classes.add(one);
+    },
+    remove: (one: string): void => {
+      this.classes.delete(one);
+    },
+    contains: (one: string): boolean => this.classes.has(one),
+  };
+
+  contains(node: unknown): boolean {
+    return node === this || this.children.includes(node as FakeElement);
+  }
+}
+
+/** 临时把 HTMLElement / Node 换成替身，跑完还原，免得影响其它用例。 */
+function withFakeDom(run: () => void): void {
+  const globals = globalThis as { HTMLElement?: unknown; Node?: unknown };
+  const savedElement = globals.HTMLElement;
+  const savedNode = globals.Node;
+  globals.HTMLElement = FakeElement;
+  globals.Node = FakeElement;
+  try {
+    run();
+  } finally {
+    globals.HTMLElement = savedElement;
+    globals.Node = savedNode;
+  }
+}
+
+/** 造一个落点事件：currentTarget 是落点，relatedTarget 是离开时要去的地方。 */
+function dropTargetOf(el: FakeElement, related: unknown, hasFiles = true): DropTargetLike {
+  const seed = hasFiles ? [file('image/png', 'a.png')] : [];
+  const { event } = dragOf(seed, hasFiles);
+  return {
+    ...event,
+    currentTarget: el as unknown as EventTarget,
+    relatedTarget: related as EventTarget | null,
+  };
+}
+
+describe('markDropTarget', () => {
+  test('带文件进入落点：加上高亮类并收起宿主遮罩', () => {
+    withFakeDom(() => {
+      withFakeWindow((events) => {
+        const el = new FakeElement();
+        markDropTarget(dropTargetOf(el, null));
+        assert.equal(el.classes.has(DROP_TARGET_CLASS), true, '进入落点应该加高亮类');
+        assert.deepEqual(events, ['dragend'], '应该同时收起宿主的整页遮罩');
+      });
+    });
+  });
+
+  test('纯文本拖拽进入落点：不加高亮类', () => {
+    withFakeDom(() => {
+      withFakeWindow((events) => {
+        const el = new FakeElement();
+        markDropTarget(dropTargetOf(el, null, false));
+        assert.equal(el.classes.has(DROP_TARGET_CLASS), false, '不是文件拖拽不该高亮');
+        assert.deepEqual(events, [], '也不该碰宿主的遮罩');
+      });
+    });
+  });
+});
+
+describe('unmarkDropTarget', () => {
+  test('指针移到落点的子元素上：高亮保留', () => {
+    withFakeDom(() => {
+      const el = new FakeElement();
+      const child = new FakeElement();
+      el.children.push(child);
+      el.classes.add(DROP_TARGET_CLASS);
+      unmarkDropTarget(dropTargetOf(el, child));
+      assert.equal(el.classes.has(DROP_TARGET_CLASS), true, '在子元素之间移动不算离开，不能闪');
+    });
+  });
+
+  test('真的离开或放下：高亮撤掉', () => {
+    withFakeDom(() => {
+      const el = new FakeElement();
+      el.classes.add(DROP_TARGET_CLASS);
+      unmarkDropTarget(dropTargetOf(el, null));
+      assert.equal(el.classes.has(DROP_TARGET_CLASS), false, '离开落点必须撤高亮');
     });
   });
 });

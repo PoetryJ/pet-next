@@ -5,7 +5,7 @@
  * @module dsh-pet/src/client/pet/card/open-chat
  */
 import { isChatHotkey } from '../../../shared/chat/hotkey.ts';
-import { claimFileDragOver, claimFileDrop } from '../../file-drop.ts';
+import { claimFileDragEnter, claimFileDragOver, claimFileDrop } from '../../file-drop.ts';
 
 /** 注册来源。 */
 export interface OpenChatInput {
@@ -39,10 +39,12 @@ export function bindOpenChat(input: OpenChatInput): () => void {
     if (file !== undefined) openChat(file);
   };
   document.addEventListener('keydown', onKeyDown, true);
+  stage?.addEventListener('dragenter', claimFileDragEnter);
   stage?.addEventListener('dragover', onDragOver);
   stage?.addEventListener('drop', onDrop);
   return () => {
     document.removeEventListener('keydown', onKeyDown, true);
+    stage?.removeEventListener('dragenter', claimFileDragEnter);
     stage?.removeEventListener('dragover', onDragOver);
     stage?.removeEventListener('drop', onDrop);
   };

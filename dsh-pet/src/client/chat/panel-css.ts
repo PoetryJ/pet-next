@@ -439,6 +439,10 @@ export const PANEL_CSS = `
   border-color: var(--dsw-alias-state-business-primary);
 }
 
+.pet-chat-composer.is-drop-target {
+  border-color: var(--dsw-alias-state-business-primary);
+}
+
 .pet-chat-preview {
   display: flex;
   align-items: center;
