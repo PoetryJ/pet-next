@@ -1,0 +1,50 @@
+{
+  "role": "reaction",
+  "kind": "alpha-source",
+  "sourcePath": "assets/candidates/reaction/source.webm",
+  "sourceSha256": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776",
+  "outputPath": "assets/candidates/reaction/reaction.webm",
+  "outputSha256": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776",
+  "plates": [
+    {
+      "background": "light",
+      "imagePath": "assets/candidates/reaction/plates/frame-62-light.png"
+    },
+    {
+      "background": "dark",
+      "imagePath": "assets/candidates/reaction/plates/frame-62-dark.png"
+    },
+    {
+      "background": "checker",
+      "imagePath": "assets/candidates/reaction/plates/frame-62-checker.png"
+    },
+    {
+      "background": "light",
+      "imagePath": "assets/candidates/reaction/plates/frame-84-light.png"
+    },
+    {
+      "background": "dark",
+      "imagePath": "assets/candidates/reaction/plates/frame-84-dark.png"
+    },
+    {
+      "background": "checker",
+      "imagePath": "assets/candidates/reaction/plates/frame-84-checker.png"
+    }
+  ],
+  "command": [
+    "node",
+    "--experimental-strip-types",
+    "assets-pipeline/candidate-cli.ts",
+    "--source",
+    "assets/candidates/reaction/source.webm",
+    "--output",
+    "assets/candidates/reaction/reaction.webm",
+    "--plates",
+    "assets/candidates/reaction/plates",
+    "--compare",
+    "assets/reaction.webm",
+    "--compare-out",
+    "assets/candidates/reaction/shipped-plates"
+  ],
+  "limitation": null
+}
