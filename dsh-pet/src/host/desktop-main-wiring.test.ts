@@ -4,6 +4,8 @@
  * 为什么要这一条：runtime 下的模块不在类型检查里，装配错了（参数没解构、路径写错）只会表现成
  * 「桌面上什么都没有」，而按文本断言的守卫看不出这种错。这里用替身 electron 把 main.js 真跑一遍。
  * 不启动真实 Electron、不开窗口：只断言窗口对象被创建、加载的是存在的页面。
+ * Linux 指针换成替身：真的 createLinuxPointer().start() 会去连 DISPLAY 上的 X11，套接字不关，
+ * 断言过了 worker 也不退出。
  */
 import assert from 'node:assert/strict';
 import { existsSync } from 'node:fs';
@@ -14,6 +16,30 @@ import { tmpdir } from 'node:os';
 import { test } from 'node:test';
 
 const require = createRequire(import.meta.url);
+const linuxPointerModule = fileURLToPath(new URL('../../runtime/electron-helper/x11-pointer.js', import.meta.url));
+
+/** 指针替身：get 返回 null，调用方回退到假的 screen.getCursorScreenPoint。 */
+interface FakePointer {
+  start: () => void;
+  stop: () => void;
+  get: () => null;
+}
+
+function createFakeLinuxPointer(started: FakePointer[]): FakePointer {
+  const pointer: FakePointer = {
+    start() {},
+    stop() {},
+    get() {
+      return null;
+    },
+  };
+  started.push(pointer);
+  return pointer;
+}
+
+function isLinuxPointerRequest(request: unknown): boolean {
+  return request === './x11-pointer.js' || request === linuxPointerModule;
+}
 
 /** 替身 electron：任意未实现的方法都当空函数，避免逐个补齐。 */
 function createFakeElectron(created: Array<{ loaded?: { file: string } }>): unknown {
@@ -78,16 +104,19 @@ function createFakeElectron(created: Array<{ loaded?: { file: string } }>): unkn
 
 test('给定一只宠物：主进程会建窗，并加载存在的 index.html', async () => {
   const created: Array<{ loaded?: { file: string } }> = [];
-  const originalLoad = (Module as unknown as { _load: (...args: unknown[]) => unknown })._load;
+  const pointers: FakePointer[] = [];
+  const moduleLoad = Module as unknown as { _load: (...args: unknown[]) => unknown };
+  const originalLoad = moduleLoad._load;
   const originalSetInterval = globalThis.setInterval;
   const originalEnv = { ...process.env };
   // 建窗后每个窗口会起两条常驻定时器：测试里换成空函数，否则进程不退出
   globalThis.setInterval = (() => 0) as unknown as typeof setInterval;
-  (Module as unknown as { _load: (...args: unknown[]) => unknown })._load = function patched(
-    request: unknown,
-    ...rest: unknown[]
-  ) {
+  moduleLoad._load = function patched(request: unknown, ...rest: unknown[]) {
     if (request === 'electron') return createFakeElectron(created);
+    // main.js 顶层就 createLinuxPointer()，whenReady 里再 start()。替身必须在 require 之前装上。
+    if (isLinuxPointerRequest(request)) {
+      return { createLinuxPointer: () => createFakeLinuxPointer(pointers), parseRoot: () => 0 };
+    }
     return originalLoad.call(this, request, ...rest);
   };
   process.env.DSH_PET_PETS = JSON.stringify([{ id: 'main', size: 462 }]);
@@ -100,12 +129,16 @@ test('给定一只宠物：主进程会建窗，并加载存在的 index.html', 
     // whenReady 的回调是微任务链：等一拍宏任务让它跑完
     await new Promise((resolve) => setTimeout(resolve, 50));
   } finally {
-    (Module as unknown as { _load: (...args: unknown[]) => unknown })._load = originalLoad;
+    for (const pointer of pointers) pointer.stop();
+    moduleLoad._load = originalLoad;
     globalThis.setInterval = originalSetInterval;
     process.env = originalEnv;
   }
 
   assert.equal(created.length, 1, '一只宠物必须建出一个窗口（0 个就是桌面上什么都没有）');
+  if (process.platform === 'linux') {
+    assert.equal(pointers.length, 1, 'Linux 上 createLinuxPointer 必须命中测试里的替身');
+  }
   const loaded = created[0]?.loaded;
   assert.ok(loaded, '窗口必须调用 loadFile（否则窗口是空的）');
   assert.match(loaded.file, /index\.html$/, '加载的必须是渲染端页面');
