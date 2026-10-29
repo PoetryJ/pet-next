@@ -16,6 +16,8 @@ pnpm start
 
 `pnpm verify` 依次做类型检查、lint、单元测试、构建和 Electron 实测，任一步失败都会返回非零。
 
+分工、验收和实验协议在 [`docs/ownership.md`](docs/ownership.md)。公共形状在 [`contracts/`](contracts/)。`pnpm experiment:arbiter`、`pnpm experiment:arbiter:check`、`pnpm experiment:arbiter:demo` 和 `pnpm assets:check` 不进入 `pnpm start`，也不进入 `pnpm verify`。
+
 本轮实测平台是 **Linux**（`DISPLAY` 上的 Electron 43.3.0）。没有在 Windows 上跑过同一套 Electron 测试；Windows 启动命令仍是 `pnpm start`。
 
 ## 模块

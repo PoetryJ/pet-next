@@ -15,6 +15,15 @@
     "declaration": false,
     "noEmitOnError": true
   },
-  "include": ["core/**/*.ts", "adapters/**/*.ts", "app/**/*.ts", "electron/main.ts", "tests/**/*.ts"],
+  "include": [
+    "core/**/*.ts",
+    "adapters/**/*.ts",
+    "app/**/*.ts",
+    "electron/main.ts",
+    "tests/**/*.ts",
+    "contracts/**/*.ts",
+    "experiments/**/*.ts",
+    "assets-pipeline/**/*.ts"
+  ],
   "exclude": ["dist", "node_modules", "electron/preload.ts"]
 }
