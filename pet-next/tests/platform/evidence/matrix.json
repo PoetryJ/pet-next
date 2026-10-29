@@ -1,0 +1,232 @@
+{
+  "verdict": "incomplete",
+  "host": "linux",
+  "generatedAt": "2026-10-29T16:13:55.945Z",
+  "osScale": null,
+  "osScaleSource": null,
+  "flows": [
+    {
+      "flow": "click",
+      "platform": "linux",
+      "status": "passed",
+      "reason": null,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-36-031Z-platform-default-5251"
+    },
+    {
+      "flow": "drag",
+      "platform": "linux",
+      "status": "passed",
+      "reason": null,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-36-031Z-platform-default-5251"
+    },
+    {
+      "flow": "transparent",
+      "platform": "linux",
+      "status": "passed",
+      "reason": null,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-36-031Z-platform-default-5251"
+    },
+    {
+      "flow": "quit",
+      "platform": "linux",
+      "status": "passed",
+      "reason": null,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-36-031Z-platform-default-5251"
+    },
+    {
+      "flow": "process-cleanup",
+      "platform": "linux",
+      "status": "passed",
+      "reason": null,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-36-031Z-platform-default-5251"
+    },
+    {
+      "flow": "click",
+      "platform": "win32",
+      "status": "not-run",
+      "reason": "没有 Windows 执行器。运行 tests/platform/verify-windows.ps1。",
+      "evidencePath": "tests/platform/verify-windows.ps1"
+    },
+    {
+      "flow": "drag",
+      "platform": "win32",
+      "status": "not-run",
+      "reason": "没有 Windows 执行器。运行 tests/platform/verify-windows.ps1。",
+      "evidencePath": "tests/platform/verify-windows.ps1"
+    },
+    {
+      "flow": "transparent",
+      "platform": "win32",
+      "status": "not-run",
+      "reason": "没有 Windows 执行器。运行 tests/platform/verify-windows.ps1。",
+      "evidencePath": "tests/platform/verify-windows.ps1"
+    },
+    {
+      "flow": "quit",
+      "platform": "win32",
+      "status": "not-run",
+      "reason": "没有 Windows 执行器。运行 tests/platform/verify-windows.ps1。",
+      "evidencePath": "tests/platform/verify-windows.ps1"
+    },
+    {
+      "flow": "process-cleanup",
+      "platform": "win32",
+      "status": "not-run",
+      "reason": "没有 Windows 执行器。运行 tests/platform/verify-windows.ps1。",
+      "evidencePath": "tests/platform/verify-windows.ps1"
+    }
+  ],
+  "processes": [
+    {
+      "platform": "linux",
+      "caseId": "spawn-failure",
+      "status": "passed",
+      "reason": null,
+      "command": "[\"/exec-daemon/node\",\"/workspace/pet-next/tests/fixtures/cleanup-child.mjs\",\"fail\"]",
+      "exitCode": 2,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-33-427Z-platform-fail-5187"
+    },
+    {
+      "platform": "linux",
+      "caseId": "timeout",
+      "status": "passed",
+      "reason": null,
+      "command": "[\"/exec-daemon/node\",\"/workspace/pet-next/tests/fixtures/cleanup-child.mjs\",\"hang\"]",
+      "exitCode": null,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-34-148Z-platform-hang-5203"
+    },
+    {
+      "platform": "linux",
+      "caseId": "clean-exit",
+      "status": "passed",
+      "reason": null,
+      "command": "[\"/exec-daemon/node\",\"/workspace/pet-next/tests/fixtures/cleanup-child.mjs\",\"exit\"]",
+      "exitCode": 0,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-34-950Z-platform-exit-5219"
+    },
+    {
+      "platform": "linux",
+      "caseId": "foreign-pid-survives",
+      "status": "passed",
+      "reason": null,
+      "command": "[\"/exec-daemon/node\",\"/workspace/pet-next/tests/fixtures/cleanup-child.mjs\",\"exit\"]",
+      "exitCode": 0,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-35-485Z-platform-exit-5235"
+    },
+    {
+      "platform": "win32",
+      "caseId": "spawn-failure",
+      "status": "not-run",
+      "reason": "没有 Windows 执行器。这个脚本还没有在 Windows 上跑过。",
+      "command": "powershell -File tests/platform/verify-windows.ps1",
+      "exitCode": null,
+      "evidencePath": "tests/platform/verify-windows.ps1"
+    },
+    {
+      "platform": "win32",
+      "caseId": "timeout",
+      "status": "not-run",
+      "reason": "没有 Windows 执行器。这个脚本还没有在 Windows 上跑过。",
+      "command": "powershell -File tests/platform/verify-windows.ps1",
+      "exitCode": null,
+      "evidencePath": "tests/platform/verify-windows.ps1"
+    },
+    {
+      "platform": "win32",
+      "caseId": "clean-exit",
+      "status": "not-run",
+      "reason": "没有 Windows 执行器。这个脚本还没有在 Windows 上跑过。",
+      "command": "powershell -File tests/platform/verify-windows.ps1",
+      "exitCode": null,
+      "evidencePath": "tests/platform/verify-windows.ps1"
+    },
+    {
+      "platform": "win32",
+      "caseId": "foreign-pid-survives",
+      "status": "not-run",
+      "reason": "没有 Windows 执行器。这个脚本还没有在 Windows 上跑过。",
+      "command": "powershell -File tests/platform/verify-windows.ps1",
+      "exitCode": null,
+      "evidencePath": "tests/platform/verify-windows.ps1"
+    }
+  ],
+  "scales": [
+    {
+      "id": "default",
+      "origin": "default",
+      "status": "passed",
+      "reason": null,
+      "observedScaleFactor": 0.984375,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-36-031Z-platform-default-5251",
+      "forcedDeviceScaleFactor": null,
+      "scaleSource": "os",
+      "devicePixelRatio": 0.984375
+    },
+    {
+      "id": "simulated-100",
+      "origin": "simulated",
+      "status": "passed",
+      "reason": null,
+      "observedScaleFactor": 1,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-53-967Z-platform-sim-100-5343",
+      "forcedDeviceScaleFactor": 1,
+      "scaleSource": "simulated-chromium-flag",
+      "devicePixelRatio": 1
+    },
+    {
+      "id": "simulated-125",
+      "origin": "simulated",
+      "status": "passed",
+      "reason": null,
+      "observedScaleFactor": 1.25,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-54-613Z-platform-sim-125-5421",
+      "forcedDeviceScaleFactor": 1.25,
+      "scaleSource": "simulated-chromium-flag",
+      "devicePixelRatio": 1.25
+    },
+    {
+      "id": "simulated-150",
+      "origin": "simulated",
+      "status": "passed",
+      "reason": null,
+      "observedScaleFactor": 1.5,
+      "evidencePath": "logs/platform-runs/linux/2026-10-29T16-13-55-256Z-platform-sim-150-5500",
+      "forcedDeviceScaleFactor": 1.5,
+      "scaleSource": "simulated-chromium-flag",
+      "devicePixelRatio": 1.5
+    },
+    {
+      "id": "system-100",
+      "origin": "system",
+      "status": "not-run",
+      "reason": "没有 Windows 显示缩放执行器。default 行的实测 scaleFactor 不能填到系统缩放行。",
+      "observedScaleFactor": null,
+      "evidencePath": null,
+      "forcedDeviceScaleFactor": null,
+      "scaleSource": null,
+      "devicePixelRatio": null
+    },
+    {
+      "id": "system-125",
+      "origin": "system",
+      "status": "not-run",
+      "reason": "没有 Windows 显示缩放执行器。default 行的实测 scaleFactor 不能填到系统缩放行。",
+      "observedScaleFactor": null,
+      "evidencePath": null,
+      "forcedDeviceScaleFactor": null,
+      "scaleSource": null,
+      "devicePixelRatio": null
+    },
+    {
+      "id": "system-150",
+      "origin": "system",
+      "status": "not-run",
+      "reason": "没有 Windows 显示缩放执行器。default 行的实测 scaleFactor 不能填到系统缩放行。",
+      "observedScaleFactor": null,
+      "evidencePath": null,
+      "forcedDeviceScaleFactor": null,
+      "scaleSource": null,
+      "devicePixelRatio": null
+    }
+  ]
+}
