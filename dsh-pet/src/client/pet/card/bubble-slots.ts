@@ -13,10 +13,12 @@ import type * as ReactNS from 'react';
 import type { jsx } from 'react/jsx-runtime';
 
 /** 当前该挂哪个气泡；`none` 表示哪个条件都不成立。 */
-export type BubbleSlot = 'work-terminal' | 'whisper' | 'balance' | 'work' | 'none';
+export type BubbleSlot = 'todo' | 'work-terminal' | 'whisper' | 'balance' | 'work' | 'none';
 
 /** 优先级判定的输入：全部是渲染期的既成事实，判定本身不产生副作用。 */
 export interface BubbleSlotInput {
+  /** 待办面板是否打开；打开时独占槽位，其余气泡一律让位。 */
+  todoOn: boolean;
   /** 工作状态是否为终态（success / error）。 */
   workTerminal: boolean;
   /** 工作气泡是否点亮。 */
@@ -48,6 +50,8 @@ export interface BubbleSlotInput {
  * @returns 命中的槽位；都不成立时为 `none`。
  */
 export function decideBubbleSlot(input: BubbleSlotInput): BubbleSlot {
+  // 面板是用户主动打开的窗口：它占槽时其余气泡一律让位，关掉后按原规则恢复。
+  if (input.todoOn) return 'todo';
   if (input.workTerminal && input.workOn && input.workText && input.workStatusEnabled) return 'work-terminal';
   if (input.whisperOn && input.whisperText) return 'whisper';
   if (input.balanceOn && input.balanceAvailable && (input.balanceEnabled || input.balanceManual)) return 'balance';
@@ -98,10 +102,15 @@ export interface BubbleSlotsRuntime {
   useEffect: (effect: ReactNS.EffectCallback, deps?: ReactNS.DependencyList) => void;
 }
 
-/** 两种气泡组件。 */
+/** 待办面板气泡组件；props 与 `client/todo-bubble.ts` 的 TodoBubble 一致。 */
+export type TodoBubbleComponent = (props: { on: boolean; onClose: () => void }) => ReactNode;
+
+/** 三种气泡组件。 */
 export interface BubbleComponents {
   /** 余额气泡。 */
   balanceBubble: BalanceBubbleComponent;
+  /** 待办面板气泡。 */
+  todoBubble: TodoBubbleComponent;
   /** 说话气泡。 */
   whisperBubble: WhisperBubbleComponent;
 }
@@ -140,6 +149,12 @@ export interface BubbleSlots {
   hideWork(): void;
   /** 回空闲：收起工作气泡并清文本。 */
   resetWork(): void;
+  /** 打开待办面板：它独占槽位，其余气泡让位。 */
+  showTodo(): void;
+  /** 收起待办面板，按原优先级恢复其余气泡。 */
+  hideTodo(): void;
+  /** 开关待办面板：已开则收起，供快捷键使用。 */
+  toggleTodo(): void;
   /** 按优先级渲染当前该挂的气泡；无气泡时为 null。 */
   node(): ReactNode;
 }
@@ -154,6 +169,7 @@ export interface BubbleSlots {
 export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComponents) {
   const { h, useState, useRef, useEffect } = rt;
   const BalanceBubble = components.balanceBubble;
+  const TodoBubble = components.todoBubble;
   const WhisperBubble = components.whisperBubble;
 
   return function useBubbleSlots(input: BubbleSlotsInput): BubbleSlots {
@@ -167,6 +183,8 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
     const [whisperImage, setWhisperImage] = useState<string | undefined>(undefined);
     const [whisperUrl, setWhisperUrl] = useState<string | undefined>(undefined);
     const whisperTimerRef = useRef<number | null>(null);
+    // 待办面板：独占槽位，没有停留计时，显隐只由用户开关。
+    const [todoOn, setTodoOn] = useState(false);
     // 工作状态气泡：显隐与文本。
     const [workOn, setWorkOn] = useState(false);
     const [workText, setWorkText] = useState<string | null>(null);
@@ -242,8 +260,13 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
       setWorkText(null);
     };
 
+    const showTodo = (): void => setTodoOn(true);
+    const hideTodo = (): void => setTodoOn(false);
+    const toggleTodo = (): void => setTodoOn((on) => !on);
+
     const node = (): ReactNode => {
       const slot = decideBubbleSlot({
+        todoOn,
         workTerminal: input.workTerminal,
         workOn,
         workText,
@@ -255,6 +278,7 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
         balanceEnabled: input.balanceEnabled,
         balanceManual: input.balanceManual,
       });
+      if (slot === 'todo') return h(TodoBubble, { on: todoOn, onClose: hideTodo });
       if (slot === 'balance') {
         return input.balance === null
           ? null
@@ -282,12 +306,15 @@ export function createBubbleSlots(rt: BubbleSlotsRuntime, components: BubbleComp
     return {
       clearWhisper,
       cycleBalance,
+      hideTodo,
       hideWork,
       lightWork,
       node,
       resetWork,
       showBalance,
+      showTodo,
       showWhisper,
+      toggleTodo,
       updateWorkText: setWorkText,
     };
   };

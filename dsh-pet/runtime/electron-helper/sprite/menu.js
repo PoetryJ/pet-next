@@ -26,10 +26,10 @@ Object.assign(PetSprite.prototype, {
         hint: OPEN_SHORTCUT_HINT,
       },
     ];
-    // 「待办事项」：单击宠物也会开面板，这里是右键侧的同一入口。
-    tools.push({ label: '待办事项', action: 'todo' });
     // 「查看余额」无条件显示：关了 balanceEnabled 的宠物也能点，手动请求不受开关限制，点了一定给答复。
     tools.push({ label: '查看余额', action: 'show-balance' });
+    // 「待办事项」是待办面板的唯一入口（单击宠物不再弹面板），排在余额之后。
+    tools.push({ label: '待办事项', action: 'todo', hint: S.TODO_HOTKEY_HINT });
     tools.push({ label: '碎碎念', action: 'whisper' });
     // 「配图」：与浏览器端同一份分支（纳入对话的配图 / 其他），点一张就用它说一句；没有可用图时
     // 返回 null，整项不出现。数据来自拍平层吹入的条目级字段（this.pet.memes / chatImageEnabled /
@@ -107,7 +107,7 @@ Object.assign(PetSprite.prototype, {
       return;
     }
     if (leaf.action === 'todo') {
-      this.toggleTodo(); // 打开待办面板（与单击宠物同一个入口）
+      this.toggleTodo(); // 打开待办面板（右键菜单入口）
       return;
     }
     if (leaf.action === 'home') {
@@ -242,35 +242,40 @@ Object.assign(PetSprite.prototype, {
     this.setInteractive(true);
   },
 
-  // 待办面板开关（与浏览器半侧共用 shared/todo/panel）：贴在身体命中区旁、跟着宠物移动；
-  // 面板是窗口内 DOM，期间整窗保持可交互，关闭后交还命中区穿透。
+  // 待办面板开关：面板占气泡槽（优先级最高），期间整窗保持可交互，关闭后交还命中区穿透。
+  // 与浏览器半侧共用 shared/todo/panel，只有接口基址不同（桌面是 file:// 页面，必须绝对地址）。
   toggleTodo() {
-    if (this.todoClose) {
-      this.todoClose();
-      this.todoClose = null;
+    if (this.todoPanel) {
+      this.closeTodo();
       return;
     }
-    const mount = S.mountTodoPanel({
-      anchor: () => {
-        const r = this.hit.getBoundingClientRect();
-        return { left: r.left, top: r.top, right: r.right, bottom: r.bottom };
-      },
-      anchorEl: this.hit,
-      // 桌面窗口是 file://，接口必须给绝对地址
+    const panel = S.createTodoPanel({
       baseUrl: BASE + '/todos',
-      onClose: () => {
-        this.todoClose = null;
-        this.todoOpen = false;
-        window.__dshPetDebug.todoOpen = false;
-        this.syncInputBusy();
-        if (!this.menuOpen && !this.chatOpen) this.setInteractive(false);
-      },
+      onClose: () => this.closeTodo(),
+      // 点宠物本体不收起：拖它走是常见需求，收起就没法一边看清单一边挪位置。
+      keepOpenOn: (target) => typeof target?.closest === 'function' && target.closest('.pet-hit') !== null,
     });
-    this.todoClose = mount.close;
+    // replaceChildren 而不是 appendChild：气泡里还留着上一次渲染的行（碎碎念/余额），
+    // 而 renderBubble 在面板开着时会提前返回、走不到清空那一步，不清就会叠在面板上方。
+    this.bubble.replaceChildren(panel.el);
+    this.todoPanel = panel;
     this.todoOpen = true;
     window.__dshPetDebug.todoOpen = true;
+    this.renderBubble();
     this.syncInputBusy();
     this.setInteractive(true);
+  },
+
+  // 收起待办面板：摘掉面板节点、撤掉气泡变体类，再把槽位交回正常判定。
+  closeTodo() {
+    const panel = this.todoPanel;
+    if (!panel) return;
+    panel.dispose();
+    this.todoPanel = null;
+    this.todoOpen = false;
+    window.__dshPetDebug.todoOpen = false;
+    this.renderBubble();
+    if (!this.menuOpen && !this.chatOpen) this.setInteractive(false);
   },
 
   // 「回到初始位置」菜单：停掉漫游/移动，清掉会话位置，回到配置角落

@@ -4,29 +4,30 @@
  * 删除做成两步（先变成「确认」，2.5 秒后自动复原）：清单没有撤销，误点一次就没了太容易。
  * @module dsh-pet/src/shared/todo/render
  */
+import { createDuePicker, type DuePicker } from './due-picker.ts';
 import { metaLabel, todoUrgency } from './format.ts';
 import type { TodoItem } from './types.ts';
 
 /** 面板里需要被面板逻辑持有的元素。 */
 export interface TodoPanelParts {
-  /** 根：定位与显隐的宿主。 */
+  /** 根：面板内容的外框，节点由调用方塞进容器。 */
   root: HTMLElement;
   /** 添加表单：回车提交。 */
   form: HTMLFormElement;
   /** 正文输入框。 */
   input: HTMLInputElement;
-  /** 到期时间输入框（`datetime-local`，空 = 无期限）。 */
-  due: HTMLInputElement;
+  /** 到期时间选择器：按钮在表单行，日历挂在根节点里。 */
+  duePicker: DuePicker;
   /** 添加按钮。 */
   addButton: HTMLButtonElement;
-  /** 关闭按钮（右上角）。 */
-  closeButton: HTMLButtonElement;
   /** 清单容器。 */
   list: HTMLUListElement;
   /** 空态提示。 */
   empty: HTMLDivElement;
   /** 顶部的未完成计数。 */
   count: HTMLSpanElement;
+  /** 右上角关闭按钮；桌面端窗口余量是穿透的，点空白收不起来，只能靠它。 */
+  closeButton: HTMLButtonElement;
   /** 错误行（隐藏时为 `hidden`）。 */
   error: HTMLDivElement;
 }
@@ -45,6 +46,9 @@ const DELETE_ARM_MS = 2500;
 /** 空态文案：加载中会临时替换它，重渲染时再写回来。 */
 const EMPTY_TEXT = '还没有待办。记一件要做的事，到点我会提醒你～';
 
+/** 清单最多露出几行，其余靠滚动。 */
+const LIST_ROWS = 2;
+
 /** 造一个带 class 的元素，避免每处都写 createElement + className。 */
 function element<K extends keyof HTMLElementTagNameMap>(
   tag: K,
@@ -55,6 +59,15 @@ function element<K extends keyof HTMLElementTagNameMap>(
   node.className = className;
   if (text !== undefined) node.textContent = text;
   return node;
+}
+
+/** 造一个可折叠区：高度靠 grid-template-rows 在 0fr 与 1fr 之间过渡，内容高度是 auto 也能动画。 */
+function fold(className: string, children: HTMLElement[]): HTMLDivElement {
+  const outer = element('div', 'dsh-pet-todo-fold ' + className);
+  const clip = element('div', 'dsh-pet-todo-foldClip');
+  clip.append(...children);
+  outer.appendChild(clip);
+  return outer;
 }
 
 /**
@@ -84,12 +97,10 @@ export function createTodoPanelParts(): TodoPanelParts {
   input.autocomplete = 'off';
   input.setAttribute('aria-label', '待办内容');
   const row = element('div', 'dsh-pet-todo-row');
-  const due = element('input', 'dsh-pet-todo-due');
-  due.type = 'datetime-local';
-  due.setAttribute('aria-label', '提醒时间（可选）');
+  const duePicker = createDuePicker({ onOpenChange: (open) => root.classList.toggle('is-picking', open) });
   const addButton = element('button', 'dsh-pet-todo-add', '添加');
   addButton.type = 'submit';
-  row.append(due, addButton);
+  row.append(duePicker.el, addButton);
   form.append(input, row);
 
   const error = element('div', 'dsh-pet-todo-err');
@@ -101,8 +112,33 @@ export function createTodoPanelParts(): TodoPanelParts {
   const list = element('ul', 'dsh-pet-todo-list');
   const hint = element('div', 'dsh-pet-todo-hint', '离到期越近，我会提醒得越勤快～');
 
-  root.append(head, form, error, empty, list, hint);
-  return { root, form, input, due, addButton, closeButton, list, empty, count, error };
+  // 下半区两块内容轮流出现：清单态与日历态各是一个折叠区，展开收起走同一条过渡。
+  // 面板高度因此跟着内容走（不留空白），切换时也是滑过去而不是硬跳。
+  const lower = element('div', 'dsh-pet-todo-lower');
+  lower.append(fold('is-cal', [duePicker.calendar]), fold('is-list', [error, empty, list, hint]));
+  root.append(head, form, lower);
+  return { root, form, input, duePicker, addButton, list, empty, count, closeButton, error };
+}
+
+/**
+ * 把清单压到「两行」的高度，多出来的部分靠清单自己滚动。
+ *
+ * 行高随正文折行变化，写不成 CSS 常量，所以量一次首行再乘二；量不到（未挂载）就不设上限，
+ * 免得把清单压成 0 高。
+ *
+ * @param list - 清单容器。
+ */
+function capListHeight(list: HTMLUListElement): void {
+  const first = list.firstElementChild;
+  if (first === null) {
+    list.style.maxHeight = '';
+    return;
+  }
+  const rowHeight = first.getBoundingClientRect().height;
+  if (rowHeight <= 0) return;
+  // 清单自带内边距，算进高度里才不会被截掉最后一行的一半。
+  const pad = parseFloat(getComputedStyle(list).paddingTop) || 0;
+  list.style.maxHeight = rowHeight * LIST_ROWS + pad * 2 + 'px';
 }
 
 /**
@@ -125,6 +161,7 @@ export function renderTodoList(
   parts.empty.textContent = EMPTY_TEXT;
   parts.empty.hidden = todos.length > 0;
   for (const todo of todos) parts.list.appendChild(renderItem(todo, handlers, now));
+  capListHeight(parts.list);
 }
 
 /** 渲染一条；未完成项带紧迫度，已完成项划线。 */
@@ -187,6 +224,6 @@ export function setTodoError(parts: TodoPanelParts, message: string | null): voi
  */
 export function setTodoBusy(parts: TodoPanelParts, busy: boolean): void {
   parts.input.disabled = busy;
-  parts.due.disabled = busy;
+  parts.duePicker.el.disabled = busy;
   parts.addButton.disabled = busy;
 }

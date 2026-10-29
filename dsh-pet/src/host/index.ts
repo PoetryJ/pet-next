@@ -20,7 +20,7 @@ import { createDownloadReport } from './plugin/download-report.ts';
 import { createWorkStatusBridge } from './plugin/work-status-bridge.ts';
 import { registerTodoReminders } from './plugin/todo-reminders.ts';
 import { createVoiceService } from './voice/speak.ts';
-import { TodoStore } from './todo/store.ts';
+import { TODO_FILE_NAME, TodoStore } from './todo/store.ts';
 import { join } from 'node:path';
 import type { PetRouteDeps } from './routes/types.ts';
 
@@ -78,7 +78,7 @@ export function apply(ctx: any): void {
     balancePoll;
 
   // 待办清单：一份用户级数据（不分宠物），落盘在插件数据根；提醒循环与 /todos 路由共用同一个实例。
-  const todos = new TodoStore({ file: join(userRoot, 'todos.json'), log });
+  const todos = new TodoStore({ file: join(userRoot, TODO_FILE_NAME), log });
 
   const desktopHelper = createDesktopHelper({
     ctx,

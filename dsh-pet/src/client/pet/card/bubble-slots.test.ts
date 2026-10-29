@@ -22,6 +22,7 @@ function input(overrides: Partial<BubbleSlotInput> = {}): BubbleSlotInput {
     balanceAvailable: true,
     balanceEnabled: true,
     balanceManual: false,
+    todoOn: false,
     ...overrides,
   };
 }
@@ -81,6 +82,21 @@ describe('decideBubbleSlot —— 同一时刻只挂一个气泡', () => {
   test('关闭余额且非手动请求：不挂余额气泡；手动请求照常挂', () => {
     assert.equal(decideBubbleSlot(input({ balanceOn: true, balanceEnabled: false })), 'none');
     assert.equal(decideBubbleSlot(input({ balanceOn: true, balanceEnabled: false, balanceManual: true })), 'balance');
+  });
+
+  test('待办面板压过一切：用户主动打开的窗口不让位', () => {
+    const slot = decideBubbleSlot(
+      input({
+        todoOn: true,
+        workTerminal: true,
+        workOn: true,
+        workText: '跑完了',
+        whisperOn: true,
+        whisperText: '在',
+        balanceOn: true,
+      }),
+    );
+    assert.equal(slot, 'todo');
   });
 });
 

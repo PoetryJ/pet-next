@@ -114,6 +114,7 @@ export function makePathsCards(rt: SettingsRuntime): PathsCards {
     const body = [
       line('defaultConfig', paths.default),
       line('userConfig', paths.user),
+      line('todosFile', paths.todos),
       line('animationDir', paths.animations),
       line('memesDir', paths.memes),
       // 日志文件路径 + 一句说明；其余位置的用途都在问号里，唯独这条写在明面上——反馈问题时要先找它。

@@ -380,8 +380,6 @@ Object.assign(PetSprite.prototype, {
     this.stopMove();
     // 点击音效与浏览器同位置：放在「按下已触发积分」的早退之后、点击动画判断之前
     playClickSound();
-    // 单击 = 待办面板开关（浏览器同款行为）；点击动画池为空也要能开关，所以在动画判断之前。
-    this.toggleTodo();
     if (!this.animations.clicks.length) return;
     this.pendingSquash = true; // 等新点击动画切到前台后 Q 弹（压新首帧，与浏览器一致）
     this.playOnce(S.pick(this.animations.clicks));
@@ -412,11 +410,17 @@ Object.assign(PetSprite.prototype, {
     this.showChatFromMenu(file);
   },
 
-  /** 悬停快捷键：光标在身体上时按 T 打开对话，等价于菜单里的「对话」。 */
+  /** 悬停快捷键：光标在身体上时按 T 开对话、按 D 开关待办。 */
   onHotkey(e) {
     if (!this.hoverBody) return;
-    if (!S.isChatHotkey(e)) return;
-    e.preventDefault();
-    this.showChatFromMenu();
+    if (S.isChatHotkey(e)) {
+      e.preventDefault();
+      this.showChatFromMenu();
+      return;
+    }
+    if (S.isTodoHotkey(e)) {
+      e.preventDefault();
+      this.toggleTodo();
+    }
   },
 });

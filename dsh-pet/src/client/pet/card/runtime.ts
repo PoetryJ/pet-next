@@ -10,6 +10,7 @@ import { postAction } from '../../../shared/state.ts';
 import { ROUTE_PATH } from '../../../shared/constants.ts';
 import { resolveFontPx } from '../../../shared/fonts.ts';
 import { makeBalanceBubble, makeWhisperBubble } from '../../bubble.ts';
+import { makeTodoBubble } from '../../todo-bubble.ts';
 import { petBridge } from '../../settings.ts';
 import { createMenuActions, type MenuActions } from '../menu-actions.ts';
 import { derivePetMetrics, petRootStyle, petStageStyle } from '../motion/geometry.ts';
@@ -41,10 +42,12 @@ export function createCardRuntime(rt: PetRuntime) {
   const BalanceBubble = makeBalanceBubble({ h, useState, useEffect });
   /** 碎碎念气泡：文本与显隐由装配根传入。 */
   const WhisperBubble = makeWhisperBubble({ h });
-  /** 三种气泡的单槽：显隐、停留计时与优先级都在这里。 */
+  /** 待办气泡：面板本体挂在自己身上，关闭按钮回调装配根。 */
+  const TodoBubble = makeTodoBubble({ h, useEffect, useRef });
+  /** 四种气泡的单槽：显隐、停留计时与优先级都在这里。 */
   const useBubbleSlots = createBubbleSlots(
     { h, useState, useEffect, useRef },
-    { balanceBubble: BalanceBubble, whisperBubble: WhisperBubble },
+    { balanceBubble: BalanceBubble, todoBubble: TodoBubble, whisperBubble: WhisperBubble },
   );
   const useCardState = createCardState({ useState, useRef });
   const useLockFreeze = createLockFreeze({ useEffect, useRef });
@@ -111,7 +114,7 @@ export function createCardRuntime(rt: PetRuntime) {
       // eslint-disable-next-line react-hooks/exhaustive-deps -- setter 稳定，变化原因只有这三个位置字段
     }, [cfg.position.corner, cfg.position.marginX, cfg.position.marginY]);
 
-    // 三种气泡的单槽：显隐、停留计时与优先级都在 bubble-slots，这里只喂视图输入。
+    // 四种气泡的单槽：显隐、停留计时与优先级都在 bubble-slots，这里只喂视图输入。
     const bubbles = useBubbleSlots({
       assetRoot: cfg.assetRoot,
       balance,
@@ -174,8 +177,10 @@ export function createCardRuntime(rt: PetRuntime) {
       menuItemsRef,
       motion,
       runMenuAction: (leaf, playbackId, keepFacing) => menuActionsRef.current?.run(leaf, playbackId, keepFacing),
+      showTodo: bubbles.showTodo,
       stage: () => stageRef.current,
       tipRef,
+      toggleTodo: bubbles.toggleTodo,
     });
     entryRef.current = entry;
 
@@ -258,7 +263,7 @@ export function createCardRuntime(rt: PetRuntime) {
     );
 
     return {
-      // 气泡单槽：三种气泡共用同一套定位，按优先级只挂一个。
+      // 气泡单槽：四种气泡共用同一套定位，按优先级只挂一个。
       bubble: bubbles.node(),
       corner,
       facing,
@@ -267,10 +272,7 @@ export function createCardRuntime(rt: PetRuntime) {
       marginX: margin.x,
       marginY: margin.y,
       name: cfg.name,
-      // 单击既是「摸摸」，也是待办面板的开关：只有真正的一次单击（不是拖拽尾巴）才弹。
-      onClick: () => {
-        if (drag.onClick()) entryRef.current?.toggleTodo();
-      },
+      onClick: drag.onClick,
       onContextMenu: entry.handleContextMenu,
       onPointerDown: drag.onPointerDown,
       onPointerEnter: entry.onPointerEnter,

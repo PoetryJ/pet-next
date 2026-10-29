@@ -104,7 +104,8 @@ Object.assign(PetSprite.prototype, {
     this.chatClose = null;
     this.chatOpen = false;
     // 待办面板：与对话弹窗同一套穿透守卫（面板同样是窗口内 DOM，而且比对话窗更大）。
-    this.todoClose = null;
+    // todoPanel 是面板句柄（占气泡槽，节点塞在 this.bubble 里），todoOpen 是穿透守卫标记。
+    this.todoPanel = null;
     this.todoOpen = false;
   },
 

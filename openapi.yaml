@@ -2042,6 +2042,11 @@ paths:
                   animations:
                     type: string
                     description: 用户动画素材根目录绝对路径
+                  todos:
+                    type: string
+                    description: |
+                      待办数据文件绝对路径（`$DSH_HOME/dsh-pet/todos.json`）。
+                      一份用户级数据、不分宠物：清单正文、到期时间与完成状态都在这里，删掉等于清空待办。
                   logs:
                     type: string
                     description: |

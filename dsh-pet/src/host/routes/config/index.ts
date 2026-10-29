@@ -13,6 +13,7 @@ import { join } from 'node:path';
 import { PACKAGE_ROOT } from '../../paths.ts';
 import { profileNameFrom, storageEntries } from '../../storage-paths.ts';
 import { electronLandingDir } from '../../helper-process.ts';
+import { TODO_FILE_NAME } from '../../todo/store.ts';
 import { homedir } from 'node:os';
 import type { PetRouteDeps, RouteInput } from '../types.ts';
 import { failResult, okResult } from '../result.ts';
@@ -54,6 +55,8 @@ function getMeta(deps: PetRouteDeps): RouteResult {
     default: join(PACKAGE_ROOT, 'assets', 'config.jsonc'),
     animations: thumbUserRoot,
     memes: memesUserRoot,
+    // 待办数据文件：一份用户级数据（不分宠物），路径与宿主建库时用的是同一个文件名常量。
+    todos: join(userRoot, TODO_FILE_NAME),
     // 统一日志出口（就是上面那个 logger 的 file：三种模式都落在 $DSH_HOME/dsh-pet/logs.txt）：
     // 桌面版没有控制台，用户反馈「宠物不出现 / 闪退」时只能靠这个文件。
     logs: log.file,

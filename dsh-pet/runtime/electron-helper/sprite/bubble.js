@@ -50,6 +50,16 @@ Object.assign(PetSprite.prototype, {
     window.__dshPetDebug.tooltipOn = this.tipOn;
   },
   renderBubble() {
+    // 待办面板占气泡槽且优先级最高：它是用户主动打开的窗口，其余气泡一律让位。
+    // 面板是外部塞进来的 DOM，重建 innerHTML 会把它自己抹掉，所以这一段只补显隐与让位。
+    this.bubble.classList.toggle('dsh-pet-todo-bubble', this.todoOpen);
+    if (this.todoOpen) {
+      this.bubble.classList.remove('is-whisper', 'is-clickable', 'is-expanded', S.MEME_BUBBLE_CLASS);
+      this.bubble.classList.add('is-on');
+      window.__dshPetDebug.lastBubbleTitle = '待办事项';
+      this.syncInputBusy();
+      return;
+    }
     // 气泡单槽：同一时刻只显示一个（优先级：终态任务 > 碎碎念/对话 > 余额 > 非终态任务）。
     // 终态任务不让位：完成/失败气泡只活 10s，被顶掉就彻底看不到；非终态气泡常驻，让位零损失。
     // 工作气泡与碎碎念同款样式（宽度自适应 + 自动换行）；配图标记交给 CSS（带图时取消 min-width）。
