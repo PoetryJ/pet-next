@@ -47,4 +47,34 @@ describe('createWindowController', () => {
     controller.quit();
     assert.equal(quits, 1);
   });
+
+  test('宿主回读停在原位时，连续 DIP 增量仍按累计位置写入', () => {
+    const reported: WindowBounds = { x: 100, y: 80, width: 100, height: 80 };
+    const requests: Array<{ x: number; y: number }> = [];
+    const host: WindowHost = {
+      getBounds: () => reported,
+      setPosition(x, y) {
+        requests.push({ x, y });
+      },
+      workAreaFor: () => area,
+      quit() {},
+    };
+    const controller = createWindowController(host);
+    controller.moveBy(0.8, 0);
+    controller.moveBy(0.8, 0);
+    controller.moveBy(0.8, 0);
+    controller.moveBy(0.8, 0);
+    controller.moveBy(0.8, 0);
+    assert.deepEqual(requests, [
+      { x: 101, y: 80 },
+      { x: 102, y: 80 },
+      { x: 102, y: 80 },
+      { x: 103, y: 80 },
+      { x: 104, y: 80 },
+    ]);
+    controller.moveBy(10_000, 0);
+    assert.equal(requests.at(-1)?.x, 710);
+    controller.moveBy(20, 0);
+    assert.equal(requests.at(-1)?.x, 710);
+  });
 });

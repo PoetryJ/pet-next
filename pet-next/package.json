@@ -15,7 +15,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.preload.json --noEmit",
     "lint": "eslint .",
     "test": "node --experimental-strip-types --test --test-reporter spec core/playback/*.test.ts core/interaction/*.test.ts adapters/media/*.test.ts adapters/window/*.test.ts app/*.test.ts tests/boundaries.test.ts",
-    "test:e2e": "node --experimental-strip-types --test --test-reporter spec tests/electron.e2e.test.ts",
+    "test:e2e": "node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/electron.e2e.test.ts tests/drag-scale.e2e.test.ts",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e"
   },
   "pnpm": {
