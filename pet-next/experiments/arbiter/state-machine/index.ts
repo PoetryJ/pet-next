@@ -1,19 +1,15 @@
 /**
- * 显式状态机候选的工厂。Agent E 实现 `step`。
+ * 显式阶段机候选的工厂。一场的状态都在返回值里，工厂本身不保留场次。
+ * 不引入状态机框架，也不读取时钟或宿主。
  * @module pet-next/experiments/arbiter/state-machine
  */
-import type { Arbiter, ArbiterFactory } from '../../../contracts/arbiter.ts';
+import type { ArbiterFactory } from '../../../contracts/arbiter.ts';
+import { initialMachineState, stepMachine, type MachineState } from './machine.ts';
 
-function unimplemented(label: string): Arbiter<unknown> {
-  return {
-    initialState() {
-      throw new Error(`${label} 尚未实现`);
-    },
-    step(_state, _input) {
-      throw new Error(`${label} 尚未实现`);
-    },
-  };
-}
+export type { MachineState };
 
-/** 状态机仲裁。与基线使用同一 {@link ArbiterFactory}。 */
-export const createStateMachine: ArbiterFactory = () => unimplemented('state-machine arbiter');
+/** 状态机仲裁。与基线共用 {@link ArbiterFactory}，可比输出是 decisions 和 queueLength。 */
+export const createStateMachine: ArbiterFactory<MachineState> = () => ({
+  initialState: initialMachineState,
+  step: stepMachine,
+});
