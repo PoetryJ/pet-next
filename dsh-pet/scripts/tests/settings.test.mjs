@@ -16,6 +16,10 @@ const pet = {
   display: 'web',
   position: { corner: 'top-right', marginX: 20, marginY: 20 },
 };
+// readConfigEntries stamps the entry key once a load or sync has finished; the save body keeps that stamp.
+function loadedPets(pets) {
+  return pets.map((item) => ({ ...item, assetRoot: 'main' }));
+}
 const defaults = {
   main: {
     pets: [pet],
@@ -119,10 +123,14 @@ async function open(t, { get = customized, put, post, viewport = { width: 900, h
   return { page, writes };
 }
 
+function saveButton(page) {
+  return page.locator('.dsh-pet-cfg__actions').getByRole('button', { name: 'Save', exact: true });
+}
+
 async function save(page) {
   await Promise.all([
     page.waitForResponse((response) => response.request().method() === 'PUT'),
-    page.getByRole('button', { name: 'Save', exact: true }).first().click(),
+    saveButton(page).click(),
   ]);
 }
 
@@ -135,7 +143,7 @@ test('config save errors: write failures keep edits visible and allow a retry', 
         : route.fulfill({ json: customized }),
   });
   const size = page.locator('input[type="number"]').first();
-  await page.getByRole('button', { name: 'Save', exact: true }).first().waitFor({ state: 'visible' });
+  await saveButton(page).waitFor({ state: 'visible' });
   await size.fill('320');
   await save(page);
   await page
@@ -154,7 +162,11 @@ test('config save errors: write failures keep edits visible and allow a retry', 
 
 test('config save errors: validation failures explain the rejected configuration', async (t) => {
   const { page } = await open(t, {
-    put: (route) => route.fulfill({ status: 400, json: { error: 'invalid pet config' } }),
+    put: (route) =>
+      route.fulfill({
+        status: 200,
+        json: { ok: false, reason: 'bad-request', message: 'invalid pet config' },
+      }),
   });
   await save(page);
   await page
@@ -165,7 +177,7 @@ test('config save errors: validation failures explain the rejected configuration
 
 test('config save errors: network failures display a save error and release the button', async (t) => {
   const { page } = await open(t, { put: (route) => route.abort('failed') });
-  await page.getByRole('button', { name: 'Save', exact: true }).first().click();
+  await saveButton(page).click();
   await page
     .getByText(
       'Failed to save config. Check the server connection, configuration directory write permissions and server log.',
@@ -173,7 +185,7 @@ test('config save errors: network failures display a save error and release the 
     )
     .first()
     .waitFor();
-  assert.equal(await page.getByRole('button', { name: 'Save', exact: true }).first().isEnabled(), true);
+  assert.equal(await saveButton(page).isEnabled(), true);
 });
 
 test('config save errors: sync failures use the sync message', async (t) => {
@@ -200,7 +212,7 @@ test('pending config prevents editing and saving placeholder defaults', async (t
     },
   });
   try {
-    assert.equal(await page.getByRole('button', { name: 'Save', exact: true }).isDisabled(), true);
+    assert.equal(await saveButton(page).isDisabled(), true);
     assert.equal(await page.locator('input[type=text]').first().isDisabled(), true);
     assert.deepEqual(writes, []);
   } finally {
@@ -222,13 +234,15 @@ for (const failure of ['http', 'network', 'malformed', 'null']) {
               ),
     });
     await page.getByRole('alert').waitFor();
-    assert.equal(await page.getByRole('button', { name: 'Save', exact: true }).isDisabled(), true);
+    assert.equal(await saveButton(page).isDisabled(), true);
     assert.deepEqual(writes, []);
     fail = false;
     await page.getByRole('button', { name: 'Retry', exact: true }).click();
     await save(page);
     assert.equal(writes.length, 1);
-    for (const [key, value] of Object.entries(customized.main)) assert.deepEqual(writes[0][key], value, key);
+    for (const [key, value] of Object.entries(customized.main)) {
+      assert.deepEqual(writes[0][key], key === 'pets' ? loadedPets(value) : value, key);
+    }
   });
 }
 
@@ -240,14 +254,16 @@ test('Sync updates all controls so a subsequent Save preserves the restored defa
   await page.getByRole('button', { name: 'Sync', exact: true }).last().click();
   await save(page);
   assert.equal(writes.length, 2);
-  for (const [key, value] of Object.entries(defaults.main)) assert.deepEqual(writes[1][key], value, key);
+  for (const [key, value] of Object.entries(defaults.main)) {
+    assert.deepEqual(writes[1][key], key === 'pets' ? loadedPets(value) : value, key);
+  }
 });
 
 test('fresh config refreshes the pet list instead of saving an old bridge snapshot', async (t) => {
   const fresh = { main: { ...customized.main, pets: [{ ...pet, name: 'Updated elsewhere', size: 360 }] } };
   const { page, writes } = await open(t, { get: fresh });
   await save(page);
-  assert.deepEqual(writes[0].pets, fresh.main.pets);
+  assert.deepEqual(writes[0].pets, loadedPets(fresh.main.pets));
 });
 
 for (const lang of ['en', 'zh']) {
@@ -274,19 +290,26 @@ for (const lang of ['en', 'zh']) {
 
 test('model picker remains anchored while the responsive settings panel is scrolled', async (t) => {
   const { page, writes } = await open(t, { viewport: { width: 900, height: 700 } });
-  const trigger = page.locator('.dsh-pet-mp__trigger').first();
+  const whisper = page.locator('.dsh-pet-cfg__field').filter({ hasText: 'Whisper model' });
+  const trigger = whisper.getByRole('button', { name: 'Select model, current Model', exact: true });
   await trigger.click();
-  const panel = page.getByRole('menu');
+  const panel = page.getByRole('menu', { name: 'Whisper model', exact: true });
   await panel.waitFor();
-  for (const scrollY of [0, 120]) {
-    await page.evaluate((y) => window.scrollTo(0, y), scrollY);
+  // The voice and font cards sit above this field, so y=0 leaves the trigger below the fold.
+  // Scroll so the trigger stays on screen: high enough to open downward, low enough to flip upward.
+  const anchor = await trigger.evaluate((el) => el.getBoundingClientRect().top + window.scrollY);
+  for (const triggerTop of [80, 520]) {
+    await page.evaluate((y) => window.scrollTo(0, Math.max(0, y)), anchor - triggerTop);
     await page.waitForFunction(() => {
-      const trigger = document.querySelector('.dsh-pet-mp__trigger').getBoundingClientRect();
-      const panel = document.querySelector('.dsh-pet-mp__panel').getBoundingClientRect();
-      return Math.abs(panel.left - trigger.left) < 2 && panel.top >= 0 && panel.bottom <= innerHeight;
+      const panel = document.querySelector('.dsh-pet-mp__panel[role="menu"]');
+      const trigger = panel?.closest('.dsh-pet-mp')?.querySelector('.dsh-pet-mp__trigger');
+      if (!panel || !trigger) return false;
+      const panelBox = panel.getBoundingClientRect();
+      const triggerBox = trigger.getBoundingClientRect();
+      return Math.abs(panelBox.left - triggerBox.left) < 2 && panelBox.top >= 0 && panelBox.bottom <= innerHeight;
     });
   }
-  await page.getByRole('menuitemradio', { name: 'Follow current conversation' }).click();
+  await panel.getByRole('menuitemradio', { name: 'Follow current conversation', exact: true }).click();
   await save(page);
   assert.deepEqual(writes[0].whisperModel, { provider: '', model: '' });
 });
