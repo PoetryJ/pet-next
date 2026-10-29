@@ -24,6 +24,7 @@ export * from './score.ts';
 export * from './score-popup.ts';
 export * from './work-status.ts';
 export * from './state.ts';
+export * from './playback-lifecycle.ts';
 export * from './todo/index.ts';
 export * from './tooltip.ts';
 export * from './voice.ts';

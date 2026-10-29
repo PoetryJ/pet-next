@@ -5,6 +5,7 @@
  * @module dsh-pet/src/client/pet/card/animation
  */
 import { createOwnAnimation, type OwnAnimation, type OwnAnimationDeps } from '../animation/animation.ts';
+import { isPlaybackCueEcho, type PlaybackCueIdentity } from '../../../shared/playback-lifecycle.ts';
 import { registerPose } from '../../pose.ts';
 import { registerProgress } from '../../progress.ts';
 import { boxToRatio, centerToBox, clampReachableBox, derivePetMetrics } from '../motion/geometry.ts';
@@ -14,6 +15,27 @@ import type { RuntimePet } from '../types.ts';
 import type { LockState } from '../../../shared/state.ts';
 import type { WorkStatusSnapshot } from '../../../shared/work-status.ts';
 import type * as ReactNS from 'react';
+
+/**
+ * 把一次 cue 状态交给动画链。
+ *
+ * 编号从有值被清成 null、且 anim / once / seq 都没变，是消费编号后的 React 回声，不再 switchTo。
+ * 真实点击、自播和 seq 变化会执行。
+ *
+ * @param prev - 上一次 effect 看到的身份；首次为 null。
+ * @param next - 这一次渲染的身份。
+ * @param run - 真正换源。
+ * @returns 记下来的身份，调用方写回 ref。
+ */
+export function applyPlaybackCue(
+  prev: PlaybackCueIdentity | null,
+  next: PlaybackCueIdentity,
+  run: (cue: PlaybackCueIdentity) => void,
+): PlaybackCueIdentity {
+  if (prev !== null && isPlaybackCueEcho(prev, next)) return next;
+  run(next);
+  return next;
+}
 
 /** 注入的 react 能力。 */
 export interface CardAnimationRuntime {
@@ -88,11 +110,15 @@ export function createCardAnimation(rt: CardAnimationRuntime) {
     live.current.ownAnim = ownAnim;
 
     const { anim, cuePlayback, once, seq } = card.state;
+    const cuePrev = useRef<PlaybackCueIdentity | null>(null);
 
-    // 状态驱动播放。
+    // 状态驱动播放。clearCuePlayback 会把编号清成 null 再跑一趟，那一趟是回声。
     useEffect(() => {
-      ownAnim.switchTo(anim, once, cuePlayback);
-      // eslint-disable-next-line react-hooks/exhaustive-deps -- 依赖由 anim/once/seq/cuePlayback 的换源身份决定；ownAnim 是稳定引用，补它没有意义
+      const next = { anim, once, seq, cuePlayback };
+      cuePrev.current = applyPlaybackCue(cuePrev.current, next, (cue) => {
+        ownAnim.switchTo(cue.anim, cue.once, cue.cuePlayback);
+      });
+      // eslint-disable-next-line react-hooks/exhaustive-deps -- 依赖由 anim/once/seq/cuePlayback 的换源身份决定；ownAnim 与 cuePrev 是稳定引用
     }, [anim, once, seq, cuePlayback]);
 
     useEffect(() => {

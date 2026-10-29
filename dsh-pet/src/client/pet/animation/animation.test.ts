@@ -1,8 +1,8 @@
 /**
  * 自播动画链（src/client/pet/animation/animation.ts）的契约测试：假 video、假素材加载器、假 fetch。
  *
- * 四条契约：防重命中仍回 playing；换源会丢弃被新切换覆盖的迟到加载；
- * 首帧就位才翻前台并上报 playing；冻结与打断如实回 cancelled（且只回一次）。
+ * 四条契约：play() 兑现前不许回 playing；新编号即使同名也重新加载；
+ * 换源会丢弃被新切换覆盖的迟到加载；冻结与打断如实回 cancelled（且只回一次）。
  */
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -179,14 +179,59 @@ describe('createOwnAnimation —— 换源与回执', () => {
     assert.equal(h.anim.frontVideo(), h.videoB);
   });
 
-  test('防重命中：上一次换源还挂着时重复请求，不重新取素材但如实回 playing', () => {
+  test('挂起中的新编号覆盖旧请求：重新加载，play() 兑现前不回 playing', async () => {
     const h = harness();
     h.anim.switchTo('idle1', true, 'pb-1');
-    // 首帧还没到就又来了同一条请求（点播编号随 state 变化会再驱动一次 effect）。
-    h.reports.length = 0;
     h.anim.switchTo('idle1', true, 'pb-2');
-    assert.equal(h.loader.requests.length, 1, '同一段已在播，不该再取一次素材');
-    assert.deepEqual(h.reports, [{ id: 'pb-2', status: 'playing', reason: undefined }]);
+    assert.equal(h.loader.requests.length, 2, '新编号即使动画相同也要重新取素材');
+    assert.equal(h.videoB.playCalls, 0);
+    assert.deepEqual(
+      h.reports.filter((report) => report.status === 'playing'),
+      [],
+      'play() 之前不能是 playing',
+    );
+    assert.deepEqual(h.reports, [{ id: 'pb-1', status: 'cancelled', reason: 'superseded' }]);
+    h.loader.requests[0].handlers.onObjectUrl('blob:stale');
+    assert.deepEqual(h.loader.released, ['blob:stale']);
+    h.loader.requests[1].handlers.onObjectUrl('blob:fresh');
+    h.videoB.fire('loadeddata');
+    assert.equal(h.videoB.playCalls, 1);
+    assert.deepEqual(
+      h.reports.filter((report) => report.status === 'playing'),
+      [],
+      'loadeddata 只允许开始 play，还不是 playing',
+    );
+    await Promise.resolve();
+    assert.deepEqual(h.reports[h.reports.length - 1], { id: 'pb-2', status: 'playing', reason: undefined });
+    h.anim.handleEnded({ currentTarget: h.videoB } as unknown as Event);
+    assert.deepEqual(h.reports[h.reports.length - 1], { id: 'pb-2', status: 'ended', reason: undefined });
+    assert.equal(h.reports.filter((report) => report.id === 'pb-2' && report.status === 'playing').length, 1);
+  });
+
+  test('挂起中的新编号遇到加载失败：失败记在当前编号，不能停在提前的 playing', () => {
+    const h = harness();
+    h.anim.switchTo('idle1', true, 'pb-1');
+    h.anim.switchTo('idle1', true, 'pb-2');
+    h.loader.requests[0].handlers.onError(new Error('迟到的第一次失败'));
+    h.loader.requests[1].handlers.onError(new Error('第二次失败'));
+    assert.equal(h.videoB.playCalls, 0);
+    assert.deepEqual(
+      h.reports.filter((report) => report.id === 'pb-2'),
+      [{ id: 'pb-2', status: 'failed', reason: 'asset-load' }],
+    );
+    assert.equal(
+      h.reports.some((report) => report.status === 'playing'),
+      false,
+    );
+    assert.equal(h.anim.playingPlayback(), null);
+  });
+
+  test('同一编号重复提交：不重复加载，也不重复回执', () => {
+    const h = harness();
+    h.anim.switchTo('idle1', true, 'pb-1');
+    h.anim.switchTo('idle1', true, 'pb-1');
+    assert.equal(h.loader.requests.length, 1);
+    assert.deepEqual(h.reports, []);
   });
 
   test('被新切换覆盖的迟到加载：拿到的地址立即释放，不写进元素', () => {
@@ -228,11 +273,12 @@ describe('createOwnAnimation —— 换源与回执', () => {
 });
 
 describe('createOwnAnimation —— 播完与冻结', () => {
-  test('播完先回 ended，再按动画池给判定', () => {
+  test('播完先回 ended，再按动画池给判定', async () => {
     const h = harness();
     h.anim.switchTo('idle1', true, 'pb-1');
     h.loader.requests[0].handlers.onObjectUrl('blob:1');
     h.videoB.fire('loadeddata');
+    await Promise.resolve();
     h.setCurrentAnim('idle1');
     const cue = h.anim.handleEnded({ currentTarget: h.videoB } as unknown as Event);
     assert.deepEqual(h.reports[h.reports.length - 1], { id: 'pb-1', status: 'ended', reason: undefined });
@@ -245,26 +291,29 @@ describe('createOwnAnimation —— 播完与冻结', () => {
     assert.deepEqual(cue, { kind: 'ignore' });
   });
 
-  test('拖拽中不推进动画链（但回执照旧）', () => {
+  test('拖拽中不推进动画链（但回执照旧）', async () => {
     const h = harness();
     h.anim.switchTo('idle1', true, 'pb-1');
     h.loader.requests[0].handlers.onObjectUrl('blob:1');
     h.videoB.fire('loadeddata');
+    await Promise.resolve();
     h.setDragging(true);
     const cue = h.anim.handleEnded({ currentTarget: h.videoB } as unknown as Event);
     assert.deepEqual(cue, { kind: 'ignore' });
     assert.deepEqual(h.reports[h.reports.length - 1], { id: 'pb-1', status: 'ended', reason: undefined });
   });
 
-  test('冻结：暂停前台并如实回 cancelled；解冻只翻转状态', () => {
+  test('冻结：暂停前台并如实回 cancelled；解冻只翻转状态', async () => {
     const h = harness();
     h.anim.switchTo('idle1', true, 'pb-1');
     h.loader.requests[0].handlers.onObjectUrl('blob:1');
     h.videoB.fire('loadeddata');
     const frozen = h.anim.setFrozen(true);
+    await Promise.resolve();
     assert.deepEqual(frozen, { kind: 'frozen' });
     assert.equal(h.videoB.paused, true, '冻结要把前台暂停');
-    assert.deepEqual(h.reports[h.reports.length - 1], { id: 'pb-1', status: 'cancelled', reason: 'frozen' });
+    assert.deepEqual(h.reports, [{ id: 'pb-1', status: 'cancelled', reason: 'frozen' }]);
+    assert.equal(h.anim.playingPlayback(), null);
     assert.equal(h.anim.isFrozen(), true);
     assert.deepEqual(h.anim.setFrozen(false), { kind: 'resumed' });
     assert.equal(h.anim.setFrozen(false), null, '没翻转就不该再报');

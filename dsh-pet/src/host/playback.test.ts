@@ -224,6 +224,24 @@ describe('playback —— 新点播顶掉旧场（pets.<id>.anim 是单叶子）
     assert.equal(store.get(b.playbackId)?.status, 'accepted');
   });
 
+  test('playing 仍占着当前场：新点播能取消它，旧编号的迟到回执清不掉新场', () => {
+    const store = new PlaybackStore();
+    const first = store.create('main', 'A');
+    assert.equal(store.report(first.playbackId, 'playing'), 'ok');
+    const second = store.create('main', 'B');
+    assert.equal(store.get(first.playbackId)?.status, 'cancelled');
+    assert.equal(store.get(first.playbackId)?.reason, 'superseded');
+    assert.equal(store.get(second.playbackId)?.status, 'accepted');
+    assert.equal(store.report(first.playbackId, 'ended'), 'ignored');
+    assert.equal(store.report(first.playbackId, 'failed', 'asset-load'), 'ignored');
+    store.report(second.playbackId, 'playing');
+    const third = store.create('main', 'C');
+    assert.equal(store.get(second.playbackId)?.status, 'cancelled', 'playing 之后的新请求仍然顶得掉当前场');
+    assert.equal(store.get(third.playbackId)?.status, 'accepted');
+    assert.equal(store.report(second.playbackId, 'ended'), 'ignored');
+    assert.equal(store.get(third.playbackId)?.status, 'accepted', '旧请求的迟到回执不能把新请求清出索引');
+  });
+
   test('已终态的那一场不会被后续点播再标记', () => {
     const store = new PlaybackStore();
     const first = store.create('main', 'A');

@@ -98,6 +98,7 @@ class PetSprite {
   }
 
   dispose() {
+    if (typeof this.disposePlayback === 'function') this.disposePlayback();
     this.ac.abort();
     this.inputRegionMutation.disconnect();
     this.inputRegionResize.disconnect();

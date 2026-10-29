@@ -72,9 +72,10 @@ export class PlaybackStore {
   declare private readonly records: Map<string, PlaybackRecord>;
   declare private readonly waiters: Map<string, Set<Waiter>>;
   /**
-   * 每只宠物当前未终态的那一场。
+   * 每只宠物当前未终态的那一场，含已经在播的 `playing`。
    * `pets.<id>.anim` 是单叶子（同一宠物同时只有一场点播），所以新点播受理时直接把上一场标成
    * cancelled/superseded——这是确定性事实，不必等渲染端上报。
+   * `playing` 不摘索引：摘了的话下一场受理就找不到这场，迟到回执也不能靠「索引还指着谁」来保护新场。
    */
   declare private readonly activeByPet: Map<string, string>;
   /** 编号自增段（与时间戳一起构成运行内唯一编号）。 */
@@ -213,8 +214,9 @@ export class PlaybackStore {
   }
 
   /**
-   * 落到一个终态：写状态、更新时间、摘掉「当前活跃」、唤醒在等这个状态的人。
+   * 写入一个状态：更新时间、按需摘掉「当前活跃」、唤醒在等这个状态的人。
    * 这是唯一的状态写入点，所以等待者唤醒只在这里发生（不需要 diff、不需要比对）。
+   * 只有终态且索引仍指向该编号才摘：`playing` 留在索引里，旧编号的迟到写入也不能摘掉新编号。
    */
   private finish(playbackId: string, status: PlaybackStatus, reason?: string): void {
     const record = this.records.get(playbackId);
@@ -223,7 +225,9 @@ export class PlaybackStore {
     record.updatedAt = Date.now();
     if (status === 'ended') record.endedAt = record.updatedAt;
     if (reason !== undefined) record.reason = reason;
-    if (this.activeByPet.get(record.petId) === playbackId) this.activeByPet.delete(record.petId);
+    if (isTerminalStatus(status) && this.activeByPet.get(record.petId) === playbackId) {
+      this.activeByPet.delete(record.petId);
+    }
     const set = this.waiters.get(playbackId);
     if (!set) return;
     for (const waiter of [...set]) {

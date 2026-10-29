@@ -2,101 +2,199 @@
  * 播放状态机：换源、前后台交替、收尾、冻结与占用锁、空闲随机链。
  *
  * PetSprite 由 sprite.js 定义，本文件只往原型上挂方法，必须在其后加载。
- * 只读实例状态与 shared-core 的选池函数，副作用是 DOM 视频源与 this.* 字段。
+ * 请求身份、世代与阶段用 shared-core 的 reducePlayback；这里只执行加载、play、清理和上报。
+ * 迟到的 loadeddata 必须带上当时的 generation。pending 被清空不能当成放行条件。
  * @module dsh-pet/runtime/electron-helper/sprite-playback
  */
 'use strict';
 
+const PLAYBACK_LOAD_TIMEOUT_MS = 10000;
+
 Object.assign(PetSprite.prototype, {
-  switchTo(next, nextOnce, playbackId, url) {
-    if (!next) return;
-    const pending = this.pending;
-    if (pending && pending.anim === next && pending.once === nextOnce) {
-      // 防重命中（单动画点击时目标=当前动画，不重播）：仍消费 Q 弹标记，压当前前台视频，
-      // 保证「点击唯一动画」时挤压反馈不丢（与浏览器同构）。
-      if (this.pendingSquash) {
-        this.pendingSquash = false;
-        this.startSquash(this.front === 0 ? this.videoA : this.videoB);
+  ensurePlaybackLife() {
+    if (!this.playbackLife) this.playbackLife = S.initialPlaybackState();
+    return this.playbackLife;
+  },
+
+  dispatchPlayback(event) {
+    const reduced = S.reducePlayback(this.ensurePlaybackLife(), event);
+    this.playbackLife = reduced.state;
+    const id = reduced.state.request && reduced.state.request.playbackId;
+    this.playback = reduced.state.phase === 'playing' && id ? id : null;
+    for (let i = 0; i < reduced.effects.length; i += 1) this.applyPlaybackEffect(reduced.effects[i]);
+  },
+
+  applyPlaybackEffect(effect) {
+    if (effect.type === 'load') this.loadPlayback(effect);
+    else if (effect.type === 'play') this.playPlayback(effect.generation);
+    else if (effect.type === 'abort') this.abortPlayback(effect.generation);
+    else if (effect.type === 'pause') {
+      const el = this.front === 0 ? this.videoA : this.videoB;
+      if (el) el.pause();
+    } else if (effect.type === 'cleanup') {
+      this.abortPlayback(this.playbackLife ? this.playbackLife.generation : 0);
+      this.playbackSlot = null;
+    } else if (effect.type === 'report') {
+      if (effect.status === 'failed' && effect.reason !== 'play-rejected') {
+        console.warn(
+          '[dsh-pet] 素材加载失败 pet=' +
+            this.pet.id +
+            ' anim=' +
+            (this.playbackAnimName || '') +
+            '：' +
+            effect.reason +
+            '（已释放本次切换）',
+        );
       }
-      // 这次点播的目标本来就在播（没换源但确实在播）→ 如实回 playing，否则调用方只能干等 timeout
-      if (playbackId) {
-        this.playback = playbackId;
-        this.reportPlayback(playbackId, 'playing');
-      }
+      this.reportPlayback(effect.playbackId, effect.status, effect.reason);
+    }
+  },
+
+  schedulePlayback(fn, ms) {
+    if (typeof this.scheduleTimeout === 'function') return this.scheduleTimeout(fn, ms);
+    return window.setTimeout(fn, ms);
+  },
+
+  clearScheduledPlayback(handle) {
+    if (handle == null) return;
+    if (typeof this.clearScheduledTimeout === 'function') {
+      this.clearScheduledTimeout(handle);
       return;
     }
-    const gen = ++this.gen;
-    this.pending = { anim: next, once: nextOnce, gen };
-    const target = this.front === 0 ? this.videoB : this.videoA;
-    const el = target;
-    if (!el) return;
-    // 素材地址两条路：url 形态直接用第三方给的完整地址（宿主已把 scheme 卡在 http/https，
-    // 不经 bridge、也不拼 BASE）；name 形态按「素材根 + 名字」拼。
-    el.src = url || this.assetBase + encodeURIComponent(next) + (S.ANIMATION_EXT || '.webm');
-    el.loop = !nextOnce;
+    window.clearTimeout(handle);
+  },
+
+  abortPlayback(generation) {
+    if (this.playbackTimerGeneration === generation) {
+      this.clearScheduledPlayback(this.playbackTimer);
+      this.playbackTimer = null;
+      this.playbackTimerGeneration = 0;
+    }
+    const slot = this.playbackSlot;
+    if (!slot || slot.generation !== generation) return;
+    slot.el.removeEventListener('loadeddata', slot.onReady);
+    slot.el.onerror = null;
+    slot.el.onended = null;
+    this.playbackSlot = null;
+  },
+
+  loadPlayback(effect) {
+    const generation = effect.generation;
+    const request = effect.request;
+    const el = this.front === 0 ? this.videoB : this.videoA;
+    if (!el) {
+      this.dispatchPlayback({ type: 'failed', generation, reason: 'asset-load' });
+      return;
+    }
+    el.src = request.asset.url;
+    el.loop = !request.asset.once;
     el.muted = true;
     el.autoplay = true;
     el.playsInline = true;
-    el.onended = nextOnce ? () => this.handleEnded() : null;
-    // 加载兜底（同浏览器端 10s 超时）：素材加载失败或卡住时必须释放 pending，否则它永久挂起——
-    // 相同目标会被防重分支吞掉、不同目标靠 gen 覆盖，表现就是「点了没反应」。
-    const loadGuard = (why) => {
-      if (!this.pending || this.pending.gen !== gen) return;
-      this.pending = null;
-      console.warn('[dsh-pet] 素材加载失败 pet=' + this.pet.id + ' anim=' + next + '：' + why + '（已释放本次切换）');
-      // 播放回执：这一段没能播起来 → 如实回 failed（而不是让调用方干等到 timeout）
-      if (playbackId) {
-        if (this.playback === playbackId) this.playback = null;
-        this.reportPlayback(playbackId, 'failed', why === 'video error' ? 'decode-error' : 'asset-load');
-      }
-    };
-    const loadTimer = window.setTimeout(() => loadGuard('10s 超时'), 10000);
-    el.onerror = () => {
-      window.clearTimeout(loadTimer);
-      loadGuard('video error');
-    };
-    el.load();
+    el.onended = request.asset.once ? () => this.handleEnded() : null;
     const onReady = () => {
       el.removeEventListener('loadeddata', onReady);
-      window.clearTimeout(loadTimer);
-      el.onerror = null;
-      if (this.pending && this.pending.gen !== gen) return;
-      const old = this.front === 0 ? this.videoA : this.videoB;
-      el.classList.add('is-front');
-      if (old && old !== el) {
-        old.classList.remove('is-front');
-        old.onended = null;
-        old.pause();
-        // 被换下去的那一段若属第三方点播且没播完 → 如实回 cancelled（被新点播顶掉由宿主受理时标记，
-        // 这里补的是点击/拖拽/碎碎念/余额/工作状态/空闲回收这类非点播打断）。
-        if (this.playback && this.playback !== playbackId) {
-          this.reportPlayback(this.playback, 'cancelled', 'superseded');
-        }
-      }
-      this.front = this.front === 0 ? 1 : 0;
-      this.pending = null;
-      this.playback = playbackId || null;
-      el.style.transform = this.facing === 'right' ? 'scaleX(-1)' : '';
-      el.play()
-        .then(() => {
-          // 只有 play() 兑现才代表确实开始出画（loadeddata 只代表可解码）
-          if (playbackId) this.reportPlayback(playbackId, 'playing');
-        })
-        .catch(() => {
-          // 自动播放被拒 / 元素不可播：如实回 failed，不改播放控制
-          if (!playbackId) return;
-          if (this.playback === playbackId) this.playback = null;
-          this.reportPlayback(playbackId, 'failed', 'play-rejected');
-        });
-      // 点击 Q 弹：等新动画就位后才压（压的是新点击动画的首帧，与浏览器一致）
-      if (this.pendingSquash) {
-        this.pendingSquash = false;
-        this.startSquash(el);
-      }
-      if (this.pendingMove) this.startMoveDrive(el);
+      // 世代和阶段一起看。pending 已经是 null（失败、替换或播完）时也不能把这一代救回来。
+      if (!this.playbackLife || this.playbackLife.generation !== generation || this.playbackLife.phase !== 'loading')
+        return;
+      this.dispatchPlayback({ type: 'loaded', generation });
     };
+    const onError = () => {
+      if (!this.playbackLife || this.playbackLife.generation !== generation) return;
+      const phase = this.playbackLife.phase;
+      if (phase !== 'loading' && phase !== 'ready' && phase !== 'playing') return;
+      const code = el.error && el.error.code;
+      const reason = code === 2 || code === 4 ? 'asset-load' : 'decode-error';
+      this.dispatchPlayback({ type: 'failed', generation, reason });
+    };
+    el.onerror = onError;
+    this.playbackTimerGeneration = generation;
+    this.playbackTimer = this.schedulePlayback(() => {
+      this.playbackTimer = null;
+      if (!this.playbackLife || this.playbackLife.generation !== generation || this.playbackLife.phase !== 'loading')
+        return;
+      this.dispatchPlayback({ type: 'failed', generation, reason: 'timeout' });
+    }, PLAYBACK_LOAD_TIMEOUT_MS);
+    this.playbackSlot = { generation, el, onReady };
     el.addEventListener('loadeddata', onReady);
+    el.load();
     if (el.readyState >= 2) onReady();
+  },
+
+  playPlayback(generation) {
+    const slot = this.playbackSlot;
+    if (!slot || slot.generation !== generation) return;
+    if (this.playbackTimerGeneration === generation) {
+      this.clearScheduledPlayback(this.playbackTimer);
+      this.playbackTimer = null;
+      this.playbackTimerGeneration = 0;
+    }
+    const el = slot.el;
+    const old = this.front === 0 ? this.videoA : this.videoB;
+    el.classList.add('is-front');
+    if (old && old !== el) {
+      old.classList.remove('is-front');
+      old.onended = null;
+      old.onerror = null;
+      old.pause();
+    }
+    this.front = this.front === 0 ? 1 : 0;
+    el.style.transform = this.facing === 'right' ? 'scaleX(-1)' : '';
+    const settle = (ok) => {
+      if (!this.playbackLife || this.playbackLife.generation !== generation || this.playbackLife.phase !== 'ready')
+        return;
+      this.dispatchPlayback({ type: 'playResolved', generation, ok });
+    };
+    let played;
+    try {
+      played = el.play();
+    } catch {
+      settle(false);
+      played = null;
+    }
+    if (played && typeof played.then === 'function') {
+      played.then(
+        () => settle(true),
+        () => settle(false),
+      );
+    } else if (played !== null) {
+      settle(true);
+    }
+    if (this.pendingSquash) {
+      this.pendingSquash = false;
+      this.startSquash(el);
+    }
+    if (this.pendingMove) this.startMoveDrive(el);
+  },
+
+  disposePlayback() {
+    if (this.playbackDisposed) return;
+    this.playbackDisposed = true;
+    this.ensurePlaybackLife();
+    this.dispatchPlayback({ type: 'dispose' });
+  },
+
+  switchTo(next, nextOnce, playbackId, url) {
+    if (!next) return;
+    if (this.playbackDisposed) return;
+    // 素材地址两条路：url 形态直接用第三方给的完整地址（宿主已把 scheme 卡在 http/https，
+    // 不经 bridge、也不拼 BASE）；name 形态按「素材根 + 名字」拼。身份含这条实际地址和 once。
+    const assetUrl = url || this.assetBase + encodeURIComponent(next) + (S.ANIMATION_EXT || '.webm');
+    this.playbackAnimName = next;
+    const before = this.ensurePlaybackLife();
+    const generation = before.generation;
+    const phase = before.phase;
+    this.dispatchPlayback({
+      type: 'begin',
+      request: { playbackId: playbackId || null, asset: { url: assetUrl, once: !!nextOnce } },
+    });
+    const after = this.playbackLife;
+    if (after.generation === generation && after.phase === phase && this.pendingSquash) {
+      // 同一当前请求的重复提交不重新加载，但点击挤压仍然落在当前前台。
+      this.pendingSquash = false;
+      const frontEl = this.front === 0 ? this.videoA : this.videoB;
+      if (frontEl) this.startSquash(frontEl);
+    }
   },
 
   playOnce(name, playbackId, url) {
@@ -131,14 +229,9 @@ Object.assign(PetSprite.prototype, {
       // 那个入口要等动画播完才被调用。
       this.stopMove();
       if (el) el.pause();
-      // 播放回执：冻结打断了正在播的第三方点播 → 如实回 cancelled，而不是让它一直挂着 playing
-      // （挂 wait=ended 的调用方会白等一个 timeout）。解冻走的是回 idle/恢复档位，不会把它接回来。
-      // 先清 this.playback 再上报，免得后续换源又当成「被顶掉」再报一次。
-      const interrupted = this.playback;
-      if (interrupted) {
-        this.playback = null;
-        this.reportPlayback(interrupted, 'cancelled', 'frozen');
-      }
+      // 冻结打断正在进行的点播。解冻不接回来。显式点播不走这里，仍然可以 begin。
+      this.ensurePlaybackLife();
+      this.dispatchPlayback({ type: 'cancel', reason: 'frozen' });
       // 任务状态气泡：锁一生效就收掉，解冻不补亮
       if (this.workTimer !== null) window.clearTimeout(this.workTimer);
       this.workTimer = null;
@@ -213,12 +306,12 @@ Object.assign(PetSprite.prototype, {
 
   handleEnded() {
     // 播放回执：前台视频真的播完了 → 如实回 ended。放在拖拽守卫之前——「播完了」是既成事实，
-    // 拖拽守卫管的是动画链怎么推进，不该影响回执的准确性。
-    if (this.playback) {
-      const done = this.playback;
-      this.playback = null; // 先清再上报：后续链式换源不该把它当成「被打断」
-      this.reportPlayback(done, 'ended');
-    }
+    // 拖拽守卫管的是动画链怎么推进，不该影响回执的准确性。play 还没兑现时不把这一段收成 ended。
+    const life = this.playbackLife;
+    if (!life || life.phase !== 'playing') return;
+    const generation = life.generation;
+    this.dispatchPlayback({ type: 'ended', generation });
+    if (!this.playbackLife || this.playbackLife.phase !== 'ended') return;
     if (this.dragState.active) return;
     // 占用锁：冻结期间动画链一律不推进，事件动画播完就停在最后一帧。下面几条路都会换源播放，
     // 而它们读的是实时 workState、与 workTick 无关，onWorkTick 的门禁拦不住——尤其「事件动画播完

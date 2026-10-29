@@ -2,7 +2,7 @@
  * 一张宠物卡的响应式状态与写入口：动画、朝向、拖拽态、提示与自定义位置。
  * 不负责派生几何（geometry 负责）与驱动实例（由装配根持有），也不做任何判定。
  * 依赖注入的 react；状态只在卡内使用，跨卡不共享。
- * 不变量：anim / once / seq 三者共同决定是否换源，只改其中一个会走进防重分支。
+ * 不变量：anim / once / seq / cuePlayback 一起决定是否换源。编号被清成 null 且前三者未变时是回声，不换源。
  * @module dsh-pet/src/client/pet/card/state
  */
 import type { Center } from '../motion/geometry.ts';
