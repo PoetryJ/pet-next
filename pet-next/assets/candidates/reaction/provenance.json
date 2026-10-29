@@ -1,0 +1,69 @@
+{
+  "originalRepoPath": "dsh-pet/assets/webm/点击回应-元气挥手.webm",
+  "sourceSha256": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776",
+  "outputSha256": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776",
+  "sourceMatchesOriginalBytes": true,
+  "webmStep": "byte-copy",
+  "encodeFilter": null,
+  "bannedFiltersUsed": false,
+  "defaultProductPath": "assets/reaction.webm",
+  "defaultReplaced": false,
+  "note": "候选是母版「点击回应-元气挥手」的字节副本，alpha 来自母版，没有色键，也没有删除近黑。它不是对 assets/reaction.webm 的修复。默认产品路径仍是锁定的 assets/reaction.webm；换上候选要另经 preview 与文档，本分支不改接线。",
+  "plateFrames": [
+    {
+      "frameIndex": 62,
+      "darkForegroundVisible": true
+    },
+    {
+      "frameIndex": 84,
+      "darkForegroundVisible": true
+    }
+  ],
+  "verdict": "pass",
+  "shipped": {
+    "path": "assets/reaction.webm",
+    "sha256": "9d73e16ca8d9abcfff96a41d9e98f632a241691ddf81b59538b16a6e77049861",
+    "frames": [
+      {
+        "frameIndex": 0,
+        "maxAlpha": 113,
+        "usableAlpha": false,
+        "darkForegroundVisible": "unobserved",
+        "plates": [
+          {
+            "background": "light",
+            "imagePath": "assets/candidates/reaction/shipped-plates/frame-0-light.png"
+          },
+          {
+            "background": "dark",
+            "imagePath": "assets/candidates/reaction/shipped-plates/frame-0-dark.png"
+          },
+          {
+            "background": "checker",
+            "imagePath": "assets/candidates/reaction/shipped-plates/frame-0-checker.png"
+          }
+        ]
+      },
+      {
+        "frameIndex": 12,
+        "maxAlpha": 120,
+        "usableAlpha": false,
+        "darkForegroundVisible": "unobserved",
+        "plates": [
+          {
+            "background": "light",
+            "imagePath": "assets/candidates/reaction/shipped-plates/frame-12-light.png"
+          },
+          {
+            "background": "dark",
+            "imagePath": "assets/candidates/reaction/shipped-plates/frame-12-dark.png"
+          },
+          {
+            "background": "checker",
+            "imagePath": "assets/candidates/reaction/shipped-plates/frame-12-checker.png"
+          }
+        ]
+      }
+    ]
+  }
+}
