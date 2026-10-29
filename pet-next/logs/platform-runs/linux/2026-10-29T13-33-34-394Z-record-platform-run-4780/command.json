@@ -1,0 +1,16 @@
+{
+  "executable": "node",
+  "args": [
+    "--experimental-strip-types",
+    "--test",
+    "--test-reporter",
+    "spec",
+    "tests/cleanup.test.ts",
+    "tests/support/process-tree.test.ts",
+    "tests/support/process-table.test.ts",
+    "tests/support/run-record.test.ts",
+    "tests/support/record-cli.test.ts"
+  ],
+  "cwd": "/workspace/pet-next",
+  "platform": "linux"
+}

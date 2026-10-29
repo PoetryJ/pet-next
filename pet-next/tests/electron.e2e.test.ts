@@ -3,7 +3,7 @@
  * 断言窗口位置和进程退出；页面状态用调试端口读取，不扩大 preload。
  */
 import assert from 'node:assert/strict';
-import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
+import type { ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { mkdtemp, rm } from 'node:fs/promises';
 import net from 'node:net';
@@ -11,6 +11,9 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+
+import { pidIsAlive } from './support/process-table.ts';
+import { startTrackedRun, type TrackedRun } from './support/tracked-run.ts';
 
 const petRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const require = createRequire(path.join(petRoot, 'package.json'));
@@ -54,6 +57,7 @@ interface Cdp {
 
 interface RunningApp {
   child: ChildProcess;
+  tracked: TrackedRun;
   userData: string;
   stdout: () => string;
   stderr: () => string;
@@ -78,17 +82,6 @@ function freePort(): Promise<number> {
       server.close(() => resolve(port));
     });
   });
-}
-
-function electronPids(): Set<number> {
-  const out = execFileSync('ps', ['-eo', 'pid,comm'], { encoding: 'utf8' });
-  const ids = new Set<number>();
-  for (const line of out.split('\n')) {
-    const match = /^\s*(\d+)\s+(\S+)/.exec(line);
-    const command = match?.[2];
-    if (match?.[1] && command && /electron/i.test(command)) ids.add(Number(match[1]));
-  }
-  return ids;
 }
 
 function jsonObjects(text: string): Array<Record<string, unknown>> {
@@ -177,11 +170,10 @@ async function waitForPageSocket(port: number): Promise<string> {
 async function launch(extraEnv: Record<string, string>): Promise<RunningApp> {
   const userData = await mkdtemp(path.join(tmpdir(), 'pet-next-e2e-'));
   const port = await freePort();
-  let stdout = '';
-  let stderr = '';
-  const child = spawn(
-    electronPath,
-    [
+  const label = extraEnv.PET_NEXT_IDLE_URL ? 'electron-missing-media' : 'electron-idle';
+  const tracked = startTrackedRun({
+    executable: electronPath,
+    args: [
       '--no-sandbox',
       '--disable-dev-shm-usage',
       '--force-device-scale-factor=1',
@@ -189,31 +181,52 @@ async function launch(extraEnv: Record<string, string>): Promise<RunningApp> {
       `--remote-debugging-port=${port}`,
       mainPath,
     ],
-    {
-      cwd: petRoot,
-      detached: true,
-      env: {
-        ...process.env,
-        PET_NEXT_TEST: '1',
-        PET_NEXT_USER_DATA: userData,
-        ...extraEnv,
-      },
-      stdio: ['ignore', 'pipe', 'pipe'],
+    cwd: petRoot,
+    env: {
+      ...process.env,
+      PET_NEXT_TEST: '1',
+      PET_NEXT_USER_DATA: userData,
+      ...extraEnv,
     },
-  );
-  child.stdout?.on('data', (chunk: Buffer) => {
-    stdout += chunk.toString();
+    label,
+    logRoot: path.join(petRoot, 'logs', 'platform-runs'),
   });
-  child.stderr?.on('data', (chunk: Buffer) => {
-    stderr += chunk.toString();
-  });
+  try {
+    const ready = await waitUntilReady(tracked);
+    const socket = await waitForPageSocket(port);
+    const cdp = await connectCdp(socket);
+    return {
+      child: tracked.child,
+      tracked,
+      userData,
+      stdout: () => tracked.stdout(),
+      stderr: () => tracked.stderr(),
+      cdp,
+      ready,
+    };
+  } catch (error) {
+    try {
+      await tracked.stop();
+      await tracked.writeRecord();
+    } finally {
+      await rm(userData, { recursive: true, force: true });
+    }
+    throw error;
+  }
+}
 
-  const ready = await new Promise<ReadyInfo>((resolve, reject) => {
+function waitUntilReady(tracked: TrackedRun): Promise<ReadyInfo> {
+  const child = tracked.child;
+  return new Promise((resolve, reject) => {
+    let closed = false;
     const timer = setTimeout(() => {
-      reject(new Error(`ready timeout\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+      if (closed) return;
+      closed = true;
+      reject(new Error(`ready timeout\nstdout:\n${tracked.stdout()}\nstderr:\n${tracked.stderr()}`));
     }, 20000);
     const poll = () => {
-      const found = jsonObjects(stdout).find((item) => item.event === 'ready');
+      if (closed) return;
+      const found = jsonObjects(tracked.stdout()).find((item) => item.event === 'ready');
       if (
         found &&
         typeof found.alwaysOnTop === 'boolean' &&
@@ -223,6 +236,7 @@ async function launch(extraEnv: Record<string, string>): Promise<RunningApp> {
         isBounds(found.bounds) &&
         isBounds(found.workArea)
       ) {
+        closed = true;
         clearTimeout(timer);
         resolve({
           alwaysOnTop: found.alwaysOnTop,
@@ -235,60 +249,40 @@ async function launch(extraEnv: Record<string, string>): Promise<RunningApp> {
         return;
       }
       if (child.exitCode !== null) {
+        closed = true;
         clearTimeout(timer);
-        reject(new Error(`electron exited ${child.exitCode}\nstdout:\n${stdout}\nstderr:\n${stderr}`));
+        reject(new Error(`electron exited ${child.exitCode}\nstdout:\n${tracked.stdout()}\nstderr:\n${tracked.stderr()}`));
         return;
       }
       setTimeout(poll, 30);
     };
     poll();
   });
-
-  const socket = await waitForPageSocket(port);
-  const cdp = await connectCdp(socket);
-  return {
-    child,
-    userData,
-    stdout: () => stdout,
-    stderr: () => stderr,
-    cdp,
-    ready,
-  };
 }
 
-async function shutdown(app: RunningApp | undefined, before: Set<number>): Promise<void> {
-  if (app) {
-    app.cdp.close();
-    const pid = app.child.pid;
-    if (app.child.exitCode === null && pid !== undefined) {
-      try {
-        process.kill(-pid, 'SIGKILL');
-      } catch {
-        try {
-          app.child.kill('SIGKILL');
-        } catch {
-          // 进程已经退出。
-        }
-      }
-    }
-    await rm(app.userData, { recursive: true, force: true });
+/** 根进程退出后，子进程可能还要一个调度周期才消失。等到树空，或到超时仍留下的 PID。 */
+async function waitUntilTrackedGone(tracked: TrackedRun, timeoutMs: number): Promise<number[]> {
+  const deadline = Date.now() + timeoutMs;
+  let alive = tracked.trackedPids().filter((pid) => pidIsAlive(pid));
+  while (alive.length > 0 && Date.now() < deadline) {
+    await delay(30);
+    alive = tracked.trackedPids().filter((pid) => pidIsAlive(pid));
   }
-  const leftover = [...electronPids()].filter((pid) => !before.has(pid));
-  for (const pid of leftover) {
-    try {
-      process.kill(pid, 'SIGKILL');
-    } catch {
-      // 已经退出。
-    }
-  }
+  return alive;
 }
 
-function alive(pid: number): boolean {
+async function shutdown(app: RunningApp | undefined): Promise<void> {
+  if (!app) return;
   try {
-    process.kill(pid, 0);
-    return true;
+    app.cdp.close();
   } catch {
-    return false;
+    // 调试连接可能已经随退出关掉。
+  }
+  try {
+    await app.tracked.stop();
+    await app.tracked.writeRecord();
+  } finally {
+    await rm(app.userData, { recursive: true, force: true });
   }
 }
 
@@ -381,7 +375,6 @@ async function waitForBounds(app: RunningApp, ok: (bounds: Bounds) => boolean): 
 }
 
 test('electron pet idles, reacts, drags inside the work area, and exits', { timeout: 90000 }, async () => {
-  const before = electronPids();
   let app: RunningApp | undefined;
   try {
     app = await launch({});
@@ -467,15 +460,14 @@ test('electron pet idles, reacts, drags inside the work area, and exits', { time
       });
     });
     assert.equal(exitCode, 0);
-    assert.equal(alive(pid), false);
-    assert.deepEqual([...electronPids()].filter((id) => !before.has(id)), []);
+    assert.equal(pidIsAlive(pid), false);
+    assert.deepEqual(await waitUntilTrackedGone(app.tracked, 2000), []);
   } finally {
-    await shutdown(app, before);
+    await shutdown(app);
   }
 });
 
 test('missing media falls back to the placeholder and can still be dragged', { timeout: 60000 }, async () => {
-  const before = electronPids();
   let app: RunningApp | undefined;
   try {
     app = await launch({
@@ -520,9 +512,9 @@ test('missing media falls back to the placeholder and can still be dragged', { t
       app?.child.once('exit', (code) => resolve(code));
     });
     assert.equal(exitCode, 0);
-    assert.equal(alive(pid), false);
-    assert.deepEqual([...electronPids()].filter((id) => !before.has(id)), []);
+    assert.equal(pidIsAlive(pid), false);
+    assert.deepEqual(await waitUntilTrackedGone(app.tracked, 2000), []);
   } finally {
-    await shutdown(app, before);
+    await shutdown(app);
   }
 });

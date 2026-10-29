@@ -1,0 +1,9 @@
+{
+  "executable": "/exec-daemon/node",
+  "args": [
+    "/workspace/pet-next/tests/fixtures/cleanup-child.mjs",
+    "hang"
+  ],
+  "cwd": "/workspace/pet-next/tests/fixtures",
+  "platform": "linux"
+}

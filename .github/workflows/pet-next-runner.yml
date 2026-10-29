@@ -1,0 +1,68 @@
+# pet-next 的测试运行器。只在 Linux 上执行。
+# Windows 没有在这里跑过。缺席的 job 不是通过。
+# 在 Windows 上复现（于 pet-next 目录）：
+#   node scripts/record-platform-run.mjs -- node --experimental-strip-types --test --test-reporter spec tests/cleanup.test.ts tests/support/process-tree.test.ts tests/support/process-table.test.ts tests/support/run-record.test.ts tests/support/record-cli.test.ts
+
+name: pet-next runner
+
+on:
+  pull_request:
+    paths:
+      - 'pet-next/**'
+      - '.github/workflows/pet-next-runner.yml'
+  push:
+    branches:
+      - main
+    paths:
+      - 'pet-next/**'
+      - '.github/workflows/pet-next-runner.yml'
+
+permissions:
+  contents: read
+
+jobs:
+  linux:
+    name: linux unit and cleanup
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    defaults:
+      run:
+        working-directory: pet-next
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 10.33.4
+
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: pet-next/pnpm-lock.yaml
+
+      - name: Install
+        run: pnpm install --frozen-lockfile
+
+      - name: Typecheck
+        run: pnpm typecheck
+
+      - name: Lint
+        run: pnpm lint
+
+      - name: Unit and cleanup tests
+        run: pnpm test
+
+      - name: Record Linux platform logs
+        run: node scripts/record-platform-run.mjs -- node --experimental-strip-types --test --test-reporter spec tests/cleanup.test.ts tests/support/process-tree.test.ts tests/support/process-table.test.ts tests/support/run-record.test.ts tests/support/record-cli.test.ts
+
+      - name: Upload platform logs
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: pet-next-linux-platform-runs
+          path: pet-next/logs/platform-runs/linux/**
+          if-no-files-found: error
