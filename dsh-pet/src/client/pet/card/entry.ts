@@ -6,6 +6,7 @@
  */
 import { CHAT_HOTKEY_HINT, mountChatDialog } from '../../../shared/chat/index.ts';
 import { captureDisplayFrame } from '../../../shared/chat/capture.ts';
+import { mountTodoPanel, type TodoPanelMount } from '../../../shared/todo/index.ts';
 import { bindOpenChat } from './open-chat.ts';
 import {
   buildMemeBranch,
@@ -65,6 +66,10 @@ export interface CardEntry {
   handleContextMenu: (e: ReactNS.MouseEvent<HTMLDivElement>) => void;
   /** 打开对话弹窗：菜单里「对话」那一项走这里；带图时直接进入待发送状态（拖拽用）。 */
   openChat: (image?: File) => void;
+  /** 打开待办面板（右键菜单入口）。 */
+  openTodo: () => void;
+  /** 单击宠物：面板开着就收起，没开就打开。 */
+  toggleTodo: () => void;
   /** 指针进入：先摆位再显示。 */
   onPointerEnter: (e: ReactNS.PointerEvent<HTMLDivElement>) => void;
   /** 指针离开：收起提示。 */
@@ -82,9 +87,10 @@ export function createCardEntry(rt: CardEntryRuntime) {
 
   return function useCardEntry(input: CardEntryInput): CardEntry {
     const { card, cfgRef, drag, live, menuItemsRef, motion, runMenuAction, stage, tipRef } = input;
-    // 右键菜单与对话弹窗当前的 close 句柄，卸载或重开前清理。
+    // 右键菜单、对话弹窗与待办面板当前的 close 句柄，卸载或重开前清理。
     const menuRef = useRef<{ close: () => void } | null>(null);
     const chatRef = useRef<{ close: () => void } | null>(null);
+    const todoRef = useRef<TodoPanelMount | null>(null);
 
     /** 把提示框摆到光标右下，放不下时翻边并夹回视口。
      *  直接写 DOM style：每次鼠标移动都走 React 状态会让整个 PetCard 重渲染。
@@ -114,6 +120,10 @@ export function createCardEntry(rt: CardEntryRuntime) {
           chatRef.current.close();
           chatRef.current = null;
         }
+        if (todoRef.current) {
+          todoRef.current.close();
+          todoRef.current = null;
+        }
       },
       [],
     );
@@ -139,6 +149,34 @@ export function createCardEntry(rt: CardEntryRuntime) {
           chatRef.current = null;
         },
       });
+    };
+
+    /** 宠物命中区的当前矩形：面板贴着它摆，宠物走位时由面板自己巡检跟随。 */
+    const anchorRect = () => {
+      const rect = stage()?.querySelector('.dsh-pet-hit')?.getBoundingClientRect();
+      return rect ? { left: rect.left, top: rect.top, right: rect.right, bottom: rect.bottom } : null;
+    };
+
+    /** 打开待办面板：全页只允许一个，重复调用先由 mountTodoPanel 顶掉旧面板。 */
+    const openTodo = (): void => {
+      if (todoRef.current) return;
+      const hit = stage()?.querySelector<HTMLElement>('.dsh-pet-hit') ?? null;
+      todoRef.current = mountTodoPanel({
+        anchor: anchorRect,
+        anchorEl: hit,
+        onClose: () => {
+          todoRef.current = null;
+        },
+      });
+    };
+
+    /** 单击宠物 = 面板开关：开着就收起，没开就打开。 */
+    const toggleTodo = (): void => {
+      if (todoRef.current) {
+        todoRef.current.close();
+        return;
+      }
+      openTodo();
     };
 
     // 悬停标记：快捷键与拖拽都只在"鼠标停在这只宠物上"时生效，避免和页面其它交互抢事件。
@@ -173,6 +211,7 @@ export function createCardEntry(rt: CardEntryRuntime) {
       const pic = cfgRef.current;
       const memes = buildMemeBranch(pic, (name) => memeThumbUrl(ROUTE_PATH, pic.assetRoot, name));
       const tools: MenuNode[] = [
+        { label: '待办事项', action: 'todo' },
         { label: '查看余额', action: 'show-balance' },
         { label: '碎碎念', action: 'whisper' },
         ...(memes ? [memes] : []),
@@ -213,7 +252,9 @@ export function createCardEntry(rt: CardEntryRuntime) {
         card.actions.setTipOn(false);
       },
       openChat,
+      openTodo,
       placeTip,
+      toggleTodo,
     };
   };
 }
