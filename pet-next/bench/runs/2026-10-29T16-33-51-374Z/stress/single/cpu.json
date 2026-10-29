@@ -1,0 +1,11 @@
+{
+  "idleCpuPercent": 5,
+  "idleCpuMs": 200,
+  "clkTck": 100,
+  "pids": [
+    6896,
+    6921,
+    6924,
+    6946
+  ]
+}

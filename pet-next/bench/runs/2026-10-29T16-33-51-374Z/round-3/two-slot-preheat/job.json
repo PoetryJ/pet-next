@@ -1,0 +1,14 @@
+{
+  "mode": "two-slot-preheat",
+  "round": 3,
+  "firstCount": 30,
+  "repeatCount": 30,
+  "dwellMs": 500,
+  "idleCpuMs": 2000,
+  "stressDelayMs": 0,
+  "assetSha256": "115b1133c066da20bdb2077de301c6c348890bc2243cd5f90ffc6e7b48c74bcf",
+  "idleUrl": "file:///workspace/pet-next/assets/idle.webm",
+  "reactionUrl": "file:///workspace/pet-next/assets/reaction.webm",
+  "runRoot": "/workspace/pet-next/bench/runs/2026-10-29T16-33-51-374Z",
+  "outDir": "/workspace/pet-next/bench/runs/2026-10-29T16-33-51-374Z/round-3/two-slot-preheat"
+}

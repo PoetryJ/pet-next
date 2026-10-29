@@ -1,0 +1,169 @@
+{
+  "summaries": [
+    {
+      "mode": "single",
+      "clickToFirstFrameP50Ms": null,
+      "clickToFirstFrameP95Ms": null,
+      "recommendation": "unmeasured"
+    },
+    {
+      "mode": "two-slot",
+      "clickToFirstFrameP50Ms": null,
+      "clickToFirstFrameP95Ms": null,
+      "recommendation": "unmeasured"
+    },
+    {
+      "mode": "two-slot-preheat",
+      "clickToFirstFrameP50Ms": null,
+      "clickToFirstFrameP95Ms": null,
+      "recommendation": "unmeasured"
+    }
+  ],
+  "columns": [
+    {
+      "mode": "single",
+      "play": "first",
+      "count": 90,
+      "complete": false,
+      "clickP50": null,
+      "clickP95": null,
+      "playP50": 8.5,
+      "playP95": 11.199999999720603,
+      "blankP50": 1965.7000000001863,
+      "loadP50": 2,
+      "memoryP50": 952606720,
+      "cpuP50": 8.5,
+      "roundClickP50": [
+        null,
+        null,
+        null
+      ],
+      "clickNoise": null,
+      "blankNoise": 0.40000000037252903,
+      "memoryNoise": 56696832,
+      "cpuNoise": 1.9999999999999991,
+      "visibleFrameMissing": true
+    },
+    {
+      "mode": "single",
+      "play": "repeat",
+      "count": 90,
+      "complete": false,
+      "clickP50": null,
+      "clickP95": null,
+      "playP50": 8.199999999720603,
+      "playP95": 10.299999999813735,
+      "blankP50": 1965.8999999999069,
+      "loadP50": 2,
+      "memoryP50": 954286080,
+      "cpuP50": 8.5,
+      "roundClickP50": [
+        null,
+        null,
+        null
+      ],
+      "clickNoise": null,
+      "blankNoise": 0.3999999996740371,
+      "memoryNoise": 4079616,
+      "cpuNoise": 1.9999999999999991,
+      "visibleFrameMissing": true
+    },
+    {
+      "mode": "two-slot",
+      "play": "first",
+      "count": 90,
+      "complete": false,
+      "clickP50": null,
+      "clickP95": null,
+      "playP50": 3.6000000000931323,
+      "playP95": 4.7000000001862645,
+      "blankP50": 0,
+      "loadP50": 2,
+      "memoryP50": 970162176,
+      "cpuP50": 7.5,
+      "roundClickP50": [
+        null,
+        null,
+        null
+      ],
+      "clickNoise": null,
+      "blankNoise": 0,
+      "memoryNoise": 62193664,
+      "cpuNoise": 0.4999999999999991,
+      "visibleFrameMissing": true
+    },
+    {
+      "mode": "two-slot",
+      "play": "repeat",
+      "count": 90,
+      "complete": false,
+      "clickP50": null,
+      "clickP95": null,
+      "playP50": 4.600000000093132,
+      "playP95": 6,
+      "blankP50": 0,
+      "loadP50": 0,
+      "memoryP50": 984633344,
+      "cpuP50": 7.5,
+      "roundClickP50": [
+        null,
+        null,
+        null
+      ],
+      "clickNoise": null,
+      "blankNoise": 0,
+      "memoryNoise": 5120000,
+      "cpuNoise": 0.4999999999999991,
+      "visibleFrameMissing": true
+    },
+    {
+      "mode": "two-slot-preheat",
+      "play": "first",
+      "count": 90,
+      "complete": false,
+      "clickP50": null,
+      "clickP95": null,
+      "playP50": 0.7999999998137355,
+      "playP95": 1.3999999999068677,
+      "blankP50": 0,
+      "loadP50": 2,
+      "memoryP50": 964919296,
+      "cpuP50": 7.5,
+      "roundClickP50": [
+        null,
+        null,
+        null
+      ],
+      "clickNoise": null,
+      "blankNoise": 0,
+      "memoryNoise": 8966144,
+      "cpuNoise": 0.5,
+      "visibleFrameMissing": true
+    },
+    {
+      "mode": "two-slot-preheat",
+      "play": "repeat",
+      "count": 90,
+      "complete": false,
+      "clickP50": null,
+      "clickP95": null,
+      "playP50": 4.900000000372529,
+      "playP95": 7,
+      "blankP50": 0,
+      "loadP50": 0,
+      "memoryP50": 966828032,
+      "cpuP50": 7.5,
+      "roundClickP50": [
+        null,
+        null,
+        null
+      ],
+      "clickNoise": null,
+      "blankNoise": 0,
+      "memoryNoise": 17522688,
+      "cpuNoise": 0.5,
+      "visibleFrameMissing": true
+    }
+  ],
+  "failures": []
+}
