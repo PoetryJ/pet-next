@@ -244,7 +244,7 @@ export function createOwnAnimation(deps: OwnAnimationDeps): OwnAnimation {
     el.muted = true;
     el.autoplay = true;
     el.playsInline = true;
-    el.onended = once ? (event: Event) => deps.onEnded(handleEnded(event)) : null;
+    el.onended = once ? bindEnded(el, generation) : null;
     const onReady = (): void => {
       el.removeEventListener('loadeddata', onReady);
       if (!mounted || life.generation !== generation || life.phase !== 'loading') return;
@@ -355,6 +355,16 @@ export function createOwnAnimation(deps: OwnAnimationDeps): OwnAnimation {
     return cue;
   };
 
+  // 双缓冲会把同一元素交给下一代，onended 在赋值时收进当时的 generation 和元素。
+  const bindEnded = (el: HTMLVideoElement, generation: number): ((event?: Event) => void) => {
+    return (event?: Event) => {
+      const isCurrent = generation === life.generation && life.phase === 'playing' && frontVideo() === el;
+      const targetMatches = event == null || event.currentTarget === el;
+      if (!isCurrent || !targetMatches) return;
+      deps.onEnded(handleEnded(event));
+    };
+  };
+
   const switchTo = (next: string, nextOnce: boolean, cuePlaybackId: string | null): void => {
     if (cuePlaybackId !== null) deps.clearCuePlayback();
     const cfg = deps.cfg();
@@ -388,7 +398,7 @@ export function createOwnAnimation(deps: OwnAnimationDeps): OwnAnimation {
       const el = frontVideo();
       if (el === null) return;
       el.loop = false;
-      el.onended = (event: Event) => deps.onEnded(handleEnded(event));
+      el.onended = bindEnded(el, life.generation);
     },
     setCueUrl: (url) => {
       cueUrl = url;

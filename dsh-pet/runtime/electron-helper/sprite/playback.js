@@ -91,7 +91,7 @@ Object.assign(PetSprite.prototype, {
     el.muted = true;
     el.autoplay = true;
     el.playsInline = true;
-    el.onended = request.asset.once ? () => this.handleEnded() : null;
+    el.onended = request.asset.once ? this.bindEnded(el, generation) : null;
     const onReady = () => {
       el.removeEventListener('loadeddata', onReady);
       // 世代和阶段一起看。pending 已经是 null（失败、替换或播完）时也不能把这一代救回来。
@@ -302,6 +302,17 @@ Object.assign(PetSprite.prototype, {
       next = act.name;
     }
     this.playOnce(next);
+  },
+
+  // 双缓冲会把同一元素交给下一代，onended 在赋值时收进当时的 generation 和元素。
+  bindEnded(el, generation) {
+    return (event) => {
+      const life = this.playbackLife;
+      const frontEl = this.front === 0 ? this.videoA : this.videoB;
+      if (!life || life.generation !== generation || life.phase !== 'playing' || frontEl !== el) return;
+      if (event != null && event.currentTarget !== el) return;
+      this.handleEnded();
+    };
   },
 
   handleEnded() {

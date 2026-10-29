@@ -27,6 +27,12 @@ interface Deferred {
   reject: (error: Error) => void;
 }
 
+/** 适配器写到元素上的 onended。按赋值顺序记录，含后来的 null。 */
+interface EndedAssignment {
+  element: Media;
+  handler: ((event?: Event) => void) | null;
+}
+
 class Media {
   src = '';
   loop = true;
@@ -36,21 +42,37 @@ class Media {
   readyState = 0;
   paused = true;
   error: { code: number } | null = null;
-  onended: (() => void) | null = null;
   style: Record<string, string> = {};
   playCalls = 0;
   loadCalls = 0;
+  private endedHandler: ((event?: Event) => void) | null = null;
   private errorHandler: (() => void) | null = null;
   readonly classes = new Set<string>();
   readonly listeners = new Map<string, Array<() => void>>();
   readonly plays: Deferred[];
   private readonly readyLog: Array<() => void>;
   private readonly errorLog: Array<() => void>;
+  private readonly endedLog: EndedAssignment[];
 
-  constructor(plays: Deferred[], readyLog: Array<() => void>, errorLog: Array<() => void>) {
+  constructor(
+    plays: Deferred[],
+    readyLog: Array<() => void>,
+    errorLog: Array<() => void>,
+    endedLog: EndedAssignment[],
+  ) {
     this.plays = plays;
     this.readyLog = readyLog;
     this.errorLog = errorLog;
+    this.endedLog = endedLog;
+  }
+
+  set onended(handler: ((event?: Event) => void) | null) {
+    this.endedHandler = handler;
+    this.endedLog.push({ element: this, handler });
+  }
+
+  get onended(): ((event?: Event) => void) | null {
+    return this.endedHandler;
   }
 
   classList = {
@@ -122,6 +144,8 @@ interface Driver {
   pendingTimers: () => number;
   released: () => string[];
   src: () => string;
+  /** 按时间顺序记下的 onended 赋值，函数是适配器当时装上的那个。 */
+  endedAssignments: () => EndedAssignment[];
 }
 
 const animations = {
@@ -138,8 +162,9 @@ function browserDriver(onReport?: (report: Report) => void): Driver {
   const plays: Deferred[] = [];
   const readyLog: Array<() => void> = [];
   const errorLog: Array<() => void> = [];
-  const videoA = new Media(plays, readyLog, errorLog);
-  const videoB = new Media(plays, readyLog, errorLog);
+  const endedLog: EndedAssignment[] = [];
+  const videoA = new Media(plays, readyLog, errorLog, endedLog);
+  const videoB = new Media(plays, readyLog, errorLog, endedLog);
   const requests: Array<{ url: string; handlers: AssetHandlers }> = [];
   const released: string[] = [];
   const timers = new Map<number, () => void>();
@@ -231,6 +256,7 @@ function browserDriver(onReport?: (report: Report) => void): Driver {
     pendingTimers: () => timers.size,
     released: () => released.slice(),
     src: () => videoB.src || videoA.src,
+    endedAssignments: () => endedLog.slice(),
   };
 }
 
@@ -293,8 +319,9 @@ function desktopDriver(onReport?: (report: Report) => void): Driver {
   const plays: Deferred[] = [];
   const readyLog: Array<() => void> = [];
   const errorLog: Array<() => void> = [];
-  const videoA = new Media(plays, readyLog, errorLog);
-  const videoB = new Media(plays, readyLog, errorLog);
+  const endedLog: EndedAssignment[] = [];
+  const videoA = new Media(plays, readyLog, errorLog, endedLog);
+  const videoB = new Media(plays, readyLog, errorLog, endedLog);
   const timers = new Map<number, () => void>();
   let timerSeq = 0;
   const reports: Report[] = [];
@@ -383,6 +410,7 @@ function desktopDriver(onReport?: (report: Report) => void): Driver {
     pendingTimers: () => timers.size,
     released: () => [],
     src: () => videoB.src || videoA.src,
+    endedAssignments: () => endedLog.slice(),
   };
 }
 
@@ -505,6 +533,57 @@ for (const [name, create] of drivers) {
       assert.equal(driver.reports.filter((report) => report.id === 'pb-a' && report.status === 'ended').length, 0);
       assert.equal(driver.reports.filter((report) => report.id === 'pb-b' && report.status === 'ended').length, 0);
       assert.deepEqual(driver.reports[driver.reports.length - 1], { id: 'pb-c', status: 'ended', reason: undefined });
+    });
+
+    test('复用槽位后，旧 onended 不能结束当前请求', async () => {
+      const driver = create();
+      driver.start('pb-a');
+      driver.deliver(0);
+      driver.releaseReady(0);
+      await driver.settlePlay(0);
+      const savedA = driver.endedAssignments().find((entry) => entry.handler !== null);
+      assert.ok(savedA, 'A 播起来时必须留下适配器装上的 onended');
+      const callbackA = savedA.handler;
+      assert.ok(callbackA, 'A 播起来时必须留下适配器装上的 onended');
+
+      driver.start('pb-b');
+      driver.deliver(1);
+      driver.releaseReady(1);
+      await driver.settlePlay(1);
+      driver.start('pb-c');
+      driver.deliver(2);
+      driver.releaseReady(2);
+      await driver.settlePlay(2);
+      const installed = driver.endedAssignments().filter((entry) => entry.handler !== null);
+      const savedC = installed[installed.length - 1];
+      assert.ok(savedC, 'C 播起来时必须留下自己的 onended');
+      const callbackC = savedC.handler;
+      assert.ok(callbackC, 'C 播起来时必须留下自己的 onended');
+      assert.equal(savedC.element, savedA.element, '双缓冲三轮后 C 与 A 是同一个槽位元素');
+      assert.deepEqual(driver.reports[driver.reports.length - 1], {
+        id: 'pb-c',
+        status: 'playing',
+        reason: undefined,
+      });
+      assert.equal(statuses(driver.reports, 'ended').length, 0);
+
+      const before = driver.reports.length;
+      const loads = driver.loadCount();
+      callbackA({ currentTarget: savedA.element } as unknown as Event);
+      assert.deepEqual(statuses(driver.reports, 'ended'), [], 'A 的旧回调不能给 A 或 C 回 ended');
+      assert.equal(driver.reports.length, before, 'A 的旧回调不能产生回执');
+      assert.equal(driver.loadCount(), loads, 'A 的旧回调不能开下一段');
+      assert.deepEqual(driver.reports[driver.reports.length - 1], {
+        id: 'pb-c',
+        status: 'playing',
+        reason: undefined,
+      });
+
+      callbackC({ currentTarget: savedC.element } as unknown as Event);
+      assert.deepEqual(
+        driver.reports.filter((report) => report.status === 'ended'),
+        [{ id: 'pb-c', status: 'ended', reason: undefined }],
+      );
     });
 
     test('解码失败、播放拒绝、超时各自一个 failed，迟到回调不再改状态', async () => {
