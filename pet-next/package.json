@@ -16,7 +16,7 @@
     "lint": "eslint .",
     "test": "node --experimental-strip-types --test --test-reporter spec core/*/*.test.ts adapters/*/*.test.ts app/*.test.ts tests/boundaries.test.ts tests/cleanup.test.ts tests/*/*.test.ts",
     "test:cleanup": "node --experimental-strip-types --test --test-reporter spec tests/cleanup.test.ts tests/support/process-tree.test.ts tests/support/process-table.test.ts tests/support/run-record.test.ts tests/support/record-cli.test.ts",
-    "test:e2e": "node --experimental-strip-types --test --test-reporter spec tests/*.e2e.test.ts",
+    "test:e2e": "node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts",
     "record:platform": "node scripts/record-platform-run.mjs",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e",
     "verify:windows": "powershell -File scripts/verify-windows.ps1",

@@ -170,7 +170,10 @@ describe('integration contracts', () => {
       scripts.scripts.test,
       'node --experimental-strip-types --test --test-reporter spec core/*/*.test.ts adapters/*/*.test.ts app/*.test.ts tests/boundaries.test.ts tests/cleanup.test.ts tests/*/*.test.ts',
     );
-    assert.equal(scripts.scripts['test:e2e'], 'node --experimental-strip-types --test --test-reporter spec tests/*.e2e.test.ts');
+    assert.equal(
+      scripts.scripts['test:e2e'],
+      'node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts',
+    );
     assert.equal(scripts.scripts['verify:windows'], 'powershell -File scripts/verify-windows.ps1');
     assert.equal(scripts.scripts['assets:check'], 'node --experimental-strip-types assets-pipeline/cli.ts');
     assert.equal(scripts.scripts['experiment:arbiter'], 'node --experimental-strip-types experiments/arbiter/runner/main.ts');

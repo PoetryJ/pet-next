@@ -6,6 +6,7 @@
 import { createMediaAdapter, systemMediaClock } from '../adapters/media/adapter.ts';
 import { createElementLoader } from '../adapters/media/element-loader.ts';
 import type { MediaElement } from '../adapters/media/types.ts';
+import { domScreenPointToDip } from '../adapters/window/pointer-point.ts';
 import './bridge.ts';
 import { createPetController, parseClipRequest, type PetController } from './wire.ts';
 
@@ -98,15 +99,18 @@ petEl.addEventListener('pointerdown', (ev) => {
   } catch {
     // 合成指针没有底层捕获时仍按坐标判定。
   }
-  controller.pointer({ type: 'pointerdown', pointerId: ev.pointerId, x: ev.screenX, y: ev.screenY });
+  const dip = domScreenPointToDip({ x: ev.screenX, y: ev.screenY });
+  controller.pointer({ type: 'pointerdown', pointerId: ev.pointerId, x: dip.x, y: dip.y });
 });
 
 petEl.addEventListener('pointermove', (ev) => {
-  controller.pointer({ type: 'pointermove', pointerId: ev.pointerId, x: ev.screenX, y: ev.screenY });
+  const dip = domScreenPointToDip({ x: ev.screenX, y: ev.screenY });
+  controller.pointer({ type: 'pointermove', pointerId: ev.pointerId, x: dip.x, y: dip.y });
 });
 
 petEl.addEventListener('pointerup', (ev) => {
-  controller.pointer({ type: 'pointerup', pointerId: ev.pointerId, x: ev.screenX, y: ev.screenY });
+  const dip = domScreenPointToDip({ x: ev.screenX, y: ev.screenY });
+  controller.pointer({ type: 'pointerup', pointerId: ev.pointerId, x: dip.x, y: dip.y });
 });
 
 petEl.addEventListener('pointercancel', (ev) => {

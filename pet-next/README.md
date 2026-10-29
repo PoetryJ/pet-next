@@ -26,7 +26,7 @@ pnpm start
 core/playback       迁入的 reducePlayback。只吃事件，不碰 DOM / Electron / 文件 / 网络
 core/interaction    点击与拖动判定、回应结束或失败后回待机
 adapters/media      唯一的加载、播放、取消和回调
-adapters/window     窗口平移、工作区夹紧、退出
+adapters/window     窗口平移、工作区夹紧、退出。指针 screen 与窗口原点都是 DIP，位移在回读 bounds 之前累计
 app                 把上面几块接到页面事件
 electron            主进程和 preload。preload 只暴露 moveBy 与 quit
 tests/support       测试进程树、运行记录和一键脚本。只清理本次启动的进程树
