@@ -4,6 +4,8 @@
  * 消息与轮在 ./view-message；这里只放「面板外壳」的交互，`confirm` 留在此处描述点击语义。
  * @module dsh-pet/src/client/chat/view-node
  */
+import { claimFileDragOver, claimFileDrop } from '../file-drop.ts';
+import type { DragLike } from '../file-drop.ts';
 import type { ChatPanelRuntime } from './runtime.ts';
 import type { ChatPanelState, ConfirmKind } from './types.ts';
 
@@ -209,6 +211,13 @@ function sendIcon(h: ChatPanelRuntime['h']): unknown {
 export function composerNode(h: ChatPanelRuntime['h'], state: ChatPanelState): unknown {
   return h('div', {
     className: 'pet-chat-composer',
+    onDragOver: (event: DragLike) => {
+      claimFileDragOver(event);
+    },
+    onDrop: (event: DragLike) => {
+      const file = claimFileDrop(event);
+      if (file !== undefined) state.pickFile(file);
+    },
     children: [
       previewNode(h, state),
       h('textarea', {

@@ -5,7 +5,7 @@
  * @module dsh-pet/src/client/pet/card/open-chat
  */
 import { isChatHotkey } from '../../../shared/chat/hotkey.ts';
-import { dragHasFiles, firstImageFile } from '../../../shared/chat/image-pick.ts';
+import { claimFileDragOver, claimFileDrop } from '../../file-drop.ts';
 
 /** 注册来源。 */
 export interface OpenChatInput {
@@ -31,16 +31,12 @@ export function bindOpenChat(input: OpenChatInput): () => void {
     openChat();
   };
   const onDragOver = (e: DragEvent): void => {
-    if (!dragHasFiles(e)) return;
-    // 不拦默认行为的话，浏览器会把这个文件当导航打开，页面直接被换掉。
-    e.preventDefault();
+    if (!claimFileDragOver(e)) return;
     if (e.dataTransfer) e.dataTransfer.dropEffect = 'copy';
   };
   const onDrop = (e: DragEvent): void => {
-    const file = firstImageFile(e.dataTransfer);
-    if (!file) return;
-    e.preventDefault();
-    openChat(file);
+    const file = claimFileDrop(e);
+    if (file !== undefined) openChat(file);
   };
   document.addEventListener('keydown', onKeyDown, true);
   stage?.addEventListener('dragover', onDragOver);

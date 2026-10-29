@@ -49,7 +49,7 @@ export function isImageFile(file: File): boolean {
 }
 
 /** 这次拖拽是否带着文件（决定 dragover 要不要 preventDefault）。 */
-export function dragHasFiles(e: DragEvent): boolean {
+export function dragHasFiles(e: { readonly dataTransfer: DataTransfer | null }): boolean {
   const types = e.dataTransfer?.types;
   if (!types) return false;
   return Array.from(types).includes('Files');
