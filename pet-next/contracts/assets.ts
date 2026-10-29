@@ -1,6 +1,6 @@
 /**
- * 透明素材处理的输入、输出和质量结论。脚本放在 `assets-pipeline`，由 Agent C 编写。
- * 不替换成品 `assets/`。默认启动不引用本模块。
+ * 透明素材处理的输入、输出和质量结论。检查器在 `assets-pipeline`。
+ * 候选交付形状在 `asset-candidate.ts`。不替换已锁定的三份成品。默认启动不引用本模块。
  * 判定函数只看探针和对照帧。背景色字符串留在报告里，不进入判定参数。
  * @module pet-next/contracts/assets
  */

@@ -62,3 +62,11 @@
 报告放在 `assets-pipeline/out/report.json`，对照图放在 `assets-pipeline/out/frames/`。需要进仓库的夹具放在 `assets-pipeline/fixtures/`。成品 `assets/*.webm` 和 `placeholder.png` 不在这条流水线里被覆盖。
 
 不引入生成模型，也不引入新的抠像框架。系统里已有的 ffprobe / ffmpeg 可以作为命令，不新增 npm 依赖；缺工具时 `verdict` 为 `fail`，`limitation` 写明缺什么。
+
+## 预览与产品行为
+
+双槽和自主行为默认关闭。解析规则在 `contracts/preview.ts`，开启方式在 [preview.md](preview.md)。关闭时页面继续使用现有单槽适配器和现有会话，不创建行为调度器。
+
+产品行为的形状在 `contracts/behavior.ts`。它不沿用仲裁实验里的同级点击排队：新点击取消上一个未完成的点击。拖动不产生点击，拖动期间不开始自动动作。实验协议仍只描述 `experiments/arbiter/`。
+
+候选素材的交付记录在 `contracts/asset-candidate.ts`。三份成品的字节锁保持不变。

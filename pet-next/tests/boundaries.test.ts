@@ -10,14 +10,25 @@ import { fileURLToPath } from 'node:url';
 import { createPointerAdapter } from '../adapters/pointer/index.ts';
 import {
   ARBITER_RANK,
+  BEHAVIOR_LIMITS,
+  BENCH_MODES,
+  BENCH_ROUND_COUNT,
+  BENCH_SAMPLE_COUNT,
+  MEDIA_SLOT_COUNT,
   mulberry32,
   NORMATIVE_EXAMPLES,
+  PLAYBACK_MODES,
+  PRODUCT_BEHAVIOR_RULES,
   REQUIRED_BACKGROUNDS,
+  REQUIRED_CONTRACT_CASES,
   REQUIRED_FIXTURE_NAMES,
+  REQUIRED_PLATFORM_FLOWS,
   REQUIRED_PLATFORMS,
   REQUIRED_PROCESS_CASES,
   REQUIRED_SCALE_CASES,
   SUSTAINED_LOAD,
+  parsePreview,
+  previewUsesAcceptedPath,
   type QualityEvidence,
 } from '../contracts/index.ts';
 import { createBaseline } from '../experiments/arbiter/baseline/index.ts';
@@ -163,13 +174,18 @@ describe('integration contracts', () => {
     const page = await readFile(path.join(petRoot, 'app/page.ts'), 'utf8');
     assert.equal(page.includes('x: ev.screenX') || page.includes('createPointerAdapter'), true);
     assert.equal(page.includes('experiments/'), false);
+    assert.equal(page.includes('createMediaAdapter'), true);
+    assert.equal(page.includes('adapters/media/two-slot'), false);
+    assert.equal(page.includes('core/behavior'), false);
     const scripts = JSON.parse(await readFile(path.join(petRoot, 'package.json'), 'utf8')) as { scripts: Record<string, string> };
     assert.equal(scripts.scripts.start, 'pnpm build && node scripts/start.mjs');
     assert.equal(scripts.scripts.verify, 'pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e');
-    assert.equal(
-      scripts.scripts.test,
-      'node --experimental-strip-types --test --test-reporter spec core/*/*.test.ts adapters/*/*.test.ts app/*.test.ts tests/boundaries.test.ts tests/cleanup.test.ts tests/*/*.test.ts',
-    );
+    assert.equal(scripts.scripts.test, 'node scripts/unit-tests.mjs');
+    const unitTests = await readFile(path.join(petRoot, 'scripts/unit-tests.mjs'), 'utf8');
+    for (const rel of ['core', 'adapters', 'app', 'tests', 'experiments', 'bench']) {
+      assert.equal(unitTests.includes(`'${rel}'`), true, rel);
+    }
+    assert.equal(unitTests.includes('.e2e.test.ts'), true);
     assert.equal(
       scripts.scripts['test:e2e'],
       'node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts',
@@ -185,6 +201,10 @@ describe('integration contracts', () => {
     const start = await readFile(path.join(petRoot, 'scripts/start.mjs'), 'utf8');
     assert.equal(start.includes('experiments/'), false);
     assert.equal(start.includes('assets-pipeline'), false);
+    const main = await readFile(path.join(petRoot, 'electron/main.ts'), 'utf8');
+    assert.equal(main.includes('PREVIEW_ENV'), true);
+    assert.equal(main.includes('query[PREVIEW_QUERY] = preview'), true);
+    assert.equal(previewUsesAcceptedPath(parsePreview(undefined)), true);
   });
 
   test('现有 Electron 实测仍断言缩放 1 对照下的精确位移', async () => {
@@ -292,6 +312,36 @@ describe('integration contracts', () => {
     assert.equal(typeof createPointerAdapter, 'function');
     assert.equal(typeof createBaseline, 'function');
     assert.equal(typeof createStateMachine, 'function');
+    assert.equal(MEDIA_SLOT_COUNT, 2);
+    assert.deepEqual(PLAYBACK_MODES, ['single', 'two-slot', 'two-slot-preheat']);
+    assert.deepEqual(BENCH_MODES, ['single', 'two-slot', 'two-slot-preheat']);
+    assert.equal(BENCH_SAMPLE_COUNT, 30);
+    assert.equal(BENCH_ROUND_COUNT, 3);
+    assert.equal(BEHAVIOR_LIMITS.pending, 8);
+    assert.equal(BEHAVIOR_LIMITS.history, 32);
+    assert.deepEqual(PRODUCT_BEHAVIOR_RULES, [
+      'drag-priority',
+      'latest-click-overrides',
+      'auto-only-when-idle',
+      'no-auto-start-during-drag',
+      'expired-auto-discarded',
+      'idle-after-settle',
+      'idempotent-request',
+      'bounded-capacity',
+    ]);
+    assert.deepEqual(REQUIRED_CONTRACT_CASES, [
+      'late-loaded',
+      'late-ended',
+      'duplicate-request',
+      'consecutive-clicks',
+      'load-failure',
+      'callback-after-dispose',
+      'preheat-races-click',
+      'drag-blocks-auto',
+      'expired-action',
+      'bounded-history',
+    ]);
+    assert.deepEqual(REQUIRED_PLATFORM_FLOWS, ['click', 'drag', 'transparent', 'quit', 'process-cleanup']);
   });
 
   test('规范性例子锁住抢占、过期、旧回调和乱序', () => {

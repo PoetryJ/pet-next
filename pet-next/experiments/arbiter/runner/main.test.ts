@@ -62,10 +62,18 @@ function runNode(args: readonly string[], cwd: string): Promise<{ code: number |
 }
 
 describe('runExperiment', () => {
-  test('基线对上例子、状态机尚未实现时退出码为 0，并留下原始日志', async () => {
+  test('注入尚未实现的状态机替身时退出码为 0，并留下原始日志', async () => {
     const dir = await tempDir();
+    const missing = (): Arbiter<unknown> => ({
+      initialState() {
+        throw new Error('state-machine 尚未实现');
+      },
+      step() {
+        throw new Error('state-machine 尚未实现');
+      },
+    });
     try {
-      const code = await runExperiment({ outDir: dir, silent: true });
+      const code = await runExperiment({ outDir: dir, silent: true, stateMachine: missing });
       assert.equal(code, 0);
       for (const example of NORMATIVE_EXAMPLES) {
         const log = await readLog(dir, 'baseline', example.name);
@@ -215,13 +223,26 @@ describe('runExperiment', () => {
     assert.equal(process.exitCode, before);
   });
 
-  test('直接执行入口：基线符合例子时退出码为 0', async () => {
+  test('直接执行入口：基线和状态机都写出日志且一致', async () => {
     const result = await runNode(['--experimental-strip-types', 'experiments/arbiter/runner/main.ts'], petRoot);
     assert.equal(result.code, 0, result.stderr);
-    const status = JSON.parse(await readFile(path.join(petRoot, 'experiments/arbiter/out/state-machine/status.json'), 'utf8')) as {
-      status: string;
-    };
-    assert.equal(status.status, 'not-implemented');
+    assert.equal(result.stderr.includes('尚未实现'), false);
+    const outDir = path.join(petRoot, 'experiments/arbiter/out');
+    await assert.rejects(readFile(path.join(outDir, 'state-machine', 'status.json')));
+    for (const example of NORMATIVE_EXAMPLES) {
+      const baseline = await readLog(outDir, 'baseline', example.name);
+      const candidate = await readLog(outDir, 'state-machine', example.name);
+      assert.equal(baseline.implementation, 'baseline', example.name);
+      assert.equal(candidate.implementation, 'state-machine', example.name);
+      assert.equal(firstExpectedMismatch(baseline, example.expected), null, example.name);
+      assert.equal(firstExpectedMismatch(candidate, example.expected), null, example.name);
+      assert.equal(firstDivergence(baseline, candidate), null, example.name);
+    }
+    const sustainedBaseline = await readLog(outDir, 'baseline', 'sustained-high-priority');
+    const sustainedCandidate = await readLog(outDir, 'state-machine', 'sustained-high-priority');
+    assert.equal(sustainedBaseline.seed, SUSTAINED_LOAD.seed);
+    assert.equal(sustainedCandidate.seed, SUSTAINED_LOAD.seed);
+    assert.equal(firstDivergence(sustainedBaseline, sustainedCandidate), null);
   });
 });
 

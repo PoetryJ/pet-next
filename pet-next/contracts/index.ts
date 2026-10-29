@@ -55,3 +55,34 @@ export type {
   ArbiterStepRecord,
 } from './arbiter.ts';
 export { NORMATIVE_EXAMPLES } from './arbiter-examples.ts';
+export { BENCH_MODES, BENCH_ROUND_COUNT, BENCH_SAMPLE_COUNT } from './bench.ts';
+export type { BenchMode, BenchPlay, BenchRecommendation, BenchSample, BenchSummary } from './bench.ts';
+export { BEHAVIOR_LIMITS, PRODUCT_BEHAVIOR_RULES } from './behavior.ts';
+export type {
+  BehaviorClip,
+  BehaviorDeps,
+  BehaviorEffect,
+  BehaviorFactory,
+  BehaviorInput,
+  BehaviorScheduler,
+  BehaviorStep,
+  ProductBehaviorRule,
+} from './behavior.ts';
+export type { AssetCandidateKind, AssetCandidateManifest, AssetCandidatePlate } from './asset-candidate.ts';
+export { REQUIRED_CONTRACT_CASES, REQUIRED_PLATFORM_FLOWS } from './coverage.ts';
+export type { RequiredContractCase, RequiredPlatformFlow } from './coverage.ts';
+export { MEDIA_SLOT_COUNT } from './media-slot.ts';
+export type {
+  MediaSlotIndex,
+  PreheatNotice,
+  SlotClip,
+  SlotFailureReason,
+  SlotPlayRequest,
+  SlotToken,
+  TwoSlotAdapter,
+  TwoSlotFactory,
+  TwoSlotNotice,
+  TwoSlotOptions,
+} from './media-slot.ts';
+export { PLAYBACK_MODES, PREVIEW_ENV, PREVIEW_QUERY, formatPreview, parsePreview, previewUsesAcceptedPath } from './preview.ts';
+export type { PlaybackMode, PreviewSelection } from './preview.ts';

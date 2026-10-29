@@ -14,9 +14,11 @@ pnpm start
 
 `pnpm start` 会先构建再打开窗口。按 Esc 或调用预加载桥的 `quit()` 退出。
 
-`pnpm verify` 依次做类型检查、lint、单元测试、构建和 Electron 实测，任一步失败都会返回非零。
+`pnpm verify` 依次做类型检查、lint、单元测试、构建和 Electron 实测，任一步失败都会返回非零。这是统一验收命令。`pnpm test` 会走 `core/`、`adapters/`、`app/`、`tests/`、`experiments/` 和 `bench/` 的子目录，并跳过 `*.e2e.test.ts`。素材流水线的纯函数测试由 `tests/assets/unit-suite.test.ts` 以子进程执行。
 
-分工、验收和实验协议在 [`docs/ownership.md`](docs/ownership.md)。公共形状在 [`contracts/`](contracts/)。`pnpm experiment:arbiter`、`pnpm experiment:arbiter:check`、`pnpm experiment:arbiter:demo` 和 `pnpm assets:check` 不进入 `pnpm start`，也不进入 `pnpm verify`。
+分工和本轮冻结见 [`docs/ownership.md`](docs/ownership.md)，开工分支见 [`docs/parallel-start.md`](docs/parallel-start.md)。公共形状在 [`contracts/`](contracts/)。`pnpm experiment:arbiter`、`pnpm experiment:arbiter:check`、`pnpm experiment:arbiter:demo` 和 `pnpm assets:check` 不进入 `pnpm start`，也不写进 `pnpm verify` 的脚本字符串。
+
+双槽播放和自主行为默认关闭。不设置 `PET_NEXT_PREVIEW` 时走已验收路径。点名方式见 [`docs/preview.md`](docs/preview.md)。本轮打开开关只记录请求，不更换播放或调度实现。
 
 本轮实测平台是 **Linux**（`DISPLAY` 上的 Electron 43.3.0）。没有在 Windows 上跑过同一套 Electron 测试，也没有在 Windows 上跑过清理测试；不能把未跑写成通过。Windows 启动命令仍是 `pnpm start`。清理测试的一键记录命令在 Windows 和 Linux 上相同，见下文。
 

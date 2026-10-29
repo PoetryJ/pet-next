@@ -1,6 +1,24 @@
 # 验收
 
-命令都在 `pet-next/` 下执行。Node `>=22.12.0`。产品路径的总闸门是 `pnpm verify`。实验命令不在这道闸门里。
+命令都在 `pet-next/` 下执行。Node `>=22.12.0`。
+
+## 本轮统一入口
+
+```bash
+cd pet-next
+pnpm install
+pnpm verify
+```
+
+`pnpm verify` 依次做类型检查、lint、`pnpm test`、构建和串行 Electron 实测。不设置 `PET_NEXT_PREVIEW` 时，`pnpm start` 走已验收路径。开关说明见 [preview.md](preview.md)。
+
+`pnpm test` 运行 `scripts/unit-tests.mjs`。它走进 `core/`、`adapters/`、`app/`、`tests/`、`experiments/` 和 `bench/` 的子目录，跳过 `*.e2e.test.ts`。`bench/` 还没有测试时不会把空 glob 交给运行器。`assets-pipeline/*.test.ts` 仍由 `tests/assets/unit-suite.test.ts` 以子进程执行，产品测试不直接 import 流水线。`pnpm experiment:arbiter`、`pnpm experiment:arbiter:check`、`pnpm experiment:arbiter:demo` 和 `pnpm assets:check` 不写进 `verify` 的脚本字符串。
+
+## 上一轮（已并入 #4–#10）
+
+下面各节是上一轮的验收记录。本轮文件归属以 [ownership.md](ownership.md) 为准。
+
+产品路径的总闸门仍是 `pnpm verify`。`pnpm experiment:*` 这些命令本身不在闸门脚本字符串里；实验目录中的单元测试已经由上面的 glob 接住。
 
 共同要求：
 
