@@ -97,6 +97,7 @@ export function mountContextMenu(opts: {
       if (isBranchNode(node)) {
         item.classList.add('dsh-pet-menu-branch');
         const label = document.createElement('span');
+        label.className = 'dsh-pet-menu-label';
         label.textContent = node.label;
         const arrow = document.createElement('span');
         arrow.className = 'dsh-pet-menu-arrow';
@@ -113,7 +114,23 @@ export function mountContextMenu(opts: {
           showPanel(childPanel, item);
         });
       } else {
+        // 缩略图必须在 label 之前：菜单项是 flex 行，图片靠左、文字紧随其后。
+        // 只给配图叶子带 thumb，其余项结构不变（不占位、不改变行高）。
+        if (node.thumb) {
+          const thumb = document.createElement('img');
+          thumb.className = 'dsh-pet-menu-thumb';
+          thumb.src = node.thumb;
+          thumb.alt = '';
+          thumb.draggable = false;
+          // 菜单面板可滚动：可视区外的图不必立刻下载（27 张原图共约 4.6MB）。
+          thumb.loading = 'lazy';
+          thumb.decoding = 'async';
+          item.appendChild(thumb);
+          // 图与文字的间距单独收窄（菜单默认 14px 是给「文字 ↔ 箭头」的，配图看着太散）
+          item.classList.add('dsh-pet-menu-item-pic');
+        }
         const label = document.createElement('span');
+        label.className = 'dsh-pet-menu-label';
         label.textContent = node.label;
         item.appendChild(label);
         // 右侧灰色提示（如快捷键）：与 label 同一 flex 行，space-between 自动贴右

@@ -11,7 +11,7 @@ import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { composeSystemPrompt, petPersona } from '../persona.ts';
 import { findPetInstance, readAllConfig, removeRoundsByTs, sliceMemoryRounds } from '../config.ts';
 import type { PetImageRef } from '../image-attachment.ts';
-import { limitPool, pickMeme, readMemePool } from '../memes.ts';
+import { limitPool, matchMeme, pickMeme, readMemePool } from '../memes.ts';
 import { generateWhisper } from '../whisper.ts';
 import { createMemoryOrphans } from './memory-orphans.ts';
 import { configuredModel } from '../model-selection.ts';
@@ -101,15 +101,21 @@ export function createChatMemory(deps: ChatMemoryInput) {
     return Number.isFinite(v) && v >= 0 ? Math.floor(v) : 5;
   };
 
-  /** 生成并返回某宠物的一句碎碎念（周期调度与菜单手动触发共用）：人设取它自己的 whisperPrompt，
+  /** 生成并返回某宠物的一句碎碎念（周期调度、菜单手动触发与命令行共用）：人设取它自己的 whisperPrompt，
    *  没写回落到所属条目；成功写进 S 的 pets.<id>.say——碎碎念 / 命令气泡 / 对话回复在前端是同一条
    *  展示链路，所以共用一个叶子。配图开关开启时从表情包池随机抽 1 张。
-   *  失败带回真实 reason（含 unknown-pet），成功带回生成的文本——调用方不必再拉一拍 /state。 */
+   *  失败带回真实 reason（含 unknown-pet / unknown-image），成功带回生成的文本——调用方不必再拉一拍 /state。
+   *
+   *  @param petId - 目标宠物实例 id。
+   *  @param image - 指定配图的名称：给了就只用这张（不受 whisperImageEnabled 门控，手动点图是显式意图），
+   *  不在池内返回 unknown-image；缺省 = 按开关随机抽或纯文本。
+   */
   const publishWhisper = async (
     petId: string,
+    image?: string,
   ): Promise<
     | { ok: true; text: string; image?: string }
-    | { ok: false; reason: 'provider-missing' | 'generate-error' | 'unknown-pet'; message?: string }
+    | { ok: false; reason: 'provider-missing' | 'generate-error' | 'unknown-pet' | 'unknown-image'; message?: string }
   > => {
     const cfg = readAllConfig(configPaths);
     const found = findPetInstance(cfg, petId);
@@ -117,11 +123,14 @@ export function createChatMemory(deps: ChatMemoryInput) {
     // 明确失败、不生成不写 S——写下去就是一只已不存在宠物的幽灵叶子（常驻到进程重启）。
     if (!found) return { ok: false, reason: 'unknown-pet', message: '没有这只桌宠：' + petId };
     const system = petSystemPrompt(found);
-    // 配图：开关关闭 / 池为空 / 池内图片全缺失 → 纯文本（不报错，只是没有图）
-    const meme =
-      found.conf.whisperImageEnabled === true
-        ? pickMeme(readMemePool(found.conf.memes, memeDirsFor(found.entry)))
-        : undefined;
+    // 池只算一次：点名的图与随机抽图共用同一份（含文件存在性判定）。
+    const pool = readMemePool(found.conf.memes, memeDirsFor(found.entry));
+    // 点名了却没命中 = 配置写错或图已被删：明确失败，不静默换成另一张（点了 A 却看到 B 会以为坏了）。
+    const forced = image === undefined ? undefined : matchMeme(pool, image);
+    if (image !== undefined && forced === undefined) {
+      return { ok: false, reason: 'unknown-image', message: '表情包不在池内：' + image };
+    }
+    const meme = forced ?? (found.conf.whisperImageEnabled === true ? pickMeme(pool) : undefined);
     // 模型：条目配置的 whisperModel 优先（留空 = 不指定）；生成侧失败会回落到当前对话的模型重试一次
     const result = await generateWhisper(ctx, system, meme, configuredModel(found.conf, 'whisperModel'));
     if (!result.ok) {

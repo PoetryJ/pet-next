@@ -30,7 +30,14 @@ export const MENU_CSS = [
   '.dsh-pet-menu-item{position:relative;display:flex;align-items:center;justify-content:space-between;',
   'gap:14px;padding:5px 12px;border-radius:6px;white-space:nowrap;cursor:default}',
   '.dsh-pet-menu-item:hover{background:rgba(43,99,255,.14)}',
-  '.dsh-pet-menu-item>span:first-child{min-width:0;overflow:hidden;text-overflow:ellipsis}',
+  // 文字占满剩余宽度：菜单项是 space-between 的 flex 行，label 吃掉弹性空间后，箭头与 hint 才会贴右。
+  // 按类名选而不是 `>span:first-child`——带缩略图的项里第一个子节点是 img。
+  '.dsh-pet-menu-label{flex:1 1 auto;min-width:0;overflow:hidden;text-overflow:ellipsis}',
+  // 配图缩略图：裁成方形小图，不参与拉伸；行高由它撑到 28+padding。
+  '.dsh-pet-menu-thumb{width:28px;height:28px;border-radius:4px;object-fit:cover;flex:none;',
+  'background:rgba(0,0,0,.06)}',
+  // 带图的项：图与文字之间收窄（默认 14px 是给「文字 ↔ 箭头」的间距）
+  '.dsh-pet-menu-item-pic{gap:8px}',
   // 右侧快捷键提示（菜单项 hint）：与 label 同一 flex 行，space-between 自动贴右
   '.dsh-pet-menu-hint{color:#9aa0a6;font-size:12px;flex:none;white-space:nowrap}',
   '.dsh-pet-menu-arrow{color:#9aa0a6;font-size:12px;flex:none}',

@@ -36,7 +36,11 @@ export interface RouteInput {
 /** 碎碎念与对话共用的生成结果。 */
 export type GeneratedReply =
   | { ok: true; text: string; image?: string }
-  | { ok: false; reason: 'provider-missing' | 'generate-error' | 'unknown-pet'; message?: string };
+  | {
+      ok: false;
+      reason: 'provider-missing' | 'generate-error' | 'unknown-pet' | 'unknown-image';
+      message?: string;
+    };
 
 /** 宠物定位结果：命中给出所在层与条目，未命中给出可直接返回的应答。 */
 export type PetLookup =
@@ -115,8 +119,8 @@ export interface PetRouteDeps {
   readonly memesUserRoot: string;
   /** 刷新余额（manual 表示用户主动触发）。 */
   readonly refreshBalance: (manual?: boolean) => Promise<void>;
-  /** 生成一条碎碎念。 */
-  readonly publishWhisper: (petId: string) => Promise<GeneratedReply>;
+  /** 生成一条碎碎念；image 给了就用这张图（需在池内），缺省 = 按配置随机抽一张或纯文本。 */
+  readonly publishWhisper: (petId: string, image?: string) => Promise<GeneratedReply>;
   /** 读取对话记忆文件。 */
   readonly readMemory: () => Promise<Record<string, Record<string, { messages: ChatMemoryMessage[] }>>>;
   /** 对话记忆文件路径。 */

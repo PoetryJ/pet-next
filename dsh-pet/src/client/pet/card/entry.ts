@@ -8,9 +8,11 @@ import { CHAT_HOTKEY_HINT, mountChatDialog } from '../../../shared/chat/index.ts
 import { captureDisplayFrame } from '../../../shared/chat/capture.ts';
 import { bindOpenChat } from './open-chat.ts';
 import {
+  buildMemeBranch,
   buildMenuTree,
   buildMoreBranch,
   displayMenuBranch,
+  memeThumbUrl,
   mountContextMenu,
   type MenuNode,
 } from '../../../shared/menu.ts';
@@ -165,9 +167,15 @@ export function createCardEntry(rt: CardEntryRuntime) {
       // 工具项与动作树；「查看余额」无条件显示，手动请求不受开关限制。
       // 第三方菜单项收在「更多」下，0 项不出现，单 owner 单条时平铺（见 buildMoreBranch）。
       const more = buildMoreBranch(menuItemsRef.current);
+      // 「配图」：按配置里的清单分成「纳入对话的配图 / 其他」，点一张就用它说一句。
+      // 没有可用图时返回 null，整项不出现（不占一个点开是空的菜单）。
+      // 缩略图靠 /pic/memes/<素材根>/<名称>.png：素材根就是拍平时写入的条目 key。
+      const pic = cfgRef.current;
+      const memes = buildMemeBranch(pic, (name) => memeThumbUrl(ROUTE_PATH, pic.assetRoot, name));
       const tools: MenuNode[] = [
         { label: '查看余额', action: 'show-balance' },
         { label: '碎碎念', action: 'whisper' },
+        ...(memes ? [memes] : []),
         { label: '对话', action: 'chat', hint: CHAT_HOTKEY_HINT },
         { label: '回到初始位置', action: 'home' },
         // 显示位置子菜单与桌面端同一份；改成不含 web 的值后本宠物会从页面消失。

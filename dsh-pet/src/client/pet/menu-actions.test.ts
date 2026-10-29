@@ -114,3 +114,42 @@ describe('createMenuActions —— 点播动画', () => {
     assert.deepEqual(calls, ['stopMove', 'playOnce:say1:null']);
   });
 });
+
+describe('createMenuActions —— 配图碎碎念', () => {
+  /** 临时接管全局 fetch（postAction 走它），返回被请求的 URL 列表。 */
+  function captureFetch(): { urls: string[]; restore: () => void } {
+    const urls: string[] = [];
+    const original = globalThis.fetch;
+    globalThis.fetch = (async (input: unknown) => {
+      urls.push(String(input));
+      return new Response(JSON.stringify({ ok: true }), { status: 200 });
+    }) as typeof globalThis.fetch;
+    return { urls, restore: () => (globalThis.fetch = original) };
+  }
+
+  test('点具体的图：请求带上编码后的图名，仍走手动碎碎念端点', async () => {
+    const captured = captureFetch();
+    try {
+      harness().actions.run({ label: '大的要来啦', action: 'whisper', image: '大的要来啦' } as MenuLeaf);
+      await new Promise((resolve) => setImmediate(resolve));
+    } finally {
+      captured.restore();
+    }
+    assert.equal(captured.urls.length, 1, '一次点击只该发一次请求');
+    const url = captured.urls[0] ?? '';
+    assert.match(url, /\/whisper\?pet=pet-1&surface=web&image=/, '应带上 image 参数');
+    assert.ok(url.endsWith(encodeURIComponent('大的要来啦')), '中文与空格必须编码：' + url);
+  });
+
+  test('普通碎碎念：不带 image 参数（行为与加这个功能之前一致）', async () => {
+    const captured = captureFetch();
+    try {
+      harness().actions.run({ label: '碎碎念', action: 'whisper' } as MenuLeaf);
+      await new Promise((resolve) => setImmediate(resolve));
+    } finally {
+      captured.restore();
+    }
+    assert.equal(captured.urls.length, 1);
+    assert.doesNotMatch(captured.urls[0] ?? '', /image=/, '没点名具体图就不该带 image 参数');
+  });
+});

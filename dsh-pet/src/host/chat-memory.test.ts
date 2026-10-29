@@ -54,14 +54,14 @@ function tempWorkspace(overlay: Record<string, unknown> = {}) {
   return { dir, configPaths, memeDir: join(dir, 'memes'), userRoot: join(dir, 'user') };
 }
 
-/** 造一份对话记忆；memeDir 缺省 = 没有表情包目录（池为空）。 */
-function createMemory(reply: string, ws: ReturnType<typeof tempWorkspace>, memeDir?: string) {
+/** 造一份对话记忆；memeDir 缺省 = 没有表情包目录（池为空），writes 给了就记录每次写气泡叶子。 */
+function createMemory(reply: string, ws: ReturnType<typeof tempWorkspace>, memeDir?: string, writes?: string[]) {
   return createChatMemory({
     ctx: fakeCtx(reply),
     configPaths: ws.configPaths,
     log: { info: () => {}, warn: () => {}, error: () => {} },
     memeDirsFor: () => (memeDir === undefined ? [] : [memeDir]),
-    state: { writePet: () => {} },
+    state: { writePet: (petId: string, leaf: string) => writes?.push(petId + '.' + leaf) },
     userRoot: ws.userRoot,
   } as unknown as ChatMemoryInput);
 }
@@ -121,6 +121,65 @@ describe('createChatMemory —— 图信息写入记忆文件', () => {
       assert.ok(assistant);
       assert.equal(assistant.meme, '可爱', 'assistant 消息应记下配图名');
       assert.equal(assistant.content, '你好呀', '配图标记属于展示层，不得留在记忆正文里');
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+});
+
+describe('createChatMemory —— 指定配图的碎碎念', () => {
+  /** 池里两张图、文件都在；自动配图开关关着，用来验证「点名不受自动开关门控」。 */
+  function poolWorkspace() {
+    const ws = tempWorkspace({ whisperImageEnabled: false, memes: { 可爱: '卖萌立绘', 生气: '鼓腮帮子' } });
+    mkdirSync(ws.memeDir, { recursive: true });
+    writeFileSync(join(ws.memeDir, '可爱.png'), '');
+    writeFileSync(join(ws.memeDir, '生气.png'), '');
+    return ws;
+  }
+
+  test('点名池内的图：用这张说话，自动配图开关关着也生效', async () => {
+    const ws = poolWorkspace();
+    const writes: string[] = [];
+    try {
+      const r = await createMemory('随便一句', ws, ws.memeDir, writes).publishWhisper('main', '生气');
+      assert.equal(r.ok, true);
+      assert.equal(r.ok === true ? r.image : '', '生气', '必须用点名的那张，不能随机抽');
+      assert.deepEqual(writes, ['main.say'], '成功时写一次气泡叶子');
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('点名不存在的图：unknown-image，且不写气泡', async () => {
+    const ws = poolWorkspace();
+    const writes: string[] = [];
+    try {
+      const r = await createMemory('不该生成', ws, ws.memeDir, writes).publishWhisper('main', '查无此图');
+      assert.equal(r.ok, false);
+      assert.equal(r.ok === false ? r.reason : '', 'unknown-image');
+      assert.deepEqual(writes, [], '明确失败时不写叶子，否则等于静默换了一张');
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('配置写了但图片文件已删：同样 unknown-image（池判定含文件存在性）', async () => {
+    const ws = poolWorkspace();
+    rmSync(join(ws.memeDir, '生气.png'));
+    try {
+      const r = await createMemory('不该生成', ws, ws.memeDir).publishWhisper('main', '生气');
+      assert.equal(r.ok === false ? r.reason : '', 'unknown-image');
+    } finally {
+      rmSync(ws.dir, { recursive: true, force: true });
+    }
+  });
+
+  test('不点名：保持原行为（开关关 = 纯文本，不带 image）', async () => {
+    const ws = poolWorkspace();
+    try {
+      const r = await createMemory('纯文本一句', ws, ws.memeDir).publishWhisper('main');
+      assert.equal(r.ok, true);
+      assert.equal(r.ok === true && 'image' in r, false, '自动配图关闭时不该带图');
     } finally {
       rmSync(ws.dir, { recursive: true, force: true });
     }

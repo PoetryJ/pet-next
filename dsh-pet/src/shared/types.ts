@@ -113,6 +113,13 @@ export interface Pet {
   chatModel?: ModelSelection;
   /** 全局默认：字体（种类 / 字号 / 是否随宠物大小缩放） */
   font?: FontConfig;
+  /** 条目级：表情包清单（名称 → 给模型看的描述），合并器吹进每只实例、多实例共享。
+   *  顺序即配置书写顺序，也就是 chatImageLimit 截取「前 N 张」的依据。 */
+  memes?: Record<string, string>;
+  /** 条目级：对话配图开关。true = 对话生成时把表情包清单交给模型按语境选一张；缺省按关处理。 */
+  chatImageEnabled?: boolean;
+  /** 条目级：对话配图张数上限（非负整数，0 = 不限制）。只截「交给模型的清单」，不截碎碎念抽图。 */
+  chatImageLimit?: number;
 }
 
 /** 一处「服务商 + 模型」选择（config.jsonc 的 whisperModel / chatModel 段）。

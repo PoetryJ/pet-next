@@ -28,8 +28,14 @@ Object.assign(PetSprite.prototype, {
     ];
     // 「查看余额」无条件显示：关了 balanceEnabled 的宠物也能点，手动请求不受开关限制，点了一定给答复。
     tools.push({ label: '查看余额', action: 'show-balance' });
+    tools.push({ label: '碎碎念', action: 'whisper' });
+    // 「配图」：与浏览器端同一份分支（纳入对话的配图 / 其他），点一张就用它说一句；没有可用图时
+    // 返回 null，整项不出现。数据来自拍平层吹入的条目级字段（this.pet.memes / chatImageEnabled /
+    // chatImageLimit），与网页端同一个 flattenConfigPets；缩略图走 BASE 的 /pic/memes 绝对地址
+    // （桌面窗口是 file://，相对路径取不到图）。
+    const memeBranch = S.buildMemeBranch(this.pet, (name) => S.memeThumbUrl(BASE, this.pet.assetRoot, name));
+    if (memeBranch) tools.push(memeBranch);
     tools.push(
-      { label: '碎碎念', action: 'whisper' },
       { label: '对话', action: 'chat', hint: S.CHAT_HOTKEY_HINT },
       { label: '回到初始位置', action: 'home' },
       // 显示位置（仅网页/仅桌面/两者/都不）：改这只宠物的 display 配置，由宿主重载生效。
@@ -90,7 +96,8 @@ Object.assign(PetSprite.prototype, {
       return;
     }
     if (leaf.action === 'whisper') {
-      this.showWhisperFromMenu(); // 立即让 host 强制新生成一句并展示（绕过节流；展示路径与周期触发一致）
+      // leaf.image 只在「配图」菜单的子项上出现：指定这一句用哪张图，其余入口不带（仍随机抽图）。
+      this.showWhisperFromMenu(leaf.image); // 立即让 host 强制新生成一句并展示（绕过节流；展示路径与周期触发一致）
       return;
     }
     if (leaf.action === 'chat') {
@@ -153,14 +160,18 @@ Object.assign(PetSprite.prototype, {
 
   // 「碎碎念」菜单：POST 动作让宿主立即新生成一句（写进 S）。动作不回文本，文本随版本号变化由
   // 挂着的长轮询送达。手动触发不受 whisperEnabled 限制（该字段只关自动周期）。
-  showWhisperFromMenu() {
+  // image 给了就只用这张（「配图」菜单点的是具体某张）：不在池内宿主回 unknown-image，本端只记日志。
+  showWhisperFromMenu(image) {
     // surface 必填：本窗口就是桌面端
     // 桌面窗口是 file://，语音接口得走 bridge 绝对地址；标记归本端，周期碎碎念没有标记所以不播。
     S.setVoiceBase(BASE);
     S.markVoicePending();
-    S.postAction(WHISPER_URL + '?pet=' + encodeURIComponent(this.pet.id) + '&surface=desktop')
+    // 图名是配置里的中文键，必须编码（可能含空格与全角字符）
+    const pic = image ? '&image=' + encodeURIComponent(image) : '';
+    S.postAction(WHISPER_URL + '?pet=' + encodeURIComponent(this.pet.id) + '&surface=desktop' + pic)
       .then((ok) => {
-        if (!ok) console.warn('[dsh-pet] 菜单碎碎念：生成动作未成功 pet=' + this.pet.id);
+        if (!ok)
+          console.warn('[dsh-pet] 菜单碎碎念：生成动作未成功 pet=' + this.pet.id + (image ? ' image=' + image : ''));
       })
       .catch((e) => {
         console.warn('[dsh-pet] 菜单碎碎念异常', e);

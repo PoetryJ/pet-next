@@ -335,11 +335,22 @@ paths:
           本端点返回 `{ ok: false, reason: 'generate-error' }`。
         - 若该宠物条目开启了 `whisperImageEnabled` 且表情包池非空，
           会随机抽一张配图，随文本一起写进叶子的 `image` 字段。
+        - 带 `?image=` 时改为**只用指定那一张**：不受 `whisperImageEnabled` 门控（手动点图是显式意图），
+          名称不在池内则返回 `unknown-image`，**不会静默换成另一张**。
         - 模型选择：条目配置的 `whisperModel` 优先；留空则跟随当前对话的模型。
           指定模型生成失败时会**自动回落到当前对话的模型**重试一次。
       parameters:
         - $ref: "#/components/parameters/PetIdQuery"
         - $ref: "#/components/parameters/SurfaceQuery"
+        - name: image
+          in: query
+          required: false
+          description: |
+            指定本次使用的表情包名称（= 该宠物所属条目 `memes` 的键，不含扩展名）。
+            给了就只用这张；不在池内（名称写错，或图片文件已被删除）返回 `unknown-image`。
+            缺省 = 按 `whisperImageEnabled` 随机抽一张，或纯文本。
+          schema:
+            type: string
       responses:
         "200":
           description: |
@@ -349,7 +360,8 @@ paths:
             `reason` 取值：`provider-missing`（没有可用的模型——独立模式下恒为它）、
             `generate-error`（生成失败或 IO 失败，带 `message`）、`unknown-pet`（目标宠物在
             "校验那次读"与生成前那次读之间被删掉了——罕见，但如实报，**不会静默按 `main` 生成**，
-            也不会写下一只已不存在宠物的叶子）、`bad-request`（`surface` 缺省 / 非法）、
+            也不会写下一只已不存在宠物的叶子）、`unknown-image`（`?image=` 指定的名称不在池内）、
+            `bad-request`（`surface` 缺省 / 非法）、
             `pet-not-displayed`（带 `display`）。
           content:
             application/json:

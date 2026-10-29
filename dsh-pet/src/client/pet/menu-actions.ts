@@ -112,10 +112,13 @@ export function createMenuActions(deps: MenuActionDeps): MenuActions {
     }
     if (leaf.action === 'whisper') {
       // 手动碎碎念：文本随长轮询送达，不受 whisperEnabled 限制；surface 必填，本页面就是网页端。
-      console.info('[dsh-pet] 菜单触发碎碎念 pet=' + petId);
+      console.info('[dsh-pet] 菜单触发碎碎念 pet=' + petId + (leaf.image ? ' image=' + leaf.image : ''));
       // 手动入口才播语音：标记归本端，周期触发的碎碎念没有标记，因此静音。
       markVoicePending();
-      fireAction(ROUTE_PATH + '/whisper?pet=' + encodeURIComponent(petId) + '&surface=web', '碎碎念手动触发');
+      // 「配图」菜单点的是具体某张 → 带名称让宿主用这张（不在池内宿主会回 unknown-image）；
+      // 其余入口不带，仍按配置随机抽图。名称可能含空格与中文，必须编码。
+      const pic = leaf.image ? '&image=' + encodeURIComponent(leaf.image) : '';
+      fireAction(ROUTE_PATH + '/whisper?pet=' + encodeURIComponent(petId) + '&surface=web' + pic, '碎碎念手动触发');
       return;
     }
     if (leaf.action === 'chat') {
