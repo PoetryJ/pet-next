@@ -1,0 +1,40 @@
+{
+  "host": "linux",
+  "release": "6.12.94+",
+  "arch": "x64",
+  "cpus": [
+    "Intel(R) Xeon(R) Processor",
+    "Intel(R) Xeon(R) Processor",
+    "Intel(R) Xeon(R) Processor",
+    "Intel(R) Xeon(R) Processor"
+  ],
+  "cpuCount": 4,
+  "totalMem": 16780574720,
+  "electron": "43.3.0",
+  "window": {
+    "x": 80,
+    "y": 80,
+    "width": 320,
+    "height": 240
+  },
+  "behavior": false,
+  "dwellMs": 500,
+  "idleCpuMs": 2000,
+  "rounds": 3,
+  "samples": 30,
+  "smoke": false,
+  "assets": {
+    "files": [
+      {
+        "path": "assets/idle.webm",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "path": "assets/reaction.webm",
+        "sha256": "9d73e16ca8d9abcfff96a41d9e98f632a241691ddf81b59538b16a6e77049861"
+      }
+    ],
+    "assetSha256": "115b1133c066da20bdb2077de301c6c348890bc2243cd5f90ffc6e7b48c74bcf"
+  },
+  "failures": []
+}
