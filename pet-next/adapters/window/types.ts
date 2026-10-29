@@ -10,7 +10,7 @@ export interface WorkArea {
   height: number;
 }
 
-export interface WindowBounds extends WorkArea {}
+export type WindowBounds = WorkArea;
 
 export interface WindowHost {
   getBounds(): WindowBounds;

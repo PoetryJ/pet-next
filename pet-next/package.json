@@ -18,6 +18,9 @@
     "test:e2e": "node --experimental-strip-types --test --test-reporter spec tests/electron.e2e.test.ts",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e"
   },
+  "pnpm": {
+    "onlyBuiltDependencies": ["electron"]
+  },
   "devDependencies": {
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.0",

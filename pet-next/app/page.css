@@ -1,6 +1,5 @@
 html,
-body,
-#pet {
+body {
   margin: 0;
   width: 100%;
   height: 100%;
@@ -11,4 +10,26 @@ body,
 body {
   user-select: none;
   cursor: grab;
+}
+
+body.dragging {
+  cursor: grabbing;
+}
+
+#pet {
+  width: 100%;
+  height: 100%;
+}
+
+video,
+img {
+  width: 100%;
+  height: 100%;
+  object-fit: contain;
+  pointer-events: none;
+  background: transparent;
+}
+
+#placeholder {
+  background: rgba(64, 156, 214, 0.9);
 }

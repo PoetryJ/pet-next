@@ -5,13 +5,15 @@
 
 export interface LoadToken {
   aborted: boolean;
+  /** 本次加载被替换或卸载时调用，用来卸下监听并结束 Promise。 */
+  onAbort(listener: () => void): void;
 }
 
 export interface MediaElement {
   src: string;
   loop: boolean;
   muted: boolean;
-  paused: boolean;
+  readonly paused: boolean;
   onended: (() => void) | null;
   onerror: (() => void) | null;
   play(): Promise<void>;

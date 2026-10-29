@@ -22,4 +22,5 @@ export interface PetPorts {
   moveBy(dx: number, dy: number): void;
   quit(): void;
   setVisual(visual: PetVisual, requestId: number): void;
+  setDragging(dragging: boolean): void;
 }
