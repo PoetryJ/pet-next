@@ -1,0 +1,10 @@
+{
+  "kind": "startup-failure",
+  "exitCode": 2,
+  "signal": null,
+  "recordDir": "/workspace/pet-next/logs/platform-runs/linux/2026-10-29T16-13-33-427Z-platform-fail-5187",
+  "treeGone": true,
+  "decoyAlive": true,
+  "decoyTracked": false,
+  "detail": "kind=startup-failure exit=2 signal=null treeGone=true decoyAlive=true decoyTracked=false"
+}

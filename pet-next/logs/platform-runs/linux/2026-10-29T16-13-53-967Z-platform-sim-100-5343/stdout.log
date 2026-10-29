@@ -1,0 +1,8 @@
+{"event":"ready","alwaysOnTop":true,"transparent":true,"requestedBackground":"#00000000","background":"#000000","bounds":{"x":80,"y":109,"width":320,"height":240},"workArea":{"x":0,"y":29,"width":1920,"height":1171},"scaleFactor":1,"forcedDeviceScaleFactor":1,"scaleSource":"simulated-chromium-flag","displayBounds":{"x":0,"y":0,"width":1920,"height":1200},"displayCount":1,"physical":{"x":80,"y":109}}
+{"event":"console","message":"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."}
+{"event":"bounds","bounds":{"x":88,"y":113,"width":320,"height":240},"requested":{"x":88,"y":113},"physical":{"x":88,"y":113}}
+{"event":"bounds","bounds":{"x":96,"y":117,"width":320,"height":240},"requested":{"x":96,"y":117},"physical":{"x":96,"y":117}}
+{"event":"bounds","bounds":{"x":104,"y":121,"width":320,"height":240},"requested":{"x":104,"y":121},"physical":{"x":104,"y":121}}
+{"event":"bounds","bounds":{"x":112,"y":125,"width":320,"height":240},"requested":{"x":112,"y":125},"physical":{"x":112,"y":125}}
+{"event":"bounds","bounds":{"x":120,"y":129,"width":320,"height":240},"requested":{"x":120,"y":129},"physical":{"x":120,"y":129}}
+{"event":"bounds","bounds":{"x":128,"y":133,"width":320,"height":240},"requested":{"x":128,"y":133},"physical":{"x":128,"y":133}}

@@ -1,0 +1,48 @@
+{
+  "ready": {
+    "alwaysOnTop": true,
+    "transparent": true,
+    "requestedBackground": "#00000000",
+    "background": "#000000",
+    "bounds": {
+      "x": 80,
+      "y": 109,
+      "width": 320,
+      "height": 240
+    },
+    "workArea": {
+      "x": 0,
+      "y": 29,
+      "width": 1920,
+      "height": 1171
+    },
+    "scaleFactor": 1,
+    "forcedDeviceScaleFactor": 1,
+    "scaleSource": "simulated-chromium-flag",
+    "displayCount": 1,
+    "physical": {
+      "x": 80,
+      "y": 109
+    }
+  },
+  "drag": {
+    "ok": true,
+    "reason": null,
+    "screenDelta": {
+      "x": 48,
+      "y": 24
+    },
+    "requested": {
+      "x": 128,
+      "y": 133
+    },
+    "readback": {
+      "x": 128,
+      "y": 133,
+      "width": 320,
+      "height": 240
+    },
+    "devicePixelRatio": 1,
+    "trace": "idle:1"
+  }
+}
