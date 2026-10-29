@@ -1,19 +1,19 @@
 /**
- * 最小优先级规则的工厂。Agent D 实现 `step`。
+ * 最小优先级仲裁基线：按来源等级比较，不老化、不随机。
+ * 不读取时钟或宿主。一场的状态都在返回值里，工厂本身不保留场次。
+ * 规则见 docs/arbiter-protocol.md。本目录不改契约形状。
  * @module pet-next/experiments/arbiter/baseline
  */
-import type { Arbiter, ArbiterFactory } from '../../../contracts/arbiter.ts';
+import type { ArbiterFactory } from '../../../contracts/arbiter.ts';
+import { initialBaselineState, stepBaseline, type BaselineState } from './policy.ts';
 
-function unimplemented(label: string): Arbiter<unknown> {
-  return {
-    initialState() {
-      throw new Error(`${label} 尚未实现`);
-    },
-    step(_state, _input) {
-      throw new Error(`${label} 尚未实现`);
-    },
-  };
-}
+export type { BaselineState };
 
-/** 基线仲裁。调用工厂得到的对象在 `step` 时才会执行规则。 */
-export const createBaseline: ArbiterFactory = () => unimplemented('baseline arbiter');
+/**
+ * 基线仲裁。拖动期间不启动自动动作，点击高于自动提醒，同级不抢占。
+ * 过期事件丢弃，对不上的完成回调不结束当前动作。
+ */
+export const createBaseline: ArbiterFactory<BaselineState> = () => ({
+  initialState: initialBaselineState,
+  step: stepBaseline,
+});
