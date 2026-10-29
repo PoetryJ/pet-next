@@ -1,0 +1,13 @@
+{
+  "executable": "/workspace/pet-next/node_modules/.pnpm/electron@43.3.0/node_modules/electron/dist/electron",
+  "args": [
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+    "--force-device-scale-factor=1",
+    "--remote-allow-origins=*",
+    "--remote-debugging-port=35763",
+    "/workspace/pet-next/dist/electron/main.js"
+  ],
+  "cwd": "/workspace/pet-next",
+  "platform": "linux"
+}

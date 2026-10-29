@@ -5,3 +5,4 @@ dist/
 test-results/
 assets-pipeline/out/
 experiments/arbiter/out/
+!logs/platform-runs/**/*.log

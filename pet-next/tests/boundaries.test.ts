@@ -168,7 +168,7 @@ describe('integration contracts', () => {
     assert.equal(scripts.scripts.verify, 'pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e');
     assert.equal(
       scripts.scripts.test,
-      'node --experimental-strip-types --test --test-reporter spec core/*/*.test.ts adapters/*/*.test.ts app/*.test.ts tests/boundaries.test.ts tests/*/*.test.ts',
+      'node --experimental-strip-types --test --test-reporter spec core/*/*.test.ts adapters/*/*.test.ts app/*.test.ts tests/boundaries.test.ts tests/cleanup.test.ts tests/*/*.test.ts',
     );
     assert.equal(scripts.scripts['test:e2e'], 'node --experimental-strip-types --test --test-reporter spec tests/*.e2e.test.ts');
     assert.equal(scripts.scripts['verify:windows'], 'powershell -File scripts/verify-windows.ps1');
