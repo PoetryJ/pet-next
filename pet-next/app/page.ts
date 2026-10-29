@@ -1,33 +1,38 @@
 /**
  * 页面装配：把手势、会话、媒体元素和预加载桥连起来。
- * 不决定拖动阈值以外的策略，策略在 core。
+ * 预览未点名时走已验收的单槽会话。双槽、行为和候选素材只在对应令牌下创建。
  * @module pet-next/app/page
  */
-import { createMediaAdapter, systemMediaClock } from '../adapters/media/adapter.ts';
-import { createElementLoader } from '../adapters/media/element-loader.ts';
-import type { MediaElement } from '../adapters/media/types.ts';
 import { domScreenPointToDip } from '../adapters/window/pointer-point.ts';
+import { parsePreview, PREVIEW_QUERY } from '../contracts/preview.ts';
+import { createBehaviorPet, type BehaviorPet } from './behavior-pet.ts';
 import './bridge.ts';
+import { attachPetMedia, type PetMedia } from './pet-media.ts';
 import { previewDataset } from './preview-gate.ts';
 import { createPetController, parseClipRequest, type PetController } from './wire.ts';
 
 const DRAG_THRESHOLD_PX = 5;
 const LOAD_TIMEOUT_MS = 8000;
+const CANDIDATE_REACTION = new URL('../assets/candidates/reaction/reaction.webm', location.href).href;
 
 const params = new URLSearchParams(location.search);
+const selection = parsePreview(params.get(PREVIEW_QUERY));
 const idleUrl = params.get('idle') ?? new URL('../assets/idle.webm', location.href).href;
-const reactionUrl = params.get('reaction') ?? new URL('../assets/reaction.webm', location.href).href;
+const shippedReaction = new URL('../assets/reaction.webm', location.href).href;
+const reactionUrl = params.get('reaction') ?? (selection.candidate ? CANDIDATE_REACTION : shippedReaction);
 
 const video = document.querySelector('#clip');
+const standby = document.querySelector('#clip-next');
 const placeholder = document.querySelector('#placeholder');
 const petEl = document.querySelector('#pet');
-if (!(video instanceof HTMLVideoElement) || !(placeholder instanceof HTMLImageElement) || !(petEl instanceof HTMLElement)) {
+if (
+  !(video instanceof HTMLVideoElement) ||
+  !(standby instanceof HTMLVideoElement) ||
+  !(placeholder instanceof HTMLImageElement) ||
+  !(petEl instanceof HTMLElement)
+) {
   throw new Error('pet markup missing');
 }
-
-video.muted = true;
-video.playsInline = true;
-video.autoplay = false;
 
 const previewMark = previewDataset(location.search);
 if (previewMark !== null) {
@@ -35,69 +40,97 @@ if (previewMark !== null) {
   document.documentElement.dataset.previewActive = previewMark.previewActive;
 }
 
-const showClip = (): void => {
-  placeholder.hidden = true;
-  video.hidden = false;
-};
+const holder: { controller?: PetController; behavior?: BehaviorPet } = {};
 
-const showPlaceholder = (): void => {
-  video.hidden = true;
-  placeholder.hidden = false;
-};
-
-const holder: { controller?: PetController } = {};
-
-// 已验收的单槽适配器。预览标记只记录请求，本轮不按它更换实现。
-const media = createMediaAdapter({
-  element: bindVideo(video),
-  loader: createElementLoader(video),
-  clock: systemMediaClock(),
+const media: PetMedia = attachPetMedia({
+  playback: selection.playback,
+  primary: video,
+  standby,
+  placeholder,
   timeoutMs: LOAD_TIMEOUT_MS,
+  reactionUrl,
   onStatus(event) {
-    const parsed = parseClipRequest(event.playbackId);
-    const controller = holder.controller;
-    if (!parsed || !controller) return;
-    if (event.status === 'playing') {
-      showClip();
+    if (holder.behavior) {
+      holder.behavior.onMedia(event);
       return;
     }
+    const parsed = parseClipRequest(event.requestId);
+    const controller = holder.controller;
+    if (!parsed || !controller) return;
     if (event.status === 'ended') controller.notify({ type: 'clip-ended', requestId: parsed.requestId, clip: parsed.clip });
-    if (event.status === 'failed') controller.notify({ type: 'clip-failed', requestId: parsed.requestId, clip: parsed.clip });
+    if (event.status === 'failed') {
+      controller.notify({ type: 'clip-failed', requestId: parsed.requestId, clip: parsed.clip });
+    }
   },
 });
 
-const controller = createPetController({
-  assets: { idleUrl, reactionUrl },
-  dragThresholdPx: DRAG_THRESHOLD_PX,
-  ports: {
-    play(request) {
-      media.begin({
-        playbackId: `${request.clip}:${request.requestId}`,
-        url: request.url,
-        once: request.once,
-      });
-    },
-    showPlaceholder() {
-      showPlaceholder();
-    },
-    moveBy(dx, dy) {
-      window.pet.moveBy(dx, dy);
-    },
+const surface = {
+  moveBy(dx: number, dy: number) {
+    window.pet.moveBy(dx, dy);
+  },
+  quit() {
+    media.dispose();
+    window.pet.quit();
+  },
+  setVisual(visual: string, requestId: string) {
+    document.documentElement.dataset.visual = visual;
+    document.documentElement.dataset.request = requestId;
+    if (previewMark !== null) {
+      console.log(JSON.stringify({ event: 'preview', visual, requestId }));
+    }
+  },
+  setTrace(trace: readonly string[]) {
+    document.documentElement.dataset.trace = trace.join(',');
+  },
+  setDragging(dragging: boolean) {
+    document.body.classList.toggle('dragging', dragging);
+  },
+};
+
+if (selection.behavior) {
+  const behavior = createBehaviorPet({
+    media,
+    idleUrl,
+    reactionUrl,
+    dragThresholdPx: DRAG_THRESHOLD_PX,
+    moveBy: surface.moveBy,
     quit() {
-      media.dispose();
       window.pet.quit();
     },
-    setVisual(visual, requestId) {
-      document.documentElement.dataset.visual = visual;
-      document.documentElement.dataset.request = String(requestId);
-      document.documentElement.dataset.trace = (holder.controller?.trace ?? []).join(',');
+    setVisual: surface.setVisual,
+    setTrace: surface.setTrace,
+    setDragging: surface.setDragging,
+  });
+  holder.behavior = behavior;
+  behavior.boot();
+} else {
+  const controller = createPetController({
+    assets: { idleUrl, reactionUrl },
+    dragThresholdPx: DRAG_THRESHOLD_PX,
+    ports: {
+      play(request) {
+        media.begin({
+          requestId: `${request.clip}:${request.requestId}`,
+          clip: request.clip,
+          url: request.url,
+          once: request.once,
+        });
+      },
+      showPlaceholder() {
+        media.showPlaceholder();
+      },
+      moveBy: surface.moveBy,
+      quit: surface.quit,
+      setVisual(visual, requestId) {
+        surface.setVisual(visual, String(requestId));
+        surface.setTrace(holder.controller?.trace ?? []);
+      },
+      setDragging: surface.setDragging,
     },
-    setDragging(dragging) {
-      document.body.classList.toggle('dragging', dragging);
-    },
-  },
-});
-holder.controller = controller;
+  });
+  holder.controller = controller;
+  controller.boot();
+}
 
 petEl.addEventListener('pointerdown', (ev) => {
   if (ev.button !== 0) return;
@@ -107,81 +140,33 @@ petEl.addEventListener('pointerdown', (ev) => {
   } catch {
     // 合成指针没有底层捕获时仍按坐标判定。
   }
-  const dip = domScreenPointToDip({ x: ev.screenX, y: ev.screenY });
-  controller.pointer({ type: 'pointerdown', pointerId: ev.pointerId, x: dip.x, y: dip.y });
+  dispatchPointer(ev, 'pointerdown');
 });
 
 petEl.addEventListener('pointermove', (ev) => {
-  const dip = domScreenPointToDip({ x: ev.screenX, y: ev.screenY });
-  controller.pointer({ type: 'pointermove', pointerId: ev.pointerId, x: dip.x, y: dip.y });
+  dispatchPointer(ev, 'pointermove');
 });
 
 petEl.addEventListener('pointerup', (ev) => {
-  const dip = domScreenPointToDip({ x: ev.screenX, y: ev.screenY });
-  controller.pointer({ type: 'pointerup', pointerId: ev.pointerId, x: dip.x, y: dip.y });
+  dispatchPointer(ev, 'pointerup');
 });
 
 petEl.addEventListener('pointercancel', (ev) => {
-  controller.pointer({ type: 'pointercancel', pointerId: ev.pointerId });
+  activePet().pointer({ type: 'pointercancel', pointerId: ev.pointerId });
 });
 
 window.addEventListener('keydown', (ev) => {
-  if (ev.key === 'Escape') controller.quit();
+  if (ev.key === 'Escape') activePet().quit();
+  if ((ev.key === 'f' || ev.key === 'F') && holder.behavior) holder.behavior.failNext();
 });
 
-controller.boot();
+function activePet(): { pointer(event: Parameters<PetController['pointer']>[0]): void; quit(): void } {
+  if (holder.behavior) return holder.behavior;
+  if (holder.controller) return holder.controller;
+  throw new Error('pet session missing');
+}
 
-/** DOM video 的事件签名和适配器契约不同，这里只转发适配器用到的成员。 */
-function bindVideo(video: HTMLVideoElement): MediaElement {
-  let onended: (() => void) | null = null;
-  let onerror: (() => void) | null = null;
-  return {
-    get src() {
-      return video.src;
-    },
-    set src(value: string) {
-      video.src = value;
-    },
-    get loop() {
-      return video.loop;
-    },
-    set loop(value: boolean) {
-      video.loop = value;
-    },
-    get muted() {
-      return video.muted;
-    },
-    set muted(value: boolean) {
-      video.muted = value;
-    },
-    get paused() {
-      return video.paused;
-    },
-    get onended() {
-      return onended;
-    },
-    set onended(handler: (() => void) | null) {
-      onended = handler;
-      video.onended = handler;
-    },
-    get onerror() {
-      return onerror;
-    },
-    set onerror(handler: (() => void) | null) {
-      onerror = handler;
-      video.onerror = handler;
-    },
-    play() {
-      return video.play();
-    },
-    pause() {
-      video.pause();
-    },
-    load() {
-      video.load();
-    },
-    removeAttribute(name: string) {
-      video.removeAttribute(name);
-    },
-  };
+function dispatchPointer(ev: PointerEvent, type: 'pointerdown' | 'pointermove' | 'pointerup'): void {
+  const dip = domScreenPointToDip({ x: ev.screenX, y: ev.screenY });
+  activePet().pointer({ type, pointerId: ev.pointerId, x: dip.x, y: dip.y });
 }

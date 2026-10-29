@@ -172,11 +172,17 @@ describe('integration contracts', () => {
 
   test('页面指针仍走 screenX，或已接到指针适配器', async () => {
     const page = await readFile(path.join(petRoot, 'app/page.ts'), 'utf8');
-    assert.equal(page.includes('x: ev.screenX') || page.includes('createPointerAdapter'), true);
+    assert.equal(page.includes('x: ev.screenX') || page.includes('domScreenPointToDip'), true);
     assert.equal(page.includes('experiments/'), false);
-    assert.equal(page.includes('createMediaAdapter'), true);
-    assert.equal(page.includes('adapters/media/two-slot'), false);
-    assert.equal(page.includes('core/behavior'), false);
+    assert.equal(page.includes('attachPetMedia'), true);
+    assert.equal(page.includes('selection.behavior'), true);
+    assert.equal(page.includes('selection.candidate'), true);
+    const media = await readFile(path.join(petRoot, 'app/pet-media.ts'), 'utf8');
+    const behavior = await readFile(path.join(petRoot, 'app/behavior-pet.ts'), 'utf8');
+    assert.equal(media.includes('createMediaAdapter'), true);
+    assert.equal(media.includes('twoSlotModeForPreview'), true);
+    assert.equal(media.includes('createTwoSlotAdapter'), true);
+    assert.equal(behavior.includes('createDesktopPetBehavior'), true);
     const scripts = JSON.parse(await readFile(path.join(petRoot, 'package.json'), 'utf8')) as { scripts: Record<string, string> };
     assert.equal(scripts.scripts.start, 'pnpm build && node scripts/start.mjs');
     assert.equal(scripts.scripts.verify, 'pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e');
@@ -190,7 +196,7 @@ describe('integration contracts', () => {
       scripts.scripts['test:e2e'],
       'node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts',
     );
-    assert.equal(scripts.scripts['verify:windows'], 'powershell -File scripts/verify-windows.ps1');
+    assert.equal(scripts.scripts['verify:windows'], 'powershell -File tests/platform/verify-windows.ps1');
     assert.equal(scripts.scripts['assets:check'], 'node --experimental-strip-types assets-pipeline/cli.ts');
     assert.equal(scripts.scripts['experiment:arbiter'], 'node --experimental-strip-types experiments/arbiter/runner/main.ts');
     assert.equal(scripts.scripts['experiment:arbiter:check'], 'node --experimental-strip-types experiments/arbiter/check/main.ts');

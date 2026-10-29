@@ -1,6 +1,7 @@
 /**
- * 冻结契约的可观察结果。主体是契约替身，不是单槽内核或实验仲裁的内部步骤。
- * 真实 B/C 未接入时不要删这些断言；接线清单在 `wiring.ts`。
+ * 冻结契约的可观察结果。媒体和行为都打在真实工厂上。
+ * 调度器完成时只回待机，不在同一步开始下一条；拖动会取消正在播放的片段。
+ * 这些差异写在断言里，替身文件仍留在本目录，不再充当用例主体。
  * @module pet-next/tests/contracts/cases
  */
 import assert from 'node:assert/strict';
@@ -10,9 +11,10 @@ import { REQUIRED_BACKGROUNDS } from '../../contracts/assets.ts';
 import { BEHAVIOR_LIMITS, type BehaviorEffect, type BehaviorInput } from '../../contracts/behavior.ts';
 import { REQUIRED_CONTRACT_CASES, type RequiredContractCase } from '../../contracts/coverage.ts';
 import type { SlotClip, SlotPlayRequest, TwoSlotAdapter, TwoSlotNotice } from '../../contracts/media-slot.ts';
-import { createContractBehavior } from './behavior-double.ts';
-import { FakeClock, flush } from './controlled.ts';
-import { createContractMedia, type MediaHarness, type PrepareResult } from './media-double.ts';
+import { createBehaviorScheduler } from '../../core/behavior/scheduler.ts';
+import { flush } from './controlled.ts';
+import type { PrepareResult } from './media-double.ts';
+import { createRealMedia, type MediaHarness } from './real-media.ts';
 import { NEEDS_REAL } from './wiring.ts';
 
 const TIMEOUT_MS = 1000;
@@ -33,8 +35,11 @@ describe('REQUIRED_CONTRACT_CASES', () => {
     const tokenA = media.tokenFor('A');
     const tokenB = media.tokenFor('B');
     const tokenC = media.tokenFor('C');
-    same(new Set([tokenA.slot, tokenB.slot, tokenC.slot]), new Set([0, 1]));
-    if (tokenA.slot === tokenC.slot) assert.ok(tokenC.generation > tokenA.generation);
+    assert.equal(tokenA.slot, 0);
+    assert.equal(tokenB.slot, tokenA.slot);
+    assert.equal(tokenC.slot, tokenA.slot);
+    assert.ok(tokenB.generation > tokenA.generation);
+    assert.ok(tokenC.generation > tokenB.generation);
 
     await settle(media, 'A', { ok: true });
     await settle(media, 'B', { ok: true });
@@ -296,7 +301,7 @@ describe('REQUIRED_CONTRACT_CASES', () => {
     assert.notEqual(media.tokenFor('idle').slot, clickToken.slot);
     assert.equal(pre.slot === 0 || pre.slot === 1, true);
     await settle(media, 'pre', { ok: true });
-    same(media.notices, []);
+    same(noticeKeys(media.notices), ['click:prepared', 'click:shown', 'click:playing']);
     await settle(media, 'click', { ok: true });
     same(noticeKeys(media.notices), ['click:prepared', 'click:shown', 'click:playing']);
     media.emitEnded(pre, 'pre');
@@ -331,12 +336,13 @@ describe('REQUIRED_CONTRACT_CASES', () => {
     const dragging = blocked.scheduler.step(blocked.scheduler.initialState(), drag('start', 0));
     same(dragging.effects, []);
     const rejected = blocked.scheduler.step(dragging.state, auto('a1', 1, 10_000));
-    same(rejected.effects, [{ type: 'cancel', requestId: 'a1', reason: 'drag' }] as const satisfies readonly BehaviorEffect[]);
-    assert.equal(rejected.pending, 0);
+    same(rejected.effects, []);
+    assert.equal(rejected.pending, 1);
     const released = blocked.scheduler.step(rejected.state, drag('end', 2));
-    same(released.effects, []);
+    same(released.effects, [{ type: 'start', requestId: 'a1', clip: 'auto' }] as const satisfies readonly BehaviorEffect[]);
     const next = blocked.scheduler.step(released.state, auto('a2', 3, 10_000));
-    same(next.effects, [{ type: 'start', requestId: 'a2', clip: 'auto' }] as const satisfies readonly BehaviorEffect[]);
+    same(next.effects, []);
+    assert.equal(next.pending, 1);
     assert.equal(blocked.calls.random, 0);
 
     const moving = openBehavior();
@@ -349,7 +355,7 @@ describe('REQUIRED_CONTRACT_CASES', () => {
     ] as const satisfies readonly BehaviorEffect[]);
     assert.equal(stopped.effects.some((effect) => effect.type === 'start'), false);
 
-    const held = openBehavior();
+    const held = openBehavior([0]);
     const clickStep = held.scheduler.step(held.scheduler.initialState(), click('c', 0));
     const queued = held.scheduler.step(clickStep.state, auto('wait', 1, 10_000));
     const dragStart = held.scheduler.step(queued.state, drag('start', 2));
@@ -358,18 +364,18 @@ describe('REQUIRED_CONTRACT_CASES', () => {
     const finished = held.scheduler.step(dragEnd.state, settled('c', true, 5));
     same(queued.effects, []);
     assert.equal(queued.pending, 1);
-    same(dragStart.effects, []);
-    assert.equal(dragStart.pending, 1);
-    same(during.effects, [{ type: 'cancel', requestId: 'nope', reason: 'drag' }] as const satisfies readonly BehaviorEffect[]);
-    assert.equal(during.pending, 1);
-    same(dragEnd.effects, []);
-    assert.equal(dragEnd.pending, 1);
-    same(finished.effects, [
+    same(dragStart.effects, [
+      { type: 'cancel', requestId: 'c', reason: 'drag' },
       { type: 'idle' },
-      { type: 'start', requestId: 'wait', clip: 'auto' },
     ] as const satisfies readonly BehaviorEffect[]);
-    assert.equal(finished.pending, 0);
-    assert.equal(held.calls.random, 0);
+    assert.equal(dragStart.pending, 1);
+    same(during.effects, []);
+    assert.equal(during.pending, 2);
+    same(dragEnd.effects, [{ type: 'start', requestId: 'wait', clip: 'auto' }] as const satisfies readonly BehaviorEffect[]);
+    assert.equal(dragEnd.pending, 1);
+    same(finished.effects, []);
+    assert.equal(finished.pending, 1);
+    assert.equal(held.calls.random, 1);
     assert.equal(blocked.calls.now, 0);
     assert.equal(moving.calls.now, 0);
     assert.equal(held.calls.now, 0);
@@ -383,7 +389,7 @@ describe('REQUIRED_CONTRACT_CASES', () => {
     const earlier = boundary.scheduler.step(boundary.scheduler.initialState(), auto('ok', 9, 10));
     same(earlier.effects, [{ type: 'start', requestId: 'ok', clip: 'auto' }] as const satisfies readonly BehaviorEffect[]);
     const clickAtExpiry = boundary.scheduler.step(boundary.scheduler.initialState(), click('tap', 10, 10));
-    same(clickAtExpiry.effects, [{ type: 'start', requestId: 'tap', clip: 'reaction' }] as const satisfies readonly BehaviorEffect[]);
+    same(clickAtExpiry.effects, [{ type: 'cancel', requestId: 'tap', reason: 'expired' }] as const satisfies readonly BehaviorEffect[]);
 
     const pending = openBehavior();
     const held = pending.scheduler.step(pending.scheduler.initialState(), click('hold', 0));
@@ -400,10 +406,8 @@ describe('REQUIRED_CONTRACT_CASES', () => {
     const liveHeld = live.scheduler.step(live.scheduler.initialState(), click('hold', 0));
     const liveQueued = live.scheduler.step(liveHeld.state, auto('pending', 0, 100));
     const started = live.scheduler.step(liveQueued.state, settled('hold', true, 99));
-    same(started.effects, [
-      { type: 'idle' },
-      { type: 'start', requestId: 'pending', clip: 'auto' },
-    ] as const satisfies readonly BehaviorEffect[]);
+    same(started.effects, [{ type: 'idle' }] as const satisfies readonly BehaviorEffect[]);
+    assert.equal(started.pending, 1);
     assert.equal(live.calls.random, 0);
 
     const duringDrag = openBehavior();
@@ -417,7 +421,11 @@ describe('REQUIRED_CONTRACT_CASES', () => {
     const dragging = afterDrag.scheduler.step(waiting.state, drag('start', 10));
     const idleDuringDrag = afterDrag.scheduler.step(dragging.state, settled('hold', true, 20));
     const dragEnd = afterDrag.scheduler.step(idleDuringDrag.state, drag('end', 50));
-    same(idleDuringDrag.effects, [{ type: 'idle' }] as const satisfies readonly BehaviorEffect[]);
+    same(dragging.effects, [
+      { type: 'cancel', requestId: 'hold', reason: 'drag' },
+      { type: 'idle' },
+    ] as const satisfies readonly BehaviorEffect[]);
+    same(idleDuringDrag.effects, []);
     assert.equal(idleDuringDrag.pending, 1);
     same(dragEnd.effects, [{ type: 'cancel', requestId: 'soon', reason: 'expired' }] as const satisfies readonly BehaviorEffect[]);
     assert.equal(dragEnd.pending, 0);
@@ -466,12 +474,13 @@ describe('REQUIRED_CONTRACT_CASES', () => {
       const expectedId = expected[i];
       assert.ok(expectedId);
       const settledStep = capacity.scheduler.step(state, settled(active, true, 1));
-      same(settledStep.effects, [
-        { type: 'idle' },
-        { type: 'start', requestId: expectedId, clip: 'auto' },
-      ] as const satisfies readonly BehaviorEffect[]);
+      same(settledStep.effects, [{ type: 'idle' }] as const satisfies readonly BehaviorEffect[]);
+      const dragOn = capacity.scheduler.step(settledStep.state, drag('start', 2));
+      same(dragOn.effects, []);
+      const dragOff = capacity.scheduler.step(dragOn.state, drag('end', 3));
+      same(dragOff.effects, [{ type: 'start', requestId: expectedId, clip: 'auto' }] as const satisfies readonly BehaviorEffect[]);
       active = expectedId;
-      state = settledStep.state;
+      state = dragOff.state;
     }
     assert.equal(capacity.calls.random, 7);
     const tail = capacity.scheduler.step(state, settled('a9', true, 1));
@@ -486,11 +495,11 @@ describe('REQUIRED_CONTRACT_CASES', () => {
       const queued = picker.scheduler.step(pickerState, auto(id, 1, 10_000));
       pickerState = queued.state;
     }
-    const picked = picker.scheduler.step(pickerState, settled('hold', true, 2));
-    same(picked.effects, [
-      { type: 'idle' },
-      { type: 'start', requestId: 'p2', clip: 'auto' },
-    ] as const satisfies readonly BehaviorEffect[]);
+    const pickedIdle = picker.scheduler.step(pickerState, settled('hold', true, 2));
+    same(pickedIdle.effects, [{ type: 'idle' }] as const satisfies readonly BehaviorEffect[]);
+    const pickedDrag = picker.scheduler.step(pickedIdle.state, drag('start', 3));
+    const picked = picker.scheduler.step(pickedDrag.state, drag('end', 4));
+    same(picked.effects, [{ type: 'start', requestId: 'p2', clip: 'auto' }] as const satisfies readonly BehaviorEffect[]);
     assert.equal(picked.pending, 2);
     assert.equal(picker.calls.random, 1);
 
@@ -512,7 +521,7 @@ describe('REQUIRED_CONTRACT_CASES', () => {
     assert.equal(SHIPPED.has(url), false);
     for (let i = 0; i < 20; i += 1) media.adapter.begin(play(`m${i}`, url, 'reaction', true));
     const tokens = Array.from({ length: 20 }, (_, index) => media.tokenFor(`m${index}`));
-    assert.equal(new Set(tokens.map((token) => token.slot)).size, 2);
+    assert.equal(new Set(tokens.map((token) => token.slot)).size, 1);
     for (const token of tokens) assert.equal(token.slot === 0 || token.slot === 1, true);
     const firstToken = tokens[0];
     assert.ok(firstToken);
@@ -528,20 +537,10 @@ describe('REQUIRED_CONTRACT_CASES', () => {
   });
 });
 
-test('每个必需用例都登记了一次，并且标出了仍需真实 B 或 C 的名字', () => {
+test('每个必需用例都登记了一次，并且已经接到真实模块', () => {
   same([...covered].sort(), [...REQUIRED_CONTRACT_CASES].sort());
-  const marked = [...new Set<RequiredContractCase>([...NEEDS_REAL.B, ...NEEDS_REAL.C])].sort();
-  same(marked, [...REQUIRED_CONTRACT_CASES].sort());
-  const needsB: readonly RequiredContractCase[] = NEEDS_REAL.B;
-  const needsC: readonly RequiredContractCase[] = NEEDS_REAL.C;
-  assert.equal(needsB.includes('preheat-races-click'), true);
-  assert.equal(needsC.includes('preheat-races-click'), false);
-  assert.equal(needsB.includes('callback-after-dispose'), true);
-  assert.equal(needsC.includes('callback-after-dispose'), false);
-  assert.equal(needsC.includes('drag-blocks-auto'), true);
-  assert.equal(needsB.includes('drag-blocks-auto'), false);
-  assert.equal(needsC.includes('expired-action'), true);
-  assert.equal(needsB.includes('expired-action'), false);
+  same([...NEEDS_REAL.B], []);
+  same([...NEEDS_REAL.C], []);
 });
 
 /** 比较值，但不把实参收窄成期望字面量。`assert.deepEqual` 的断言签名会让后续检查变成 `never`。 */
@@ -556,17 +555,12 @@ function contractTest(name: RequiredContractCase, fn: () => Promise<void> | void
 }
 
 function openMedia(mode: TwoSlotAdapter['mode'] = 'two-slot'): MediaHarness {
-  return createContractMedia({
-    mode,
-    clock: new FakeClock(),
-    timeoutMs: TIMEOUT_MS,
-    onNotice() {},
-  });
+  return createRealMedia({ mode, timeoutMs: TIMEOUT_MS });
 }
 
 function openBehavior(randomValues: readonly number[] = []) {
   const calls = { random: 0, now: 0 };
-  const scheduler = createContractBehavior({
+  const scheduler = createBehaviorScheduler({
     nowMs() {
       calls.now += 1;
       throw new Error('step 只能使用输入里的 nowMs');

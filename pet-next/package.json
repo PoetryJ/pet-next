@@ -19,7 +19,7 @@
     "test:e2e": "node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts",
     "record:platform": "node scripts/record-platform-run.mjs",
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e",
-    "verify:windows": "powershell -File scripts/verify-windows.ps1",
+    "verify:windows": "powershell -File tests/platform/verify-windows.ps1",
     "assets:check": "node --experimental-strip-types assets-pipeline/cli.ts",
     "experiment:arbiter": "node --experimental-strip-types experiments/arbiter/runner/main.ts",
     "experiment:arbiter:check": "node --experimental-strip-types experiments/arbiter/check/main.ts",

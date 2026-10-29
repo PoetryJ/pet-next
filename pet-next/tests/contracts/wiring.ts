@@ -1,14 +1,19 @@
 /**
- * 真实 B/C 还没落地时，用例打在契约替身上，并在这里点名待接入的用例。
- * 实现文件一旦出现，结构测试会失败，提示把同一批断言接到真实工厂。
+ * 契约用例接到真实 B/C 之后，这里不再留下待接入名单。
+ * 实现目录空了才会回到替身，并重新点名同一批用例。
  * @module pet-next/tests/contracts/wiring
  */
 import { readdir } from 'node:fs/promises';
 import path from 'node:path';
 import type { RequiredContractCase } from '../../contracts/coverage.ts';
 
-/** 仍需换成真实模块的用例。替身通过不等于 B 或 C 已接入。 */
+/** 实现已接入。名单为空表示 `cases.test.ts` 打在真实工厂上。 */
 export const NEEDS_REAL = {
+  B: [],
+  C: [],
+} as const satisfies Record<'B' | 'C', readonly RequiredContractCase[]>;
+
+const PENDING_WHEN_MISSING = {
   B: [
     'late-loaded',
     'late-ended',
@@ -32,9 +37,9 @@ export const NEEDS_REAL = {
 } as const satisfies Record<'B' | 'C', readonly RequiredContractCase[]>;
 
 export interface WiringSide {
-  source: 'contract-double';
+  source: 'real' | 'contract-double';
   needsReal: 'B' | 'C';
-  /** 相对 `pet-next`。非空表示实现已在目录里，但这批用例还没接上。 */
+  /** 相对 `pet-next`。非空表示实现已在目录里。 */
   implementationFiles: readonly string[];
   cases: readonly RequiredContractCase[];
 }
@@ -66,18 +71,20 @@ export async function wiringReport(petRoot: string): Promise<{ media: WiringSide
     const files = await implementationFiles(dir);
     return files.map((file) => path.relative(petRoot, file).split(path.sep).join('/'));
   };
+  const mediaFiles = await toRel(path.join(petRoot, 'adapters/media/two-slot'));
+  const behaviorFiles = await toRel(path.join(petRoot, 'core/behavior'));
   return {
     media: {
-      source: 'contract-double',
+      source: mediaFiles.length > 0 ? 'real' : 'contract-double',
       needsReal: 'B',
-      implementationFiles: await toRel(path.join(petRoot, 'adapters/media/two-slot')),
-      cases: NEEDS_REAL.B,
+      implementationFiles: mediaFiles,
+      cases: mediaFiles.length > 0 ? NEEDS_REAL.B : PENDING_WHEN_MISSING.B,
     },
     behavior: {
-      source: 'contract-double',
+      source: behaviorFiles.length > 0 ? 'real' : 'contract-double',
       needsReal: 'C',
-      implementationFiles: await toRel(path.join(petRoot, 'core/behavior')),
-      cases: NEEDS_REAL.C,
+      implementationFiles: behaviorFiles,
+      cases: behaviorFiles.length > 0 ? NEEDS_REAL.C : PENDING_WHEN_MISSING.C,
     },
   };
 }

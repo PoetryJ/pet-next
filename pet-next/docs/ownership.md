@@ -12,7 +12,7 @@
 - `electron/main.ts` 里把 `PET_NEXT_PREVIEW` 放进页面查询的那一段
 - `docs/**`、`README.md`
 
-默认路径继续使用现有单槽适配器 `adapters/media/adapter.ts` 和现有会话。预览标记不得在本轮换成双槽或行为调度。见 [preview.md](preview.md)。
+默认路径继续使用现有单槽适配器 `adapters/media/adapter.ts` 和现有会话。预览令牌打开后，`app/` 才创建双槽、行为调度或候选回应。见 [preview.md](preview.md)。
 
 ## 本轮六个工作目录
 
@@ -37,7 +37,7 @@
 | `tests/contracts/owner.txt` | E |
 | `tests/platform/owner.txt` | F |
 
-这些目录里还没有实现。不要在集成分支上补双槽、素材候选、行为调度、bench、契约测试或平台测试的主体。
+这些目录里的实现已经由各专项合入。契约用例接到真实双槽工厂和 `createBehaviorScheduler`。默认启动仍不创建它们。
 
 ## 已并入，不要回退
 

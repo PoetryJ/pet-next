@@ -1,0 +1,18 @@
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"idle\",\"requestId\":\"idle-1\"}"}
+{"event":"ready","alwaysOnTop":true,"transparent":true,"requestedBackground":"#00000000","background":"#000000","bounds":{"x":78,"y":107,"width":328,"height":248},"workArea":{"x":0,"y":29,"width":1951,"height":1191},"scaleFactor":0.984375,"forcedDeviceScaleFactor":null,"scaleSource":"os","displayBounds":{"x":0,"y":0,"width":1951,"height":1220},"displayCount":1,"physical":{"x":76,"y":105}}
+{"event":"console","message":"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"auto\",\"requestId\":\"auto-2\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"reaction\",\"requestId\":\"click-3\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"reaction\",\"requestId\":\"click-4\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"reaction\",\"requestId\":\"click-6\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"reaction\",\"requestId\":\"click-7\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"idle\",\"requestId\":\"idle-14\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"auto\",\"requestId\":\"auto-15\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"idle\",\"requestId\":\"idle-19\"}"}
+{"event":"bounds","bounds":{"x":727,"y":187,"width":330,"height":252},"requested":{"x":728,"y":188},"physical":{"x":716,"y":185}}
+{"event":"bounds","bounds":{"x":727,"y":187,"width":331,"height":254},"requested":{"x":728,"y":188},"physical":{"x":716,"y":185}}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"auto\",\"requestId\":\"auto-20\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"reaction\",\"requestId\":\"click-21\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"reaction\",\"requestId\":\"fail-22\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"idle\",\"requestId\":\"idle-23\"}"}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"auto\",\"requestId\":\"auto-24\"}"}

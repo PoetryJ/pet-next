@@ -17,7 +17,7 @@ const here = path.dirname(fileURLToPath(import.meta.url));
 const specifierPattern = /(?:from\s+|import\s*\(\s*|require\(\s*|import\s+)['"]([^'"]+)['"]/g;
 
 describe('契约测试的边界', () => {
-  test('用例只依赖契约和本目录替身', async () => {
+  test('用例只依赖契约、本目录，以及已接入的真实 B/C 工厂', async () => {
     const violations: string[] = [];
     for (const file of await readdir(here)) {
       if (!file.endsWith('.ts')) continue;
@@ -26,7 +26,10 @@ describe('契约测试的边界', () => {
         const allowed =
           specifier.startsWith('node:') ||
           specifier.startsWith('../../contracts/') ||
-          (specifier.startsWith('./') && !specifier.includes('..'));
+          (specifier.startsWith('./') && !specifier.includes('..')) ||
+          (file === 'real-media.ts' &&
+            (specifier.startsWith('../../adapters/media/two-slot/') || specifier === '../../adapters/media/types.ts')) ||
+          (file === 'cases.test.ts' && specifier === '../../core/behavior/scheduler.ts');
         if (!allowed) violations.push(`${file} -> ${specifier}`);
       }
     }
@@ -44,7 +47,7 @@ describe('契约测试的边界', () => {
     assert.deepEqual(hits, []);
   });
 
-  test('B 和 C 仍未接入，行为目录没有契约导入、时钟或随机数', async () => {
+  test('B 和 C 已接到真实工厂，行为目录没有契约导入、时钟或随机数', async () => {
     const report = await wiringReport(petRoot);
     const violations: string[] = [];
     for (const rel of report.behavior.implementationFiles) {
@@ -58,24 +61,16 @@ describe('契约测试的边界', () => {
         }
       }
     }
-    assert.deepEqual(
-      {
-        mediaSource: report.media.source,
-        behaviorSource: report.behavior.source,
-        mediaFiles: report.media.implementationFiles,
-        behaviorFiles: report.behavior.implementationFiles,
-        behaviorViolations: violations,
-      },
-      {
-        mediaSource: 'contract-double',
-        behaviorSource: 'contract-double',
-        mediaFiles: [],
-        behaviorFiles: [],
-        behaviorViolations: [],
-      },
-      'B 或 C 的实现已经出现。把 NEEDS_REAL 里的同一批断言接到真实工厂，不要删断言，也不要继续只跑替身。',
-    );
-    const marked = [...new Set([...report.media.cases, ...report.behavior.cases])].sort();
+    assert.equal(report.media.source, 'real');
+    assert.equal(report.behavior.source, 'real');
+    assert.equal(report.media.implementationFiles.length > 0, true);
+    assert.equal(report.behavior.implementationFiles.length > 0, true);
+    assert.deepEqual(report.media.cases, []);
+    assert.deepEqual(report.behavior.cases, []);
+    assert.deepEqual(violations, []);
+    assert.equal(report.media.implementationFiles.some((rel) => rel.endsWith('adapter.ts')), true);
+    assert.equal(report.behavior.implementationFiles.some((rel) => rel.endsWith('scheduler.ts')), true);
+    const marked = [...new Set([...REQUIRED_CONTRACT_CASES])].sort();
     assert.deepEqual(marked, [...REQUIRED_CONTRACT_CASES].sort());
     assert.equal(await dirExists(path.join(petRoot, 'core/behavior')), true);
   });

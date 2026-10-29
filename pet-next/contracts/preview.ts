@@ -1,5 +1,5 @@
 /**
- * 预览开关的解析。默认关闭双槽和自主行为。
+ * 预览开关的解析。默认关闭双槽、自主行为和候选素材。
  * 页面和主进程只读解析结果；本文件不加载适配器，也不改播放。
  * @module pet-next/contracts/preview
  */
@@ -16,10 +16,12 @@ export const PLAYBACK_MODES = ['single', 'two-slot', 'two-slot-preheat'] as cons
 export type PlaybackMode = (typeof PLAYBACK_MODES)[number];
 
 export interface PreviewSelection {
-  /** `single` 使用现有单槽适配器。另外两个值留给双槽实现。 */
+  /** `single` 使用现有单槽适配器。另外两个值使用双槽适配器。 */
   playback: PlaybackMode;
-  /** 为 true 时才允许产品调度器提议自主动作。 */
+  /** 为 true 时才创建产品行为调度器。 */
   behavior: boolean;
+  /** 为 true 时，回应地址改用候选素材。不改写成品字节。 */
+  candidate: boolean;
 }
 
 /**
@@ -32,18 +34,20 @@ export interface PreviewSelection {
 export function parsePreview(raw: string | null | undefined): PreviewSelection {
   let playback: PlaybackMode = 'single';
   let behavior = false;
-  if (raw == null || raw.trim() === '') return { playback, behavior };
+  let candidate = false;
+  if (raw == null || raw.trim() === '') return { playback, behavior, candidate };
   for (const part of raw.split(',')) {
     const token = part.trim();
     if (token === 'behavior') behavior = true;
+    else if (token === 'candidate') candidate = true;
     else if (token === 'two-slot' || token === 'two-slot-preheat') playback = token;
   }
-  return { playback, behavior };
+  return { playback, behavior, candidate };
 }
 
 /** 没有任何新策略被点名。 */
 export function previewUsesAcceptedPath(selection: PreviewSelection): boolean {
-  return selection.playback === 'single' && selection.behavior === false;
+  return selection.playback === 'single' && selection.behavior === false && selection.candidate === false;
 }
 
 /**
@@ -56,5 +60,6 @@ export function formatPreview(selection: PreviewSelection): string {
   const parts: string[] = [];
   if (selection.playback !== 'single') parts.push(selection.playback);
   if (selection.behavior) parts.push('behavior');
+  if (selection.candidate) parts.push('candidate');
   return parts.join(',');
 }

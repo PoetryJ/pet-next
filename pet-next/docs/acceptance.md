@@ -12,6 +12,8 @@ pnpm verify
 
 `pnpm verify` 依次做类型检查、lint、`pnpm test`、构建和串行 Electron 实测。不设置 `PET_NEXT_PREVIEW` 时，`pnpm start` 走已验收路径。开关说明见 [preview.md](preview.md)。
 
+`pnpm verify:windows` 指向 `tests/platform/verify-windows.ps1`。当前没有 Windows 执行器，该脚本在非 Windows 上以退出码 2 结束，矩阵里的 win32 与 system-* 保持 **not-run**，不能写成通过。Linux 平台证据在 `tests/platform/evidence/matrix.json`。
+
 `pnpm test` 运行 `scripts/unit-tests.mjs`。它走进 `core/`、`adapters/`、`app/`、`tests/`、`experiments/` 和 `bench/` 的子目录，跳过 `*.e2e.test.ts`。`bench/` 还没有测试时不会把空 glob 交给运行器。`assets-pipeline/*.test.ts` 仍由 `tests/assets/unit-suite.test.ts` 以子进程执行，产品测试不直接 import 流水线。`pnpm experiment:arbiter`、`pnpm experiment:arbiter:check`、`pnpm experiment:arbiter:demo` 和 `pnpm assets:check` 不写进 `verify` 的脚本字符串。
 
 ## 上一轮（已并入 #4–#10）

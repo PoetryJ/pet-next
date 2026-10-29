@@ -6,3 +6,4 @@ test-results/
 assets-pipeline/out/
 experiments/arbiter/out/
 !logs/platform-runs/**/*.log
+!logs/experience-preview/demo-stdout.log

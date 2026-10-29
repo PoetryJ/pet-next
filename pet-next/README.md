@@ -18,7 +18,7 @@ pnpm start
 
 分工和本轮冻结见 [`docs/ownership.md`](docs/ownership.md)，开工分支见 [`docs/parallel-start.md`](docs/parallel-start.md)。公共形状在 [`contracts/`](contracts/)。`pnpm experiment:arbiter`、`pnpm experiment:arbiter:check`、`pnpm experiment:arbiter:demo` 和 `pnpm assets:check` 不进入 `pnpm start`，也不写进 `pnpm verify` 的脚本字符串。
 
-双槽播放和自主行为默认关闭。不设置 `PET_NEXT_PREVIEW` 时走已验收路径。点名方式见 [`docs/preview.md`](docs/preview.md)。本轮打开开关只记录请求，不更换播放或调度实现。
+双槽播放、自主行为和候选素材默认关闭。不设置 `PET_NEXT_PREVIEW` 时走已验收路径。点名方式见 [`docs/preview.md`](docs/preview.md)。打开 `two-slot`、`behavior` 或 `candidate` 才会换上对应实现；这不是已测出的播放加速。
 
 本轮实测平台是 **Linux**（`DISPLAY` 上的 Electron 43.3.0）。没有在 Windows 上跑过同一套 Electron 测试，也没有在 Windows 上跑过清理测试；不能把未跑写成通过。Windows 启动命令仍是 `pnpm start`。清理测试的一键记录命令在 Windows 和 Linux 上相同，见下文。
 

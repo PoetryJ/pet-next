@@ -16,14 +16,20 @@ test('缺省、空串和含糊令牌都保持已验收路径', () => {
   assert.equal(previewDataset('?idle=../assets/idle.webm'), null);
 });
 
-test('点名的策略记入请求，运行标记仍是 off', () => {
-  assert.deepEqual(parsePreview('two-slot'), { playback: 'two-slot', behavior: false });
-  assert.deepEqual(parsePreview('two-slot-preheat'), { playback: 'two-slot-preheat', behavior: false });
-  assert.deepEqual(parsePreview('behavior'), { playback: 'single', behavior: true });
-  assert.deepEqual(parsePreview(' two-slot , behavior '), { playback: 'two-slot', behavior: true });
+test('点名的策略记入请求，运行标记与已接线的令牌相同', () => {
+  assert.deepEqual(parsePreview('two-slot'), { playback: 'two-slot', behavior: false, candidate: false });
+  assert.deepEqual(parsePreview('two-slot-preheat'), { playback: 'two-slot-preheat', behavior: false, candidate: false });
+  assert.deepEqual(parsePreview('behavior'), { playback: 'single', behavior: true, candidate: false });
+  assert.deepEqual(parsePreview('candidate'), { playback: 'single', behavior: false, candidate: true });
+  assert.deepEqual(parsePreview(' two-slot , behavior '), { playback: 'two-slot', behavior: true, candidate: false });
   assert.equal(parsePreview('two-slot,two-slot-preheat').playback, 'two-slot-preheat');
+  assert.equal(parsePreview('candidate,behavior,two-slot').candidate, true);
   assert.deepEqual(previewDataset('?preview=two-slot,behavior'), {
     previewRequested: 'two-slot,behavior',
-    previewActive: 'off',
+    previewActive: 'two-slot,behavior',
+  });
+  assert.deepEqual(previewDataset('?preview=behavior,candidate'), {
+    previewRequested: 'behavior,candidate',
+    previewActive: 'behavior,candidate',
   });
 });
