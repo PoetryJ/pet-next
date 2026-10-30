@@ -1,8 +1,12 @@
 /**
- * 预览令牌 `behavior` 打开时的页面会话。
+ * 预览令牌 `behavior` / `behavior-demo` 打开时的页面会话。
  * 手势仍用现有判定；播放和空闲提议交给产品调度器。默认路径不创建本会话。
+ * 自动动作节奏由调用方注入（`DAILY_CADENCE` / `DEMO_CADENCE`），冷却从回到待机起算，
+ * 定时器是一次性链：每次到期只提议一次，忙或拖动时改期重来。
  * @module pet-next/app/behavior-pet
  */
+import type { BehaviorCadence } from '../contracts/behavior.ts';
+import { BEHAVIOR_LIMITS } from '../contracts/behavior.ts';
 import { createDesktopPetBehavior } from '../core/behavior/desktop.ts';
 import type { AutoCandidate } from '../core/behavior/types.ts';
 import { initialGestureState, reduceGesture } from '../core/interaction/gesture.ts';
@@ -11,8 +15,9 @@ import type { PetMedia, PetMediaStatus } from './pet-media.ts';
 
 const CLICK_TTL_MS = 10_000;
 const AUTO_TTL_MS = 8_000;
-const AUTO_IDLE_MS = 1_600;
 const MISSING_REACTION_URL = 'file:///tmp/pet-next-preview-missing-reaction.webm';
+/** 页面侧追踪的请求身份上限。超过时丢最旧的，防止长会话泄漏。 */
+const REMEMBERED_IDS_LIMIT = 64;
 
 export interface BehaviorPet {
   boot(): void;
@@ -25,13 +30,15 @@ export interface BehaviorPet {
 /**
  * 创建预览行为会话。
  *
+ * @param cadence - 自动动作冷却节奏。`min === max` 时不消耗随机数。
  * @param dragThresholdPx - 传给手势归约的拖动阈值。
- * @param schedule - 空闲定时器。返回取消函数。测试可注入。
+ * @param schedule - 一次性定时器。到期只调一次 `tick`。返回取消函数。测试可注入。
  */
 export function createBehaviorPet(options: {
   media: PetMedia;
   idleUrl: string;
   reactionUrl: string;
+  cadence: BehaviorCadence;
   dragThresholdPx: number;
   nowMs?: () => number;
   random?: () => number;
@@ -44,10 +51,12 @@ export function createBehaviorPet(options: {
 }): BehaviorPet {
   const nowMs = options.nowMs ?? (() => Date.now());
   const random = options.random ?? Math.random;
+  const cadence = options.cadence;
   const trace: string[] = [];
   let gesture = initialGestureState();
   let seq = 0;
   let failArmed = false;
+  let disposed = false;
   let cancelTimer: (() => void) | null = null;
   const schedulerIds = new Set<string>();
 
@@ -60,7 +69,7 @@ export function createBehaviorPet(options: {
     },
     ports: {
       play(request) {
-        schedulerIds.add(request.requestId);
+        rememberId(request.requestId);
         const failThis = failArmed && request.clip !== 'idle';
         if (failThis) failArmed = false;
         const url = failThis ? MISSING_REACTION_URL : request.url;
@@ -81,13 +90,24 @@ export function createBehaviorPet(options: {
     },
   });
 
+  function rememberId(requestId: string): void {
+    if (schedulerIds.has(requestId)) return;
+    if (schedulerIds.size >= REMEMBERED_IDS_LIMIT) {
+      const oldest = schedulerIds.values().next().value;
+      if (oldest !== undefined) schedulerIds.delete(oldest);
+    }
+    schedulerIds.add(requestId);
+  }
+
   function remember(entry: string, visual: string, requestId: string): void {
+    if (trace.length >= BEHAVIOR_LIMITS.history) trace.shift();
     trace.push(entry);
     options.setTrace(trace);
     options.setVisual(visual, requestId);
   }
 
   function playIdle(): void {
+    if (disposed) return;
     seq += 1;
     const requestId = `idle-${seq}`;
     remember(`idle:${requestId}`, 'idle', requestId);
@@ -104,7 +124,36 @@ export function createBehaviorPet(options: {
     return `${prefix}-${seq}`;
   }
 
-  function pumpAuto(): void {
+  /** 下一次自动动作的等待时长。`min === max` 时固定，否则均匀取整区间。 */
+  function nextAutoDelayMs(): number {
+    const { autoCooldownMinMs: min, autoCooldownMaxMs: max } = cadence;
+    if (max <= min) return min;
+    return min + Math.floor(random() * (max - min + 1));
+  }
+
+  /**
+   * 重挂一次性定时器。先取消旧定时器，保证至多一个在途；
+   * `disposed` 后不再挂，防止退出后被媒体回调复活。
+   * 挂表期间不再重入（防同步触发型 schedule 实现造成递归）。
+   */
+  let arming = false;
+  function rearmNextAuto(): void {
+    if (disposed || arming) return;
+    cancelTimer?.();
+    arming = true;
+    try {
+      const schedule = options.schedule ?? defaultSchedule;
+      cancelTimer = schedule(nextAutoDelayMs(), () => {
+        cancelTimer = null;
+        if (disposed) return;
+        if (!pumpAuto()) rearmNextAuto();
+      });
+    } finally {
+      arming = false;
+    }
+  }
+
+  function pumpAuto(): boolean {
     const id = nextId('auto');
     const now = nowMs();
     const candidate: AutoCandidate = {
@@ -112,14 +161,13 @@ export function createBehaviorPet(options: {
       readyAtMs: now,
       expiresAtMs: now + AUTO_TTL_MS,
     };
-    behavior.considerAuto([candidate]);
+    return behavior.considerAuto([candidate]);
   }
 
   return {
     boot() {
       playIdle();
-      const schedule = options.schedule ?? defaultSchedule;
-      cancelTimer = schedule(AUTO_IDLE_MS, pumpAuto);
+      rearmNextAuto();
     },
     pointer(event) {
       const reduction = reduceGesture(gesture, event, options.dragThresholdPx);
@@ -138,6 +186,7 @@ export function createBehaviorPet(options: {
     onMedia(status) {
       if (!schedulerIds.has(status.requestId)) {
         if (status.status === 'failed') {
+          if (trace.length >= BEHAVIOR_LIMITS.history) trace.shift();
           trace.push('placeholder');
           options.setTrace(trace);
           options.setVisual('placeholder', status.requestId);
@@ -145,13 +194,18 @@ export function createBehaviorPet(options: {
         }
         return;
       }
+      if (status.status !== 'ended' && status.status !== 'failed') return;
+      schedulerIds.delete(status.requestId);
       behavior.settled(status.requestId, status.status === 'ended');
+      rearmNextAuto();
     },
     failNext() {
       failArmed = true;
       behavior.click(nextId('fail'), CLICK_TTL_MS);
     },
     quit() {
+      if (disposed) return;
+      disposed = true;
       cancelTimer?.();
       cancelTimer = null;
       options.media.dispose();
@@ -161,8 +215,8 @@ export function createBehaviorPet(options: {
 }
 
 function defaultSchedule(delayMs: number, tick: () => void): () => void {
-  const handle = setInterval(tick, delayMs);
+  const handle = setTimeout(tick, delayMs);
   return () => {
-    clearInterval(handle);
+    clearTimeout(handle);
   };
 }

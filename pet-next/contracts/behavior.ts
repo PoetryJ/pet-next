@@ -8,6 +8,18 @@
 /** 待处理动作和历史的硬上限。超出时丢掉最旧的一条，而不是无限增长。 */
 export const BEHAVIOR_LIMITS = { pending: 8, history: 32 } as const;
 
+/** 自动动作节奏。下一次自动动作距"回到待机"的冷却区间。要求 max >= min。 */
+export interface BehaviorCadence {
+  autoCooldownMinMs: number;
+  autoCooldownMaxMs: number;
+}
+
+/** 演示节奏：自动动作冷却固定 1.6s，方便观察与录制。不是产品收益口径。 */
+export const DEMO_CADENCE: BehaviorCadence = { autoCooldownMinMs: 1600, autoCooldownMaxMs: 1600 };
+
+/** 日常节奏：产品默认冷却 45s 到 15min。 */
+export const DAILY_CADENCE: BehaviorCadence = { autoCooldownMinMs: 45_000, autoCooldownMaxMs: 900_000 };
+
 /** 产品规则。与 `contracts/arbiter.ts` 的实验协议分开冻结。 */
 export const PRODUCT_BEHAVIOR_RULES = [
   'drag-priority',

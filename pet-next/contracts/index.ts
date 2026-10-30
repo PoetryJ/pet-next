@@ -57,8 +57,9 @@ export type {
 export { NORMATIVE_EXAMPLES } from './arbiter-examples.ts';
 export { BENCH_MODES, BENCH_ROUND_COUNT, BENCH_SAMPLE_COUNT } from './bench.ts';
 export type { BenchMode, BenchPlay, BenchRecommendation, BenchSample, BenchSummary } from './bench.ts';
-export { BEHAVIOR_LIMITS, PRODUCT_BEHAVIOR_RULES } from './behavior.ts';
+export { BEHAVIOR_LIMITS, DAILY_CADENCE, DEMO_CADENCE, PRODUCT_BEHAVIOR_RULES } from './behavior.ts';
 export type {
+  BehaviorCadence,
   BehaviorClip,
   BehaviorDeps,
   BehaviorEffect,
@@ -68,6 +69,8 @@ export type {
   BehaviorStep,
   ProductBehaviorRule,
 } from './behavior.ts';
+export { CLICK_ARMS, CLICK_CONTROL_SAMPLES, CLICK_ROUNDS, CLICK_SAMPLES_PER_ROUND } from './bench-click.ts';
+export type { ClickArm, ClickResponseSample } from './bench-click.ts';
 export type { AssetCandidateKind, AssetCandidateManifest, AssetCandidatePlate } from './asset-candidate.ts';
 export { REQUIRED_CONTRACT_CASES, REQUIRED_PLATFORM_FLOWS } from './coverage.ts';
 export type { RequiredContractCase, RequiredPlatformFlow } from './coverage.ts';
@@ -85,4 +88,4 @@ export type {
   TwoSlotOptions,
 } from './media-slot.ts';
 export { PLAYBACK_MODES, PREVIEW_ENV, PREVIEW_QUERY, formatPreview, parsePreview, previewUsesAcceptedPath } from './preview.ts';
-export type { PlaybackMode, PreviewSelection } from './preview.ts';
+export type { BehaviorCadenceKind, PlaybackMode, PreviewSelection } from './preview.ts';

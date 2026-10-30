@@ -4,22 +4,24 @@
  * @module pet-next/app/page
  */
 import { domScreenPointToDip } from '../adapters/window/pointer-point.ts';
+import { DAILY_CADENCE, DEMO_CADENCE } from '../contracts/behavior.ts';
 import { parsePreview, PREVIEW_QUERY } from '../contracts/preview.ts';
 import { createBehaviorPet, type BehaviorPet } from './behavior-pet.ts';
 import './bridge.ts';
-import { attachPetMedia, type PetMedia } from './pet-media.ts';
+import { attachPetMedia, type PetMedia, type PetMediaStatus } from './pet-media.ts';
 import { previewDataset } from './preview-gate.ts';
 import { createPetController, parseClipRequest, type PetController } from './wire.ts';
 
 const DRAG_THRESHOLD_PX = 5;
 const LOAD_TIMEOUT_MS = 8000;
 const CANDIDATE_REACTION = new URL('../assets/candidates/reaction/reaction.webm', location.href).href;
+const SHORT_REACTION = new URL('../assets/candidates/reaction/short.webm', location.href).href;
 
 const params = new URLSearchParams(location.search);
 const selection = parsePreview(params.get(PREVIEW_QUERY));
 const idleUrl = params.get('idle') ?? new URL('../assets/idle.webm', location.href).href;
 const shippedReaction = new URL('../assets/reaction.webm', location.href).href;
-const reactionUrl = params.get('reaction') ?? (selection.candidate ? CANDIDATE_REACTION : shippedReaction);
+const reactionUrl = params.get('reaction') ?? (selection.short ? SHORT_REACTION : selection.candidate ? CANDIDATE_REACTION : shippedReaction);
 
 const video = document.querySelector('#clip');
 const standby = document.querySelector('#clip-next');
@@ -42,6 +44,11 @@ if (previewMark !== null) {
 
 const holder: { controller?: PetController; behavior?: BehaviorPet } = {};
 
+/** bench-observe 打点：单行 JSON，时间戳统一 performance.now() 域。 */
+function benchLog(payload: Record<string, unknown>): void {
+  console.log(JSON.stringify({ ...payload, ts: performance.now() }));
+}
+
 const media: PetMedia = attachPetMedia({
   playback: selection.playback,
   primary: video,
@@ -50,6 +57,9 @@ const media: PetMedia = attachPetMedia({
   timeoutMs: LOAD_TIMEOUT_MS,
   reactionUrl,
   onStatus(event) {
+    if (selection.benchObserve) {
+      benchLog({ event: 'bench-media', status: event.status, requestId: event.requestId });
+    }
     if (holder.behavior) {
       holder.behavior.onMedia(event);
       return;
@@ -88,10 +98,28 @@ const surface = {
 };
 
 if (selection.behavior) {
+  // bench-observe 时给行为会话包一层媒体：非待机播放请求发出即打 bench-click（带 requestId）。
+  const behaviorMedia: PetMedia = selection.benchObserve
+    ? {
+        begin(request) {
+          if (request.clip !== 'idle') {
+            benchLog({ event: 'bench-click', requestId: request.requestId, clip: request.clip });
+          }
+          media.begin(request);
+        },
+        showPlaceholder() {
+          media.showPlaceholder();
+        },
+        dispose() {
+          media.dispose();
+        },
+      }
+    : media;
   const behavior = createBehaviorPet({
-    media,
+    media: behaviorMedia,
     idleUrl,
     reactionUrl,
+    cadence: selection.behaviorCadence === 'demo' ? DEMO_CADENCE : DAILY_CADENCE,
     dragThresholdPx: DRAG_THRESHOLD_PX,
     moveBy: surface.moveBy,
     quit() {
@@ -109,8 +137,12 @@ if (selection.behavior) {
     dragThresholdPx: DRAG_THRESHOLD_PX,
     ports: {
       play(request) {
+        const requestId = `${request.clip}:${request.requestId}`;
+        if (selection.benchObserve && request.clip !== 'idle') {
+          benchLog({ event: 'bench-click', requestId, clip: request.clip });
+        }
         media.begin({
-          requestId: `${request.clip}:${request.requestId}`,
+          requestId,
           clip: request.clip,
           url: request.url,
           once: request.once,

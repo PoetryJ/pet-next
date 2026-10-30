@@ -19,7 +19,8 @@ export interface PetMediaRequest {
 
 export interface PetMediaStatus {
   requestId: string;
-  status: 'ended' | 'failed';
+  /** `resolved` 是准备完成、播放已兑现（仅单槽转发）；`ended`/`failed` 是终态。 */
+  status: 'resolved' | 'ended' | 'failed';
   /** 双槽准备失败时仍在画面上的请求。单槽失败为 null。 */
   keptRequestId: string | null;
 }
@@ -68,6 +69,7 @@ function attachSingle(options: {
     onStatus(event) {
       if (event.status === 'playing') {
         showSlot(options, 0);
+        options.onStatus({ requestId: event.playbackId, status: 'resolved', keptRequestId: null });
         return;
       }
       if (event.status !== 'ended' && event.status !== 'failed') return;

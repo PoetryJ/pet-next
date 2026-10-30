@@ -15,6 +15,9 @@ export const PLAYBACK_MODES = ['single', 'two-slot', 'two-slot-preheat'] as cons
 
 export type PlaybackMode = (typeof PLAYBACK_MODES)[number];
 
+/** 自动动作节奏。`demo` 是演示节奏，`daily` 是产品日常节奏。 */
+export type BehaviorCadenceKind = 'daily' | 'demo';
+
 export interface PreviewSelection {
   /** `single` 使用现有单槽适配器。另外两个值使用双槽适配器。 */
   playback: PlaybackMode;
@@ -22,6 +25,12 @@ export interface PreviewSelection {
   behavior: boolean;
   /** 为 true 时，回应地址改用候选素材。不改写成品字节。 */
   candidate: boolean;
+  /** 为 true 时，回应地址改用 `assets/candidates/reaction/short.webm`（母带截取的短片）。与 `candidate` 并列时优先。 */
+  short: boolean;
+  /** 行为调度节奏。`behavior` 令牌给 `daily`，`behavior-demo` 给 `demo`（并隐含 `behavior`）。未开行为时为 null。 */
+  behaviorCadence: BehaviorCadenceKind | null;
+  /** 为 true 时页面输出 bench 打点事件（bench-click / bench-media）。只开观测，不改行为。 */
+  benchObserve: boolean;
 }
 
 /**
@@ -35,19 +44,37 @@ export function parsePreview(raw: string | null | undefined): PreviewSelection {
   let playback: PlaybackMode = 'single';
   let behavior = false;
   let candidate = false;
-  if (raw == null || raw.trim() === '') return { playback, behavior, candidate };
+  let short = false;
+  let behaviorCadence: BehaviorCadenceKind | null = null;
+  let benchObserve = false;
+  if (raw == null || raw.trim() === '') {
+    return { playback, behavior, candidate, short, behaviorCadence, benchObserve };
+  }
   for (const part of raw.split(',')) {
     const token = part.trim();
-    if (token === 'behavior') behavior = true;
-    else if (token === 'candidate') candidate = true;
+    if (token === 'behavior') {
+      behavior = true;
+      behaviorCadence = 'daily';
+    } else if (token === 'behavior-demo') {
+      behavior = true;
+      behaviorCadence = 'demo';
+    } else if (token === 'candidate') candidate = true;
+    else if (token === 'short') short = true;
+    else if (token === 'bench-observe') benchObserve = true;
     else if (token === 'two-slot' || token === 'two-slot-preheat') playback = token;
   }
-  return { playback, behavior, candidate };
+  return { playback, behavior, candidate, short, behaviorCadence, benchObserve };
 }
 
 /** 没有任何新策略被点名。 */
 export function previewUsesAcceptedPath(selection: PreviewSelection): boolean {
-  return selection.playback === 'single' && selection.behavior === false && selection.candidate === false;
+  return (
+    selection.playback === 'single' &&
+    selection.behavior === false &&
+    selection.candidate === false &&
+    selection.short === false &&
+    selection.benchObserve === false
+  );
 }
 
 /**
@@ -59,7 +86,9 @@ export function previewUsesAcceptedPath(selection: PreviewSelection): boolean {
 export function formatPreview(selection: PreviewSelection): string {
   const parts: string[] = [];
   if (selection.playback !== 'single') parts.push(selection.playback);
-  if (selection.behavior) parts.push('behavior');
+  if (selection.behavior) parts.push(selection.behaviorCadence === 'demo' ? 'behavior-demo' : 'behavior');
   if (selection.candidate) parts.push('candidate');
+  if (selection.short) parts.push('short');
+  if (selection.benchObserve) parts.push('bench-observe');
   return parts.join(',');
 }
