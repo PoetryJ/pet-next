@@ -14,11 +14,31 @@ pnpm start
 
 `pnpm start` 会先构建再打开窗口。按 Esc 或调用预加载桥的 `quit()` 退出。
 
-`pnpm verify` 依次做类型检查、lint、单元测试、构建和 Electron 实测，任一步失败都会返回非零。这是统一验收命令。`pnpm test` 会走 `core/`、`adapters/`、`app/`、`tests/`、`experiments/` 和 `bench/` 的子目录，并跳过 `*.e2e.test.ts`。素材流水线的纯函数测试由 `tests/assets/unit-suite.test.ts` 以子进程执行。
+`pnpm verify` 先做分层预检（缺 ffmpeg / 无 DISPLAY / 非 Windows 的项记为 not-run 并给修复提示），再依次做类型检查、lint、单元测试、进程清理、素材集成、构建和 Electron 实测，任一步失败都会返回非零。这是统一验收命令。`pnpm test` 会走 `core/`、`adapters/`、`app/`、`tests/`、`experiments/` 和 `bench/` 的子目录，并跳过 `*.e2e.test.ts`。素材流水线的纯函数测试由 `tests/assets/unit-suite.test.ts` 以子进程执行。
 
 分工和本轮冻结见 [`docs/ownership.md`](docs/ownership.md)，开工分支见 [`docs/parallel-start.md`](docs/parallel-start.md)。公共形状在 [`contracts/`](contracts/)。`pnpm experiment:arbiter`、`pnpm experiment:arbiter:check`、`pnpm experiment:arbiter:demo` 和 `pnpm assets:check` 不进入 `pnpm start`，也不写进 `pnpm verify` 的脚本字符串。
 
 双槽播放、自主行为和候选素材默认关闭。不设置 `PET_NEXT_PREVIEW` 时走已验收路径。点名方式见 [`docs/preview.md`](docs/preview.md)。打开 `two-slot`、`behavior` 或 `candidate` 才会换上对应实现；这不是已测出的播放加速。
+
+## 一条命令看效果
+
+```bash
+pnpm demo                                                  # 日常节奏 + 成品素材
+pnpm demo:record                                           # 演示节奏 + 截取短片 + 自动跑一遍并留证（Linux/X11）
+node scripts/demo.mjs --demo --asset=short --scale=1.25     # 任意组合，不用手敲环境变量
+```
+
+| 参数 | 作用 |
+| --- | --- |
+| 默认 / `--demo` | 日常节奏（自主动作 45s–15min）/ 演示节奏（冷却 1.6s） |
+| `--asset=master\|candidate\|short` | 回应素材：成品、候选副本、截取短片（short 为母带第 53–158 帧，回应 0.25s 即现） |
+| `--scale=1.25` | 用 `--force-device-scale-factor` 模拟系统缩放，仅做对照 |
+| `--record` | 自动跑激活→点击→连点×3→拖动→自主动作→失败注入（F）→恢复，并打印 visual 序列 |
+| `--keep-alive` | 不自动退出，等 Ctrl-C |
+
+素材选择走已冻结的预览令牌 `PET_NEXT_PREVIEW`，不改写成品字节。原始输出写到 `logs/experience-preview/demo-<素材>-<节奏>-<时间>.log`，控制台打印 `demo-config` 和 `demo-summary`（visual 序列与反应/自动/占位计数）。`--record` 的失败注入走行为会话的 `failNext`（F 键）；单槽装载超时 8s 后回到待机，不卡在回应画面。
+
+点击响应进度的对照（单槽全母带 vs 单槽截取短片）用 `bench/click.ts`，每臂 3 轮 × 30 样本，另有损坏素材负对照和候选自比正对照；产物在 `bench/runs-click/<时间>/`。用法、演示序列和实测数字见 [`docs/experience-demo.md`](docs/experience-demo.md)。
 
 本轮实测平台是 **Linux**（`DISPLAY` 上的 Electron 43.3.0）。没有在 Windows 上跑过同一套 Electron 测试，也没有在 Windows 上跑过清理测试；不能把未跑写成通过。Windows 启动命令仍是 `pnpm start`。清理测试的一键记录命令在 Windows 和 Linux 上相同，见下文。
 
@@ -79,3 +99,5 @@ node scripts/record-platform-run.mjs -- node --experimental-strip-types --test -
 | `assets/placeholder.png` | 本目录生成的静态图 | 无外部授权 |
 
 启动只读这些本地文件，不依赖原仓库路径、DSH、API Key 或远程下载。待机片段是流复制，保留源文件的 `ALPHA_MODE`。回应片段落在两个关键帧之间，所以重新编码，并把纯黑底抠成透明；抠像可能吃掉少量深色边缘。窗口按透明置顶创建；素材失败时显示占位图。
+
+成品 `assets/reaction.webm` 容器标了 `alpha_mode=1`，但抽样帧的 alpha 全为 0（`pnpm assets:check` 记为 `source-lacks-alpha`），在 Chromium 里渲染为空。候选副本 `assets/candidates/reaction/reaction.webm` 与源母带 `source.webm` 的 alpha 正常；截取短片 `assets/candidates/reaction/short.webm`（106 帧 / 4.417s）由 `pnpm assets:short` 从源母带第 53–158 帧重编码，回应起点 0.25s。

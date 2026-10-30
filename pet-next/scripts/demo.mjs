@@ -206,8 +206,15 @@ if (record) {
   recordResult = await recordSequence();
 }
 
-const keepOpen = rawArgs.includes('--keep-alive') ? 0 : 1200;
-await sleep(keepOpen);
+if (flag('keep-alive')) {
+  console.log('demo: 窗口保持打开，Ctrl-C 结束。');
+  await new Promise((resolve) => {
+    process.on('SIGINT', resolve);
+    process.on('SIGTERM', resolve);
+  });
+} else {
+  await sleep(1200);
+}
 child.kill('SIGTERM');
 await new Promise((resolve) => child.on('exit', resolve));
 await mkdir(logDir, { recursive: true });
