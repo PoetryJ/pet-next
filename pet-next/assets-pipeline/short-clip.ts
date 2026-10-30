@@ -13,7 +13,7 @@
  */
 import { mkdir, readFile, writeFile } from 'node:fs/promises';
 import { spawn } from 'node:child_process';
-import { dirname, join, resolve } from 'node:path';
+import { dirname, join } from 'node:path';
 import type { AssetCandidateManifest } from '../contracts/asset-candidate.ts';
 import { hashFile } from './asset-report.ts';
 import { runMediaTool } from './media-tool.ts';
@@ -59,19 +59,11 @@ async function probeTiming(file: string): Promise<Timing> {
   );
   const parsed = JSON.parse(result.stdout.toString('utf8')) as { streams?: Array<{ 'r_frame_rate'?: string; duration?: string }> };
   const stream = parsed.streams?.[0];
-  const [num, den] = (stream?.['r_frame_rate'] ?? '0/1').split('/').map((part) => Number(part));
+  const [num = 0, den = 0] = (stream?.['r_frame_rate'] ?? '0/1').split('/').map((part) => Number(part));
   const fps = den ? num / den : 0;
   const durationSec = Number(stream?.duration ?? 0);
   if (!Number.isFinite(fps) || fps <= 0) fail('读不到有效帧率。');
   return { fps, durationSec };
-}
-
-function opaquePxCount(frame: RgbaFrame): number {
-  let count = 0;
-  for (let at = 3; at < frame.rgba.length; at += 4) {
-    if (frame.rgba[at]! >= OPAQUE_ALPHA_MIN) count += 1;
-  }
-  return count;
 }
 
 function maxAlphaOf(frame: RgbaFrame): number {
@@ -81,12 +73,6 @@ function maxAlphaOf(frame: RgbaFrame): number {
     if (alpha > max) max = alpha;
   }
   return max;
-}
-
-function median(values: readonly number[]): number {
-  const sorted = [...values].sort((a, b) => a - b);
-  const mid = sorted.length >> 1;
-  return sorted[mid] ?? 0;
 }
 
 /** 帧间运动曲线：D(i) = 第 i-1 帧到第 i 帧发生可见变化的像素数（任一 RGB 通道差 > MOTION_CHANNEL_DELTA）。 */

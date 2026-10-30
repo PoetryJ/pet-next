@@ -8,7 +8,7 @@ import { DAILY_CADENCE, DEMO_CADENCE } from '../contracts/behavior.ts';
 import { parsePreview, PREVIEW_QUERY } from '../contracts/preview.ts';
 import { createBehaviorPet, type BehaviorPet } from './behavior-pet.ts';
 import './bridge.ts';
-import { attachPetMedia, type PetMedia, type PetMediaStatus } from './pet-media.ts';
+import { attachPetMedia, type PetMedia } from './pet-media.ts';
 import { previewDataset } from './preview-gate.ts';
 import { createPetController, parseClipRequest, type PetController } from './wire.ts';
 
