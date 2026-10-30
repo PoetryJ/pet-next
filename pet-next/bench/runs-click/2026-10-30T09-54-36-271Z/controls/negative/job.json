@@ -1,0 +1,14 @@
+{
+  "mode": "single",
+  "round": 0,
+  "firstCount": 3,
+  "repeatCount": 0,
+  "dwellMs": 500,
+  "idleCpuMs": 200,
+  "stressDelayMs": 0,
+  "assetSha256": "c8dffa02a6a5bdf09df78244b58ba3486b0e0c23b34e66077530cb8ca05c9717",
+  "idleUrl": "file:///data3/DATA/project/project_meishijiang/dsh-pet/pet-next/assets/idle.webm",
+  "reactionUrl": "file:///data3/DATA/project/project_meishijiang/dsh-pet/pet-next/bench/runs-click/2026-10-30T09-54-36-271Z/controls/corrupt.webm",
+  "runRoot": "/data3/DATA/project/project_meishijiang/dsh-pet/pet-next/bench/runs-click/2026-10-30T09-54-36-271Z",
+  "outDir": "/data3/DATA/project/project_meishijiang/dsh-pet/pet-next/bench/runs-click/2026-10-30T09-54-36-271Z/controls/negative"
+}

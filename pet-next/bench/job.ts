@@ -14,6 +14,8 @@ export interface BenchJob {
   idleCpuMs: number;
   /** 0 是正常环境。大于 0 只表示人工慢加载。 */
   stressDelayMs: number;
+  /** 采样等多久：`ended` 等整片播完（要 blankMs 时用）；`frame` 首帧出现就结束。默认 `ended`。 */
+  wait?: 'frame' | 'ended';
   assetSha256: string;
   idleUrl: string;
   reactionUrl: string;

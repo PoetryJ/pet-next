@@ -20,6 +20,17 @@ import { runMediaTool } from './media-tool.ts';
 import { decodeRgba, probeVideo, type VideoProbe } from './read-media.ts';
 import type { RgbaFrame } from './frame-metrics.ts';
 import { writeComparisonPlates } from './deliver-candidate.ts';
+import {
+  BURST_AREA_RATIO,
+  MOTION_CHANNEL_DELTA,
+  RESPONSE_WINDOW,
+  RESPONSE_WINDOW_MIN_HITS,
+  SETTLE_MOTION_MAX,
+  SETTLE_QUIET_RUN,
+  findEarliestResponse,
+  findNaturalEnd,
+  frameMotionCurve,
+} from './response-onset.ts';
 
 const PET_ROOT = process.cwd();
 const FFMPEG = 'ffmpeg';
@@ -28,18 +39,6 @@ const SAFE_FRAME_CAP = 400;
 const ALPHA_DIFF_TOLERANCE = 16;
 const ALPHA_MISMATCH_RATIO_MAX = 0.01;
 const OPAQUE_ALPHA_MIN = 200;
-/** 单通道差超过该值算像素在动。 */
-const MOTION_CHANNEL_DELTA = 24;
-/** 明确回应 = 单帧运动像素占比阈值。 */
-const BURST_AREA_RATIO = 0.05;
-/** 判定回应窗口（帧）：窗口内至少这么多数量的帧达到半阈值。 */
-const RESPONSE_WINDOW = 24;
-const RESPONSE_WINDOW_MIN_HITS = 12;
-/** 回应窗口内判定"在动"的半阈值倍数。 */
-const RESPONSE_HALF_BURST = 2;
-/** 自然收尾：连续这么多个帧都低于该运动量，视为回应结束。 */
-const SETTLE_QUIET_RUN = 8;
-const SETTLE_MOTION_MAX = 1000;
 const LEAD_IN_FRAMES = 6;
 
 interface Timing {
@@ -75,60 +74,6 @@ function maxAlphaOf(frame: RgbaFrame): number {
   return max;
 }
 
-/** 帧间运动曲线：D(i) = 第 i-1 帧到第 i 帧发生可见变化的像素数（任一 RGB 通道差 > MOTION_CHANNEL_DELTA）。 */
-export function frameMotionCurve(frames: readonly RgbaFrame[]): number[] {
-  const curve: number[] = [0];
-  for (let index = 1; index < frames.length; index += 1) {
-    const prev = frames[index - 1]!.rgba;
-    const next = frames[index]!.rgba;
-    let changed = 0;
-    for (let at = 0; at < prev.length; at += 4) {
-      if (
-        Math.abs(prev[at]! - next[at]!) > MOTION_CHANNEL_DELTA ||
-        Math.abs(prev[at + 1]! - next[at + 1]!) > MOTION_CHANNEL_DELTA ||
-        Math.abs(prev[at + 2]! - next[at + 2]!) > MOTION_CHANNEL_DELTA
-      ) {
-        changed += 1;
-      }
-    }
-    curve.push(changed);
-  }
-  return curve;
-}
-
-/**
- * 最早明确回应帧：第一个 D(i) ≥ burstThreshold 且其后 RESPONSE_WINDOW 帧窗口内
- * 至少 RESPONSE_WINDOW_MIN_HITS 帧达到 burstThreshold/RESPONSE_HALF_BURST 的帧。
- * 入场小动作（幅度够但持续不了）不会命中。
- */
-export function findEarliestResponse(motion: readonly number[], burstThreshold: number): number {
-  const half = burstThreshold / RESPONSE_HALF_BURST;
-  for (let index = 1; index < motion.length; index += 1) {
-    if (motion[index]! < burstThreshold) continue;
-    const windowEnd = Math.min(motion.length, index + RESPONSE_WINDOW);
-    let hits = 0;
-    for (let at = index; at < windowEnd; at += 1) {
-      if (motion[at]! >= half) hits += 1;
-    }
-    if (hits >= RESPONSE_WINDOW_MIN_HITS) return index;
-  }
-  return -1;
-}
-
-/** 自然收尾帧：回应起点之后，首次出现连续 SETTLE_QUIET_RUN 帧低运动的前一帧。 */
-export function findNaturalEnd(motion: readonly number[], earliestResponse: number): number {
-  for (let index = earliestResponse + 1; index + SETTLE_QUIET_RUN <= motion.length; index += 1) {
-    let quiet = true;
-    for (let step = 0; step < SETTLE_QUIET_RUN; step += 1) {
-      if (motion[index + step]! >= SETTLE_MOTION_MAX) {
-        quiet = false;
-        break;
-      }
-    }
-    if (quiet) return index - 1;
-  }
-  return motion.length - 1;
-}
 
 /** 解出母带全部帧（逐帧解码：批量模式会超过 media-tool 的 stdout 上限）。 */
 async function decodeAllFrames(file: string, probe: VideoProbe): Promise<RgbaFrame[]> {

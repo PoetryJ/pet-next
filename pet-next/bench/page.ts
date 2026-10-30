@@ -397,8 +397,12 @@ async function runTrial(command: TrialCommand, wait: 'frame' | 'ended'): Promise
   } else {
     two?.begin({ requestId: reactionId, url: reactionUrl, once: true, clip: 'reaction' });
   }
-  await waitUntil(() => presented || presentationAt !== null || failed, TRIAL_TIMEOUT_MS);
-  if ((wait === 'ended' || presentationAt !== null) && !failed) {
+  // 'frame' 模式必须以"真正有画面"为准（presented），不能只看 presentationAt ——
+  // 后者在 rVFC 第一帧就置位，透明素材会因此记出 15ms 的假首帧。
+  await waitUntil(() => (wait === 'frame' ? presented : presented || presentationAt !== null) || failed, TRIAL_TIMEOUT_MS);
+  // wait === 'frame'：首帧出现即回样（只测点击→兑现/首帧/首明确回应，不等整片播完）。
+  // wait === 'ended'：等整片播完再回样（blankMs 需要完整帧序列）。
+  if (wait === 'ended' && !failed) {
     await waitUntil(() => ended || failed, TRIAL_TIMEOUT_MS);
   }
   active = false;

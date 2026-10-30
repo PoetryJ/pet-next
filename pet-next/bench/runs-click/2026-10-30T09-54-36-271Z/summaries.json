@@ -1,0 +1,97 @@
+{
+  "arms": [
+    {
+      "arm": "single-full",
+      "count": 90,
+      "resolvedCount": 90,
+      "firstFrameCount": 90,
+      "playResolvedP50": 10.799999237060547,
+      "playResolvedP95": 14.100000381469727,
+      "firstFrameP50": 15.5,
+      "firstFrameP95": 19.69999885559082,
+      "clearResponseP50": 2473.8333333333335,
+      "clearResponseP95": 2478.0333321889243,
+      "onsetMs": 2458.3333333333335
+    },
+    {
+      "arm": "single-short",
+      "count": 90,
+      "resolvedCount": 90,
+      "firstFrameCount": 90,
+      "playResolvedP50": 11.200000762939453,
+      "playResolvedP95": 12.100000381469727,
+      "firstFrameP50": 15.200000762939453,
+      "firstFrameP95": 17.399999618530273,
+      "clearResponseP50": 265.20000076293945,
+      "clearResponseP95": 267.3999996185303,
+      "onsetMs": 250
+    }
+  ],
+  "controls": {
+    "negative": {
+      "samples": [
+        {
+          "arm": "single-full",
+          "round": 0,
+          "index": 1,
+          "clickToPlayResolvedMs": null,
+          "clickToFirstFrameMs": null,
+          "clickToFirstClearResponseMs": null,
+          "assetSha256": "c8dffa02a6a5bdf09df78244b58ba3486b0e0c23b34e66077530cb8ca05c9717"
+        },
+        {
+          "arm": "single-full",
+          "round": 0,
+          "index": 2,
+          "clickToPlayResolvedMs": null,
+          "clickToFirstFrameMs": null,
+          "clickToFirstClearResponseMs": null,
+          "assetSha256": "c8dffa02a6a5bdf09df78244b58ba3486b0e0c23b34e66077530cb8ca05c9717"
+        },
+        {
+          "arm": "single-full",
+          "round": 0,
+          "index": 3,
+          "clickToPlayResolvedMs": null,
+          "clickToFirstFrameMs": null,
+          "clickToFirstClearResponseMs": null,
+          "assetSha256": "c8dffa02a6a5bdf09df78244b58ba3486b0e0c23b34e66077530cb8ca05c9717"
+        }
+      ],
+      "allFailed": true
+    },
+    "positive": {
+      "samples": [
+        {
+          "arm": "single-short",
+          "round": 0,
+          "index": 1,
+          "clickToPlayResolvedMs": 11.600000381469727,
+          "clickToFirstFrameMs": 16.30000114440918,
+          "clickToFirstClearResponseMs": 266.3000011444092,
+          "assetSha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9"
+        },
+        {
+          "arm": "single-short",
+          "round": 0,
+          "index": 2,
+          "clickToPlayResolvedMs": 11.200000762939453,
+          "clickToFirstFrameMs": 16.5,
+          "clickToFirstClearResponseMs": 266.5,
+          "assetSha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9"
+        },
+        {
+          "arm": "single-short",
+          "round": 0,
+          "index": 3,
+          "clickToPlayResolvedMs": 11.100000381469727,
+          "clickToFirstFrameMs": 16.400001525878906,
+          "clickToFirstClearResponseMs": 266.4000015258789,
+          "assetSha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9"
+        }
+      ],
+      "allResolved": true
+    }
+  },
+  "failures": []
+}

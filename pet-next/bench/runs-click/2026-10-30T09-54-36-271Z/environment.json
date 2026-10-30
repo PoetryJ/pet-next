@@ -1,0 +1,37 @@
+{
+  "host": "linux 5.4.119-19.0009.28 x64",
+  "cpu": "AMD EPYC 9K84 96-Core Processor × 384",
+  "totalMem": 2433918844928,
+  "electron": "43.3.0",
+  "window": {
+    "x": 80,
+    "y": 80,
+    "width": 320,
+    "height": 240
+  },
+  "behavior": false,
+  "dwellMs": 500,
+  "rounds": 3,
+  "samples": 30,
+  "controlSamples": 3,
+  "smoke": false,
+  "offsets": [
+    {
+      "arm": "single-full",
+      "sha256": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776",
+      "fps": 24,
+      "onsetMs": 2458.3333333333335,
+      "onsetFrame": 59,
+      "frames": 160
+    },
+    {
+      "arm": "single-short",
+      "sha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9",
+      "fps": 24,
+      "onsetMs": 250,
+      "onsetFrame": 6,
+      "frames": 106
+    }
+  ],
+  "command": "cd pet-next\nnode --experimental-strip-types bench/click.ts"
+}

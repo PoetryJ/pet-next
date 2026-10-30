@@ -214,7 +214,7 @@ void app.whenReady().then(async () => {
     );
     for (let index = 1; index <= job.firstCount; index += 1) {
       await load();
-      await collect(send, 'first', index, cpu, 'ended');
+      await collect(send, 'first', index, cpu, job.wait ?? 'ended');
     }
     if (job.repeatCount > 0) {
       await load();
