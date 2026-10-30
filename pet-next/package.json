@@ -24,6 +24,8 @@
     "verify:windows": "powershell -File tests/platform/verify-windows.ps1",
     "assets:check": "node --experimental-strip-types assets-pipeline/cli.ts",
     "assets:short": "node --experimental-strip-types assets-pipeline/short-clip.ts",
+    "demo": "pnpm build && node scripts/demo.mjs",
+    "demo:record": "pnpm build && node scripts/demo.mjs --demo --asset=short --record",
     "experiment:arbiter": "node --experimental-strip-types experiments/arbiter/runner/main.ts",
     "experiment:arbiter:check": "node --experimental-strip-types experiments/arbiter/check/main.ts",
     "experiment:arbiter:demo": "node --experimental-strip-types experiments/arbiter/demo/main.ts"
