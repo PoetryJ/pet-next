@@ -21,6 +21,7 @@
     "verify": "pnpm typecheck && pnpm lint && pnpm test && pnpm build && pnpm test:e2e",
     "verify:windows": "powershell -File tests/platform/verify-windows.ps1",
     "assets:check": "node --experimental-strip-types assets-pipeline/cli.ts",
+    "assets:short": "node --experimental-strip-types assets-pipeline/short-clip.ts",
     "experiment:arbiter": "node --experimental-strip-types experiments/arbiter/runner/main.ts",
     "experiment:arbiter:check": "node --experimental-strip-types experiments/arbiter/check/main.ts",
     "experiment:arbiter:demo": "node --experimental-strip-types experiments/arbiter/demo/main.ts"

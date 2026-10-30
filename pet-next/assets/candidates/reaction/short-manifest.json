@@ -1,0 +1,40 @@
+{
+  "role": "reaction",
+  "kind": "alpha-source",
+  "sourcePath": "assets/candidates/reaction/source.webm",
+  "sourceSha256": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776",
+  "outputPath": "assets/candidates/reaction/short.webm",
+  "outputSha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9",
+  "plates": [
+    {
+      "background": "light",
+      "imagePath": "assets/candidates/reaction/short-plates/frame-6-light.png"
+    },
+    {
+      "background": "dark",
+      "imagePath": "assets/candidates/reaction/short-plates/frame-6-dark.png"
+    },
+    {
+      "background": "checker",
+      "imagePath": "assets/candidates/reaction/short-plates/frame-6-checker.png"
+    },
+    {
+      "background": "light",
+      "imagePath": "assets/candidates/reaction/short-plates/frame-105-light.png"
+    },
+    {
+      "background": "dark",
+      "imagePath": "assets/candidates/reaction/short-plates/frame-105-dark.png"
+    },
+    {
+      "background": "checker",
+      "imagePath": "assets/candidates/reaction/short-plates/frame-105-checker.png"
+    }
+  ],
+  "command": [
+    "node",
+    "--experimental-strip-types",
+    "assets-pipeline/short-clip.ts"
+  ],
+  "limitation": null
+}
