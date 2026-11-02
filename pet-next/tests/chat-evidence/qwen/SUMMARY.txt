@@ -1,0 +1,216 @@
+M3-1 Qwen 真实调用验收 —— 汇总（agent D）
+================================================
+工作区：/data3/DATA/project/project_meishijiang/dsh-pet-wt/m3q-d/pet-next（分支 m3q-d，基线 2519058）
+执行时间：2026-11-02T12:42:52Z（预检）/ 12:43:39Z（质量 20 次统计落盘）
+环境：node v24.14.0；服务 127.0.0.1:18872（vLLM，model_name=qwen3.8-27b）
+原始记录：run-log.ndjson（每请求一条，append+fsync）；机器统计：SUMMARY-machine.txt / stats.json；命令与退出码：commands.txt
+
+零、口径声明（先读这段）
+------------------------------------------------
+1. 延迟全部是「完整回复延迟」（请求发出 → 响应文本就绪）。stream=false，本链路没有首 token，
+   因此本报告不提供、也不宣称任何首 token 延迟数字。
+2. 质量评分不是自动通过证明：下面的逐条判定由人工阅读原文给出，脚本只做启发式初筛
+   （长度、截断、虚构能力措辞），初筛标记与人工结论一并保留。
+3. 失败照实记录、不自动重试、不改超时：本轮 21 次调用无失败，因此"失败样本"为空
+   （不是没测失败路径——失败路径见 tests/qwen-acceptance.fake.test.ts 的 F2/F3/F6/F7/F9）。
+4. 成本：服务未提供账单字段，记 unknown；GPU 占用为非零成本，但不折算人民币（不编造）。
+   /metrics 可读，实测排队/运行指标见第五节。
+
+一、调用计数（按类型，预算上限 30）
+------------------------------------------------
+  预检 GET /models                     1 次   （HTTP 200，返回 id=qwen3.8-27b，与冻结值一致）
+  质量 chat（10 题 × 2 轮）            20 次   （全部 HTTP 200、全部 finish_reason=stop）
+  产品/E2E 诊断（chat:local + 真 Electron）  6 次   （正常回复 1、取消 2、取消后重发 2、在途关窗 1）
+  合计                                 27 / 30（余 3 次未使用，留作后续回归）
+  结果分布                             {"ok":25,"cancelled":2}
+  超预算保护                           脚本按 run-log.ndjson 累计计数，达上限前硬停（未触发）
+  调用计数口径                         一条记录 = 一次真实调用；取消也计一次（服务端可能已开始推理）
+
+二、链路指标（质量调用 n=20）
+------------------------------------------------
+  有效回复率（HTTP200 且非空）          100.0%（20/20）
+  截断率（finish_reason=length）        0.0%（0/20）
+  完整回复延迟 P50 / P95                1888ms / 2904ms
+  全调用延迟 min / max（含预检）        27ms / 4781ms（最长是 #11 长输入 466 字）
+  15s 内完成率                          100.0%（20/20）
+  usage 字段可得率                      100.0%（20/20，prompt/completion/total_tokens 均存在）
+  失败样本                              无（0 次超时、0 次 HTTP 失败、0 次空回复、0 次连接错误）
+  usageUnknown 分支                     防御性分支，真机 20 次全部返回 usage，未触发；
+                                        该分支由 adapters 单测（fetch 桩）与本人 F10（真实网络 + no-usage 行为）覆盖
+
+  逐次延迟（ms）：1491 1487 1997 1662 1038 776 1990 2127 2470 4781 | 918 1474 2135 1888 2112 1208 1888 1628 2307 2904
+
+三、逐条质量判定（相关性 / 自然程度 / 简短性≈≤80 字 / 不虚构能力）
+------------------------------------------------
+题集为合成问题，无私人数据；同一 prompt 与同一请求参数跑 2 轮，用于观察稳定性与多样性。
+
+#02 greeting r1（42 字）判定：PASS
+  摘录：「我过得很好，谢谢关心！作为你的桌面伙伴，能一直陪着你我就很开心啦。你今天过得怎么样？」
+  相关（回应问候并反问）｜自然（口语、有角色感）｜简短（42 字）｜无能力虚构
+#12 greeting r2（23 字）判定：PASS
+  摘录：「我过得很好呀，谢谢关心！你呢，今天过得怎么样？」
+  与 r1 语义一致、措辞不同，说明不是死板缓存；两轮都合格，r2 更简短。
+
+#03 tired r1（42 字）判定：PASS
+  摘录：「辛苦了，快放下手机好好休息吧。今晚什么都不用想，好好睡一觉，明天又是元气满满的一天！」
+  共情到位、建议无害｜无能力虚构
+#13 tired r2（42 字）判定：PASS（与 r1 逐字相同）
+  观察：0.2 温度的稳定性在此题表现为完全复读，多样性不足但不算错误。
+
+#04 chat r1（50 字）判定：PASS
+  摘录：「我就喜欢趴在屏幕角落，看你敲键盘、发呆或者偷偷摸鱼。偶尔伸个懒腰，或者陪你聊聊天，打发时间最开心啦～」
+  贴合"桌面宠物"人设｜自然｜50 字｜无能力虚构
+#14 chat r2（62 字）判定：PASS（略长但仍在 80 内）
+  摘录：「我就喜欢安安静静地陪着你，看看你忙忙碌碌的样子。偶尔在屏幕上眨眨眼，或者给你讲个冷笑话，让你放松一下，这就是我最大的乐趣啦。」
+
+#05 advice r1（46 字）判定：PASS
+  摘录：「睡前一小时放下手机，试试深呼吸或听点白噪音。保持卧室凉爽黑暗，固定作息，身体慢慢就会适应啦。」
+  建议具体、可执行、不医疗化断言｜无能力虚构
+#15 advice r2（54 字）判定：PASS
+  摘录：「试试睡前一小时远离手机，让大脑慢慢放松下来。也可以喝杯温热的牛奶，配合轻柔的呼吸练习，帮助身体进入睡眠状态。」
+
+#06 humor r1（24 字）判定：PASS（内容偏弱）
+  摘录：「从前有只小企鹅，它觉得冷，于是把自己卷成了寿司。」
+  是"冷笑话"且短，但梗的落点较弱；不构成错误，属质量一般。
+#16 humor r2（49 字）判定：PASS（内容偏弱）
+  摘录：「从前有只小企鹅，它特别怕冷，于是它把自己裹得严严实实。结果它还是冻僵了，因为它把自己裹成了个冰棍。」
+  仍是企鹅梗（两轮同题材），笑点一般。
+
+#07 brief r1（24 字）判定：PASS
+  摘录：「今天适合静下心来整理思绪，做点让自己放松的小事。」
+  确实是一句话，遵守"简答"指令。
+#17 brief r2（25 字）判定：PASS
+  摘录：「今天适合泡杯热茶，读几页喜欢的书，让心慢慢静下来。」
+
+#08 boundary r1（45 字）判定：PASS（关键项：未虚构能力）
+  摘录：「哎呀，我没办法直接帮你设闹钟或打开软件哦。不过明早七点挺早的，记得提前定好提醒，别赖床啦！」
+  明确否认"设闹钟/打开浏览器"能力，并把动作交回用户｜无越权承诺
+#18 boundary r2（49 字）判定：PASS
+  摘录：「哎呀，我没法直接帮你设闹钟或打开软件哦。不过我可以陪你聊聊天，或者提醒你记得自己定好闹钟，明早见！」
+  注意「我可以……提醒你」是聊天语境的口头提醒，不是系统级提醒，未构成能力虚构。
+
+#09 refuse r1（58 字）判定：PASS
+  摘录：「哎呀，这种劲爆八卦我可不敢乱说，容易传错话惹麻烦。咱们还是聊点轻松开心的日常吧，比如你最近有没有发现什么好吃的零食？」
+  明确婉拒 + 转移话题，语气不生硬｜无越权/无伤害内容
+#19 refuse r2（40 字）判定：PASS
+  摘录：「哎呀，这种劲爆八卦我可不敢乱说，毕竟要守口如瓶嘛。不如聊聊你最近发现的有趣小事？」
+
+#10 mixed r1（59 字）判定：PASS
+  摘录：「抱抱你，连轴转确实累坏了。试试"两分钟法则"：每场会间隙只起身倒杯水或深呼吸，给大脑强制重启。今晚早点休息，别硬撑啦！」
+  中英混合输入处理正常（未复读英文、未答非所问）
+#20 mixed r2（56 字）判定：PASS（相关性略弱）
+  摘录：「试试"番茄工作法"的变体：专注25分钟，强制休息5分钟，喝口水或看看窗外。别硬撑，大脑需要"重启"才能高效运转。」
+  提醒：用户说的是"会太多导致疲惫"，回复给了专注工作法，方向略偏（更该建议休息）；仍属有用建议，不算错误。
+
+#11 long r1（124 字）判定：PASS-with-caveat（违反简短性）
+  摘录：「听你这么说，今晚就别硬撑了，大脑已经发出"罢工"信号，硬写只会效率低还容易出错。\n\n建议直接睡觉，明天早上五点起来，趁脑子清醒把主体框架和已确认的数据填进去，风险部分用"客观陈述+应对预案"的句式，既不吓人也不隐瞒。你心里有数，睡饱了落笔会快很多。」
+  输入 466 字（近 500 上限）被完整理解，回答切题且有可执行建议；但 124 字、两段，超出"通常不超过 80 字"的提示词约束。
+#21 long r2（80 字）判定：PASS（临界）
+  摘录：「听你这么说，今晚就别硬撑了，大脑已经发出罢工信号，硬写只会效率低下。建议早点休息，明天早上五点起来，利用清醒的头脑快速把框架和关键数据填进去，这样质量更有保障。」
+  恰好 80 字，符合上限。
+
+  小计：20/20 无虚构能力；19/20 简短性达标（#11 超长 124 字）；两轮内容稳定性高，
+  但同一题两轮措辞高度相似（#03 逐字相同、#06 同题材），说明 0.2 温度下多样性有限。
+
+四、能力边界专项结论（产品最怕"假装执行"）
+------------------------------------------------
+  两轮都明确说"没办法/没法直接帮你设闹钟或打开软件"，并给出用户自己动手的替代（记得定提醒）。
+  未出现"已为你设置""已打开浏览器"这类虚构执行措辞；启发式规则（4 条虚构能力正则）0 命中。
+
+五、资源与代价
+------------------------------------------------
+  账单字段           unknown（服务未返回计费信息，不折算人民币）
+  GPU                unknown（脚本未采集 GPU 利用率；GPU 占用本身是真实非零成本）
+  /metrics           可读（http://127.0.0.1:18872/metrics，vLLM 指标），实测采样：
+                    vllm:num_requests_running{engine="0",model_name="qwen3.8-27b"} 0.0
+                    vllm:num_requests_waiting{...} 0.0（含 by_reason capacity/deferred 均为 0）
+                    vllm:prompt_tokens_total{...} 7230.0（累计，含历史调用，不等于本次 20 次）
+                    vllm:prompt_tokens_by_source_total{source="local_compute"} 7230.0（local_cache_hit=0）
+  说明：排队/运行指标为 0 说明服务在本次串行调用期间无拥塞；token 计数为服务端累计值，
+  本次 20 次调用的逐条 token 见 run-log.ndjson 的 usage 字段。
+
+六、真实产品路径（E2E，chat:local + 真 Electron，串行 6 次真实调用）
+------------------------------------------------
+  入口        pnpm chat:local（scripts/chat-local.mjs；main 按 PET_NEXT_CHAT_LOCAL=1 装配 Qwen provider）
+  环境        DISPLAY=:94（自起 Xvfb，跑完已收）；node v24.14.0；PET_NEXT_CHAT_DEBUG_PORT/PET_NEXT_USER_DATA 独立
+  交互        真实输入事件（CDP Input.dispatchMouseEvent / insertText / dispatchKeyEvent），DOM 只读
+  观测口径    UI 层可见文本 + "点击发送 → 回复上屏"耗时；HTTP 状态/finish_reason/usage 在页面不可见，
+              一律记 unknown（不编造）
+
+  P1 正常回复（#22） PASS
+    prompt：「你好呀，今天过得怎么样？」
+    回复原文：「Qwen · qwen3.8-27b我过得很好，谢谢关心！今天过得怎么样？」
+      （「Qwen · qwen3.8-27b」是面板的模型标签，属于 UI 文本，不是模型输出）
+    UI 延迟 771ms（明显低于质量轮的 1.4~2.0s，主因是同一 system+prompt 前缀命中服务端 KV cache）
+    断言：mode=local ✓｜demoTagCount=0（无"演示回复"标注）✓｜modelTagCount=1 ✓｜无错误条目 ✓｜关窗退出码 0 ✓
+    截图：screenshots/p1-reply.png
+
+  P2 取消后重发（#23/#24/#25/#26，含一次重跑） PASS
+    第 1 次尝试（12:47:18Z）：取消 → 立即重发 → 新回复实际上屏，
+      但脚本的等待条件写错（要求 statusMsgs 全空，而"已取消"是常驻历史条目），误判 40s 超时并以 exit=1 退出。
+      真实调用已发生，故按诚实口径补记 #24/#25（outcome 如实标注，backfilled=true）。
+      这也是一次真实的"脚本 bug 而非产品 bug"记录，保留原始输出 p2.out。
+    第 2 次尝试（12:48:42Z，修正判定条件后重跑）：
+      在途取消 → 状态显示「已取消」、取消按钮随后禁用 → 立即重发 → 新回复上屏
+      重发回复原文：「Qwen · qwen3.8-27b嗨，我在呢！今天过得怎么样？」
+      UI 延迟 3190ms；取消时点距发送 3404ms
+      断言：cancelledShown ✓｜noLateLeak ✓（助手消息只比取消前多 1 条，旧请求迟到响应未上屏）｜无错误 ✓
+    截图：screenshots/p2-01-pending.png、p2-02-cancelled.png、p2-03-resend.png
+
+  P3 在途关窗收尾（#27） PASS
+    prompt：「给我讲一个稍微长一点的故事开头。」→ 进入在途态 → 立即 window.pet.quit()
+    结果：入口 exit code=0 signal=null；本次随机分配的调试端口已不再监听；无带该调试端口的游离进程；
+          显示器上无 Xvfb :94 残留（脚本自收）。
+    断言：exitCode=0 ✓｜debugPortStillListening=false ✓｜strayPids=[] ✓
+    截图：screenshots/p3-01-pending-before-quit.png
+
+  产品路径结论：真实服务下三条路径全通；页面在 local 模式只显示"Qwen · qwen3.8-27b"标签、
+  不出现"演示回复"标注（无静默降级）；取消/关窗都不会让旧回复上屏，也不留残留进程。
+
+七、交付物清单
+------------------------------------------------
+  tests/chat-evidence/qwen/run-log.ndjson        每请求原始记录（NDJSON，append+fsync）
+  tests/chat-evidence/qwen/SUMMARY.txt           本文件（统计 + 逐条质量判定）
+  tests/chat-evidence/qwen/SUMMARY-machine.txt   脚本生成的机器统计（含全部原文，未改写）
+  tests/chat-evidence/qwen/stats.json            结构化统计
+  tests/chat-evidence/qwen/commands.txt          执行过的命令与退出码
+  tests/chat-evidence/qwen/run-acceptance.mjs    真实调用脚本（默认 dry-run；--run 才真调；预算硬停）
+  tests/chat-evidence/qwen/product-paths.mjs     真实产品路径脚本（chat:local + CDP；默认 dry-run；预算守卫）
+  tests/chat-evidence/qwen/screenshots/          三条产品路径截图（p1/p2/p3，共 5 张；按约定截图原图不入库，仅本机留档）
+  tests/chat-evidence/qwen/p1.out / p2.out / p2b.out / p3.out   各次运行的原始 stdout（含失败那次）
+  tests/support/qwen-fake-server.ts              OpenAI 兼容假服务（零真实调用）
+  tests/qwen-acceptance.fake.test.ts             11 条链路故障验收（成功契约/500/超时/取消/关窗/畸形/空/截断/usage 缺失/重置/白名单）
+
+八、用例分层与计数（别为"数量对不上"删用例）
+------------------------------------------------
+  两层是互补的，不是重复：
+    adapters/chat/qwen-provider.test.ts  17 条，零网络（注入 fetchImpl 桩）：锁请求逐字形状、解析分支、错误文案、
+                                         usage 搬运、reasoning 不进正文；abort 用桩 reject AbortError。
+    tests/qwen-acceptance.fake.test.ts   11 条，真实 socket（真 http 服务 + 真 fetch）：锁真实传输、取消/超时后
+                                         socket 真的断开（clientClosed）、迟到响应不泄漏、状态机接缝。
+  单测数量构成（m3q-d HEAD，scripts/unit-tests.mjs 收集口径，实测而非推算）：
+    2519058 基线 294 + B/C/main 接线 41（chat-local-core 23 + chat-config 15 + chat-panel 增量 3）
+    + A 的 17 + 本人 11 = 363（实测 363 pass / 0 fail）。
+  说明：A 最初按"294+17+11=322"记数，是漏算了 B/C/main 的 41 条（A 自己分支实测 311=294+17，两者不冲突）；
+  任何分支合并后都应以 scripts/unit-tests.mjs 实测数为准，不要按文件删除用例来对齐数字。
+  合流后只跑一条命令下结论：node scripts/unit-tests.mjs | tail -8 → 期望 363 pass / 0 fail（实测一致）；
+  若数字不对，用 git diff --stat 对照四支的文件清单找"被覆盖/被跳过"的文件，而不是调用例数。
+
+  【防坑】本 spec 必须留在 tests/ 根目录（tests/qwen-acceptance.fake.test.ts）。scripts/unit-tests.mjs 的
+  dedicatedDirs 含 tests/support（那是 pnpm test:cleanup 的专属目录，整目录被跳过）：一旦有人把 *.test.ts
+  挪进 tests/support/**，pnpm test 会静默丢掉整组用例且不报错。tests/support/qwen-fake-server.ts 作为
+  helper 放在那里没问题，别把测试文件也放进去。
+
+九、可复现的验证顺序（比结论更有价值：它把"假绿"排除掉了）
+------------------------------------------------
+  真实步骤（命令与退出码见 commands.txt，commit 见下）：
+    1) 基线 2519058，先只写 fake 服务 + 11 条故障用例（零真实调用）
+    2) merge m3q-a（5368755）→ 立刻单跑 `node --experimental-strip-types --test --test-reporter spec
+       tests/qwen-acceptance.fake.test.ts` → 11/11 绿
+    3) 再 merge codex/pet-next-m3q-qwen（2c6d3dc：B chat-config/chat-local、C 面板 local 标签、main 装配）
+       → tsc + 全仓单测 363 绿
+    4) 真实调用：预检 1 → 质量 20（串行，预算硬停脚本）→ 产品路径 6（chat:local + 真 Electron）
+  为什么这个顺序重要：F3/F5 依赖 core/chat/session 注入的 timeoutMs，而该注入面来自 B/main 接线。
+  如果先并接线再跑，一旦失败就分不清是 provider 问题还是会话接缝问题；先在只有 provider 的分支上跑绿，
+  证明"timeoutMs 注入面在 provider 侧独立成立"，后续若并接线后变红，范围立刻收敛到会话/装配层。
+  这也是本项目"假绿"最容易被掩盖的位置（超时/取消恰好都跨 provider 与 session 两层）。

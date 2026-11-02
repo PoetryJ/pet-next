@@ -1,0 +1,11 @@
+M3-1 真实产品路径诊断（chat:local + 真 Electron + 真实 Qwen）
+时间: 2026-11-02T12:48:42.003Z
+DISPLAY: :94   入口: pnpm chat:local
+预算: 已用 22/30，本次计划 1 条路径（每条最多 2 次真实调用）
+
+=== cancel-resend
+[product #23] product/cancel-resend → ok uiLatency=3190ms reply=32字
+=== cancel-resend exit=0/null {"mode":"local","demoTagCount":0,"modelTagCount":1,"botMsgs":["Qwen · qwen3.8-27b嗨，我在呢！今天过得怎么样？"],"statusMsgs":["已取消"]}
+
+汇总:
+  cancel-resend: exit=0 {}

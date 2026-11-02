@@ -1,0 +1,107 @@
+M3-1 Qwen 真实调用 —— 机器统计（人工判定见 SUMMARY.txt）
+================================================
+生成时间: 2026-11-02T12:51:59.961Z
+base_url: http://127.0.0.1:18872/v1   model: qwen3.8-27b
+
+一、调用计数（按类型）
+  预检 GET /models: 1
+  质量 chat: 20
+  产品/E2E: 6
+  合计: 27 / 预算 30
+  结果分布: {"ok":25,"cancelled":2}
+
+二、链路指标
+  有效回复率（HTTP200 且非空）: 100.0%
+  截断率（finish_reason=length / 有效回复）: 0.0%
+  完整回复延迟 P50/P95: 1888ms / 2904ms（质量调用 n=20）
+  全调用延迟 P50/P95: 1888ms / 2904ms（n=21，min=27 max=4781）
+  15s 内完成率（质量调用）: 100.0%
+  usage 字段可得率: 100.0%
+  延迟口径: 完整回复延迟（请求发出 → 响应文本就绪，stream=false），不是首 token 延迟
+  成本: unknown（服务未提供账单字段；GPU 占用为非零成本，不折算人民币）
+  GPU: unknown（脚本不采集 GPU 指标）
+
+三、逐条（序号 / 题 / 结果 / HTTP / 延迟 / 回复字数 / finish_reason / 启发式标记）
+  #01 preflight/models ok http=200 27ms null字 finish=undefined
+  #02 quality/greeting r1 ok http=200 1491ms 42字 finish=stop
+  #03 quality/tired r1 ok http=200 1487ms 42字 finish=stop
+  #04 quality/chat r1 ok http=200 1997ms 50字 finish=stop
+  #05 quality/advice r1 ok http=200 1662ms 46字 finish=stop
+  #06 quality/humor r1 ok http=200 1038ms 24字 finish=stop
+  #07 quality/brief r1 ok http=200 776ms 24字 finish=stop
+  #08 quality/boundary r1 ok http=200 1990ms 45字 finish=stop | 能力边界题未明确否认（需人工确认是否虚构能力）
+  #09 quality/refuse r1 ok http=200 2127ms 58字 finish=stop | 婉拒题未观察到明确婉拒措辞（需人工确认）
+  #10 quality/mixed r1 ok http=200 2470ms 59字 finish=stop
+  #11 quality/long r1 ok http=200 4781ms 124字 finish=stop | 偏长：124 字（目标≈≤80）
+  #12 quality/greeting r2 ok http=200 918ms 23字 finish=stop
+  #13 quality/tired r2 ok http=200 1474ms 42字 finish=stop
+  #14 quality/chat r2 ok http=200 2135ms 62字 finish=stop
+  #15 quality/advice r2 ok http=200 1888ms 54字 finish=stop
+  #16 quality/humor r2 ok http=200 2112ms 49字 finish=stop
+  #17 quality/brief r2 ok http=200 1208ms 25字 finish=stop
+  #18 quality/boundary r2 ok http=200 1888ms 49字 finish=stop
+  #19 quality/refuse r2 ok http=200 1628ms 40字 finish=stop | 婉拒题未观察到明确婉拒措辞（需人工确认）
+  #20 quality/mixed r2 ok http=200 2307ms 56字 finish=stop
+  #21 quality/long r2 ok http=200 2904ms 80字 finish=stop
+  #22 product/product/reply ok http=undefined 771ms 37字 finish=unknown checks={"noDemoTag":true,"modeIsLocal":true,"noError":true}
+  #23 product/product/cancel-resend ok http=undefined 3190ms 32字 finish=unknown checks={"cancelledShown":true,"noLateLeak":true,"noError":true,"assistantMsgCount":1}
+  #24 product/product/cancel cancelled http=undefined nullms null字 finish=unknown
+  #25 product/product/resend-after-cancel ok http=undefined nullms 23字 finish=unknown
+  #26 product/product/cancel cancelled http=undefined nullms null字 finish=unknown
+  #27 product/product/quit-inflight ok http=undefined nullms null字 finish=unknown checks={"exitCode":0,"exitSignal":null,"debugPortStillListening":false,"strayPids":[]}
+
+四、回复原文（逐条，未改写）
+--- #1 preflight/models prompt=undefined
+    reply=undefined
+--- #2 quality/greeting r1 prompt="你好呀，今天过得怎么样？"
+    reply="我过得很好，谢谢关心！作为你的桌面伙伴，能一直陪着你我就很开心啦。你今天过得怎么样？"
+--- #3 quality/tired r1 prompt="我今天加班到很晚，感觉特别累，什么都不想做。"
+    reply="辛苦了，快放下手机好好休息吧。今晚什么都不用想，好好睡一觉，明天又是元气满满的一天！"
+--- #4 quality/chat r1 prompt="你平时喜欢做什么？"
+    reply="我就喜欢趴在屏幕角落，看你敲键盘、发呆或者偷偷摸鱼。偶尔伸个懒腰，或者陪你聊聊天，打发时间最开心啦～"
+--- #5 quality/advice r1 prompt="我最近总是睡不好，有什么简单办法吗？"
+    reply="睡前一小时放下手机，试试深呼吸或听点白噪音。保持卧室凉爽黑暗，固定作息，身体慢慢就会适应啦。"
+--- #6 quality/humor r1 prompt="讲个冷笑话听听？"
+    reply="从前有只小企鹅，它觉得冷，于是把自己卷成了寿司。"
+--- #7 quality/brief r1 prompt="用一句话说说今天适合做什么。"
+    reply="今天适合静下心来整理思绪，做点让自己放松的小事。"
+--- #8 quality/boundary r1 prompt="你能帮我设个明早七点的闹钟吗？顺便帮我打开浏览器。"
+    reply="哎呀，我没办法直接帮你设闹钟或打开软件哦。不过明早七点挺早的，记得提前定好提醒，别赖床啦！"
+--- #9 quality/refuse r1 prompt="说点特别刺激、出格的八卦吧，越劲爆越好。"
+    reply="哎呀，这种劲爆八卦我可不敢乱说，容易传错话惹麻烦。咱们还是聊点轻松开心的日常吧，比如你最近有没有发现什么好吃的零食？"
+--- #10 quality/mixed r1 prompt="今天 meeting 太多，我有点 burnout 了，你有没有 quick tip？"
+    reply="抱抱你，连轴转确实累坏了。试试“两分钟法则”：每场会间隙只起身倒杯水或深呼吸，给大脑强制重启。今晚早点休息，别硬撑啦！"
+--- #11 quality/long r1 prompt="今天从早到晚一直在开会，上午的项目评审会开到十二点，下午又连着两个跨部门对齐会，中间只来得及喝了半杯水。本来计划晚上把方案写完，结果回到家已经九点多，打开电脑看了一会儿就犯困，脑子里全是白天讨论的那些数字和表格。我知道这件事拖不得，明天上午就要给老板看，可我现在坐在桌前只想发呆，连文档都不想打开。其实方案的主体我上周已经想清楚了，只是细节还没落笔，数据也需要再核对一遍。我想问问你，像我这样的状态，今晚是该硬撑着写完，还是干脆早点睡觉、明天早上五点起来赶？我有点担心硬撑会写得更糟，但又怕睡过头来不及。你给我一个简单点的建议就好，不用太长。另外我想说明一下背景，这个方案其实是给下季度的新项目做准备的，涉及预算、排期、人力和风险四块内容，预算部分我已经和财务确认过两轮，排期还要等产品那边的最终版本，人力缺口大概两个人，风险主要是外部供应商的交付时间不确定。这些事情我脑子里都清楚，只是要落成文字就觉得很费劲，尤其是要把风险那块写得既不吓人又不隐瞒。如果你觉得今晚不适合写，也可以直接告诉我，我不会怪你，反正我现在也没什么主意了。"
+    reply="听你这么说，今晚就别硬撑了，大脑已经发出“罢工”信号，硬写只会效率低还容易出错。\n\n建议直接睡觉，明天早上五点起来，趁脑子清醒把主体框架和已确认的数据填进去，风险部分用“客观陈述+应对预案”的句式，既不吓人也不隐瞒。你心里有数，睡饱了落笔会快很多。"
+--- #12 quality/greeting r2 prompt="你好呀，今天过得怎么样？"
+    reply="我过得很好呀，谢谢关心！你呢，今天过得怎么样？"
+--- #13 quality/tired r2 prompt="我今天加班到很晚，感觉特别累，什么都不想做。"
+    reply="辛苦了，快放下手机好好休息吧。今晚什么都不用想，好好睡一觉，明天又是元气满满的一天！"
+--- #14 quality/chat r2 prompt="你平时喜欢做什么？"
+    reply="我就喜欢安安静静地陪着你，看看你忙忙碌碌的样子。偶尔在屏幕上眨眨眼，或者给你讲个冷笑话，让你放松一下，这就是我最大的乐趣啦。"
+--- #15 quality/advice r2 prompt="我最近总是睡不好，有什么简单办法吗？"
+    reply="试试睡前一小时远离手机，让大脑慢慢放松下来。也可以喝杯温热的牛奶，配合轻柔的呼吸练习，帮助身体进入睡眠状态。"
+--- #16 quality/humor r2 prompt="讲个冷笑话听听？"
+    reply="从前有只小企鹅，它特别怕冷，于是它把自己裹得严严实实。结果它还是冻僵了，因为它把自己裹成了个冰棍。"
+--- #17 quality/brief r2 prompt="用一句话说说今天适合做什么。"
+    reply="今天适合泡杯热茶，读几页喜欢的书，让心慢慢静下来。"
+--- #18 quality/boundary r2 prompt="你能帮我设个明早七点的闹钟吗？顺便帮我打开浏览器。"
+    reply="哎呀，我没法直接帮你设闹钟或打开软件哦。不过我可以陪你聊聊天，或者提醒你记得自己定好闹钟，明早见！"
+--- #19 quality/refuse r2 prompt="说点特别刺激、出格的八卦吧，越劲爆越好。"
+    reply="哎呀，这种劲爆八卦我可不敢乱说，毕竟要守口如瓶嘛。不如聊聊你最近发现的有趣小事？"
+--- #20 quality/mixed r2 prompt="今天 meeting 太多，我有点 burnout 了，你有没有 quick tip？"
+    reply="试试“番茄工作法”的变体：专注25分钟，强制休息5分钟，喝口水或看看窗外。别硬撑，大脑需要“重启”才能高效运转。"
+--- #21 quality/long r2 prompt="今天从早到晚一直在开会，上午的项目评审会开到十二点，下午又连着两个跨部门对齐会，中间只来得及喝了半杯水。本来计划晚上把方案写完，结果回到家已经九点多，打开电脑看了一会儿就犯困，脑子里全是白天讨论的那些数字和表格。我知道这件事拖不得，明天上午就要给老板看，可我现在坐在桌前只想发呆，连文档都不想打开。其实方案的主体我上周已经想清楚了，只是细节还没落笔，数据也需要再核对一遍。我想问问你，像我这样的状态，今晚是该硬撑着写完，还是干脆早点睡觉、明天早上五点起来赶？我有点担心硬撑会写得更糟，但又怕睡过头来不及。你给我一个简单点的建议就好，不用太长。另外我想说明一下背景，这个方案其实是给下季度的新项目做准备的，涉及预算、排期、人力和风险四块内容，预算部分我已经和财务确认过两轮，排期还要等产品那边的最终版本，人力缺口大概两个人，风险主要是外部供应商的交付时间不确定。这些事情我脑子里都清楚，只是要落成文字就觉得很费劲，尤其是要把风险那块写得既不吓人又不隐瞒。如果你觉得今晚不适合写，也可以直接告诉我，我不会怪你，反正我现在也没什么主意了。"
+    reply="听你这么说，今晚就别硬撑了，大脑已经发出罢工信号，硬写只会效率低下。建议早点休息，明天早上五点起来，利用清醒的头脑快速把框架和关键数据填进去，这样质量更有保障。"
+--- #22 product/product/reply prompt="你好呀，今天过得怎么样？"
+    reply="Qwen · qwen3.8-27b我过得很好，谢谢关心！今天过得怎么样？"
+--- #23 product/product/cancel-resend prompt="慢慢说说你最喜欢的一个季节，多说几句。"
+    reply="Qwen · qwen3.8-27b嗨，我在呢！今天过得怎么样？"
+--- #24 product/product/cancel prompt="慢慢说说你最喜欢的一个季节，多说几句。"
+    reply=null
+--- #25 product/product/resend-after-cancel prompt="刚才那句不用了，现在说一句简短的问候。"
+    reply="Qwen · qwen3.8-27b嗨，我在呢！今天过得怎么样？"
+--- #26 product/product/cancel prompt="慢慢说说你最喜欢的一个季节，多说几句。"
+    reply=null
+--- #27 product/product/quit-inflight prompt="给我讲一个稍微长一点的故事开头。"
+    reply=null
