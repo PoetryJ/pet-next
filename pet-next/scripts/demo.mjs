@@ -2,13 +2,16 @@
 /**
  * 一条命令启动桌宠体验（不需要手敲环境变量）。
  *
- *   node scripts/demo.mjs                        # 日常节奏，成品素材
+ *   node scripts/demo.mjs                        # 日常节奏，成品素材；默认常驻
  *   node scripts/demo.mjs --demo                 # 演示节奏（自动动作冷却 1.6s）
  *   node scripts/demo.mjs --asset=short          # 回应改用截取短片（母带 53..158 帧）
  *   node scripts/demo.mjs --asset=candidate      # 回应改用候选素材（字节同母带）
- *   node scripts/demo.mjs --record               # 自动跑一遍演示序列并留证（Linux/X11）
+ *   node scripts/demo.mjs --record               # 自动跑一遍演示序列并留证（Linux/X11），跑完自动收尾
+ *   node scripts/demo.mjs --max-duration=30      # 常驻 30 秒后自动收尾
  *   node scripts/demo.mjs --scale=1.25           # 模拟系统缩放（仅对照用）
  *
+ * 默认常驻：产品内按 Esc 退出，或对脚本 Ctrl-C / SIGTERM；两种退出都会写盘日志并打印 summary，退出码 0。
+ * 只有 --record 跑完或 --max-duration 到点才自动退出。--keep-alive 保留为兼容别名（现已是默认行为）。
  * 素材选择走已冻结的预览令牌（PET_NEXT_PREVIEW），不是改写成品字节。
  * 失败注入：--record 序列按 F 键触发 failNext（行为会话内置），不走产品默认路径。
  */
@@ -37,6 +40,12 @@ const demo = flag('demo');
 const record = flag('record');
 const asset = value('asset', 'master');
 const scale = value('scale', null);
+const maxDurationRaw = value('max-duration', null);
+const maxDurationSeconds = maxDurationRaw === null ? null : Number(maxDurationRaw);
+if (maxDurationSeconds !== null && (!Number.isFinite(maxDurationSeconds) || maxDurationSeconds <= 0)) {
+  console.error(`--max-duration 需要正的秒数，收到：${maxDurationRaw}`);
+  process.exit(2);
+}
 const assets = {
   master: { token: null, label: '成品 assets/reaction.webm（全母带）' },
   candidate: { token: 'candidate', label: '候选 assets/candidates/reaction/reaction.webm（字节同母带）' },
@@ -96,6 +105,47 @@ const append = (chunk) => {
 };
 child.stdout.on('data', append);
 child.stderr.on('data', append);
+
+// —— 提前接住子进程的退出/失败：事件在 spawn 后立刻挂上，之后无论何时等 exit 都不会挂住 ——
+let settleInfo = null;
+const childSettled = new Promise((resolve) => {
+  child.once('exit', (code, signal) => {
+    if (settleInfo === null) settleInfo = { kind: 'exit', code, signal };
+    resolve(settleInfo);
+  });
+  child.once('error', (error) => {
+    // 启动失败（如可执行文件缺失）时 exit 事件可能不来，error 必须同样能结束等待。
+    if (settleInfo === null) settleInfo = { kind: 'error', error };
+    resolve(settleInfo);
+  });
+});
+
+// —— 提前接住 Ctrl-C / SIGTERM：先走收尾（写日志、summary），而不是被默认行为直接终止 ——
+let stopSignalName = null;
+const stopSignal = new Promise((resolve) => {
+  const take = (name) => {
+    if (stopSignalName !== null) {
+      // 收尾中再次收到信号：强杀子进程立刻退，不再等。
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        // 已经退出。
+      }
+      process.exit(130);
+    }
+    stopSignalName = name;
+    resolve(name);
+  };
+  process.on('SIGINT', () => take('SIGINT'));
+  process.on('SIGTERM', () => take('SIGTERM'));
+});
+
+const maxDurationExpiry =
+  maxDurationSeconds === null
+    ? null
+    : new Promise((resolve) => {
+      setTimeout(() => resolve('max-duration'), maxDurationSeconds * 1000);
+    });
 
 async function xdo(args) {
   await new Promise((resolve, reject) => {
@@ -200,32 +250,82 @@ async function recordSequence() {
   return steps;
 }
 
+/** 由脚本结束子进程：先 SIGTERM，等不到再 SIGKILL 兜底；两条路都会让 childSettled 落定。 */
+async function terminateChild() {
+  try {
+    child.kill('SIGTERM');
+  } catch {
+    return; // 子进程从未起来时（pid 缺失），settle 已经由 error 路径给出。
+  }
+  const outcome = await Promise.race([childSettled, sleep(8000).then(() => 'timeout')]);
+  if (outcome === 'timeout') {
+    try {
+      child.kill('SIGKILL');
+    } catch {
+      // 已经退出。
+    }
+  }
+}
+
 const startedAt = Date.now();
 let recordResult = null;
 if (record) {
-  recordResult = await recordSequence();
+  // 录制中收到信号/到时限就立刻停下，不把剩余序列点完。
+  recordResult = await Promise.race([
+    recordSequence(),
+    stopSignal.then(() => 'interrupted'),
+    ...(maxDurationExpiry === null ? [] : [maxDurationExpiry]),
+  ]);
+} else {
+  console.log(
+    `demo: 窗口保持打开（默认常驻）${
+      maxDurationSeconds === null ? '' : `，${maxDurationSeconds}s 后自动收尾`
+    }：产品内 Esc 退出，Ctrl-C 结束。`,
+  );
 }
 
-if (flag('keep-alive')) {
-  console.log('demo: 窗口保持打开，Ctrl-C 结束。');
-  await new Promise((resolve) => {
-    process.on('SIGINT', resolve);
-    process.on('SIGTERM', resolve);
-  });
-} else {
-  await sleep(1200);
+// 常驻等待：子进程自己退出（Esc）、外部信号、时限任一先到；--record 跑完即收尾。
+const stopReason = await Promise.race([
+  childSettled.then((info) => (info.kind === 'error' ? 'spawn-error' : 'child-exit')),
+  stopSignal.then((name) => `signal-${name}`),
+  ...(maxDurationExpiry === null ? [] : [maxDurationExpiry]),
+  ...(record && recordResult !== 'interrupted' ? [Promise.resolve('record-complete')] : []),
+]);
+
+let terminatedByUs = false;
+if (settleInfo === null) {
+  terminatedByUs = true;
+  await terminateChild();
 }
-child.kill('SIGTERM');
-await new Promise((resolve) => child.on('exit', resolve));
+await childSettled;
+
 await mkdir(logDir, { recursive: true });
 await writeFile(logPath, log, 'utf8');
 
 const previews = [...log.matchAll(/\\"visual\\":\\"(\w+)\\"/g)].map((match) => match[1]);
+const info = settleInfo ?? { kind: 'error', error: new Error('child never settled') };
+let exitCode = 0;
+const failures = [];
+if (info.kind === 'error') {
+  failures.push(`spawn-error: ${info.error.message}`);
+  exitCode = 1;
+} else if (!terminatedByUs) {
+  // 子进程自己提前退出：Esc 是 code 0；非 0 或被信号杀属于异常，如实上报。
+  if (typeof info.code === 'number' && info.code !== 0) {
+    failures.push(`child-exit-${info.code}`);
+    exitCode = info.code;
+  } else if (info.code === null) {
+    failures.push(`child-signal-${String(info.signal)}`);
+    exitCode = 1;
+  }
+}
 const summary = {
   event: 'demo-summary',
   asset,
   cadence: demo ? 'demo' : 'daily',
   record: recordResult,
+  stopReason,
+  childExit: info.kind === 'error' ? 'spawn-error' : { code: info.code, signal: info.signal },
   elapsedMs: Date.now() - startedAt,
   logPath: path.relative(petRoot, logPath),
   visuals: previews,
@@ -233,5 +333,6 @@ const summary = {
   autos: previews.filter((item) => item === 'auto').length,
   placeholders: previews.filter((item) => item === 'placeholder').length,
 };
+if (failures.length > 0) summary.failures = failures;
 console.log(JSON.stringify(summary, null, 2));
-process.exit(0);
+process.exit(exitCode);
