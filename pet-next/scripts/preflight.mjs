@@ -7,11 +7,14 @@
  *   node scripts/preflight.mjs --require=unit,e2e     # 必需项缺失时退出码 1
  *   node scripts/preflight.mjs --json                  # 机器可读输出
  *
- * 层级：unit / integration / cleanup / e2e / windows
- * - unit：node >= 22（--experimental-strip-types）
+ * 层级：unit / integration / cleanup / e2e / windows（与 package.json 的四个测试入口一一对应）
+ * - unit：node >= 22.12（--experimental-strip-types）→ `pnpm test`（scripts/unit-tests.mjs，纯单元）
  * - integration：ffmpeg + ffprobe（素材链路）与 assets/candidates 可读
- * - cleanup：node 自带（无额外依赖）
- * - e2e：Linux 需要 DISPLAY + xdotool + xwininfo；Electron 二进制可解析
+ *   → `pnpm test:integration`（assets-pipeline/cli.ts + tests/assets/pipeline.test.ts；
+ *   `assets:check` 成功不能替代素材集成测试）
+ * - cleanup：node >= 22.12（入口同样用 --experimental-strip-types）
+ *   → `pnpm test:cleanup`（tests/cleanup.test.ts 与 tests/support/*.test.ts，显式文件列表）
+ * - e2e：Linux 需要 DISPLAY + xdotool + xwininfo；Electron 二进制可解析 → `pnpm test:e2e`
  * - windows：仅 Windows 由 tests/platform/verify-windows.ps1 执行，其他平台记 not-run
  */
 import { execFile } from 'node:child_process';
@@ -48,8 +51,10 @@ function check(layer, ok, detail, hint = null) {
 }
 
 const [major = 0, minor = 0] = process.versions.node.split('.').map(Number);
-check('unit', major >= 22 || (major === 22 && minor >= 12) || major > 22, `node ${process.versions.node}`, '需要 Node >= 22.12（--experimental-strip-types）。');
-check('cleanup', major >= 20, `node ${process.versions.node}`, null);
+// unit 与 cleanup 入口都用 --experimental-strip-types，Node 下限一致（与 engines >=22.12 对齐）。
+const stripTypesOk = major > 22 || (major === 22 && minor >= 12);
+check('unit', stripTypesOk, `node ${process.versions.node}`, '需要 Node >= 22.12（--experimental-strip-types）。');
+check('cleanup', stripTypesOk, `node ${process.versions.node}`, 'pnpm test:cleanup 入口同样需要 Node >= 22.12。');
 
 const ffmpeg = await run('ffmpeg', ['-version']);
 check('integration', ffmpeg.ok, ffmpeg.ok ? ffmpeg.detail : `ffmpeg 不可用：${ffmpeg.detail}`, '安装 ffmpeg 后重跑；缺 ffmpeg 时集成层记 not-run。');

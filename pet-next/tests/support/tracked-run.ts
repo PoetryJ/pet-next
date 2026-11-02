@@ -3,6 +3,10 @@
  * 不负责断言 Electron 业务；调用方在 finally 里 stop。
  * 采样必须发生在父进程退出之前，否则子进程会被 init 收养。
  * Linux 发信号前核对 /proc stat 的 starttime，避免 PID 被复用后误伤。Windows 尚未做同样的核对。
+ *
+ * 采样是异步的：Windows 的进程表查询是 PowerShell 子进程，同步执行会挂起事件循环，
+ * 20ms 轮询与 READY/close 事件全部被拖住（旧版"正常退出后清理"因此在 Windows 上 20s 超时）。
+ * 定时器与轮询循环并发触发时共享同一次 in-flight 采样（单飞），不排队也不各自查询。
  */
 import { type ChildProcess, spawn } from 'node:child_process';
 import { readFileSync } from 'node:fs';
@@ -68,6 +72,8 @@ interface RunState {
   readonly directory: string;
   readonly options: StartTrackedRunOptions;
   timer: ReturnType<typeof setInterval> | undefined;
+  /** 正在进行的采样；并发触发共享同一个 Promise，结束前清空。 */
+  sampling: Promise<void> | undefined;
 }
 
 /** 启动命令并开始采样它的后代。label 只能是 kebab-case。 */
@@ -84,10 +90,10 @@ export function startTrackedRun(options: StartTrackedRunOptions): TrackedRun {
   }
   const state = createState(options, platform, pid);
   wireChild(child, state);
-  const timer = setInterval(() => collect(state), SAMPLE_INTERVAL_MS);
+  const timer = setInterval(() => void collect(state), SAMPLE_INTERVAL_MS);
   timer.unref();
   state.timer = timer;
-  collect(state);
+  void collect(state);
   return bindRun(child, state);
 }
 
@@ -124,6 +130,7 @@ function createState(options: StartTrackedRunOptions, platform: NodeJS.Platform,
     }),
     options,
     timer: undefined,
+    sampling: undefined,
   };
 }
 
@@ -166,13 +173,26 @@ function bindRun(child: ChildProcess, state: RunState): TrackedRun {
   };
 }
 
-function collect(state: RunState): void {
+/**
+ * 采样一次后代进程表。并发调用共享同一次 in-flight 采样（定时器、轮询、reap 同时触发时），
+ * 不会堆积查询；采样失败时保留已经看到的 PID，结束阶段仍会尝试信号它们。
+ */
+function collect(state: RunState): Promise<void> {
+  if (state.sampling) return state.sampling;
+  const job = sampleDescendants(state).finally(() => {
+    if (state.sampling === job) state.sampling = undefined;
+  });
+  state.sampling = job;
+  return job;
+}
+
+async function sampleDescendants(state: RunState): Promise<void> {
   remember(state, state.pid);
   try {
-    const directChildren = snapshotChildren(state.platform);
+    const directChildren = await snapshotChildren(state.platform);
     for (const descendant of descendantPids(state.pid, directChildren)) remember(state, descendant);
   } catch {
-    // 采样失败时保留已经看到的 PID，结束阶段仍会尝试信号它们。
+    // 查询超时或平台不支持时保留已看到的 PID，结束阶段仍会尝试信号它们。
   }
 }
 
@@ -193,12 +213,12 @@ async function stop(state: RunState): Promise<void> {
 
 async function reap(state: RunState): Promise<void> {
   for (let attempt = 0; attempt < REAP_ATTEMPTS; attempt += 1) {
-    collect(state);
+    await collect(state);
     const alive = killOrder(state.pid, [...state.tracked]).filter((pid) => maySignal(state, pid));
     if (alive.length === 0) return;
     for (const pid of alive) {
       try {
-        signalPid(pid, pid === state.pid, state.platform);
+        await signalPid(pid, pid === state.pid, state.platform);
       } catch {
         // 这一轮不能信号的 PID 留到下一轮；不能因此放过同树的其它进程。
       }
@@ -219,7 +239,7 @@ async function untilReady(
 ): Promise<ReadyWait> {
   const deadline = Date.now() + readyOptions.timeoutMs;
   while (Date.now() < deadline) {
-    collect(state);
+    await collect(state);
     if (readyOptions.ready(state.stdout, state.stderr)) return { status: 'ready' };
     if (state.settled) break;
     await delay(20);
@@ -234,7 +254,7 @@ async function untilReady(
 async function untilExit(state: RunState, timeoutMs: number): Promise<ExitWait> {
   const deadline = Date.now() + timeoutMs;
   while (!state.settled && Date.now() < deadline) {
-    collect(state);
+    await collect(state);
     await delay(20);
   }
   const timedOut = !state.settled;
