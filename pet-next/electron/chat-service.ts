@@ -98,7 +98,9 @@ function badRequest(payload: unknown): ChatSendResult {
 export async function registerChatService(options: RegisterChatServiceOptions): Promise<ChatServiceHandle> {
   const ipc = options.ipcMain ?? ((await import('electron')) as unknown as { ipcMain: ChatServiceIpc }).ipcMain;
   const session = resolveSession(options);
-  let lastRequestId = '';
+  // 只记录“真正被会话接受”的请求 id：被 busy/empty/too-long 同步拒绝的请求不会建立 pending，
+  // 若也写进这里就会覆盖仍在途的请求，导致 dispose/cancel 取消错对象、原请求永不结算。
+  let activeRequestId = '';
   let disposed = false;
 
   const isFromMainWindow = (event: ChatServiceEvent): boolean => {
@@ -110,8 +112,11 @@ export async function registerChatService(options: RegisterChatServiceOptions): 
     if (!isFromMainWindow(event)) return badRequest(payload);
     const request = parseChatSendRequest(payload);
     if (request === null) return badRequest(payload);
-    lastRequestId = request.id;
-    return session.send(request);
+    // 只在“无在途 -> 有在途”的接受瞬间记录归属；busy/empty/too-long 的即时拒绝不改写归属。
+    const hadPending = session.hasPending();
+    const outcome = session.send(request);
+    if (!hadPending && session.hasPending()) activeRequestId = request.id;
+    return outcome;
   };
 
   const cancelListener = (event: ChatServiceEvent, payload: unknown): void => {
@@ -126,7 +131,7 @@ export async function registerChatService(options: RegisterChatServiceOptions): 
   const dispose = (): void => {
     if (disposed) return;
     disposed = true;
-    if (lastRequestId !== '') session.cancel(lastRequestId);
+    if (activeRequestId !== '') session.cancel(activeRequestId);
     ipc.removeHandler(CHAT_SEND_CHANNEL);
     ipc.removeListener(CHAT_CANCEL_CHANNEL, cancelListener as unknown as (...args: never[]) => unknown);
     const win = options.getWindow();
