@@ -3,6 +3,8 @@
  * 手势仍用现有判定；播放和空闲提议交给产品调度器。默认路径不创建本会话。
  * 自动动作节奏由调用方注入（`DAILY_CADENCE` / `DEMO_CADENCE`），冷却从回到待机起算，
  * 定时器是一次性链：每次到期只提议一次，忙或拖动时改期重来。
+ * 冷却生命周期全归本会话管理：任何时刻至多一个在途定时器；拖动结束回待机时重挂；
+ * 只有"当前活动请求"的终态才重挂（被取代或被拖动取消的旧请求事后回报，不重置新冷却）。
  * @module pet-next/app/behavior-pet
  */
 import type { BehaviorCadence } from '../contracts/behavior.ts';
@@ -180,6 +182,10 @@ export function createBehaviorPet(options: {
         } else if (effect.type === 'drag-end') {
           behavior.dragEnd();
           options.setDragging(false);
+          // 拖动可能取消了在播的自动动作且媒体终态未必再回报；
+          // 松手回到待机即重挂冷却，避免自主动作永久停摆。拖动期间挂着的
+          // 定时器到期只会改期（`pumpAuto` 在拖动中不提议），因此不会在拖动中开始。
+          if (behavior.phase === 'idle') rearmNextAuto();
         } else if (effect.type === 'drag-move') options.moveBy(effect.dx, effect.dy);
       }
     },
@@ -196,8 +202,11 @@ export function createBehaviorPet(options: {
       }
       if (status.status !== 'ended' && status.status !== 'failed') return;
       schedulerIds.delete(status.requestId);
+      // 只有当前活动请求的终态才回待机并重挂冷却；被取代/被拖动取消的旧请求
+      // 事后回报时 `activeRequestId` 已换人或为空，不得重置新冷却的在途定时器。
+      const wasActive = behavior.activeRequestId === status.requestId;
       behavior.settled(status.requestId, status.status === 'ended');
-      rearmNextAuto();
+      if (wasActive) rearmNextAuto();
     },
     failNext() {
       failArmed = true;

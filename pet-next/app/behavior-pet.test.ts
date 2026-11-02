@@ -254,3 +254,60 @@ test('quit 后定时器与媒体回调都不能复活会话', () => {
   h.pet.quit();
   assert.equal(h.quitCalls, 1, '重复 quit 幂等');
 });
+
+test('拖动打断自动动作后松手：恰有一个冷却定时器，到期再自动，quit 后清零（探针序列）', () => {
+  const h = createHarness(DEMO_CADENCE);
+  h.pet.boot();
+  h.clock.fireOldest();
+  const firstAutoId = h.plays[1]?.requestId ?? '';
+  assert.equal(h.plays[1]?.clip, 'auto');
+  assert.equal(h.clock.liveCount, 0, 'auto 在播时不挂下一次（冷却从回待机起算）');
+  // 拖动打断：按下、越过阈值、松手。媒体不回报被取消请求的终态。
+  h.pet.pointer({ type: 'pointerdown', pointerId: 1, x: 0, y: 0 });
+  h.pet.pointer({ type: 'pointermove', pointerId: 1, x: 12, y: 0 });
+  assert.equal(h.plays.filter((play) => play.clip === 'auto').length, 1, '拖动中不开始自动动作');
+  h.pet.pointer({ type: 'pointerup', pointerId: 1, x: 12, y: 0 });
+  // 探针 review-evidence/behavior-auto-drag-timer-repro.mjs 的 drag-finished 预期：liveTimers === 1。
+  assert.equal(h.clock.liveCount, 1, '松手回 idle 后重挂冷却（修复前为 0，自主动作永久停摆）');
+  assert.ok(h.clock.liveCount <= 1, '任何时刻至多一个冷却定时器');
+  h.clock.fireOldest();
+  const secondAuto = h.plays.at(-1);
+  assert.equal(secondAuto?.clip, 'auto', '推进冷却后再次开始自动动作');
+  assert.notEqual(secondAuto?.requestId, firstAutoId, '新自动动作是新请求身份');
+  assert.equal(h.clock.liveCount, 0, '第二次 auto 在播时不挂下一次');
+  h.pet.quit();
+  assert.equal(h.clock.liveCount, 0, 'quit 后零定时器');
+});
+
+test('被拖动取消的旧自动请求事后 settled：不重置冷却、不额外挂表', () => {
+  const h = createHarness(DEMO_CADENCE);
+  h.pet.boot();
+  h.clock.fireOldest();
+  const autoId = h.plays[1]?.requestId ?? '';
+  h.pet.pointer({ type: 'pointerdown', pointerId: 1, x: 0, y: 0 });
+  h.pet.pointer({ type: 'pointermove', pointerId: 1, x: 12, y: 0 });
+  h.pet.pointer({ type: 'pointerup', pointerId: 1, x: 12, y: 0 });
+  assert.equal(h.clock.liveCount, 1);
+  const armedAtDragEnd = h.clock.armed.at(-1);
+  assert.ok(armedAtDragEnd);
+  // 旧请求的终态晚到：不得取消/替换松手时挂上的新冷却。
+  h.pet.onMedia({ requestId: autoId, status: 'ended', keptRequestId: null } satisfies PetMediaStatus);
+  assert.equal(h.clock.liveCount, 1, '旧 settled 不新增定时器');
+  assert.equal(h.clock.armed.at(-1), armedAtDragEnd, '旧 settled 不重置在途冷却');
+  assert.equal(h.plays.at(-1)?.clip, 'idle', '旧 settled 不触发新播放');
+  h.clock.fireOldest();
+  assert.equal(h.plays.at(-1)?.clip, 'auto', '新冷却到期正常开始自动动作');
+});
+
+test('拖动结束回待机重挂冷却：冷却从松手起算，期间定时器至多一个', () => {
+  const h = createHarness(DEMO_CADENCE);
+  h.pet.boot();
+  // 冷却尚未到期就拖动：boot 时挂的定时器在松手时被替换为以松手为起点的冷却。
+  h.pet.pointer({ type: 'pointerdown', pointerId: 1, x: 0, y: 0 });
+  h.pet.pointer({ type: 'pointermove', pointerId: 1, x: 9, y: 0 });
+  h.pet.pointer({ type: 'pointerup', pointerId: 1, x: 9, y: 0 });
+  assert.equal(h.clock.liveCount, 1, '松手后恰有一个冷却定时器');
+  assert.equal(h.clock.armed.at(-1)?.delayMs, 1600, '冷却从回待机（松手）起算');
+  h.clock.fireOldest();
+  assert.equal(h.plays.at(-1)?.clip, 'auto');
+});
