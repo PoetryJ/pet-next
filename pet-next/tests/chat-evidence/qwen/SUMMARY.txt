@@ -177,4 +177,4 @@ M3-1 Qwen 真实调用验收 —— 汇总（agent D）
   tests/chat-evidence/qwen/screenshots/          三条产品路径截图（p1/p2/p3，共 5 张；按约定截图原图不入库，仅本机留档）
   tests/chat-evidence/qwen/p1.out / p2.out / p2b.out / p3.out   各次运行的原始 stdout（含失败那次）
   tests/support/qwen-fake-server.ts              OpenAI 兼容假服务（零真实调用）
-  tests/qwen-acceptance.fake.test.ts             10 条链路故障验收（成功/500/超时/取消/关窗/畸形/空/截断/重置/白名单）
+  tests/qwen-acceptance.fake.test.ts             11 条链路故障验收（成功契约/500/超时/取消/关窗/畸形/空/截断/usage 缺失/重置/白名单）
