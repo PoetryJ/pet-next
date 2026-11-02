@@ -6,7 +6,14 @@
 import { domScreenPointToDip } from '../adapters/window/pointer-point.ts';
 import { DAILY_CADENCE, DEMO_CADENCE } from '../contracts/behavior.ts';
 import { parsePreview, PREVIEW_QUERY } from '../contracts/preview.ts';
-import { CHAT_PREVIEW_QUERY, CHAT_PREVIEW_TOKEN, type ChatSendRequest, type ChatSendResult } from '../contracts/chat.ts';
+import {
+  CHAT_LOCAL_TOKEN,
+  CHAT_PREVIEW_QUERY,
+  CHAT_PREVIEW_TOKEN,
+  type ChatDisplayInfo,
+  type ChatSendRequest,
+  type ChatSendResult,
+} from '../contracts/chat.ts';
 import { createBehaviorPet, type BehaviorPet } from './behavior-pet.ts';
 import './bridge.ts';
 import { mountChatPanel } from './chat-panel.ts';
@@ -44,18 +51,27 @@ if (previewMark !== null) {
   document.documentElement.dataset.previewActive = previewMark.previewActive;
 }
 
-// M3-0：仅在聊天预览令牌下挂载面板；普通桌宠入口保持既有行为。
-if (params.get(CHAT_PREVIEW_QUERY) === CHAT_PREVIEW_TOKEN) {
+// M3-0/M3-1：仅在聊天令牌（preview=demo / local=真实模型）下挂载面板；普通桌宠入口保持既有行为。
+const chatMode = params.get(CHAT_PREVIEW_QUERY);
+if (chatMode === CHAT_PREVIEW_TOKEN || chatMode === CHAT_LOCAL_TOKEN) {
   const bridge = (window as unknown as {
     petChat?: {
       send(payload: ChatSendRequest): Promise<ChatSendResult>;
       cancel(id: string): void;
+      info?(): Promise<unknown>;
     };
   }).petChat;
   if (bridge === undefined) {
-    throw new Error('chat preview requested but petChat bridge missing');
+    throw new Error('chat requested but petChat bridge missing');
   }
-  mountChatPanel(document.body, bridge);
+  // 只读展示信息（mode/model）；取不到时按演示模式兜底，绝不把失败伪装成成功。
+  const infoPromise: Promise<ChatDisplayInfo> = bridge.info
+    ? bridge.info().then(
+        (raw) => (typeof raw === 'object' && raw !== null ? (raw as ChatDisplayInfo) : { mode: 'demo' }),
+        () => ({ mode: 'demo' }),
+      )
+    : Promise.resolve({ mode: 'demo' });
+  void infoPromise.then((info) => mountChatPanel(document.body, bridge, info));
 }
 
 const holder: { controller?: PetController; behavior?: BehaviorPet } = {};
