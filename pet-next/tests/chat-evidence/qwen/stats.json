@@ -1,0 +1,36 @@
+{
+  "generatedAt": "2026-11-02T12:51:59.961Z",
+  "baseUrl": "http://127.0.0.1:18872/v1",
+  "model": "qwen3.8-27b",
+  "budget": 30,
+  "budgetUsed": 27,
+  "byKind": {
+    "preflight": 1,
+    "quality": 20,
+    "product": 6
+  },
+  "outcomes": {
+    "ok": 25,
+    "cancelled": 2
+  },
+  "validReplyRate": 1,
+  "truncationRate": 0,
+  "latencyAll": {
+    "n": 21,
+    "p50": 1888,
+    "p95": 2904,
+    "min": 27,
+    "max": 4781
+  },
+  "latencyQualityOnly": {
+    "n": 20,
+    "p50": 1888,
+    "p95": 2904
+  },
+  "within15sRate": 1,
+  "usageKnownRate": 1,
+  "latencyDefinition": "完整回复延迟（请求发出 → 响应文本就绪，stream=false），不是首 token 延迟",
+  "cost": "unknown（服务未提供账单字段；GPU 占用为非零成本，不折算人民币）",
+  "gpu": "unknown（脚本不采集 GPU 指标）",
+  "metrics": "vllm:num_requests_running{engine=\"0\",model_name=\"qwen3.8-27b\"} 0.0\nvllm:num_requests_waiting{engine=\"0\",model_name=\"qwen3.8-27b\"} 0.0\nvllm:num_requests_waiting_by_reason{engine=\"0\",model_name=\"qwen3.8-27b\",reason=\"capacity\"} 0.0\nvllm:num_requests_waiting_by_reason{engine=\"0\",model_name=\"qwen3.8-27b\",reason=\"deferred\"} 0.0\nvllm:prompt_tokens_total{engine=\"0\",model_name=\"qwen3.8-27b\"} 7410.0\nvllm:prompt_tokens_created{engine=\"0\",model_name=\"qwen3.8-27b\"} 1.793607240632063e+09\nvllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"local_compute\"} 7410.0\nvllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"local_cache_hit\"} 0.0\nvllm:prompt_tokens_by_source_total{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"external_kv_transfer\"} 0.0\nvllm:prompt_tokens_by_source_created{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"local_compute\"} 1.7936072406320753e+09\nvllm:prompt_tokens_by_source_created{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"local_cache_hit\"} 1.7936072406320798e+09\nvllm:prompt_tokens_by_source_created{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"external_kv_transfer\"} 1.7936072406320891e+09\nvllm:prompt_tokens_cached_total{engine=\"0\",model_name=\"qwen3.8-27b\"} 0.0\nvllm:prompt_tokens_cached_created{engine=\"0\",model_name=\"qwen3.8-27b\"} 1.7936072406320994e+09\nvllm:prompt_tokens_cached_by_source_total{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"device\"} 0.0\nvllm:prompt_tokens_cached_by_source_total{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"host\"} 0.0\nvllm:prompt_tokens_cached_by_source_total{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"p2p\"} 0.0\nvllm:prompt_tokens_cached_by_source_total{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"disk\"} 0.0\nvllm:prompt_tokens_cached_by_source_total{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"external_unspecified\"} 0.0\nvllm:prompt_tokens_cached_by_source_created{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"device\"} 1.7936072406321177e+09\nvllm:prompt_tokens_cached_by_source_created{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"host\"} 1.793607240632123e+09\nvllm:prompt_tokens_cached_by_source_created{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"p2p\"} 1.793607240632128e+09\nvllm:prompt_tokens_cached_by_source_created{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"disk\"} 1.7936072406321325e+09\nvllm:prompt_tokens_cached_by_source_created{engine=\"0\",model_name=\"qwen3.8-27b\",source=\"external_unspecified\"} 1.7936072406321373e+09\nvllm:generation_tokens_total{engine=\"0\",model_name=\"qwen3.8-27b\"} 2791.0\nvllm:generation_tokens_created{engine=\"0\",model_name=\"qwen3.8-27b\"} 1.793607240632148e+09\nvllm:request_success_total{engine=\"0\",finished_reason=\"stop\",model_name=\"qwen3.8-27b\"} 44.0\nvllm:request_success_total{engine=\"0\",finished_reason=\"length\",model_name=\"qwen3.8-27b\"} 0.0\nvllm:request_success_total{engine=\"0\",finished_reason=\"abort\",model_name=\"qwen3.8-27b\"} 0.0\nvllm:request_success_total{engine=\"0\",finished_reason=\"error\",model_name=\"qwen3.8-27b\"} 0.0\nvllm:request_success_total{engine=\"0\",finished_reason=\"repetition\",model_name=\"qwen3.8-27b\"} 0.0\nvllm:request_success_created{engine=\"0\",finished_reason=\"stop\",model_name=\"qwen3.8-27b\"} 1.793607240632163e+09\nvllm:request_success_created{engine=\"0\",finished_reason=\"length\",model_name=\"qwen3.8-27b\"} 1.793607240632169e+09\nvllm:request_success_created{engine=\"0\",finished_reason=\"abort\",model_name=\"qwen3.8-27b\"} 1.7936072406321743e+09\nvllm:request_success_created{engine=\"0\",finished_reason=\"error\",model_name=\"qwen3.8-27b\"} 1.793607240632179e+09\nvllm:request_success_created{engine=\"0\",finished_reason=\"repetition\",model_name=\"qwen3.8-27b\"} 1.7936072406321855e+09\nvllm:admission_rejections_total{model_name=\"qwen3.8-27b\",reason=\"max_num_queued_reqs\"} 0.0\nvllm:admission_rejections_total{model_name=\"qwen3.8-27b\",reason=\"max_num_queued_tokens\"} 0.0\nvllm:admission_rejections_created{model_name=\"qwen3.8-27b\",reason=\"max_num_queued_reqs\"} 1.7936072406322076e+09\nvllm:admission_rejections_created{model_name=\"qwen3.8-27b\",reason=\"max_num_queued_tokens\"} 1.7936072406322124e+09"
+}

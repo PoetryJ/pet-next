@@ -1,0 +1,17 @@
+[2026-11-02T12:41:32.245Z] exit=0 dry-run（零网络调用） :: node tests/chat-evidence/qwen/run-acceptance.mjs 
+[2026-11-02T12:41:39.047Z] exit=0 dry-run（零网络调用） :: node tests/chat-evidence/qwen/run-acceptance.mjs 
+[2026-11-02T12:42:47.001Z] exit=0 dry-run（零网络调用） :: node tests/chat-evidence/qwen/run-acceptance.mjs 
+[2026-11-02T12:42:52.070Z] exit=0 真实调用 run（共 1 次） :: node tests/chat-evidence/qwen/run-acceptance.mjs --run --only=preflight
+[2026-11-02T12:43:39.965Z] exit=0 真实调用 run（共 21 次） :: node tests/chat-evidence/qwen/run-acceptance.mjs --run --only=quality
+[2026-11-02T12:44:01.196Z] exit=0 stats only :: node tests/chat-evidence/qwen/run-acceptance.mjs --stats
+[2026-11-02T12:44:11.187Z] exit=0 stats only :: node tests/chat-evidence/qwen/run-acceptance.mjs --stats
+[2026-11-02T12:44:17.856Z] exit=0 stats only :: node tests/chat-evidence/qwen/run-acceptance.mjs --stats
+[2026-11-02T12:45:32.585Z] exit=0 dry-run（零真实调用） :: node tests/chat-evidence/qwen/product-paths.mjs --all
+[2026-11-02T12:46:20.372Z] exit=0 产品路径 reply :: node tests/chat-evidence/qwen/product-paths.mjs --run --path=reply
+[2026-11-02T12:48:14.935Z] exit=1 失败：取消后重发未得到回复（40000ms 超时）
+last={"readyState":"complete","mounted":true,"mode":"local","phase":"reply","panelHidden":false,"toggle":{"x":278,"y":8,"w":34,"h":34,"cx":295,"cy":25,"disabled":false},"input":{"x":57,"y":168,"w":246,"h":34,"cx":180,"cy":185,"disabled":null},"send":{"x":233.46875,"y":206,"w":30.765625,"h":20,"cx":248.8515625,"cy":216,"disabled":false},"cancel":{"x":272.234375,"y":206,"w":30.765625,"h":20,"cx":287.6171875,"cy":216,"disabled":true},"close":{"x":286.8125,"y":50,"w":16.1875,"h":16,"cx":294.90625,"cy":58,"disabled":false},"inputValue":"刚才那句不用了，现在说一句简短的问候。","userMsgs":["慢慢说说你最喜欢的一个季节，多说几句。","刚才那句不用了，现在说一句简短的问候。"],"botMsgs":["Qwen · qwen3.8-27b嗨，我在呢！今天过得怎么样？"],"modelTagCount":1,"demoTagsBefore":0,"demoTagCount":0,"statusMsgs":["已取消"],"errorMsgs":[],"note":null,"info":"pet-next"} :: node tests/chat-evidence/qwen/product-paths.mjs --run --path=cancel-resend
+[2026-11-02T12:48:41.940Z] exit=0 dry-run（零真实调用） :: node tests/chat-evidence/qwen/product-paths.mjs --path=cancel-resend
+[2026-11-02T12:49:01.917Z] exit=0 产品路径 cancel-resend :: node tests/chat-evidence/qwen/product-paths.mjs --run --path=cancel-resend
+[2026-11-02T12:50:26.938Z] exit=0 产品路径 quit-inflight :: node tests/chat-evidence/qwen/product-paths.mjs --run --path=quit-inflight
+[2026-11-02T12:51:49.909Z] exit=0 stats only :: node tests/chat-evidence/qwen/run-acceptance.mjs --stats
+[2026-11-02T12:52:00.012Z] exit=0 stats only :: node tests/chat-evidence/qwen/run-acceptance.mjs --stats

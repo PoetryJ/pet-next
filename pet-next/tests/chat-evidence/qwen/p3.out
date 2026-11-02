@@ -1,0 +1,11 @@
+M3-1 真实产品路径诊断（chat:local + 真 Electron + 真实 Qwen）
+时间: 2026-11-02T12:50:10.361Z
+DISPLAY: :94   入口: pnpm chat:local
+预算: 已用 26/30，本次计划 1 条路径（每条最多 2 次真实调用）
+
+=== quit-inflight
+[product #27] product/quit-inflight → ok uiLatency=nullms reply=null字
+=== quit-inflight exit=0/null {"debugPortStillListening":false,"strayPids":[]}
+
+汇总:
+  quit-inflight: exit=0 {}
