@@ -391,6 +391,7 @@ async function launchEntry(options: {
     }
     const fakePort = await waitForFakePort(tracked, 15000);
     options.evidence.log(`fake chat server port: ${fakePort === null ? 'unknown' : String(fakePort)}`);
+    options.evidence.log(`entry electron config: ${JSON.stringify(findEvent(tracked, 'chat-demo-electron-config'))}`);
     return { tracked, cdp, debugPort, userData, fakePort, observabilityFile, evidence: options.evidence };
   } catch (error) {
     await tracked.stop().catch(() => undefined);
@@ -552,31 +553,29 @@ async function clickRect(run: EntryRun, rect: RectInfo, label: string): Promise<
 }
 
 /** Ctrl+A：真实键盘事件（modifiers=2 表示 Ctrl），随后 insertText 覆盖整段旧文本。 */
-async function selectAll(run: EntryRun): Promise<void> {
-  await run.cdp.send('Input.dispatchKeyEvent', {
-    type: 'rawKeyDown',
-    key: 'a',
-    code: 'KeyA',
-    windowsVirtualKeyCode: 65,
-    nativeVirtualKeyCode: 65,
-    modifiers: 2,
-  });
-  await run.cdp.send('Input.dispatchKeyEvent', {
-    type: 'keyUp',
-    key: 'a',
-    code: 'KeyA',
-    windowsVirtualKeyCode: 65,
-    nativeVirtualKeyCode: 65,
-    modifiers: 2,
-  });
+async function pressKey(run: EntryRun, key: string, code: string, virtualKeyCode: number): Promise<void> {
+  const base = { key, code, windowsVirtualKeyCode: virtualKeyCode, nativeVirtualKeyCode: virtualKeyCode };
+  await run.cdp.send('Input.dispatchKeyEvent', { type: 'rawKeyDown', ...base });
+  await run.cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', ...base });
 }
 
-/** 鼠标点入输入框 → Ctrl+A → Input.insertText；随后回读 DOM 确认值。 */
+/** 用真实键盘清空输入框：End 移到末尾，再按 value.length 次 Backspace。 */
+async function clearInput(run: EntryRun): Promise<void> {
+  const before = await readDom(run);
+  const length = before.inputValue?.length ?? 0;
+  if (length === 0) return;
+  await pressKey(run, 'End', 'End', 35);
+  for (let index = 0; index < length; index += 1) await pressKey(run, 'Backspace', 'Backspace', 8);
+  await waitDom(run, '输入框未清空', (state) => state.inputValue === '', 6000);
+  run.evidence.log(`keyboard clear: ${length} 次 Backspace`);
+}
+
+/** 鼠标点入输入框 → 键盘清空 → Input.insertText；随后回读 DOM 确认值。 */
 async function typeMessage(run: EntryRun, text: string): Promise<void> {
   const input = await rectReady(run, 'input', '输入框');
   await clickRect(run, input, 'chat-input');
   await pollUntil('输入框未获得焦点', () => readDom(run), (state) => state.focusTestId === 'chat-input', 6000);
-  await selectAll(run);
+  await clearInput(run);
   await run.cdp.send('Input.insertText', { text });
   const state = await waitDom(run, `输入回读不一致（期望 ${text}）`, (snapshot) => snapshot.inputValue === text, 8000);
   assert.equal(state.inputValue, text, `输入回读不一致：${JSON.stringify(state.inputValue)}`);
@@ -923,6 +922,7 @@ test('T2 正式入口：fake 的 [error] → 面板报错 → 恢复后再发成
     await quitByApi(run, '正常关窗');
     const exit = await waitForChildExit(run.tracked.child, 30000);
     entryExitLine(evidence, exit);
+    evidence.log(`stdout tail:\n${tail(run.tracked.stdout())}`);
     assert.equal(exit.code, 0, `退出码应为 0\nstderr:\n${tail(run.tracked.stderr())}`);
     await assertNoLeftovers(run);
     evidence.log('PASS');
@@ -1057,6 +1057,7 @@ test('T3 正式入口：[slow] 取消→已取消→立即重发→旧迟到回�
     await quitByApi(run, '在途关窗');
     const exit = await waitForChildExit(run.tracked.child, 30000);
     entryExitLine(evidence, exit);
+    evidence.log(`stdout tail:\n${tail(run.tracked.stdout())}`);
     assert.equal(exit.code, 0, `在途关窗退出码应为 0\nstderr:\n${tail(run.tracked.stderr())}`);
     await assertNoLeftovers(run);
     evidence.log('PASS');

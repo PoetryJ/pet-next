@@ -1,0 +1,214 @@
+[evidence] cmd: DISPLAY=:94 PET_NEXT_CHAT_DEBUG_PORT=46473 PET_NEXT_USER_DATA=/tmp/pet-next-formal-e2e-Wi5kk9 pnpm chat:preview
+[evidence] env: PET_NEXT_TEST=1 PET_NEXT_FAKE_CHAT_DELAY_MS=0 PET_NEXT_FAKE_CHAT_SLOW_MS=3000
+[evidence] cdp page: ws://127.0.0.1:46473/devtools/page/D5727813001F39CFCA0D136CD061AA34
+[evidence] fake chat server port: 42743
+[evidence] entry electron config: {"event":"chat-demo-electron-config","debugPort":46473,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=46473","/data3/DATA/project/project_meishijiang/dsh-pet-wt/m3d-e2e/pet-next/dist/electron/main.js"],"userData":"/tmp/pet-next-formal-e2e-Wi5kk9"}
+[evidence] panel mounted: phase=closed hidden=true
+[evidence] rect toggle: x=278.0 y=198.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] mouse click chat-toggle @ (295,215)
+[evidence] panel open: phase=open
+[evidence] rect toggle: x=278.0 y=66.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] rect title: x=57.0 y=108.0 43.2x14.0 视口=320x240 disabled=null
+[evidence] rect close: x=286.8 y=107.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect cancel: x=272.2 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] 截图: tests/chat-evidence/formal-entry/t1-01-panel-open.png
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard input: 你好桌面宠物
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] reply: phase=reply demoTagCount=1 assistantMsgs=["演示回复【演示回复】已收到：你好桌面宠物"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t1-02-reply.png
+[evidence] rect close: x=286.8 y=49.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] mouse click chat-close @ (295,57)
+[evidence] closed: phase=closed hidden=true
+[evidence] 截图: tests/chat-evidence/formal-entry/t1-03-closed.png
+[evidence] 关窗: 正常关窗（Runtime.evaluate window.pet.quit()）
+[evidence] entry exit: code=0 signal=null
+[evidence] stdout tail:
+…-stderr] [1995249:1102/195138.480889:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1995249:1102/195138.660493:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1995249:1102/195138.660572:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1995249:1102/195138.660609:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1995249:1102/195138.660618:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1995249:1102/195138.733382:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1995249:1102/195138.733451:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1995249:1102/195138.733482:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1995249:1102/195138.733491:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+{"event":"electron-exit","code":0,"signal":null}
+{"event":"fake-chat-server-exit","code":0,"signal":null}
+{"event":"chat-demo-done","offline_ready":true,"exit":0,"fakeUrl":"http://127.0.0.1:42743","electronStarted":true}
+
+[evidence] 残留进程（本次进程树）: []
+[evidence] 残留进程（--remote-debugging-port=46473）: []
+[evidence] PASS
+✔ T1 正式入口：打开面板→输入→发送→演示回复→关面板→关窗（退出码 0） (13976.162139ms)
+[evidence] cmd: DISPLAY=:94 PET_NEXT_CHAT_DEBUG_PORT=44653 PET_NEXT_USER_DATA=/tmp/pet-next-formal-e2e-LNZJ4a pnpm chat:preview
+[evidence] env: PET_NEXT_TEST=1 PET_NEXT_FAKE_CHAT_DELAY_MS=0 PET_NEXT_FAKE_CHAT_SLOW_MS=3000
+[evidence] cdp page: ws://127.0.0.1:44653/devtools/page/DC91D2F81136C6C20F1CA37EF727C9B2
+[evidence] fake chat server port: 45761
+[evidence] entry electron config: {"event":"chat-demo-electron-config","debugPort":44653,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=44653","/data3/DATA/project/project_meishijiang/dsh-pet-wt/m3d-e2e/pet-next/dist/electron/main.js"],"userData":"/tmp/pet-next-formal-e2e-LNZJ4a"}
+[evidence] panel mounted: phase=closed hidden=true
+[evidence] rect toggle: x=278.0 y=198.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] mouse click chat-toggle @ (295,215)
+[evidence] panel open: phase=open
+[evidence] rect toggle: x=278.0 y=66.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] rect title: x=57.0 y=108.0 43.2x14.0 视口=320x240 disabled=null
+[evidence] rect close: x=286.8 y=107.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect cancel: x=272.2 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard input: [error] 这句会失败
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] error: phase=error errorMsgs=["发送失败（provider-error）"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t2-01-error.png
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard clear: 13 次 Backspace
+[evidence] keyboard input: 恢复后的这句
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] recovered: phase=reply assistantMsgs=["演示回复【演示回复】已收到：恢复后的这句"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t2-02-recovered.png
+[evidence] 关窗: 正常关窗（Runtime.evaluate window.pet.quit()）
+[evidence] entry exit: code=0 signal=null
+[evidence] stdout tail:
+…p to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."}
+[electron-stderr] [1995899:1102/195152.659926:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1995899:1102/195152.659996:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1995899:1102/195152.660047:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1995899:1102/195152.660053:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1995899:1102/195152.817924:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1995899:1102/195152.817992:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1995899:1102/195152.818037:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1995899:1102/195152.818046:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+{"event":"electron-exit","code":0,"signal":null}
+{"event":"fake-chat-server-exit","code":0,"signal":null}
+{"event":"chat-demo-done","offline_ready":true,"exit":0,"fakeUrl":"http://127.0.0.1:45761","electronStarted":true}
+
+[evidence] 残留进程（本次进程树）: []
+[evidence] 残留进程（--remote-debugging-port=44653）: []
+[evidence] PASS
+✔ T2 正式入口：fake 的 [error] → 面板报错 → 恢复后再发成功 (14220.832146ms)
+[evidence] cmd: DISPLAY=:94 PET_NEXT_CHAT_DEBUG_PORT=33475 PET_NEXT_USER_DATA=/tmp/pet-next-formal-e2e-EaDNc4 pnpm chat:preview
+[evidence] env: PET_NEXT_TEST=1 PET_NEXT_FAKE_CHAT_DELAY_MS=0 PET_NEXT_FAKE_CHAT_SLOW_MS=3000
+[evidence] cdp page: ws://127.0.0.1:33475/devtools/page/B99476FEB7EF450D834C9DDD96072904
+[evidence] fake chat server port: 37733
+[evidence] entry electron config: {"event":"chat-demo-electron-config","debugPort":33475,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=33475","/data3/DATA/project/project_meishijiang/dsh-pet-wt/m3d-e2e/pet-next/dist/electron/main.js"],"userData":"/tmp/pet-next-formal-e2e-EaDNc4"}
+[evidence] panel mounted: phase=closed hidden=true
+[evidence] rect toggle: x=278.0 y=198.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] mouse click chat-toggle @ (295,215)
+[evidence] panel open: phase=open
+[evidence] rect toggle: x=278.0 y=66.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] rect title: x=57.0 y=108.0 43.2x14.0 视口=320x240 disabled=null
+[evidence] rect close: x=286.8 y=107.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect cancel: x=272.2 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard input: 慢速第一句 [slow]
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] pending: phase=pending status=["发送中…"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t3-01-pending.png
+[evidence] tcp open at +97ms: [{"inode":"3721603559","localPort":55908,"remotePort":37733,"pid":1996603}]
+[evidence] rect cancel: x=272.2 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-cancel @ (288,216)
+[evidence] cancelled: phase=cancelled status=["已取消"] at +134ms
+[evidence] 截图: tests/chat-evidence/formal-entry/t3-02-cancelled.png
+[evidence] tcp closed at +44ms after cancel（距发送 +178ms）
+[evidence] fake 观测文件不存在（入口 fake 未暴露观测口子），改用 /proc TCP 连接观测
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard clear: 12 次 Backspace
+[evidence] keyboard input: 第二句立刻回
+[evidence] keyboard: Enter（rawKeyDown/keyUp）
+[evidence] resend reply at +281ms: ["演示回复【演示回复】已收到：第二句立刻回"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t3-03-resend.png
+[evidence] after slow deadline (+4502ms): assistantMsgs=["演示回复【演示回复】已收到：第二句立刻回"]
+[evidence] rect close: x=286.8 y=49.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] mouse click chat-close @ (295,57)
+[evidence] panel closed by mouse on chat-close
+[evidence] panel mounted: phase=closed hidden=true
+[evidence] rect toggle: x=278.0 y=198.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] mouse click chat-toggle @ (295,215)
+[evidence] panel open: phase=reply
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard clear: 6 次 Backspace
+[evidence] keyboard input: 关窗前在途 [slow]
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] tcp open before quit: [{"inode":"3721603562","localPort":55982,"remotePort":37733,"pid":1996603}]
+[evidence] 截图: tests/chat-evidence/formal-entry/t3-04-pending-before-quit.png
+[evidence] 关窗: 在途关窗（Runtime.evaluate window.pet.quit()）
+[evidence] entry exit: code=0 signal=null
+[evidence] stdout tail:
+…-stderr] [1996603:1102/195207.380787:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1996603:1102/195209.376929:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1996603:1102/195209.377010:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1996603:1102/195209.377049:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1996603:1102/195209.377059:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1996603:1102/195211.736894:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1996603:1102/195211.736929:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1996603:1102/195211.736946:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1996603:1102/195211.736954:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+{"event":"electron-exit","code":0,"signal":null}
+{"event":"fake-chat-server-exit","code":0,"signal":null}
+{"event":"chat-demo-done","offline_ready":true,"exit":0,"fakeUrl":"http://127.0.0.1:37733","electronStarted":true}
+
+[evidence] 残留进程（本次进程树）: []
+[evidence] 残留进程（--remote-debugging-port=33475）: []
+[evidence] PASS
+✔ T3 正式入口：[slow] 取消→已取消→立即重发→旧迟到回复不显示→关面板→在途关窗 (18784.093124ms)
+[evidence] cmd: DISPLAY=:94 PET_NEXT_CHAT_DEBUG_PORT=38199 PET_NEXT_FAKE_CHAT_PORT=40465 pnpm chat:preview
+[evidence] entry exit: code=1 signal=null
+[evidence] stdout tail:
+
+> pet-next@0.1.0 chat:preview /data3/DATA/project/project_meishijiang/dsh-pet-wt/m3d-e2e/pet-next
+> pnpm build && node scripts/chat-demo.mjs
+
+
+> pet-next@0.1.0 build /data3/DATA/project/project_meishijiang/dsh-pet-wt/m3d-e2e/pet-next
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+
+[fake-stderr] node:net:1948
+[fake-stderr] const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+[fake-stderr] ^
+[fake-stderr] Error: listen EADDRINUSE: address already in use 127.0.0.1:40465
+[fake-stderr] at Server.setupListenHandle [as _listen2] (node:net:1948:16)
+[fake-stderr] at listenInCluster (node:net:2005:12)
+[fake-stderr] at node:net:2214:7
+[fake-stderr] at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+[fake-stderr] code: 'EADDRINUSE',
+[fake-stderr] errno: -98,
+[fake-stderr] syscall: 'listen',
+[fake-stderr] address: '127.0.0.1',
+[fake-stderr] port: 40465
+[fake-stderr] }
+[fake-stderr] Node.js v24.14.0
+{"event":"fake-chat-server-exit","code":1,"signal":null}
+{"event":"chat-demo-failed","reason":"fake-exit","exit":1,"code":1,"signal":null}
+{"event":"chat-demo-done","offline_ready":false,"exit":1,"fakeUrl":null,"electronStarted":false}
+ ELIFECYCLE  Command failed with exit code 1.
+
+[evidence] stderr tail:
+chat-demo 失败：fake-exit
+
+[evidence] 失败后本次进程树存活 pid: []
+[evidence] PASS
+✔ T4 正式入口失败路径：fake 端口被占用 → 入口非零退出、无 Electron 残留 (13558.952866ms)
+ℹ tests 4
+ℹ suites 0
+ℹ pass 4
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 60669.493233
