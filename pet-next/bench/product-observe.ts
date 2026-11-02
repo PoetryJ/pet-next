@@ -130,7 +130,8 @@ export function evaluateSample(
   const media = events.filter((e) => e['event'] === 'bench-media');
   const pointerdown = selected.inputs.find((e) => e['kind'] === 'pointerdown');
   const pointerup = selected.inputs.find((e) => e['kind'] === 'pointerup');
-  const cancelled = selected.inputs.some((e) => e['kind'] === 'pointercancel');
+  const cancel = selected.inputs.find((e) => e['kind'] === 'pointercancel');
+  const cancelled = cancel !== undefined;
   const secondInput =
     pointerdown !== undefined
       ? selected.inputs.find((e) => e['kind'] === 'pointerdown' && (ts(e) ?? 0) > (ts(pointerdown) ?? 0))
@@ -139,6 +140,8 @@ export function evaluateSample(
   const requestId = str(click, 'requestId');
   const inputTs = ts(pointerdown);
   const clickTs = ts(click);
+  const invalidationTimes = [ts(secondInput), ts(cancel)].filter((t): t is number => t !== null);
+  const validUntil = invalidationTimes.length > 0 ? Math.min(...invalidationTimes) : null;
   const sinceInput = (t: number | null): number | null => (inputTs === null || t === null ? null : t - inputTs);
 
   const resolved =
@@ -154,20 +157,22 @@ export function evaluateSample(
       ? undefined
       : media.find((e) => e['status'] === 'ended' && e['requestId'] === requestId);
 
-  // 只认本次请求的帧：产品版帧带 requestId 直接匹配；注入版按 src + 时间归属。
+  // 帧必须落在本次请求的有效区间内；覆盖/取消后的同素材帧不能归到旧请求。
   const requestFrames = selected.frames.filter((e) => {
+    const t = ts(e);
+    if (
+      t === null ||
+      clickTs === null ||
+      inputTs === null ||
+      t < clickTs ||
+      t < inputTs ||
+      (validUntil !== null && t >= validUntil)
+    ) {
+      return false;
+    }
     const frameRequestId = e['requestId'];
     if (typeof frameRequestId === 'string') return frameRequestId === requestId;
-    const src = str(e, 'src');
-    const t = ts(e);
-    return (
-      src === criterion.reactionSrc &&
-      t !== null &&
-      clickTs !== null &&
-      t >= clickTs &&
-      inputTs !== null &&
-      t >= inputTs
-    );
+    return str(e, 'src') === criterion.reactionSrc;
   });
   const firstFrame = requestFrames.find((e) => {
     const mediaTime = num(e, 'mediaTime');
