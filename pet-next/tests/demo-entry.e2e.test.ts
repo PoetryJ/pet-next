@@ -305,6 +305,11 @@ test('产品内 Esc 退出：脚本自然收尾、退出码 0、无残留', { ti
   try {
     const windowId = await waitForWindow(30000);
     assert.ok(windowId, `30s 内没等到 pet-next 窗口\nstdout=${handle.stdout}\nstderr=${handle.stderr}`);
+    // 无窗口管理器的 Xvfb 上 windowactivate（EWMH）会失败；windowfocus 直接 XSetInputFocus，
+    // 保证后续真实按键落在本窗口。另等页面脚本挂好 keydown 再发键（X 窗口先于页面就绪出现），
+    // 避免顺序执行时的时序竞争（M3-2 环境修正）。
+    await delay(3000);
+    spawnSync('xdotool', ['windowfocus', '--sync', windowId], { env: xdoEnv(), timeout: 10000 });
     spawnSync('xdotool', ['windowactivate', '--sync', windowId], { env: xdoEnv(), timeout: 10000 });
     await delay(300);
     const keyed = spawnSync('xdotool', ['key', 'Escape'], { env: xdoEnv(), timeout: 10000 });
@@ -332,6 +337,11 @@ test('--record 中子进程退出会取消剩余输入并统一收尾', { timeou
   try {
     const windowId = await waitForWindow(30000);
     assert.ok(windowId, `30s 内没等到 pet-next 窗口\nstdout=${handle.stdout}\nstderr=${handle.stderr}`);
+    // 无窗口管理器的 Xvfb 上 windowactivate（EWMH）会失败；windowfocus 直接 XSetInputFocus，
+    // 保证后续真实按键落在本窗口。另等页面脚本挂好 keydown 再发键（X 窗口先于页面就绪出现），
+    // 避免顺序执行时的时序竞争（M3-2 环境修正）。
+    await delay(3000);
+    spawnSync('xdotool', ['windowfocus', '--sync', windowId], { env: xdoEnv(), timeout: 10000 });
     spawnSync('xdotool', ['windowactivate', '--sync', windowId], { env: xdoEnv(), timeout: 10000 });
     const keyed = spawnSync('xdotool', ['key', 'Escape'], { env: xdoEnv(), timeout: 10000 });
     assert.equal(keyed.status, 0, `xdotool key Escape 失败：${String(keyed.stderr)}`);
