@@ -146,6 +146,8 @@ export async function runLocal(options) {
     probe = false,
     probeService = probeLocalService,
     fetchImpl,
+    /** 可选：Electron 子进程启动后回调（chat:remote 用于隧道断线时停窗口）。 */
+    onChild = null,
   } = options ?? {};
   if (typeof spawn !== 'function') throw new TypeError('runLocal 需要可注入的 spawn');
 
@@ -328,6 +330,7 @@ export async function runLocal(options) {
     return await exitPromise;
   }
 
+  if (typeof onChild === 'function') onChild(child);
   const lines = createLineReader((line) => {
     const parsed = parseRecord(line);
     if (parsed !== null && parsed.event === PANEL_LOADED_EVENT) markReady(config);
