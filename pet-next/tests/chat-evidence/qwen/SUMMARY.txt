@@ -35,6 +35,8 @@ M3-1 Qwen 真实调用验收 —— 汇总（agent D）
   15s 内完成率                          100.0%（20/20）
   usage 字段可得率                      100.0%（20/20，prompt/completion/total_tokens 均存在）
   失败样本                              无（0 次超时、0 次 HTTP 失败、0 次空回复、0 次连接错误）
+  usageUnknown 分支                     防御性分支，真机 20 次全部返回 usage，未触发；
+                                        该分支由 adapters 单测（fetch 桩）与本人 F10（真实网络 + no-usage 行为）覆盖
 
   逐次延迟（ms）：1491 1487 1997 1662 1038 776 1990 2127 2470 4781 | 918 1474 2135 1888 2112 1208 1888 1628 2307 2904
 
@@ -178,3 +180,16 @@ M3-1 Qwen 真实调用验收 —— 汇总（agent D）
   tests/chat-evidence/qwen/p1.out / p2.out / p2b.out / p3.out   各次运行的原始 stdout（含失败那次）
   tests/support/qwen-fake-server.ts              OpenAI 兼容假服务（零真实调用）
   tests/qwen-acceptance.fake.test.ts             11 条链路故障验收（成功契约/500/超时/取消/关窗/畸形/空/截断/usage 缺失/重置/白名单）
+
+八、用例分层与计数（别为"数量对不上"删用例）
+------------------------------------------------
+  两层是互补的，不是重复：
+    adapters/chat/qwen-provider.test.ts  17 条，零网络（注入 fetchImpl 桩）：锁请求逐字形状、解析分支、错误文案、
+                                         usage 搬运、reasoning 不进正文；abort 用桩 reject AbortError。
+    tests/qwen-acceptance.fake.test.ts   11 条，真实 socket（真 http 服务 + 真 fetch）：锁真实传输、取消/超时后
+                                         socket 真的断开（clientClosed）、迟到响应不泄漏、状态机接缝。
+  单测数量构成（m3q-d HEAD，scripts/unit-tests.mjs 收集口径，实测而非推算）：
+    2519058 基线 294 + B/C/main 接线 41（chat-local-core 23 + chat-config 15 + chat-panel 增量 3）
+    + A 的 17 + 本人 11 = 363（实测 363 pass / 0 fail）。
+  说明：A 消息里"294+17+11=322"是漏算了 B/C/main 的 41 条；任何分支合并后都应以 scripts/unit-tests.mjs
+  实测数为准，不要按文件删除用例来对齐数字。

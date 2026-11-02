@@ -137,7 +137,9 @@ test('F2 HTTP 500：会话映射 provider-error，meta 保留状态与错误', {
     assert.equal(result.text, undefined, '失败不得带文本');
     const meta = h.provider.lastMeta;
     assert.equal(meta?.status, 500);
-    assert.match(String(meta?.error), /500/);
+    // 固定契约：provider 在 !response.ok 时直接 throw、不读响应体，
+    // 所以错误文案恒为 `qwen http 500`——不会因为服务端 500 页是非 JSON 而变成"响应不是 JSON"。
+    assert.equal(meta?.error, 'qwen http 500');
     assert.equal(h.session.hasPending(), false, '失败后不得残留 pending');
   } finally {
     await h.stop();
@@ -199,6 +201,11 @@ test('F4 取消后立即重发：槽位立刻释放，旧请求的迟到响应�
   }
 });
 
+/**
+ * 时序前提（别改成"fake 秒回 200 再 abort"）：假服务延迟 700ms，撤销发生在 ~150ms，
+ * 此时 fetch 尚未 resolve，provider 还没来得及赋值 meta.status，所以 status 必然是 undefined。
+ * 若哪天让 fake 先回 200 再 abort，合法结果会变成 status=200 且 error 有值，断言需同步改。
+ */
 test('F5 关窗收尾：在途撤销后迟到的服务端响应不产生任何状态（无泄漏）', { timeout: 20000 }, async () => {
   const h = await harness({ behavior: 'slow', delayMs: 700 });
   try {
