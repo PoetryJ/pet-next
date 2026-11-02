@@ -1,17 +1,30 @@
 /*
  * M3-0 文字对话预览面板样式。独立加载（接线方在 page.html 预览开关下引入），不依赖 page.css。
+ * 视口约束：面板高度 = min(320, 视口高度 - 预留)，预留含开关按钮与四周边距；
+ *   面板内只有 .chat-log 滚动（flex:1 + min-height:0 + overflow-y:auto），
+ *   标题/关闭/输入框/发送/取消恒在可视区内可点。JS 挂载时按实测 innerHeight 覆盖行内 max-height。
  * 类名清单见文件底部注释，供接线与测试对照。
  */
 
 .chat-panel-root {
+  /* 视口预留：底边距 8 + 开关 34 + 间隙 4 + 顶边距 4 = 50（与 chat-panel.ts CHAT_VIEWPORT_RESERVE_PX 对齐） */
+  --chat-gutter: 8px;
+  --chat-toggle-size: 34px;
+  --chat-gap: 4px;
+  --chat-top-margin: 4px;
+  --chat-panel-reserve: calc(
+    var(--chat-gutter) + var(--chat-toggle-size) + var(--chat-gap) + var(--chat-top-margin)
+  );
   position: fixed;
-  right: 8px;
-  bottom: 8px;
+  right: var(--chat-gutter);
+  bottom: var(--chat-gutter);
   z-index: 40;
   display: flex;
   flex-direction: column;
   align-items: flex-end;
-  gap: 6px;
+  gap: var(--chat-gap);
+  max-width: calc(100vw - var(--chat-gutter) * 2);
+  max-height: calc(100vh - var(--chat-gutter) * 2);
   font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
   color: #222;
   pointer-events: auto;
@@ -19,8 +32,9 @@
 }
 
 .chat-toggle {
-  width: 34px;
-  height: 34px;
+  flex: 0 0 auto;
+  width: var(--chat-toggle-size);
+  height: var(--chat-toggle-size);
   border-radius: 50%;
   border: 1px solid rgba(0, 0, 0, 0.25);
   background: rgba(255, 255, 255, 0.92);
@@ -35,8 +49,12 @@
 }
 
 .chat-panel {
+  box-sizing: border-box;
   width: 264px;
-  max-height: 320px;
+  max-width: 100%;
+  /* 视口兜底：文档头注释里的预留口径；JS 挂载时另写行内 max-height 覆盖为实测像素 */
+  max-height: min(320px, calc(100vh - var(--chat-panel-reserve)));
+  min-height: 0;
   display: flex;
   flex-direction: column;
   border-radius: 10px;
@@ -52,6 +70,7 @@
 }
 
 .chat-head {
+  flex: 0 0 auto;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -66,6 +85,7 @@
 }
 
 .chat-close {
+  flex: 0 0 auto;
   border: none;
   background: none;
   font-size: 14px;
@@ -76,6 +96,7 @@
 }
 
 .chat-note {
+  flex: 0 0 auto;
   padding: 4px 10px;
   font-size: 11px;
   color: #8a6d1a;
@@ -83,11 +104,14 @@
   border-bottom: 1px solid rgba(0, 0, 0, 0.06);
 }
 
+/* 唯一的滚动容器：flex 子项必须 min-height:0，否则内容把输入区顶出面板。 */
 .chat-log {
-  flex: 1;
-  min-height: 72px;
+  flex: 1 1 auto;
+  min-height: 0;
   max-height: 160px;
   overflow-y: auto;
+  overflow-x: hidden;
+  overscroll-behavior: contain;
   padding: 8px 10px;
   display: flex;
   flex-direction: column;
@@ -95,6 +119,7 @@
 }
 
 .chat-entry {
+  flex: 0 0 auto;
   font-size: 12px;
   line-height: 1.5;
   padding: 4px 8px;
@@ -140,6 +165,7 @@
 }
 
 .chat-composer {
+  flex: 0 0 auto;
   padding: 8px 10px;
   border-top: 1px solid rgba(0, 0, 0, 0.08);
   display: flex;
@@ -173,6 +199,7 @@
 }
 
 .chat-actions {
+  flex: 0 0 auto;
   display: flex;
   justify-content: flex-end;
   gap: 8px;
@@ -200,6 +227,35 @@
   cursor: default;
 }
 
+/* 小窗口（如 320×240）：收紧固定区留白，把像素让给可滚动的消息列表。 */
+@media (max-height: 280px) {
+  .chat-head {
+    padding: 2px 8px;
+  }
+
+  .chat-close {
+    padding: 1px 4px;
+  }
+
+  .chat-note {
+    padding: 3px 8px;
+  }
+
+  .chat-composer {
+    padding: 5px 8px;
+    gap: 4px;
+  }
+
+  .chat-input {
+    height: 34px;
+  }
+
+  .chat-send,
+  .chat-cancel {
+    padding: 2px 10px;
+  }
+}
+
 /* 状态标记：chat-panel-root[data-state] ∈ closed|open|typing|pending|reply|error|cancelled */
 .chat-panel-root[data-state='pending'] .chat-input {
   background: #fafafa;
@@ -209,6 +265,6 @@
  * 类名清单（接线 page.html 用）：
  * 容器与入口：chat-panel-root（含 data-state、is-open）、chat-toggle
  * 面板：chat-panel（hidden 收起）、chat-head、chat-title、chat-close、chat-note
- * 消息：chat-log、chat-entry（chat-entry-user/bot/status/error）、chat-demo-tag、chat-entry-text
+ * 消息：chat-log（唯一滚动容器）、chat-entry（chat-entry-user/bot/status/error）、chat-demo-tag、chat-entry-text
  * 输入：chat-composer、chat-input、chat-hint、chat-actions、chat-send、chat-cancel
  */
