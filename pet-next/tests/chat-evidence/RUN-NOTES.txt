@@ -21,11 +21,18 @@ GET /__health | POST /__config {"mode","status","delayMs"} | POST /__reset | GET
 - 客户端断开不中断处理：延迟到期仍产出响应（respondedAt 晚于 closedAt 可证），送达失败如实记录；
   E2E 借此证明"旧请求迟到响应即使产出也不得上屏"。
 
-三、面板 data-testid 契约（已发 team-lead，等 C 落实）
+三、面板定位契约（对齐 m3c-panel@2f0d6cb 实测）
 ------------------------------------------------
-必需：chat-panel / chat-input / chat-send / chat-cancel / chat-status / chat-log /
-      chat-msg-user / chat-msg-assistant / chat-msg-error
-可选：chat-close（无则关面板路径退化为直接关窗，RUN-NOTES 如实记录）
+C 的面板未加 data-testid，但 class 命名与我的 testid 清单同名。E2E 选择器已实现
+「data-testid 优先、class 兜底」，因此两边都能定位；C 若后续补 data-testid 无需改 E2E：
+  chat-panel→.chat-panel-root（data-state: closed/open/typing/pending/reply/error/cancelled）
+  chat-toggle→.chat-toggle（面板初始收起，E2E 先点它打开）
+  chat-input→.chat-input(textarea)  chat-send→.chat-send  chat-cancel→.chat-cancel(在途才可用)
+  chat-close→.chat-close（收起面板=撤销在途请求）
+  chat-msg-user→.chat-entry-user  chat-msg-assistant→.chat-entry-bot(含 .chat-demo-tag“演示回复”标注)
+  chat-msg-error→.chat-entry-error（“发送失败（code）”）
+  chat-status→.chat-entry-status（“发送中…”/“已取消”）
+面板内还内置 .chat-note：“以下回复均为演示回复（预览假数据），非真实模型输出。”
 
 四、已完成记录（接线合入前）
 ------------------------------------------------

@@ -36,10 +36,15 @@ let displayReady = false;
 
 interface ChatPageState {
   hasPanel: boolean;
+  /** 面板根的 data-state：closed/open/typing/pending/reply/error/cancelled。 */
+  phase: string;
+  isOpen: boolean;
+  hasToggle: boolean;
   hasInput: boolean;
   inputValue: string | null;
   sendDisabled: boolean | null;
   hasCancel: boolean;
+  cancelDisabled: boolean | null;
   hasClose: boolean;
   userMsgs: string[];
   assistantMsgs: string[];
@@ -294,23 +299,31 @@ async function evaluate<T>(cdp: Cdp, expression: string): Promise<T> {
   return result.result?.value as T;
 }
 
+/** 页面侧读取面板状态：data-testid 优先，class 兜底（与 C 的 m3c-panel class 命名一致）。 */
 function chatStateExpression(): string {
   return `(() => {
-  const q = (id) => document.querySelector('[data-testid="' + id + '"]');
-  const texts = (id) => Array.from(document.querySelectorAll('[data-testid="' + id + '"]')).map((el) => el.textContent ?? '');
-  const input = q('chat-input');
-  const send = q('chat-send');
+  const by = (id, cls) => document.querySelector('[data-testid="' + id + '"]') ?? document.querySelector(cls);
+  const texts = (sel) => Array.from(document.querySelectorAll(sel)).map((el) => el.textContent ?? '');
+  const root = by('chat-panel', '.chat-panel-root');
+  const panelBody = by('chat-panel-open', '.chat-panel');
+  const input = by('chat-input', '.chat-input');
+  const send = by('chat-send', '.chat-send');
+  const cancel = by('chat-cancel', '.chat-cancel');
   return {
-    hasPanel: q('chat-panel') instanceof HTMLElement,
+    hasPanel: root instanceof HTMLElement,
+    phase: root instanceof HTMLElement ? (root.dataset.state ?? '') : '',
+    isOpen: panelBody instanceof HTMLElement ? !panelBody.hidden : false,
+    hasToggle: by('chat-toggle', '.chat-toggle') instanceof HTMLElement,
     hasInput: input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement,
     inputValue: input instanceof HTMLInputElement || input instanceof HTMLTextAreaElement ? input.value : null,
     sendDisabled: send instanceof HTMLButtonElement ? send.disabled === true : null,
-    hasCancel: q('chat-cancel') instanceof HTMLElement,
-    hasClose: q('chat-close') instanceof HTMLElement,
-    userMsgs: texts('chat-msg-user'),
-    assistantMsgs: texts('chat-msg-assistant'),
-    errorMsgs: texts('chat-msg-error'),
-    status: (q('chat-status')?.textContent ?? '').trim(),
+    hasCancel: cancel instanceof HTMLElement,
+    cancelDisabled: cancel instanceof HTMLButtonElement ? cancel.disabled === true : null,
+    hasClose: by('chat-close', '.chat-close') instanceof HTMLElement,
+    userMsgs: texts('[data-testid="chat-msg-user"], .chat-entry-user'),
+    assistantMsgs: texts('[data-testid="chat-msg-assistant"], .chat-entry-bot'),
+    errorMsgs: texts('[data-testid="chat-msg-error"], .chat-entry-error'),
+    status: texts('[data-testid="chat-status"], .chat-entry-status').join(' | ').trim(),
     petQuit: typeof window.pet?.quit === 'function',
   };
 })()`;
@@ -331,13 +344,13 @@ function chatTypeExpression(text: string): string {
 
 function chatClickExpression(testId: string): string {
   return `(() => {
-  const el = document.querySelector('[data-testid="${testId}"]');
+  const el = document.querySelector('[data-testid="${testId}"]') ?? document.querySelector('.${testId}');
   if (el instanceof HTMLElement) {
     el.click();
     return 'clicked';
   }
   if ('${testId}' === 'chat-send') {
-    const input = document.querySelector('[data-testid="chat-input"]');
+    const input = document.querySelector('[data-testid="chat-input"]') ?? document.querySelector('.chat-input');
     const form = input instanceof HTMLElement ? input.form : null;
     if (form instanceof HTMLFormElement) {
       form.requestSubmit();
@@ -346,6 +359,17 @@ function chatClickExpression(testId: string): string {
   }
   return 'missing';
 })()`;
+}
+
+/** 面板初始为收起态：先等挂载，再点 chat-toggle 打开。 */
+async function openChatPanel(app: ChatApp): Promise<ChatPageState> {
+  await waitForChat(app, 'chat=preview 面板未挂载（接线未合入或 PET_NEXT_CHAT_PREVIEW 未生效）', (state) => state.hasPanel);
+  const before = await readChat(app);
+  if (!before.isOpen) {
+    const clicked = await evaluate<string>(app.cdp, chatClickExpression('chat-toggle'));
+    assert.equal(clicked, 'clicked', `面板开关按钮不可用：${clicked}`);
+  }
+  return waitForChat(app, '面板打开失败', (state) => state.isOpen && state.phase !== 'closed' && state.hasInput);
 }
 
 async function readChat(app: ChatApp): Promise<ChatPageState> {
@@ -373,6 +397,7 @@ async function typeAndSend(app: ChatApp, text: string): Promise<void> {
   const typed = await evaluate<{ ok: boolean; reason?: string; value?: string }>(app.cdp, chatTypeExpression(text));
   assert.equal(typed.ok, true, `输入框不可写：${JSON.stringify(typed)}`);
   assert.equal(typed.value, text, `输入回读不一致：${JSON.stringify(typed)}`);
+  await waitForChat(app, '合法输入后发送按钮应可用', (state) => state.sendDisabled === false, 5000);
   const clicked = await evaluate<string>(app.cdp, chatClickExpression('chat-send'));
   assert.ok(clicked === 'clicked' || clicked === 'form-submit', `发送按钮不可用：${clicked}`);
 }
@@ -428,12 +453,7 @@ test('聊天预览：打开面板→输入→发送→fake 回复显示（含演
   let app: ChatApp | undefined;
   try {
     app = await launchChat({ label: 'chat-e2e-open', fakeUrl: fake.url });
-    const mounted = await waitForChat(
-      app,
-      'chat=preview 面板未挂载（接线未合入或 PET_NEXT_CHAT_PREVIEW 未生效）',
-      (state) => state.hasPanel,
-    );
-    assert.equal(mounted.hasInput, true, '面板没有可用输入框');
+    await openChatPanel(app);
 
     await typeAndSend(app, '你好桌面宠物');
     const replied = await waitForChat(app, '回复未显示', (state) =>
@@ -459,7 +479,7 @@ test('聊天预览：fake 返回 500→面板报错→恢复后再发成功', { 
   let app: ChatApp | undefined;
   try {
     app = await launchChat({ label: 'chat-e2e-error', fakeUrl: fake.url });
-    await waitForChat(app, '面板未挂载', (state) => state.hasPanel);
+    await openChatPanel(app);
 
     await typeAndSend(app, '这句会失败');
     await waitForChat(app, '500 后面板应显示错误', isErrorShown);
@@ -487,13 +507,13 @@ test('聊天预览：取消慢回复→显示已取消→立即再发成功且�
   let app: ChatApp | undefined;
   try {
     app = await launchChat({ label: 'chat-e2e-cancel', fakeUrl: fake.url });
-    await waitForChat(app, '面板未挂载', (state) => state.hasPanel);
+    await openChatPanel(app);
 
     // 旧请求：3s 慢回复。
     await typeAndSend(app, '慢速第一句');
     const firstId = (await fake.waitFor((state) => state.requests.length >= 1, 8000, 'fake 未收到第一句')).requests[0]?.id ?? '';
     assert.match(firstId, CHAT_ID_PATTERN);
-    await waitForChat(app, '在途时应有取消入口', (state) => state.hasCancel);
+    await waitForChat(app, '在途时取消按钮应可用', (state) => state.phase === 'pending' && state.cancelDisabled === false);
 
     const cancelled = await evaluate<string>(app.cdp, chatClickExpression('chat-cancel'));
     assert.equal(cancelled, 'clicked', `取消按钮不可用：${cancelled}`);
@@ -545,7 +565,7 @@ test('聊天预览：在途时关面板/关窗→fake 观察连接断开，Elect
   let app: ChatApp | undefined;
   try {
     app = await launchChat({ label: 'chat-e2e-close', fakeUrl: fake.url });
-    await waitForChat(app, '面板未挂载', (state) => state.hasPanel);
+    await openChatPanel(app);
 
     await typeAndSend(app, '关窗前在途这句');
     const firstId = (await fake.waitFor((state) => state.requests.length >= 1, 8000, 'fake 未收到在途请求')).requests[0]?.id ?? '';
@@ -555,6 +575,7 @@ test('聊天预览：在途时关面板/关窗→fake 观察连接断开，Elect
     if (state.hasClose) {
       const clicked = await evaluate<string>(app.cdp, chatClickExpression('chat-close'));
       assert.equal(clicked, 'clicked', `面板关闭按钮不可用：${clicked}`);
+      await waitForChat(app, '关面板后应进入已收起态', (page) => !page.isOpen, 5000);
       await fake.waitFor(
         (snapshot) => snapshot.requests.some((item) => item.id === firstId && item.clientClosed),
         8000,
