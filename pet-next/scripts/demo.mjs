@@ -73,6 +73,8 @@ const electronPath = require('electron');
 const electronArgs = [];
 if (process.platform === 'linux') electronArgs.push('--no-sandbox', '--disable-dev-shm-usage');
 if (scale !== null) electronArgs.push(`--force-device-scale-factor=${scale}`);
+// 仅录制开启本地 CDP：回读 body.dragging，不能把 xdotool 的成功退出误当成产品已拖动。
+if (record) electronArgs.push('--remote-debugging-port=0', '--remote-allow-origins=*');
 electronArgs.push(mainPath);
 
 console.log(
@@ -147,39 +149,56 @@ const maxDurationExpiry =
       setTimeout(() => resolve('max-duration'), maxDurationSeconds * 1000);
     });
 
-async function xdo(args) {
+async function xdo(args, signal) {
+  signal?.throwIfAborted();
   await new Promise((resolve, reject) => {
-    execFile('xdotool', args, { timeout: 10_000 }, (error) => (error ? reject(error) : resolve()));
+    execFile('xdotool', args, { timeout: 10_000, signal }, (error) => (error ? reject(error) : resolve()));
   });
 }
 
-function sleep(ms) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
+function sleep(ms, signal) {
+  return new Promise((resolve, reject) => {
+    if (signal?.aborted) {
+      reject(signal.reason);
+      return;
+    }
+    const timer = setTimeout(() => {
+      signal?.removeEventListener('abort', aborted);
+      resolve();
+    }, ms);
+    const aborted = () => {
+      clearTimeout(timer);
+      reject(signal.reason);
+    };
+    signal?.addEventListener('abort', aborted, { once: true });
+  });
 }
 
-async function findWindow() {
+async function findWindow(signal) {
   const deadline = Date.now() + 20_000;
   while (Date.now() < deadline) {
+    signal.throwIfAborted();
     try {
       const out = await new Promise((resolve, reject) => {
-        execFile('xdotool', ['search', '--name', 'pet-next'], { timeout: 5000 }, (error, stdout) => {
+        execFile('xdotool', ['search', '--name', 'pet-next'], { timeout: 5000, signal }, (error, stdout) => {
           if (error) reject(error);
           else resolve(String(stdout).trim());
         });
       });
       const id = out.split('\n').filter(Boolean).at(-1);
       if (id) return id;
-    } catch {
+    } catch (error) {
+      if (signal.aborted) throw error;
       // 窗口还没出来。
     }
-    await sleep(200);
+    await sleep(200, signal);
   }
   return null;
 }
 
-async function geometry(id) {
+async function geometry(id, signal) {
   const out = await new Promise((resolve, reject) => {
-    execFile('xdotool', ['getwindowgeometry', '--shell', id], { timeout: 5000 }, (error, stdout) => {
+    execFile('xdotool', ['getwindowgeometry', '--shell', id], { timeout: 5000, signal }, (error, stdout) => {
       if (error) reject(error);
       else resolve(String(stdout));
     });
@@ -192,62 +211,202 @@ async function geometry(id) {
   return values;
 }
 
-async function recordSequence() {
+async function connectCdp(signal) {
+  const deadline = Date.now() + 20_000;
+  let pageSocket = null;
+  while (Date.now() < deadline && pageSocket === null) {
+    signal.throwIfAborted();
+    const devtools = log.match(/DevTools listening on ws:\/\/127\.0\.0\.1:(\d+)\//);
+    if (devtools) {
+      try {
+        const response = await fetch(`http://127.0.0.1:${devtools[1]}/json/list`, { signal });
+        const targets = await response.json();
+        pageSocket = targets.find((target) => target.type === 'page')?.webSocketDebuggerUrl ?? null;
+      } catch (error) {
+        if (signal.aborted) throw error;
+      }
+    }
+    if (pageSocket === null) await sleep(100, signal);
+  }
+  if (pageSocket === null) throw new Error('20s 内没有可回读拖动状态的 CDP 页面');
+
+  const ws = new WebSocket(pageSocket);
+  await new Promise((resolve, reject) => {
+    const opened = () => {
+      cleanup();
+      resolve();
+    };
+    const failed = () => {
+      cleanup();
+      reject(new Error('CDP WebSocket 连接失败'));
+    };
+    const aborted = () => {
+      cleanup();
+      ws.close();
+      reject(signal.reason);
+    };
+    const cleanup = () => {
+      ws.removeEventListener('open', opened);
+      ws.removeEventListener('error', failed);
+      signal.removeEventListener('abort', aborted);
+    };
+    ws.addEventListener('open', opened, { once: true });
+    ws.addEventListener('error', failed, { once: true });
+    signal.addEventListener('abort', aborted, { once: true });
+  });
+
+  let nextId = 0;
+  const pending = new Map();
+  ws.addEventListener('message', (event) => {
+    const message = JSON.parse(String(event.data));
+    const waiter = pending.get(message.id);
+    if (!waiter) return;
+    pending.delete(message.id);
+    clearTimeout(waiter.timer);
+    signal.removeEventListener('abort', waiter.aborted);
+    if (message.error) waiter.reject(new Error(message.error.message));
+    else waiter.resolve(message.result);
+  });
+  ws.addEventListener('close', () => {
+    for (const waiter of pending.values()) {
+      clearTimeout(waiter.timer);
+      signal.removeEventListener('abort', waiter.aborted);
+      waiter.reject(new Error('CDP WebSocket 已关闭'));
+    }
+    pending.clear();
+  });
+
+  return {
+    async evaluate(expression) {
+      const id = ++nextId;
+      const result = await new Promise((resolve, reject) => {
+        const timer = setTimeout(() => {
+          pending.delete(id);
+          signal.removeEventListener('abort', aborted);
+          reject(new Error('CDP evaluate 超时'));
+        }, 5000);
+        const aborted = () => {
+          pending.delete(id);
+          clearTimeout(timer);
+          reject(signal.reason);
+        };
+        pending.set(id, { resolve, reject, timer, aborted });
+        signal.addEventListener('abort', aborted, { once: true });
+        ws.send(JSON.stringify({
+          id,
+          method: 'Runtime.evaluate',
+          params: { expression, returnByValue: true },
+        }));
+      });
+      if (result.exceptionDetails) throw new Error('CDP evaluate 失败');
+      return result.result?.value;
+    },
+    close() {
+      ws.close();
+    },
+  };
+}
+
+async function waitForDragging(cdp, expected, signal) {
+  const deadline = Date.now() + 5000;
+  let actual = null;
+  while (Date.now() < deadline) {
+    actual = await cdp.evaluate("document.body.classList.contains('dragging')");
+    if (actual === expected) return;
+    await sleep(50, signal);
+  }
+  throw new Error(`drag-${expected ? 'start' : 'end'} 未出现：body.dragging=${String(actual)}`);
+}
+
+async function waitForAutoAfter(offset, signal) {
+  const deadline = Date.now() + (demo ? 6000 : 50_000);
+  while (Date.now() < deadline) {
+    signal.throwIfAborted();
+    const found = [...log.slice(offset).matchAll(/\\"visual\\":\\"auto\\",\\"requestId\\":\\"([^"]+)\\"/g)];
+    if (found.length > 0) return found[0][1];
+    await sleep(100, signal);
+  }
+  throw new Error(`drag-end 后 ${demo ? 6 : 50}s 内没有新的 auto`);
+}
+
+async function recordSequence(signal) {
   if (process.platform !== 'linux') {
     console.log('not-run: 录制序列目前只有 Linux/X11 执行器（xdotool）；Windows 需要人工操作或后续补脚本。');
     return 'not-run';
   }
-  const id = await findWindow();
+  const id = await findWindow(signal);
   if (!id) {
     console.log('not-run: 20s 内没找到 pet-next 窗口（DISPLAY 是否正确？）');
     return 'not-run';
   }
-  const box = await geometry(id);
-  const cx = Math.round(box.X + box.WIDTH / 2);
-  const cy = Math.round(box.Y + box.HEIGHT / 2);
-  const steps = [];
-  const step = async (name, fn) => {
-    try {
-      await fn();
-      steps.push({ step: name, ok: true });
-    } catch (error) {
-      steps.push({ step: name, ok: false, detail: String(error) });
-    }
-  };
+  const cdp = await connectCdp(signal);
+  try {
+    const box = await geometry(id, signal);
+    const cx = Math.round(box.X + box.WIDTH / 2);
+    const cy = Math.round(box.Y + box.HEIGHT / 2);
+    const steps = [];
+    const step = async (name, fn) => {
+      try {
+        const detail = await fn();
+        steps.push({ step: name, ok: true, ...detail });
+      } catch (error) {
+        if (signal.aborted) throw error;
+        steps.push({ step: name, ok: false, detail: String(error) });
+      }
+    };
 
-  await step('activate', () => xdo(['windowactivate', '--sync', id]));
-  await step('click', async () => {
-    await xdo(['mousemove', '--sync', String(cx), String(cy)]);
-    await xdo(['click', '1']);
-    await sleep(1200);
-  });
-  await step('click-x3-fast', async () => {
-    for (let i = 0; i < 3; i += 1) {
-      await xdo(['click', '1']);
-      await sleep(150);
-    }
-    await sleep(600);
-  });
-  await step('drag', async () => {
-    await xdo(['mousemove', '--sync', String(cx), String(cy)]);
-    await xdo(['mousedown', '1']);
-    for (let i = 1; i <= 6; i += 1) {
-      await xdo(['mousemove', '--sync', String(cx + i * 10), String(cy + i * 5)]);
-    }
-    await xdo(['mouseup', '1']);
-    await sleep(600);
-  });
-  await step('auto-action', () => sleep(2200));
-  await step('fail-once', async () => {
-    await xdo(['key', 'f']);
-    await sleep(9200); // 单槽失败要等装载超时（8s）走兜底，留足余量
-
-  });
-  await step('recover', async () => {
-    await xdo(['click', '1']);
-    await sleep(1200);
-  });
-  return steps;
+    await step('activate', () => xdo(['windowactivate', '--sync', id], signal));
+    await step('click', async () => {
+      await xdo(['mousemove', String(cx), String(cy)], signal);
+      await xdo(['click', '1'], signal);
+      await sleep(1200, signal);
+    });
+    await step('click-x3-fast', async () => {
+      for (let i = 0; i < 3; i += 1) {
+        await xdo(['click', '1'], signal);
+        await sleep(150, signal);
+      }
+      await sleep(600, signal);
+    });
+    let autoOffset = null;
+    await step('drag', async () => {
+      const before = await geometry(id, signal);
+      await xdo(['mousemove', String(cx), String(cy)], signal);
+      await xdo(['mousedown', '1'], signal);
+      let after;
+      try {
+        for (let i = 1; i <= 6; i += 1) {
+          await xdo(['mousemove', String(cx + i * 10), String(cy + i * 5)], signal);
+          await sleep(80, signal);
+        }
+        await waitForDragging(cdp, true, signal);
+        after = await geometry(id, signal);
+        if (before.X === after.X && before.Y === after.Y) {
+          throw new Error(`窗口几何未变化：${JSON.stringify(after)}`);
+        }
+      } finally {
+        if (!signal.aborted) await xdo(['mouseup', '1'], signal);
+      }
+      await waitForDragging(cdp, false, signal);
+      autoOffset = log.length;
+      return { dragStart: true, dragEnd: true, before, after };
+    });
+    await step('auto-action', async () => {
+      if (autoOffset === null) throw new Error('drag 未完整结束，无法验收后续 auto');
+      return { autoAfterDrag: await waitForAutoAfter(autoOffset, signal) };
+    });
+    await step('fail-once', async () => {
+      await xdo(['key', 'f'], signal);
+      await sleep(9200, signal); // 单槽失败要等装载超时（8s）走兜底，留足余量
+    });
+    await step('recover', async () => {
+      await xdo(['click', '1'], signal);
+      await sleep(1200, signal);
+    });
+    return steps;
+  } finally {
+    cdp.close();
+  }
 }
 
 /** 由脚本结束子进程：先 SIGTERM，等不到再 SIGKILL 兜底；两条路都会让 childSettled 落定。 */
@@ -269,43 +428,75 @@ async function terminateChild() {
 
 const startedAt = Date.now();
 let recordResult = null;
-if (record) {
-  // 录制中收到信号/到时限就立刻停下，不把剩余序列点完。
-  recordResult = await Promise.race([
-    recordSequence(),
-    stopSignal.then(() => 'interrupted'),
-    ...(maxDurationExpiry === null ? [] : [maxDurationExpiry]),
-  ]);
-} else {
-  console.log(
-    `demo: 窗口保持打开（默认常驻）${
-      maxDurationSeconds === null ? '' : `，${maxDurationSeconds}s 后自动收尾`
-    }：产品内 Esc 退出，Ctrl-C 结束。`,
-  );
-}
-
-// 常驻等待：子进程自己退出（Esc）、外部信号、时限任一先到；--record 跑完即收尾。
-const stopReason = await Promise.race([
-  childSettled.then((info) => (info.kind === 'error' ? 'spawn-error' : 'child-exit')),
-  stopSignal.then((name) => `signal-${name}`),
-  ...(maxDurationExpiry === null ? [] : [maxDurationExpiry]),
-  ...(record && recordResult !== 'interrupted' ? [Promise.resolve('record-complete')] : []),
-]);
-
+let stopReason;
+let runError = null;
 let terminatedByUs = false;
-if (settleInfo === null) {
-  terminatedByUs = true;
-  await terminateChild();
-}
-await childSettled;
+try {
+  if (record) {
+    // 子进程退出、收到信号或到时限都取消同一条序列；所有 xdo/sleep 都响应此信号。
+    const recordAbort = new AbortController();
+    const abortRecord = (reason) => {
+      if (!recordAbort.signal.aborted) recordAbort.abort(reason);
+    };
+    void childSettled.then(() => abortRecord('child-exit'));
+    void stopSignal.then(() => abortRecord('interrupted'));
+    if (maxDurationExpiry !== null) void maxDurationExpiry.then(() => abortRecord('max-duration'));
+    try {
+      recordResult = await recordSequence(recordAbort.signal);
+    } catch (error) {
+      if (!recordAbort.signal.aborted) throw error;
+      recordResult = recordAbort.signal.reason;
+    } finally {
+      abortRecord('record-complete');
+    }
+  } else {
+    console.log(
+      `demo: 窗口保持打开（默认常驻）${
+        maxDurationSeconds === null ? '' : `，${maxDurationSeconds}s 后自动收尾`
+      }：产品内 Esc 退出，Ctrl-C 结束。`,
+    );
+  }
 
-await mkdir(logDir, { recursive: true });
-await writeFile(logPath, log, 'utf8');
+  // 常驻等待：子进程自己退出（Esc）、外部信号、时限任一先到；完整录制跑完即收尾。
+  stopReason = await Promise.race([
+    childSettled.then((info) => (info.kind === 'error' ? 'spawn-error' : 'child-exit')),
+    stopSignal.then((name) => `signal-${name}`),
+    ...(maxDurationExpiry === null ? [] : [maxDurationExpiry]),
+    ...(Array.isArray(recordResult) || recordResult === 'not-run' ? [Promise.resolve('record-complete')] : []),
+  ]);
+} catch (error) {
+  runError = error;
+  stopReason = 'record-error';
+} finally {
+  if (settleInfo === null) {
+    terminatedByUs = true;
+    await terminateChild();
+  }
+  await childSettled;
+  await mkdir(logDir, { recursive: true });
+  await writeFile(logPath, log, 'utf8');
+}
 
 const previews = [...log.matchAll(/\\"visual\\":\\"(\w+)\\"/g)].map((match) => match[1]);
 const info = settleInfo ?? { kind: 'error', error: new Error('child never settled') };
 let exitCode = 0;
 const failures = [];
+if (runError !== null) {
+  failures.push(`record-error: ${String(runError)}`);
+  exitCode = 1;
+}
+if (Array.isArray(recordResult)) {
+  for (const required of ['drag', 'auto-action']) {
+    const step = recordResult.find((item) => item.step === required);
+    if (!step?.ok) {
+      failures.push(`record-${required}-failed`);
+      exitCode = 1;
+    }
+  }
+} else if (recordResult === 'child-exit') {
+  failures.push('record-child-exit');
+  exitCode = 1;
+}
 if (info.kind === 'error') {
   failures.push(`spawn-error: ${info.error.message}`);
   exitCode = 1;

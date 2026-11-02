@@ -326,6 +326,30 @@ test('产品内 Esc 退出：脚本自然收尾、退出码 0、无残留', { ti
   }
 });
 
+test('--record 中子进程退出会取消剩余输入并统一收尾', { timeout: 90000 }, async (t) => {
+  if (!ensure(t, true)) return;
+  const handle = startDemo(['--demo', '--asset=short', '--record']);
+  try {
+    const windowId = await waitForWindow(30000);
+    assert.ok(windowId, `30s 内没等到 pet-next 窗口\nstdout=${handle.stdout}\nstderr=${handle.stderr}`);
+    spawnSync('xdotool', ['windowactivate', '--sync', windowId], { env: xdoEnv(), timeout: 10000 });
+    const keyed = spawnSync('xdotool', ['key', 'Escape'], { env: xdoEnv(), timeout: 10000 });
+    assert.equal(keyed.status, 0, `xdotool key Escape 失败：${String(keyed.stderr)}`);
+
+    const result = await waitExit(handle.child, 20000);
+    assert.equal(result.code, 1, `录制被提前终止应如实失败：${handle.stdout}`);
+    const summary = parseSummary(handle.stdout);
+    assert.equal(summary.stopReason, 'child-exit');
+    assert.equal(summary.record, 'child-exit');
+    assert.ok(summary.failures?.includes('record-child-exit'));
+    assert.ok(summary.elapsedMs < 12000, `剩余录制输入未被取消：elapsedMs=${summary.elapsedMs}`);
+    assert.ok(existsSync(logAbsolutePath(summary)), '日志没写盘');
+    assert.ok(await waitWindowGone(10000), '收尾后 Electron 窗口应消失（无残留）');
+  } finally {
+    await cleanup(handle);
+  }
+});
+
 test('--max-duration 到点自动收尾并写日志', { timeout: 90000 }, async (t) => {
   if (!ensure(t, true)) return;
   const handle = startDemo(['--max-duration=6']);
@@ -348,7 +372,7 @@ test('--max-duration 到点自动收尾并写日志', { timeout: 90000 }, async 
 
 test('--record 序列跑完自动收尾、步骤全过并写日志', { timeout: 150000 }, async (t) => {
   if (!ensure(t, true)) return;
-  const handle = startDemo(['--record']);
+  const handle = startDemo(['--demo', '--asset=short', '--record']);
   try {
     const result = await waitExit(handle.child, 120000);
     assert.equal(result.code, 0, `stdout=${handle.stdout}\nstderr=${handle.stderr}`);
@@ -357,22 +381,38 @@ test('--record 序列跑完自动收尾、步骤全过并写日志', { timeout: 
     assert.equal(summary.stopReason, 'record-complete');
     assert.equal(summary.failures, undefined);
     assert.ok(Array.isArray(summary.record), `record=${JSON.stringify(summary.record)}`);
-    const steps = summary.record as Array<{ step: string; ok: boolean; detail?: string }>;
+    const steps = summary.record as Array<{
+      step: string;
+      ok: boolean;
+      detail?: string;
+      dragStart?: boolean;
+      dragEnd?: boolean;
+      before?: { X: number; Y: number };
+      after?: { X: number; Y: number };
+      autoAfterDrag?: string;
+    }>;
     assert.deepEqual(
       steps.map((item) => item.step),
       ['activate', 'click', 'click-x3-fast', 'drag', 'auto-action', 'fail-once', 'recover'],
     );
-    // bare Xvfb 的两个已知环境限制（基线即如此，且真实显示器上可过）：
-    //   activate —— 没有窗口管理器，不支持 _NET_ACTIVE_WINDOW；
-    //   drag     —— 点击串后指针已在目标位，xdotool mousemove --sync 等 MotionNotify 挂死到超时。
+    // bare Xvfb 仅窗口激活可降级：没有窗口管理器，不支持 _NET_ACTIVE_WINDOW。
     for (const step of steps) {
-      const envLimited =
-        !step.ok &&
-        ((step.step === 'activate' && String(step.detail).includes('_NET_ACTIVE_WINDOW')) ||
-          (step.step === 'drag' && String(step.detail).includes('mousemove --sync')));
+      const envLimited = !step.ok && step.step === 'activate' && String(step.detail).includes('_NET_ACTIVE_WINDOW');
       if (envLimited) continue;
       assert.equal(step.ok, true, `录制步骤失败：${JSON.stringify(step)}`);
     }
+    const drag = steps.find((step) => step.step === 'drag');
+    assert.ok(drag);
+    assert.equal(drag.dragStart, true, `产品未进入拖动：${JSON.stringify(drag)}`);
+    assert.equal(drag.dragEnd, true, `产品未结束拖动：${JSON.stringify(drag)}`);
+    assert.ok(drag.before && drag.after, `缺少窗口几何回读：${JSON.stringify(drag)}`);
+    assert.ok(
+      drag.before.X !== drag.after.X || drag.before.Y !== drag.after.Y,
+      `窗口没有真实移动：${JSON.stringify(drag)}`,
+    );
+    const auto = steps.find((step) => step.step === 'auto-action');
+    assert.ok(auto);
+    assert.match(auto.autoAfterDrag ?? '', /^auto-\d+$/, `drag-end 后没有新 auto：${JSON.stringify(auto)}`);
     assert.ok(summary.visuals.includes('idle'), `visuals=${JSON.stringify(summary.visuals)}`);
     assert.ok(summary.visuals.includes('reaction'), `visuals=${JSON.stringify(summary.visuals)}`);
     assert.ok(existsSync(logAbsolutePath(summary)), '日志没写盘');
