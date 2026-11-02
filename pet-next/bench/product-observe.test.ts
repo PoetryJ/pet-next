@@ -116,3 +116,49 @@ test('结束但未到目标帧 → ended-before-target，不算成功', () => {
   assert.equal(result.responseObservedMs, null);
   assert.notEqual(result.firstFrameObservedMs, null);
 });
+
+test('覆盖后迟到帧：同素材的后续请求帧不能归到旧请求', () => {
+  const events: PageEvent[] = [
+    { event: 'bench-input', kind: 'pointerdown', injected: true, ts: 100 },
+    { event: 'bench-click', requestId: 'r1', ts: 160 },
+    { event: 'bench-input', kind: 'pointerdown', injected: true, ts: 200 },
+    { event: 'bench-click', requestId: 'r2', ts: 260 },
+    frameEvent(0.25, 520),
+  ];
+  const result = evaluateSample('superseded-late-frame', 1, events, criterion);
+  assert.equal(result.requestId, 'r1');
+  assert.equal(result.endState, 'superseded');
+  assert.equal(result.firstFrameObservedMs, null);
+  assert.equal(result.responseObservedMs, null);
+});
+
+test('取消后迟到帧：目标帧不能越过 pointercancel 计成功', () => {
+  const events: PageEvent[] = [
+    { event: 'bench-input', kind: 'pointerdown', injected: true, ts: 100 },
+    { event: 'bench-click', requestId: 'r1', ts: 160 },
+    { event: 'bench-input', kind: 'pointercancel', injected: true, ts: 200 },
+    frameEvent(0, 300),
+    frameEvent(0.25, 520),
+  ];
+  const result = evaluateSample('cancelled-late-frame', 1, events, criterion);
+  assert.equal(result.endState, 'cancelled');
+  assert.equal(result.firstFrameObservedMs, null);
+  assert.equal(result.responseObservedMs, null);
+});
+
+test('成功之后再发生输入：已经兑现的原成功保留', () => {
+  const events: PageEvent[] = [
+    { event: 'bench-input', kind: 'pointerdown', injected: true, ts: 100 },
+    { event: 'bench-click', requestId: 'r1', ts: 160 },
+    frameEvent(0, 300),
+    frameEvent(0.25, 320),
+    { event: 'bench-input', kind: 'pointerdown', injected: true, ts: 400 },
+    { event: 'bench-click', requestId: 'r2', ts: 460 },
+    frameEvent(0.25, 520),
+  ];
+  const result = evaluateSample('success-before-next-input', 1, events, criterion);
+  assert.equal(result.requestId, 'r1');
+  assert.equal(result.endState, 'response-observed');
+  assert.equal(result.firstFrameObservedMs, 200);
+  assert.equal(result.responseObservedMs, 220);
+});
