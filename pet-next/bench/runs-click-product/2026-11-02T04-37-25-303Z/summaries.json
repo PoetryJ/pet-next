@@ -1,0 +1,34 @@
+{
+  "controlPositive": {
+    "arm": "control-positive",
+    "count": 3,
+    "observedCount": 3,
+    "endStates": {
+      "response-observed": 3
+    },
+    "playResolvedP50": 70.79999923706055,
+    "playResolvedP95": 79.5,
+    "firstFrameP50": 74.39999961853027,
+    "firstFrameP95": 87,
+    "responseObservedP50": 307.6999988555908,
+    "responseObservedP95": 336.29999923706055,
+    "firstFramePlusOnsetEstimateP50": 324.3999996185303,
+    "materialOnsetMs": 250
+  },
+  "controlNegative": {
+    "arm": "control-negative",
+    "count": 3,
+    "observedCount": 0,
+    "endStates": {
+      "load-failed": 3
+    },
+    "playResolvedP50": null,
+    "playResolvedP95": null,
+    "firstFrameP50": null,
+    "firstFrameP95": null,
+    "responseObservedP50": null,
+    "responseObservedP95": null,
+    "firstFramePlusOnsetEstimateP50": null,
+    "materialOnsetMs": null
+  }
+}

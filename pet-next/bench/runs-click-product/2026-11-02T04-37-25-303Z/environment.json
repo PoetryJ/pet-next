@@ -1,0 +1,54 @@
+{
+  "date": "2026-11-02T04:38:00.522Z",
+  "host": "nb-1696310541880511232-cz4t5nat8wsg",
+  "platform": "linux",
+  "electron": "unknown",
+  "node": "v24.14.0",
+  "window": {
+    "x": 80,
+    "y": 80,
+    "width": 320,
+    "height": 240
+  },
+  "rounds": 3,
+  "samplesPerRound": 30,
+  "controlSamples": 3,
+  "dwellMs": 500,
+  "sampleTimeoutMs": 12000,
+  "idleSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+  "onsets": {
+    "single-full": {
+      "sha256": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776",
+      "fps": 24,
+      "onsetMs": 2458.3333333333335,
+      "onsetFrame": 59,
+      "frames": 160
+    },
+    "single-short": {
+      "sha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9",
+      "fps": 24,
+      "onsetMs": 250,
+      "onsetFrame": 6,
+      "frames": 106
+    }
+  },
+  "criterion": {
+    "rule": "first-presented-frame-with-mediaTime>=onsetFrame/fps",
+    "onsetSource": "assets-pipeline/response-onset.ts",
+    "reactionArmAssets": {
+      "single-full": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776",
+      "single-short": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9"
+    },
+    "negativeControl": {
+      "file": "corrupt.webm",
+      "sha256": "c8dffa02a6a5bdf09df78244b58ba3486b0e0c23b34e66077530cb8ca05c9717",
+      "expect": "load-failed/null"
+    }
+  },
+  "caliber": {
+    "input": "software sendInputEvent（非物理输入设备）",
+    "frameEvidence": "rVFC mediaTime（软件呈帧，非物理屏幕呈现）",
+    "clock": "页面 performance.now()（每文档独立时基，样本内差值）"
+  },
+  "command": "cd pet-next\nnode --experimental-strip-types bench/click-product.ts"
+}
