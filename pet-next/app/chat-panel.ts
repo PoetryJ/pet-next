@@ -5,14 +5,18 @@
  * 视口约束：挂载时按实际视口高度写入面板 max-height（320×240 窗口下不越界），标题/关闭/输入/发送/取消恒可见。
  * 模式区分（M3-1）：demo 保留假数据提示与「演示回复」标签；local 去掉假数据提示、标签为「Qwen · 服务器模型」，
  * 失败/超时/取消一律按错误或已取消渲染，绝不静默降级成演示回复。
+ * 传输区分（M3-2）：local + transport=tunnel 时标签与标题徽标显式带「经 SSH 隧道」，让人一眼看出走的是本地转发；
+ * direct 与 M3-1 完全一致；错误码另配中文可行动提示，code 仍留在气泡里便于排查。
  * @module pet-next/app/chat-panel
  */
 import {
   CHAT_MAX_INPUT_CHARS,
   type ChatDisplayInfo,
+  type ChatErrorCode,
   type ChatMode,
   type ChatSendRequest,
   type ChatSendResult,
+  type ChatTransport,
 } from '../contracts/chat.ts';
 
 /** 面板使用的模型客户端（接线方注入：指向 IPC 或测试桩）。 */
@@ -61,12 +65,54 @@ export function normalizeChatMode(info?: ChatDisplayInfo | null): ChatMode {
 export const CHAT_DEMO_NOTE = '以下回复均为演示回复（预览假数据），非真实模型输出。';
 /** local 模式没有真实模型名时的回退标签。 */
 export const CHAT_LOCAL_TAG_FALLBACK = 'Qwen · 服务器模型';
+/** tunnel（SSH 本地转发）在回复标签上的后缀，表明链路经过隧道。 */
+export const CHAT_TUNNEL_TAG_SUFFIX = '（经 SSH 隧道）';
+/** tunnel 模式标题栏徽标（短文案，小窗口下不挤掉标题）。 */
+export const CHAT_TUNNEL_BADGE = 'Qwen · 隧道';
 
-/** 回复标签（纯函数）：demo 明示假数据；local 明示真实模型来源，有模型名则带上。 */
+/** 传输方式（纯函数）：只有显式 local + tunnel 才认隧道，其余（demo/direct/缺省）按本机直连口径。 */
+export function resolveChatTransport(info?: ChatDisplayInfo | null): ChatTransport {
+  return normalizeChatMode(info) === 'local' && info?.transport === 'tunnel' ? 'tunnel' : 'direct';
+}
+
+/** 回复标签（纯函数）：demo 明示假数据；local 明示真实模型来源，有模型名则带上，隧道再加后缀。 */
 export function replyTagFor(info?: ChatDisplayInfo | null): string {
   if (normalizeChatMode(info) === 'demo') return '演示回复';
   const model = info?.model?.trim();
-  return model ? `Qwen · ${model}` : CHAT_LOCAL_TAG_FALLBACK;
+  const base = model ? `Qwen · ${model}` : CHAT_LOCAL_TAG_FALLBACK;
+  return resolveChatTransport(info) === 'tunnel' ? `${base}${CHAT_TUNNEL_TAG_SUFFIX}` : base;
+}
+
+/** 标题栏徽标文案（纯函数）：隧道用短文案，直连沿用完整标签；demo 不渲染徽标（此处只为纯函数完备）。 */
+export function badgeTagFor(info?: ChatDisplayInfo | null): string {
+  if (normalizeChatMode(info) === 'demo') return '演示回复';
+  return resolveChatTransport(info) === 'tunnel' ? CHAT_TUNNEL_BADGE : replyTagFor(info);
+}
+
+/** 错误码的中文可行动提示（纯函数）：只说该做什么，排查用的 code 仍由调用方一并显示。 */
+export function errorHintFor(code?: ChatErrorCode | null): string {
+  switch (code) {
+    case 'timeout':
+      return '响应超时，可稍后重试';
+    case 'provider-error':
+      return '服务不可用或连接已断开，请检查隧道后重试';
+    case 'busy':
+      return '上一条还在处理';
+    case 'bad-request':
+      return '输入不合法';
+    case 'empty':
+      return '内容为空，请先输入';
+    case 'too-long':
+      return `超过 ${CHAT_MAX_INPUT_CHARS} 字上限，请缩短后再发送`;
+    default:
+      return '稍后重试；若持续失败请检查本地服务与隧道';
+  }
+}
+
+/** 错误气泡文案：中文提示在前便于照做，code 紧随其后便于排查（既有断言依赖「发送失败（code）」）。 */
+export function errorTextFor(code?: ChatErrorCode | null): string {
+  const resolved = code ?? 'provider-error';
+  return `发送失败（${resolved}）：${errorHintFor(resolved)}`;
 }
 
 /**
@@ -120,7 +166,9 @@ export function mountChatPanel(
   options: ChatPanelMountOptions = {},
 ): ChatPanelHandle {
   const mode = normalizeChatMode(info);
+  const transport = resolveChatTransport(info);
   const replyTag = replyTagFor(info);
+  const badgeTag = badgeTagFor(info);
 
   const panelRoot = document.createElement('div');
   panelRoot.className = 'chat-panel-root';
@@ -128,6 +176,8 @@ export function mountChatPanel(
   panelRoot.dataset.state = 'closed';
   // 供接线/E2E/样式区分口径：data-mode ∈ demo|local（不是 data-testid 契约的一部分）。
   panelRoot.dataset.mode = mode;
+  // 传输方式同样可读（direct|tunnel）：样式与人工排查不必解析文案。
+  panelRoot.dataset.transport = transport;
 
   const toggle = document.createElement('button');
   toggle.setAttribute('type', 'button');
@@ -159,10 +209,11 @@ export function mountChatPanel(
   closeBtn.textContent = '×';
   head.appendChild(title);
   if (mode === 'local') {
-    // 真实模式在标题旁常驻来源标识：不必等第一条回复就能看出不是演示数据。
+    // 真实模式在标题旁常驻来源标识：不必等第一条回复就能看出不是演示数据；隧道另用短文案+配色区分。
     const badge = document.createElement('span');
-    badge.className = 'chat-mode-badge';
-    badge.textContent = replyTag;
+    badge.className = transport === 'tunnel' ? 'chat-mode-badge chat-mode-badge--tunnel' : 'chat-mode-badge';
+    badge.textContent = badgeTag;
+    badge.setAttribute('title', replyTag);
     head.appendChild(badge);
   }
   head.appendChild(closeBtn);
@@ -296,8 +347,10 @@ export function mountChatPanel(
     outcome = phaseForResult(status);
     clearStatusEntry();
     if (status === 'ok') appendBotEntry(result.text ?? '');
-    else if (status === 'error') appendEntry('error', `发送失败（${degraded ? 'provider-error' : result.code ?? 'provider-error'}）`);
-    else appendEntry('status', '已取消');
+    else if (status === 'error') {
+      // 中文可行动提示 + 原始 code：既能照做（重试/查隧道），也留得住排查线索。
+      appendEntry('error', errorTextFor(degraded ? 'provider-error' : result.code ?? 'provider-error'));
+    } else appendEntry('status', '已取消');
     updateComposer();
     syncState();
   }
