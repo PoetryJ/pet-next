@@ -7,7 +7,12 @@ import { spawn } from 'node:child_process';
 const mode = process.argv[2];
 
 function grandchild() {
-  return spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], { stdio: 'ignore' });
+  const child = spawn(process.execPath, ['-e', 'setInterval(() => {}, 1000)'], {
+    stdio: 'ignore',
+    ...(process.platform === 'win32' ? { detached: true, windowsHide: true } : {}),
+  });
+  if (process.platform === 'win32') child.unref();
+  return child;
 }
 
 function report(child) {
