@@ -1,0 +1,147 @@
+{
+  "arms": [
+    {
+      "arm": "single-full",
+      "count": 90,
+      "resolvedCount": 90,
+      "firstFrameCount": 90,
+      "playResolvedP50": 10.899999618530273,
+      "playResolvedP95": 11.700000762939453,
+      "firstFrameP50": 15.30000114440918,
+      "firstFrameP95": 17.100000381469727,
+      "clearResponseEstimateP50": 2473.6333344777427,
+      "clearResponseEstimateP95": 2475.433333714803,
+      "estimationMethod": "observed-first-frame-plus-material-onset",
+      "materialOnsetMs": 2458.3333333333335
+    },
+    {
+      "arm": "single-short",
+      "count": 90,
+      "resolvedCount": 90,
+      "firstFrameCount": 90,
+      "playResolvedP50": 11.200000762939453,
+      "playResolvedP95": 11.899999618530273,
+      "firstFrameP50": 15.400001525878906,
+      "firstFrameP95": 16.900001525878906,
+      "clearResponseEstimateP50": 265.4000015258789,
+      "clearResponseEstimateP95": 266.9000015258789,
+      "estimationMethod": "observed-first-frame-plus-material-onset",
+      "materialOnsetMs": 250
+    }
+  ],
+  "controls": {
+    "negative": {
+      "samples": [
+        {
+          "arm": "single-full",
+          "round": 0,
+          "index": 1,
+          "clickToPlayResolvedMs": null,
+          "clickToFirstFrameMs": null,
+          "clickToFirstClearResponseEstimateMs": null,
+          "estimation": {
+            "method": "observed-first-frame-plus-material-onset",
+            "observedFirstFrameMs": null,
+            "materialOnsetMs": 2458.3333333333335,
+            "materialOnsetFrame": 59,
+            "rule": "assets-pipeline/response-onset.ts",
+            "note": "估算 = 实测首帧 + 素材内回应时刻（素材逐帧运动规则常数）；产品回应终点未被观测"
+          },
+          "assetSha256": "c8dffa02a6a5bdf09df78244b58ba3486b0e0c23b34e66077530cb8ca05c9717"
+        },
+        {
+          "arm": "single-full",
+          "round": 0,
+          "index": 2,
+          "clickToPlayResolvedMs": null,
+          "clickToFirstFrameMs": null,
+          "clickToFirstClearResponseEstimateMs": null,
+          "estimation": {
+            "method": "observed-first-frame-plus-material-onset",
+            "observedFirstFrameMs": null,
+            "materialOnsetMs": 2458.3333333333335,
+            "materialOnsetFrame": 59,
+            "rule": "assets-pipeline/response-onset.ts",
+            "note": "估算 = 实测首帧 + 素材内回应时刻（素材逐帧运动规则常数）；产品回应终点未被观测"
+          },
+          "assetSha256": "c8dffa02a6a5bdf09df78244b58ba3486b0e0c23b34e66077530cb8ca05c9717"
+        },
+        {
+          "arm": "single-full",
+          "round": 0,
+          "index": 3,
+          "clickToPlayResolvedMs": null,
+          "clickToFirstFrameMs": null,
+          "clickToFirstClearResponseEstimateMs": null,
+          "estimation": {
+            "method": "observed-first-frame-plus-material-onset",
+            "observedFirstFrameMs": null,
+            "materialOnsetMs": 2458.3333333333335,
+            "materialOnsetFrame": 59,
+            "rule": "assets-pipeline/response-onset.ts",
+            "note": "估算 = 实测首帧 + 素材内回应时刻（素材逐帧运动规则常数）；产品回应终点未被观测"
+          },
+          "assetSha256": "c8dffa02a6a5bdf09df78244b58ba3486b0e0c23b34e66077530cb8ca05c9717"
+        }
+      ],
+      "allFailed": true
+    },
+    "positive": {
+      "samples": [
+        {
+          "arm": "single-short",
+          "round": 0,
+          "index": 1,
+          "clickToPlayResolvedMs": 12.5,
+          "clickToFirstFrameMs": 16.899999618530273,
+          "clickToFirstClearResponseEstimateMs": 266.8999996185303,
+          "estimation": {
+            "method": "observed-first-frame-plus-material-onset",
+            "observedFirstFrameMs": 16.899999618530273,
+            "materialOnsetMs": 250,
+            "materialOnsetFrame": 6,
+            "rule": "assets-pipeline/response-onset.ts",
+            "note": "估算 = 实测首帧 + 素材内回应时刻（素材逐帧运动规则常数）；产品回应终点未被观测"
+          },
+          "assetSha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9"
+        },
+        {
+          "arm": "single-short",
+          "round": 0,
+          "index": 2,
+          "clickToPlayResolvedMs": 12.200000762939453,
+          "clickToFirstFrameMs": 15.400001525878906,
+          "clickToFirstClearResponseEstimateMs": 265.4000015258789,
+          "estimation": {
+            "method": "observed-first-frame-plus-material-onset",
+            "observedFirstFrameMs": 15.400001525878906,
+            "materialOnsetMs": 250,
+            "materialOnsetFrame": 6,
+            "rule": "assets-pipeline/response-onset.ts",
+            "note": "估算 = 实测首帧 + 素材内回应时刻（素材逐帧运动规则常数）；产品回应终点未被观测"
+          },
+          "assetSha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9"
+        },
+        {
+          "arm": "single-short",
+          "round": 0,
+          "index": 3,
+          "clickToPlayResolvedMs": 12.5,
+          "clickToFirstFrameMs": 15.700000762939453,
+          "clickToFirstClearResponseEstimateMs": 265.70000076293945,
+          "estimation": {
+            "method": "observed-first-frame-plus-material-onset",
+            "observedFirstFrameMs": 15.700000762939453,
+            "materialOnsetMs": 250,
+            "materialOnsetFrame": 6,
+            "rule": "assets-pipeline/response-onset.ts",
+            "note": "估算 = 实测首帧 + 素材内回应时刻（素材逐帧运动规则常数）；产品回应终点未被观测"
+          },
+          "assetSha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9"
+        }
+      ],
+      "allResolved": true
+    }
+  },
+  "failures": []
+}

@@ -1,12 +1,14 @@
 /**
  * 点击响应对照：单槽全母带（single-full） vs 单槽截取短片（single-short）。
  *
- * 三段时间戳同一来源（同一次点击）：
- * - clickToPlayResolvedMs：适配器 `playing` 兑现（bench 页 playResolvedMs）。
- * - clickToFirstFrameMs：画面出现首帧（bench 页 rVFC + 不透明采样）。
- * - clickToFirstClearResponseMs：首次出现"明确回应"画面 = clickToFirstFrameMs +
- *   该素材自身从第 0 帧到明确回应的时长（response-onset 逐帧运动量规则，素材内实测，
- *   不是人工标注；没有截图轮询）。
+ * 本脚本的"点击→首明确回应"是估算值，不是产品观察值：
+ * - clickToPlayResolvedMs（观察）：适配器 `playing` 兑现（bench 页 playResolvedMs）。
+ * - clickToFirstFrameMs（观察）：画面出现首帧（bench 页 rVFC + 不透明采样）。
+ * - clickToFirstClearResponseEstimateMs（估算）：实测首帧 + 该素材自身从第 0 帧到明确
+ *   回应的时长（response-onset 逐帧运动量规则，素材内实测常数；主臂只记录首帧附近，
+ *   产品回应终点从未被观测）。估算字段带 Estimate 后缀并附 estimation 说明结构。
+ *
+ * 产品真实回应观测（到目标回应帧才算兑现）在 bench/click-product.ts，与本脚本分列。
  *
  * 对照：每臂 {@link CLICK_ROUNDS} 轮 × 每轮 {@link CLICK_SAMPLES_PER_ROUND} 个样本。
  * 负对照用损坏素材（装载应失败 → 三段都记 null）；正对照用候选素材自比（必须与短片臂一致）。
@@ -15,21 +17,19 @@
  */
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createRequire } from 'node:module';
-import { copyFile, mkdir, readFile, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
 import { writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 import { CLICK_ARMS, CLICK_CONTROL_SAMPLES, CLICK_ROUNDS, CLICK_SAMPLES_PER_ROUND } from '../contracts/bench-click.ts';
-import type { ClickArm, ClickResponseSample } from '../contracts/bench-click.ts';
+import type { ClickArm } from '../contracts/bench-click.ts';
 import type { BenchSample } from '../contracts/bench.ts';
 import { hashFile } from '../assets-pipeline/asset-report.ts';
-import { decodeRgba, probeVideo } from '../assets-pipeline/read-media.ts';
-import type { RgbaFrame } from '../assets-pipeline/frame-metrics.ts';
-import { responseOnsetMs } from '../assets-pipeline/response-onset.ts';
+import { measureOnset as measureAssetOnset, type OnsetMeasurement } from './onset.ts';
+import { buildClickOutcomeRecord, summarizeClickOutcomes, type ClickOutcomeRecord, type ClickOutcomeSummary } from './click-record.ts';
 import type { BenchJob } from './job.ts';
 import { DWELL_MS, WINDOW_HEIGHT, WINDOW_WIDTH, WINDOW_X, WINDOW_Y } from './protocol.ts';
-import { percentile } from './stats.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const require = createRequire(path.join(root, 'package.json'));
@@ -59,14 +59,7 @@ const armAssets: readonly ArmAsset[] = [
   { arm: 'single-short', label: '截取短片 106 帧 4.4s', file: path.join(root, 'assets/candidates/reaction/short.webm') },
 ];
 
-interface Onset {
-  readonly arm: ClickArm;
-  readonly sha256: string;
-  readonly fps: number;
-  readonly onsetMs: number | null;
-  readonly onsetFrame: number | null;
-  readonly frames: number;
-}
+type Onset = OnsetMeasurement & { readonly arm: ClickArm };
 
 async function main(): Promise<void> {
   await mkdir(runRoot, { recursive: true });
@@ -84,10 +77,10 @@ async function main(): Promise<void> {
   const idleUrl = pathToFileUrl(path.join(root, 'assets/idle.webm'));
 
   const failures: string[] = [];
-  const samplesByArm = new Map<ClickArm, ClickResponseSample[]>();
+  const samplesByArm = new Map<ClickArm, ClickOutcomeRecord[]>();
   for (const asset of armAssets) {
     const onset = offsets.get(asset.arm)!;
-    const collected: ClickResponseSample[] = [];
+    const collected: ClickOutcomeRecord[] = [];
     for (let round = 1; round <= rounds; round += 1) {
       const outDir = path.join(runRoot, `round-${round}`, asset.arm);
       const job: BenchJob = {
@@ -186,7 +179,9 @@ async function main(): Promise<void> {
     path.join(runRoot, 'summaries.json'),
     JSON.stringify(
       {
-        arms: CLICK_ARMS.map((arm) => summarize(arm, samplesByArm.get(arm) ?? [], offsets.get(arm)?.onsetMs ?? null)),
+        arms: CLICK_ARMS.map((arm) =>
+          summarizeClickOutcomes(arm, samplesByArm.get(arm) ?? [], offsets.get(arm)?.onsetMs ?? null),
+        ),
         controls: {
           negative: { samples: negativeSamples, allFailed: negativeFired === negativeSamples.length },
           positive: { samples: positiveSamples, allResolved: positiveOk === positiveSamples.length },
@@ -213,6 +208,12 @@ async function main(): Promise<void> {
         controlSamples,
         smoke,
         offsets: [...offsets.values()],
+        estimation: {
+          field: 'clickToFirstClearResponseEstimateMs',
+          method: 'observed-first-frame-plus-material-onset',
+          materialOnsetRule: 'assets-pipeline/response-onset.ts',
+          note: 'offsets 是素材逐帧运动规则测得的素材内回应时刻（素材常数，非产品观察）；估算 = 实测首帧 + 该常数，产品回应终点未观测',
+        },
         command: 'cd pet-next\nnode --experimental-strip-types bench/click.ts',
       },
       null,
@@ -226,106 +227,41 @@ async function main(): Promise<void> {
   }
 }
 
-/** 素材内"第 0 帧 → 明确回应"时长。逐帧解码 + 运动量规则（与短片截取同一套判定）。 */
+/** 素材内"第 0 帧 → 明确回应"时长（bench/onset.ts：逐帧解码 + 运动量规则，与短片截取同一套判定）。 */
 async function measureOnset(asset: ArmAsset): Promise<Onset> {
-  const hashed = await hashFile(asset.file);
-  if (!hashed) throw new Error(`找不到素材 ${asset.file}`);
-  const probe = await probeVideo('ffprobe', asset.file);
-  const fps = await readFps(asset.file);
-  const frames: RgbaFrame[] = [];
   const limit = smoke ? 80 : 160;
-  while (frames.length < limit) {
-    const one = await decodeRgba('ffmpeg', asset.file, probe, frames.length);
-    if (!one || one.length === 0) break;
-    frames.push(one[0]!);
-  }
-  const onsetMs = responseOnsetMs(frames, fps);
-  return {
-    arm: asset.arm,
-    sha256: hashed.sha256,
-    fps,
-    onsetMs,
-    onsetFrame: onsetMs === null ? null : Math.round((onsetMs / 1000) * fps),
-    frames: frames.length,
-  };
+  return { arm: asset.arm, ...(await measureAssetOnset(asset.file, limit)) };
 }
 
-async function readFps(file: string): Promise<number> {
-  const { execFile } = await import('node:child_process');
-  const raw = await new Promise<string>((resolve, reject) => {
-    execFile(
-      'ffprobe',
-      ['-v', 'error', '-select_streams', 'v:0', '-show_entries', 'stream=r_frame_rate', '-of', 'json', file],
-      { timeout: 20_000 },
-      (error, stdout) => (error ? reject(error) : resolve(String(stdout))),
-    );
-  });
-  const parsed = JSON.parse(raw) as { streams?: Array<{ r_frame_rate?: string }> };
-  const [num = 0, den = 0] = (parsed.streams?.[0]?.['r_frame_rate'] ?? '0/1').split('/').map(Number);
-  if (!den) throw new Error(`读不出帧率：${file}`);
-  return num / den;
-}
-
-function toClickSample(arm: ClickArm, row: BenchSample, onset: Onset): ClickResponseSample {
-  const firstFrame = finiteOrNull(row.clickToFirstFrameMs);
-  return {
+function toClickSample(arm: ClickArm, row: BenchSample, onset: Onset): ClickOutcomeRecord {
+  return buildClickOutcomeRecord({
     arm,
     round: row.round,
     index: row.index,
-    clickToPlayResolvedMs: finiteOrNull(row.playResolvedMs),
-    clickToFirstFrameMs: firstFrame,
-    clickToFirstClearResponseMs:
-      firstFrame === null || onset.onsetMs === null ? null : firstFrame + onset.onsetMs,
-    assetSha256: row.assetSha256,
-  };
+    row: {
+      clickToFirstFrameMs: finiteOrNull(row.clickToFirstFrameMs),
+      playResolvedMs: finiteOrNull(row.playResolvedMs),
+      assetSha256: row.assetSha256,
+    },
+    materialOnsetMs: onset.onsetMs,
+    materialOnsetFrame: onset.onsetFrame,
+  });
 }
 
 function finiteOrNull(value: number | null): number | null {
   return typeof value === 'number' && Number.isFinite(value) ? value : null;
 }
 
-interface ArmSummary {
-  arm: ClickArm;
-  count: number;
-  resolvedCount: number;
-  firstFrameCount: number;
-  playResolvedP50: number | null;
-  playResolvedP95: number | null;
-  firstFrameP50: number | null;
-  firstFrameP95: number | null;
-  clearResponseP50: number | null;
-  clearResponseP95: number | null;
-  onsetMs: number | null;
-}
-
-function summarize(arm: ClickArm, samples: readonly ClickResponseSample[], onsetMs: number | null): ArmSummary {
-  const pick = (read: (sample: ClickResponseSample) => number | null): number[] =>
-    samples.flatMap((sample) => (read(sample) === null ? [] : [read(sample)!]));
-  return {
-    arm,
-    count: samples.length,
-    resolvedCount: samples.filter((sample) => sample.clickToPlayResolvedMs !== null).length,
-    firstFrameCount: samples.filter((sample) => sample.clickToFirstFrameMs !== null).length,
-    playResolvedP50: percentile(pick((sample) => sample.clickToPlayResolvedMs), 50),
-    playResolvedP95: percentile(pick((sample) => sample.clickToPlayResolvedMs), 95),
-    firstFrameP50: percentile(pick((sample) => sample.clickToFirstFrameMs), 50),
-    firstFrameP95: percentile(pick((sample) => sample.clickToFirstFrameMs), 95),
-    clearResponseP50: percentile(pick((sample) => sample.clickToFirstClearResponseMs), 50),
-    clearResponseP95: percentile(pick((sample) => sample.clickToFirstClearResponseMs), 95),
-    onsetMs,
-  };
-}
-
 function renderClickReport(input: {
-  samplesByArm: Map<ClickArm, ClickResponseSample[]>;
+  samplesByArm: Map<ClickArm, ClickOutcomeRecord[]>;
   offsets: Map<ClickArm, Onset>;
-  negative: readonly ClickResponseSample[];
-  positive: readonly ClickResponseSample[];
+  negative: readonly ClickOutcomeRecord[];
+  positive: readonly ClickOutcomeRecord[];
   failures: readonly string[];
   integrity: { negativeRows: number; positiveRows: number };
 }): string {
   const summaries = CLICK_ARMS.map((arm) =>
-    summarize(arm, input.samplesByArm.get(arm) ?? [], input.offsets.get(arm)?.onsetMs ?? null),
+    summarizeClickOutcomes(arm, input.samplesByArm.get(arm) ?? [], input.offsets.get(arm)?.onsetMs ?? null),
   );
   const [full, short] = summaries;
   const cell = (value: number | null): string => (value === null ? '—' : `${Math.round(value)}`);
@@ -336,7 +272,8 @@ function renderClickReport(input: {
   lines.push('# 点击响应对照：单槽全母带 vs 单槽截取短片');
   lines.push('');
   lines.push('两臂的播放实现相同（单槽适配器、同一窗口参数、关闭自主行为），只有回应素材不同。');
-  lines.push('三段毫秒数都来自同一次点击；`—` 表示该段没有兑现，不按 0ms 计。');
+  lines.push('各段毫秒数都来自同一次点击；`—` 表示该段没有兑现，不按 0ms 计。');
+  lines.push('兑现与首帧是实测；"点击→首明确回应"是估算（见结果表下说明）。');
   lines.push('');
   lines.push('## 素材');
   lines.push('');
@@ -354,24 +291,27 @@ function renderClickReport(input: {
   lines.push('');
   lines.push('## 结果');
   lines.push('');
-  lines.push('| 臂 | 样本 | 兑现率 | 点击→兑现 P50/P95 | 点击→首帧 P50/P95 | 点击→首明确回应 P50/P95 |');
+  lines.push('| 臂 | 样本 | 兑现率 | 点击→兑现 P50/P95（实测） | 点击→首帧 P50/P95（实测） | 点击→首明确回应 P50/P95（估算） |');
   lines.push('| --- | --- | --- | --- | --- | --- |');
   for (const summary of summaries) {
     const rate = summary.count === 0 ? '—' : `${summary.firstFrameCount}/${summary.count}`;
     lines.push(
-      `| \`${summary.arm}\` | ${summary.count} | ${rate} | ${cell(summary.playResolvedP50)}/${cell(summary.playResolvedP95)} | ${cell(summary.firstFrameP50)}/${cell(summary.firstFrameP95)} | ${cell(summary.clearResponseP50)}/${cell(summary.clearResponseP95)} |`,
+      `| \`${summary.arm}\` | ${summary.count} | ${rate} | ${cell(summary.playResolvedP50)}/${cell(summary.playResolvedP95)} | ${cell(summary.firstFrameP50)}/${cell(summary.firstFrameP95)} | ${cell(summary.clearResponseEstimateP50)}/${cell(summary.clearResponseEstimateP95)} |`,
     );
   }
   lines.push('');
-  lines.push('点击→首明确回应 = 点击→首帧 + 素材内回应时刻（P50 相加：两者都是同一次点击的分段量）。');
+  lines.push('**"点击→首明确回应"是估算值，不是观察值**：估算 = 实测首帧 + 素材内回应时刻');
+  lines.push('（response-onset 逐帧运动规则常数；P50 相加，两者都是同一次点击的分段量）。');
+  lines.push('本脚本主臂只记录首帧附近，产品回应终点从未被观测；样本级 `estimation` 结构记录方法与输入。');
+  lines.push('产品内实测到目标回应帧的观测见 `bench/click-product.ts` 的 runs-click-product 报告（分列输出）。');
   lines.push('');
   lines.push('| 口径 | P50 差值（短片 − 全母带） | P95 差值 |');
   lines.push('| --- | --- | --- |');
   lines.push(
-    `| 点击→首帧 | ${delta(full?.firstFrameP50 ?? null, short?.firstFrameP50 ?? null)} ms | ${delta(full?.firstFrameP95 ?? null, short?.firstFrameP95 ?? null)} ms |`,
+    `| 点击→首帧（实测） | ${delta(full?.firstFrameP50 ?? null, short?.firstFrameP50 ?? null)} ms | ${delta(full?.firstFrameP95 ?? null, short?.firstFrameP95 ?? null)} ms |`,
   );
   lines.push(
-    `| 点击→首明确回应 | ${delta(full?.clearResponseP50 ?? null, short?.clearResponseP50 ?? null)} ms | ${delta(full?.clearResponseP95 ?? null, short?.clearResponseP95 ?? null)} ms |`,
+    `| 点击→首明确回应（估算） | ${delta(full?.clearResponseEstimateP50 ?? null, short?.clearResponseEstimateP50 ?? null)} ms | ${delta(full?.clearResponseEstimateP95 ?? null, short?.clearResponseEstimateP95 ?? null)} ms |`,
   );
   lines.push('');
   lines.push('## 对照');
@@ -410,8 +350,9 @@ async function compile(): Promise<void> {
 async function runJob(job: BenchJob): Promise<string | null> {
   await mkdir(job.outDir, { recursive: true });
   await writeFile(path.join(job.outDir, 'job.json'), JSON.stringify(job, null, 2));
-  const userData = path.join(job.outDir, 'user-data');
-  await mkdir(userData, { recursive: true });
+  // Electron profile 放临时目录（与 click-product.ts 一致）：run 目录只留有效证据，
+  // 不再产生 user-data/ 运行时垃圾（bench/.gitignore 兜底排除）。
+  const userData = await mkdtemp(path.join(os.tmpdir(), 'pet-next-bench-'));
   const mainJs = path.join(root, 'dist/bench-build/bench/main.js');
   const args = [...(process.platform === 'linux' ? ['--no-sandbox', '--disable-dev-shm-usage'] : []), mainJs];
   const timeoutMs = (job.firstCount + 2) * 25_000 + 30_000;

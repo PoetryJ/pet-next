@@ -1,0 +1,2 @@
+# Electron 运行时 profile 一律不进入 run 目录证据（driver 已放到 /tmp mkdtemp；此规则兜底）。
+**/user-data/
