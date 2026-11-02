@@ -23,6 +23,6 @@ contextBridge.exposeInMainWorld('petChat', {
     return ipcRenderer.invoke(CHAT_SEND_CHANNEL, payload);
   },
   cancel(id: string): void {
-    ipcRenderer.send(CHAT_CANCEL_CHANNEL, id);
+    ipcRenderer.send(CHAT_CANCEL_CHANNEL, { id });
   },
 });

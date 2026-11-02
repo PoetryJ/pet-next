@@ -14,7 +14,7 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const roots = ['core', 'adapters', 'app', 'tests', 'experiments', 'bench'];
+const roots = ['core', 'adapters', 'app', 'electron', 'tests', 'experiments', 'bench'];
 
 // 有专属入口的套件（相对 pet-next 根目录），纯单元层不再重复收集。
 const dedicatedFiles = new Set([

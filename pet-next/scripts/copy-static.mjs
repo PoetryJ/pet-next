@@ -12,4 +12,5 @@ await mkdir(join(root, 'dist/app'), { recursive: true });
 await mkdir(join(root, 'dist/assets'), { recursive: true });
 await cp(join(root, 'app/page.html'), join(root, 'dist/app/page.html'));
 await cp(join(root, 'app/page.css'), join(root, 'dist/app/page.css'));
+await cp(join(root, 'app/chat-panel.css'), join(root, 'dist/app/chat-panel.css'));
 await cp(join(root, 'assets'), join(root, 'dist/assets'), { recursive: true });

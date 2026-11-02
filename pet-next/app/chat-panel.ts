@@ -56,16 +56,19 @@ function nextRequestId(): string {
 export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): ChatPanelHandle {
   const panelRoot = document.createElement('div');
   panelRoot.className = 'chat-panel-root';
+  panelRoot.dataset.testid = 'chat-panel';
   panelRoot.dataset.state = 'closed';
 
   const toggle = document.createElement('button');
   toggle.setAttribute('type', 'button');
   toggle.setAttribute('aria-label', '打开聊天面板');
   toggle.className = 'chat-toggle';
+  toggle.dataset.testid = 'chat-toggle';
   toggle.textContent = '聊';
 
   const panel = document.createElement('div');
   panel.className = 'chat-panel';
+  panel.dataset.testid = 'chat-panel-open';
   panel.hidden = true;
 
   const head = document.createElement('div');
@@ -77,6 +80,7 @@ export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): Chat
   closeBtn.setAttribute('type', 'button');
   closeBtn.setAttribute('aria-label', '收起面板');
   closeBtn.className = 'chat-close';
+  closeBtn.dataset.testid = 'chat-close';
   closeBtn.textContent = '×';
   head.appendChild(title);
   head.appendChild(closeBtn);
@@ -96,6 +100,7 @@ export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): Chat
   input.setAttribute('aria-label', '聊天输入');
   input.setAttribute('placeholder', `给宠物留言（Enter 发送，Shift+Enter 换行，上限 ${CHAT_MAX_INPUT_CHARS} 字）`);
   input.className = 'chat-input';
+  input.dataset.testid = 'chat-input';
   const hint = document.createElement('div');
   hint.className = 'chat-hint';
   const actions = document.createElement('div');
@@ -103,10 +108,12 @@ export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): Chat
   const sendBtn = document.createElement('button');
   sendBtn.setAttribute('type', 'button');
   sendBtn.className = 'chat-send';
+  sendBtn.dataset.testid = 'chat-send';
   sendBtn.textContent = '发送';
   const cancelBtn = document.createElement('button');
   cancelBtn.setAttribute('type', 'button');
   cancelBtn.className = 'chat-cancel';
+  cancelBtn.dataset.testid = 'chat-cancel';
   cancelBtn.textContent = '取消';
   cancelBtn.disabled = true;
   actions.appendChild(sendBtn);
@@ -141,6 +148,7 @@ export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): Chat
   function appendEntry(kind: string, text: string): HTMLElement {
     const entry = document.createElement('div');
     entry.className = `chat-entry chat-entry-${kind}`;
+    entry.dataset.testid = kind === 'status' ? 'chat-status' : `chat-msg-${kind}`;
     entry.textContent = text;
     log.appendChild(entry);
     return entry;
@@ -149,6 +157,7 @@ export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): Chat
   function appendBotEntry(text: string): void {
     const entry = document.createElement('div');
     entry.className = 'chat-entry chat-entry-bot';
+    entry.dataset.testid = 'chat-msg-assistant';
     const tag = document.createElement('span');
     tag.className = 'chat-demo-tag';
     tag.textContent = '演示回复';

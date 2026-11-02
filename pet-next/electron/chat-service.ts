@@ -83,6 +83,7 @@ export function parseChatSendRequest(payload: unknown): ChatSendRequest | null {
 }
 
 function payloadId(payload: unknown): string {
+  if (typeof payload === 'string') return payload;
   if (typeof payload === 'object' && payload !== null) {
     const id = (payload as { id?: unknown }).id;
     if (typeof id === 'string') return id;
