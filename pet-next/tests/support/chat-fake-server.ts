@@ -1,6 +1,10 @@
 /**
  * 聊天预览 E2E 的本地假服务：可编程延迟/错误/慢回复，记录收到的 {id,text} 与连接事件。
  *
+ * 现状（M3-0 收尾）：E2E 已改走正式入口 `pnpm chat:preview`，入口自带
+ * adapters/chat/fake-server.ts，本文件不再被 tests/chat.e2e.test.ts 引用；
+ * 保留作独立手工冒烟与 /__state 观测基线（协议与历史记录见 tests/chat-evidence）。
+ *
  * 协议（已同步全队；主进程 Provider 以 PET_NEXT_CHAT_FAKE_URL 指向本服务）：
  *   POST {base}/（或任意非 /__* 路径）body {"id":"chat-...","text":"..."}
  *     - ok 模式：HTTP 200，{"id":<同请求>,"text":"演示回复：已收到「<原文>」"}

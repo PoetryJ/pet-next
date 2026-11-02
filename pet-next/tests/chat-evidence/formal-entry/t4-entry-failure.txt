@@ -1,0 +1,40 @@
+# T4 正式入口失败路径：fake 端口被占用 → 非零退出
+# 记录时间: 2026-11-02T11:52:25.464Z
+# 用例: t4-entry-failure
+
+cmd: DISPLAY=:94 PET_NEXT_CHAT_DEBUG_PORT=38199 PET_NEXT_FAKE_CHAT_PORT=40465 pnpm chat:preview
+entry exit: code=1 signal=null
+stdout tail:
+
+> pet-next@0.1.0 chat:preview /data3/DATA/project/project_meishijiang/dsh-pet-wt/m3d-e2e/pet-next
+> pnpm build && node scripts/chat-demo.mjs
+
+
+> pet-next@0.1.0 build /data3/DATA/project/project_meishijiang/dsh-pet-wt/m3d-e2e/pet-next
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+
+[fake-stderr] node:net:1948
+[fake-stderr] const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+[fake-stderr] ^
+[fake-stderr] Error: listen EADDRINUSE: address already in use 127.0.0.1:40465
+[fake-stderr] at Server.setupListenHandle [as _listen2] (node:net:1948:16)
+[fake-stderr] at listenInCluster (node:net:2005:12)
+[fake-stderr] at node:net:2214:7
+[fake-stderr] at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+[fake-stderr] code: 'EADDRINUSE',
+[fake-stderr] errno: -98,
+[fake-stderr] syscall: 'listen',
+[fake-stderr] address: '127.0.0.1',
+[fake-stderr] port: 40465
+[fake-stderr] }
+[fake-stderr] Node.js v24.14.0
+{"event":"fake-chat-server-exit","code":1,"signal":null}
+{"event":"chat-demo-failed","reason":"fake-exit","exit":1,"code":1,"signal":null}
+{"event":"chat-demo-done","offline_ready":false,"exit":1,"fakeUrl":null,"electronStarted":false}
+ ELIFECYCLE  Command failed with exit code 1.
+
+stderr tail:
+chat-demo 失败：fake-exit
+
+失败后本次进程树存活 pid: []
+PASS
