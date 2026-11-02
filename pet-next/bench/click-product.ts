@@ -16,7 +16,7 @@
 import { spawn, type ChildProcess, execFile } from 'node:child_process';
 import { createRequire } from 'node:module';
 import { mkdir, mkdtemp, readFile, writeFile } from 'node:fs/promises';
-import { writeFileSync } from 'node:fs';
+import { existsSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -196,6 +196,8 @@ function renderReport(input: {
   samplesPerRound: number;
   controlSamples: number;
   armsRun: boolean;
+  controlsRun: boolean;
+  failures: readonly string[];
 }): string {
   const lines: string[] = [];
   lines.push('# 产品真实回应观测（runs-click-product）');
@@ -228,20 +230,23 @@ function renderReport(input: {
   lines.push('');
   const positive = input.positive;
   const negative = input.negative;
-  if (positive) {
-    lines.push(
-      `- 正控（可用素材 short.webm ×${input.controlSamples}）：回应观测 ${positive.observedCount}/${positive.count}，` +
-        `回应 P50 ${cell(positive.responseObservedP50)} ms，endState 分布 ${JSON.stringify(positive.endStates)}。`,
-    );
+  if (!input.controlsRun) {
+    lines.push('- 本次未运行（`--arms-only`）；观测链对照验证见本目录下更早的 controls run（正控 3/3 命中目标帧，负控 3/3 load-failed 全 null）。');
+  } else {
+    if (positive) {
+      lines.push(
+        `- 正控（可用素材 short.webm ×${input.controlSamples}）：回应观测 ${positive.observedCount}/${positive.count}，` +
+          `回应 P50 ${cell(positive.responseObservedP50)} ms，endState 分布 ${JSON.stringify(positive.endStates)}。`,
+      );
+    }
+    if (negative) {
+      lines.push(
+        `- 负控（损坏素材 ×${input.controlSamples}）：回应观测 ${negative.observedCount}/${negative.count}（应为 0），` +
+          `endState 分布 ${JSON.stringify(negative.endStates)}。`,
+      );
+    }
+    lines.push('- 关键帧截图证据：`evidence/`（对照组每个样本在首帧与回应时刻各一张）。');
   }
-  if (negative) {
-    lines.push(
-      `- 负控（损坏素材 ×${input.controlSamples}）：回应观测 ${negative.observedCount}/${negative.count}（应为 0），` +
-        `endState 分布 ${JSON.stringify(negative.endStates)}。`,
-    );
-  }
-  if (!positive && !negative) lines.push('- 未运行（本次只跑主臂）。');
-  lines.push('- 关键帧截图证据：`evidence/`（对照组每个样本在首帧与回应时刻各一张）。');
   lines.push('');
   lines.push('## 主臂（每臂 ' + (input.armsRun ? `${input.rounds} 轮 × ${input.samplesPerRound} 样本` : 'not-run') + '）');
   lines.push('');
@@ -272,10 +277,40 @@ function renderReport(input: {
   lines.push('- 物理输入设备与物理屏幕呈现延迟未测量（软件输入 + 软件呈帧证据口径）。');
   lines.push('- 姿态（画面内容）核实仅限对照组关键帧截图（evidence/），主臂只依据 rVFC mediaTime 判据。');
   lines.push('- 呈帧 mediaTime 由 Chromium 报告；丢帧时观测帧号可能大于目标帧号（样本内如实记录）。');
+  if (input.failures.length > 0) lines.push(`- 单元失败（重试后仍失败，不计入样本）：${input.failures.join('、')}。`);
   return lines.join('\n');
 }
 
+/**
+ * 自管 Xvfb：外部 Xvfb 可能中途死亡（本次实测踩过），display 归驱动管，
+ * 退出时收尾。起不来则回退继承的 DISPLAY（由调用方保证）。
+ */
+async function ensureDisplay(): Promise<{ display: string; stop: () => void } | null> {
+  const display = `:${100 + (process.pid % 800)}`;
+  const socket = `/tmp/.X11-unix/X${display.slice(1)}`;
+  let child: ChildProcess | null = null;
+  try {
+    child = spawn('Xvfb', [display, '-screen', '0', '1280x800x24', '-nolisten', 'tcp'], { stdio: 'ignore' });
+  } catch {
+    return null;
+  }
+  const deadline = Date.now() + 8000;
+  while (Date.now() < deadline) {
+    if (existsSync(socket)) return { display, stop: () => child?.kill('SIGTERM') };
+    if (child.exitCode !== null) break;
+    await new Promise((resolve) => setTimeout(resolve, 100));
+  }
+  child.kill('SIGTERM');
+  return null;
+}
+
 async function main(): Promise<void> {
+  const xvfb = await ensureDisplay();
+  if (xvfb) {
+    process.env['DISPLAY'] = xvfb.display;
+    process.on('exit', () => xvfb.stop());
+    console.log(`[click-product] 自管 Xvfb ${xvfb.display}`);
+  }
   console.log(`[click-product] runRoot=${runRoot}`);
   await buildAll();
 
@@ -346,15 +381,30 @@ async function main(): Promise<void> {
   }
 
   const all: ProductClickSample[] = [];
+  const failures: string[] = [];
   for (const unit of units) {
     console.log(`[click-product] 运行 ${unit.label}（${unit.samples} 样本）`);
-    const rows = (await runUnit(unit)) as Array<ProductClickSample & Record<string, unknown>>;
+    // 单元级重试一次：进程级偶发死亡（X/gpu）不应毁掉整轮采集。
+    let rows: Array<ProductClickSample & Record<string, unknown>> | null = null;
+    for (let attempt = 1; attempt <= 2 && rows === null; attempt += 1) {
+      try {
+        rows = (await runUnit(unit)) as Array<ProductClickSample & Record<string, unknown>>;
+      } catch (error) {
+        console.log(`[click-product] ${unit.label} 第 ${attempt} 次失败：${String(error)}`);
+      }
+    }
+    if (rows === null) {
+      failures.push(unit.label);
+      continue;
+    }
+    if (rows.length < unit.samples) console.log(`[click-product] ${unit.label} 样本不足：${rows.length}/${unit.samples}`);
     for (const row of rows) {
       row['unit'] = unit.label;
       row['round'] = unit.round;
       all.push(row);
     }
   }
+  if (failures.length > 0) console.log(`[click-product] 失败单元：${failures.join('、')}`);
 
   const byArm = (arm: string): ProductClickSample[] => all.filter((sample) => sample.label.startsWith(arm));
   const controlPositive = byArm('positive-short');
@@ -381,7 +431,7 @@ async function main(): Promise<void> {
   });
 
   await writeFile(path.join(runRoot, 'product-click-samples.jsonl'), all.map((row) => JSON.stringify(row)).join('\n') + '\n');
-  await writeFile(path.join(runRoot, 'summaries.json'), `${JSON.stringify(summaries, null, 2)}\n`);
+  await writeFile(path.join(runRoot, 'summaries.json'), `${JSON.stringify({ ...summaries, unitFailures: failures }, null, 2)}\n`);
   await writeFile(
     path.join(runRoot, 'environment.json'),
     `${JSON.stringify(
@@ -426,6 +476,8 @@ async function main(): Promise<void> {
     samplesPerRound: SAMPLES_PER_ROUND,
     controlSamples: CONTROL_SAMPLES,
     armsRun,
+    controlsRun: !armsOnly,
+    failures,
   });
   await writeFile(path.join(runRoot, 'report.md'), `${report}\n`);
   console.log(`[click-product] 完成：${runRoot}`);

@@ -1,0 +1,63 @@
+{
+  "controlPositive": {
+    "arm": "control-positive",
+    "count": 0,
+    "observedCount": 0,
+    "endStates": {},
+    "playResolvedP50": null,
+    "playResolvedP95": null,
+    "firstFrameP50": null,
+    "firstFrameP95": null,
+    "responseObservedP50": null,
+    "responseObservedP95": null,
+    "firstFramePlusOnsetEstimateP50": null,
+    "materialOnsetMs": 250
+  },
+  "controlNegative": {
+    "arm": "control-negative",
+    "count": 0,
+    "observedCount": 0,
+    "endStates": {},
+    "playResolvedP50": null,
+    "playResolvedP95": null,
+    "firstFrameP50": null,
+    "firstFrameP95": null,
+    "responseObservedP50": null,
+    "responseObservedP95": null,
+    "firstFramePlusOnsetEstimateP50": null,
+    "materialOnsetMs": null
+  },
+  "singleFull": {
+    "arm": "single-full",
+    "count": 90,
+    "observedCount": 90,
+    "endStates": {
+      "response-observed": 90
+    },
+    "playResolvedP50": 72.89999961853027,
+    "playResolvedP95": 80.30000114440918,
+    "firstFrameP50": 80.10000038146973,
+    "firstFrameP95": 87.5,
+    "responseObservedP50": 2530.7000007629395,
+    "responseObservedP95": 2542.5,
+    "firstFramePlusOnsetEstimateP50": 2538.433333714803,
+    "materialOnsetMs": 2458.3333333333335
+  },
+  "singleShort": {
+    "arm": "single-short",
+    "count": 90,
+    "observedCount": 90,
+    "endStates": {
+      "response-observed": 90
+    },
+    "playResolvedP50": 76.10000038146973,
+    "playResolvedP95": 81.30000114440918,
+    "firstFrameP50": 82.69999885559082,
+    "firstFrameP95": 87.39999961853027,
+    "responseObservedP50": 316.8000011444092,
+    "responseObservedP95": 337.3999996185303,
+    "firstFramePlusOnsetEstimateP50": 332.6999988555908,
+    "materialOnsetMs": 250
+  },
+  "unitFailures": []
+}
