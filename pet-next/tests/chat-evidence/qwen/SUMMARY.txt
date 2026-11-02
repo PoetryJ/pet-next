@@ -214,3 +214,14 @@ M3-1 Qwen 真实调用验收 —— 汇总（agent D）
   如果先并接线再跑，一旦失败就分不清是 provider 问题还是会话接缝问题；先在只有 provider 的分支上跑绿，
   证明"timeoutMs 注入面在 provider 侧独立成立"，后续若并接线后变红，范围立刻收敛到会话/装配层。
   这也是本项目"假绿"最容易被掩盖的位置（超时/取消恰好都跨 provider 与 session 两层）。
+
+六、负责人 chat:local 入口冒烟（2026-11-02T20:58+08:00，集成分支）
+------------------------------------------------
+    命令：DISPLAY=:99 PET_NEXT_CHAT_DEBUG_PORT=9226 PET_NEXT_USER_DATA=<tmp> pnpm chat:local --probe
+    结果：exit 0。
+      entry 自报 {"event":"chat-local-ready","mode":"local","baseUrl":"http://127.0.0.1:18872/v1","model":"qwen3.8-27b"}
+      页面面板：hasPanel=true、root dataset.mode=local、note=null（真实模式无"演示回复"说明）
+      打开面板 → phase=open；Browser.close 关窗 → 入口 exit 0；无残留 electron 进程
+    真实调用增量：--probe 预检 GET /models 1 次（本报告计数：27 + 1 = 28/30，余 2 次留 Codex 验收）
+    证据：logs/chat-evidence/qwen-local-smoke/{smoke-stdout.ndjson,local-panel-closed.png,local-panel-open.png}（不入库）
+    说明：冒烟不发 chat；真实回复/取消/关窗路径见 D 的产品路径记录（product-paths）。
