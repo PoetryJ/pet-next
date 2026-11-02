@@ -201,3 +201,19 @@ C 的面板未加 data-testid，但 class 命名与我的 testid 清单同名。
     - "旧迟到回复"只用 DOM 证明未上屏 + socket 证明请求已撤销；没有 fake 侧 respondedAt 记录
       （见 [11]），故不宣称"迟到响应已产出但被丢弃"。
     - 面板视觉/可读性无设计评审；本章只证明 320x240 视口内六控件可点、不越界。
+
+[13] 负责人独立复现（2026-11-02T19:56+08:00，集成分支 HEAD=合并后，DISPLAY=:99）
+------------------------------------------------
+    正式入口：pnpm chat:preview（带 PET_NEXT_CHAT_DEBUG_PORT=9224、PET_NEXT_USER_DATA=临时目录、PET_NEXT_TEST=1）
+    驱动：CDP Input.dispatchMouseEvent 真实点击 + Input.insertText 真实文本输入；DOM 只读状态/矩形
+    折叠/打开矩形（320x240 视口）：
+      toggle (278,198,34,34) inViewport=true
+      打开后 root(48,66,264,166) panel(48,104,264,128) title(57,108,43,14)
+      close(287,107,16,16) input(57,168,246,34) send(233,206,31,20) cancel(272,206,31,20)
+      viewport-checks: root/panel/title/close/input/send/cancel 全 true
+    路径：open → 输入"你好，今天吃点什么？" → 回复（bots 1 条）→ [slow] 发送 → pending（发送中…）
+      → 点取消 → cancelled（已取消，bots 未新增）→ 立即重发 → 新回复（bots 2 条）
+    关窗：CDP Browser.close → pnpm chat:preview 退出码 0；残留进程 0（pgrep electron/fake 均空）
+    证据：logs/chat-evidence/closeout-demo/{1-open,2-reply,3-cancelled,4-resend}.png、
+          demo-stdout.ndjson（本次 stdout 全文，含全部 state/rects 记录）
+    说明：修复前面板在 320x240 下 root 会超出视口（标题被裁）；修复后所有控件矩形在 0..320 x 0..240 内。
