@@ -1,11 +1,19 @@
 /**
- * M3-0 文字对话预览面板：纯注入、无框架，仅由接线方在预览开关下挂载；普通入口不加载，M2 零改动。
+ * 文字对话面板：纯注入、无框架，仅由接线方在预览/本地开关下挂载；普通入口不加载，M2 零改动。
  * 面板自持状态机（closed→open→typing→pending→{reply|error|cancelled}），迟到结果按当前会话 id 隔离；
  * DOM 全用 createElement+textContent（绝不 innerHTML）；指针/按键事件在面板根内截停，不影响宠物。
  * 视口约束：挂载时按实际视口高度写入面板 max-height（320×240 窗口下不越界），标题/关闭/输入/发送/取消恒可见。
+ * 模式区分（M3-1）：demo 保留假数据提示与「演示回复」标签；local 去掉假数据提示、标签为「Qwen · 服务器模型」，
+ * 失败/超时/取消一律按错误或已取消渲染，绝不静默降级成演示回复。
  * @module pet-next/app/chat-panel
  */
-import { CHAT_MAX_INPUT_CHARS, type ChatSendRequest, type ChatSendResult } from '../contracts/chat.ts';
+import {
+  CHAT_MAX_INPUT_CHARS,
+  type ChatDisplayInfo,
+  type ChatMode,
+  type ChatSendRequest,
+  type ChatSendResult,
+} from '../contracts/chat.ts';
 
 /** 面板使用的模型客户端（接线方注入：指向 IPC 或测试桩）。 */
 export interface ChatPanelClient {
@@ -42,6 +50,23 @@ export function phaseForResult(status: ChatSendResult['status']): 'reply' | 'err
   if (status === 'ok') return 'reply';
   if (status === 'error') return 'error';
   return 'cancelled';
+}
+
+/** 归一化展示信息（纯函数）：只有显式 local 才走真实模型，其余一切（含缺省）按 demo。 */
+export function normalizeChatMode(info?: ChatDisplayInfo | null): ChatMode {
+  return info?.mode === 'local' ? 'local' : 'demo';
+}
+
+/** demo 的假数据提示文案；local 模式不渲染该提示。 */
+export const CHAT_DEMO_NOTE = '以下回复均为演示回复（预览假数据），非真实模型输出。';
+/** local 模式没有真实模型名时的回退标签。 */
+export const CHAT_LOCAL_TAG_FALLBACK = 'Qwen · 服务器模型';
+
+/** 回复标签（纯函数）：demo 明示假数据；local 明示真实模型来源，有模型名则带上。 */
+export function replyTagFor(info?: ChatDisplayInfo | null): string {
+  if (normalizeChatMode(info) === 'demo') return '演示回复';
+  const model = info?.model?.trim();
+  return model ? `Qwen · ${model}` : CHAT_LOCAL_TAG_FALLBACK;
 }
 
 /**
@@ -86,16 +111,23 @@ function nextRequestId(): string {
 
 /**
  * 挂载聊天面板。面板以独立子树追加进 root；unmount 对在途 id 调 client.cancel 并移除 DOM/事件。
+ * info 缺省按 demo（冻结行为不变）；接线方拿到 chat:info 后传 {mode,model} 即切换到真实模型口径。
  */
 export function mountChatPanel(
   root: HTMLElement,
   client: ChatPanelClient,
+  info: ChatDisplayInfo = { mode: 'demo' },
   options: ChatPanelMountOptions = {},
 ): ChatPanelHandle {
+  const mode = normalizeChatMode(info);
+  const replyTag = replyTagFor(info);
+
   const panelRoot = document.createElement('div');
   panelRoot.className = 'chat-panel-root';
   panelRoot.dataset.testid = 'chat-panel';
   panelRoot.dataset.state = 'closed';
+  // 供接线/E2E/样式区分口径：data-mode ∈ demo|local（不是 data-testid 契约的一部分）。
+  panelRoot.dataset.mode = mode;
 
   const toggle = document.createElement('button');
   toggle.setAttribute('type', 'button');
@@ -126,11 +158,14 @@ export function mountChatPanel(
   closeBtn.dataset.testid = 'chat-close';
   closeBtn.textContent = '×';
   head.appendChild(title);
+  if (mode === 'local') {
+    // 真实模式在标题旁常驻来源标识：不必等第一条回复就能看出不是演示数据。
+    const badge = document.createElement('span');
+    badge.className = 'chat-mode-badge';
+    badge.textContent = replyTag;
+    head.appendChild(badge);
+  }
   head.appendChild(closeBtn);
-
-  const note = document.createElement('div');
-  note.className = 'chat-note';
-  note.textContent = '以下回复均为演示回复（预览假数据），非真实模型输出。';
 
   const log = document.createElement('div');
   log.className = 'chat-log';
@@ -166,7 +201,13 @@ export function mountChatPanel(
   composer.appendChild(actions);
 
   panel.appendChild(head);
-  panel.appendChild(note);
+  if (mode === 'demo') {
+    // 只有 demo 才有假数据提示；local 绝不留「预览假数据」字样。
+    const note = document.createElement('div');
+    note.className = 'chat-note';
+    note.textContent = CHAT_DEMO_NOTE;
+    panel.appendChild(note);
+  }
   panel.appendChild(log);
   panel.appendChild(composer);
   panelRoot.appendChild(toggle);
@@ -208,8 +249,9 @@ export function mountChatPanel(
     entry.className = 'chat-entry chat-entry-bot';
     entry.dataset.testid = 'chat-msg-assistant';
     const tag = document.createElement('span');
-    tag.className = 'chat-demo-tag';
-    tag.textContent = '演示回复';
+    // 标签类名随模式变：demo 保留 .chat-demo-tag（既有 E2E 依赖），local 用 .chat-model-tag。
+    tag.className = mode === 'local' ? 'chat-model-tag' : 'chat-demo-tag';
+    tag.textContent = replyTag;
     entry.appendChild(tag);
     const body = document.createElement('span');
     body.className = 'chat-entry-text';
@@ -248,10 +290,13 @@ export function mountChatPanel(
     if (disposed || activeId !== id) return;
     activeId = null;
     busy = false;
-    outcome = phaseForResult(result.status);
+    // local 绝不静默降级：ok 但无正文等于链路失败，按 provider-error 渲染，不渲染空「成功回复」。
+    const degraded = mode === 'local' && result.status === 'ok' && (result.text ?? '').trim() === '';
+    const status: ChatSendResult['status'] = degraded ? 'error' : result.status;
+    outcome = phaseForResult(status);
     clearStatusEntry();
-    if (result.status === 'ok') appendBotEntry(result.text ?? '');
-    else if (result.status === 'error') appendEntry('error', `发送失败（${result.code ?? 'provider-error'}）`);
+    if (status === 'ok') appendBotEntry(result.text ?? '');
+    else if (status === 'error') appendEntry('error', `发送失败（${degraded ? 'provider-error' : result.code ?? 'provider-error'}）`);
     else appendEntry('status', '已取消');
     updateComposer();
     syncState();

@@ -1,18 +1,27 @@
 /**
  * 聊天面板单测：Node 无 DOM，自建最小 DOM 桩（仅本文件用，不新增依赖）。
- * 覆盖任务 9 条交互态 + 纯函数判定；请求结果用受控 Promise 驱动迟到/隔离场景。
+ * 覆盖交互态 + 纯函数判定 + demo/local 模式口径；请求结果用受控 Promise 驱动迟到/隔离场景。
  */
 import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
-import { CHAT_MAX_INPUT_CHARS, type ChatSendRequest, type ChatSendResult } from '../contracts/chat.ts';
 import {
+  CHAT_MAX_INPUT_CHARS,
+  type ChatDisplayInfo,
+  type ChatSendRequest,
+  type ChatSendResult,
+} from '../contracts/chat.ts';
+import {
+  CHAT_DEMO_NOTE,
+  CHAT_LOCAL_TAG_FALLBACK,
   CHAT_PANEL_MAX_HEIGHT_PX,
   CHAT_VIEWPORT_RESERVE_PX,
   enterShouldSend,
   mountChatPanel,
+  normalizeChatMode,
   panelMaxHeight,
   phaseForResult,
+  replyTagFor,
   resolveViewportHeight,
   validateChatInput,
   type ChatPanelClient,
@@ -214,9 +223,14 @@ interface Harness {
   unmount(): void;
 }
 
-function mount(controlled: Controlled, options?: ChatPanelMountOptions): Harness {
+/** demo 展示信息：缺省口径，保留 M3-0 的假数据提示与「演示回复」标签。 */
+const DEMO: ChatDisplayInfo = { mode: 'demo' };
+/** local 展示信息：真实服务已连上时的模型名。 */
+const LOCAL: ChatDisplayInfo = { mode: 'local', model: 'qwen3.8-27b' };
+
+function mount(controlled: Controlled, info: ChatDisplayInfo = DEMO, options?: ChatPanelMountOptions): Harness {
   const root = new StubElement('div');
-  const handle = mountChatPanel(root as unknown as HTMLElement, controlled.client, options);
+  const handle = mountChatPanel(root as unknown as HTMLElement, controlled.client, info, options);
   const panelRoot = root.children[0] ?? assert.fail('panel root missing');
   const open = () => find(panelRoot, 'chat-toggle').dispatch('click');
   return {
@@ -474,6 +488,16 @@ test('纯函数：validateChatInput 边界与 enterShouldSend/phaseForResult 判
   assert.equal(phaseForResult('ok'), 'reply');
   assert.equal(phaseForResult('error'), 'error');
   assert.equal(phaseForResult('cancelled'), 'cancelled');
+
+  // 模式口径：只有显式 local 才算真实模型；标签带模型名，空/缺省回退固定文案。
+  assert.equal(normalizeChatMode(undefined), 'demo');
+  assert.equal(normalizeChatMode(null), 'demo');
+  assert.equal(normalizeChatMode({ mode: 'demo' }), 'demo');
+  assert.equal(normalizeChatMode({ mode: 'local' }), 'local');
+  assert.equal(replyTagFor({ mode: 'demo', model: 'qwen3.8-27b' }), '演示回复');
+  assert.equal(replyTagFor({ mode: 'local' }), CHAT_LOCAL_TAG_FALLBACK);
+  assert.equal(replyTagFor({ mode: 'local', model: '   ' }), CHAT_LOCAL_TAG_FALLBACK);
+  assert.equal(replyTagFor({ mode: 'local', model: 'qwen3.8-27b' }), 'Qwen · qwen3.8-27b');
 });
 
 test('10 视口约束：panelMaxHeight/resolveViewportHeight 边界，挂载按视口写入面板行内 max-height', () => {
@@ -489,10 +513,10 @@ test('10 视口约束：panelMaxHeight/resolveViewportHeight 边界，挂载按�
   assert.equal(resolveViewportHeight(240), 240);
   assert.equal(resolveViewportHeight(Number.NaN), null);
 
-  const small = mount(createClient(), { viewportHeight: 240 });
+  const small = mount(createClient(), DEMO, { viewportHeight: 240 });
   assert.equal(small.panelBody.style.maxHeight, '190px');
 
-  const big = mount(createClient(), { viewportHeight: 900 });
+  const big = mount(createClient(), DEMO, { viewportHeight: 900 });
   assert.equal(big.panelBody.style.maxHeight, '320px');
 
   // 未注入时读真实视口（浏览器里等同 window.innerHeight）。
@@ -511,7 +535,7 @@ test('10 视口约束：panelMaxHeight/resolveViewportHeight 边界，挂载按�
 
 test('11 结构：标题/关闭/滚动正文/输入/发送/取消齐备，正文列表为中间可滚动区，data-testid 契约不变', async () => {
   const c = createClient();
-  const h = mount(c, { viewportHeight: 240 });
+  const h = mount(c, DEMO, { viewportHeight: 240 });
   const panelBody = h.panelBody;
   assert.deepEqual(
     panelBody.children.map((child) => child.className),
@@ -577,6 +601,131 @@ test('12 CSS 视口方案静态校验：面板高度受 100vh 约束，仅 chat-
     cssPx(css, '--chat-gap') +
     cssPx(css, '--chat-top-margin');
   assert.equal(reserve, CHAT_VIEWPORT_RESERVE_PX, `CSS 预留 ${reserve}px 与 TS 常量不一致`);
+});
+
+test('13 demo/local 挂载差异：demo 有假数据提示与「演示回复」，local 无提示且标签为「Qwen · 模型名」', async () => {
+  const demoClient = createClient();
+  const demo = mount(demoClient);
+  assert.equal(demo.panelRoot.dataset.mode, 'demo');
+  const demoNote = findAll(demo.panelRoot, 'chat-note')[0] ?? assert.fail('demo 必须有假数据提示');
+  assert.equal(demoNote.textContent, CHAT_DEMO_NOTE);
+  assert.equal(findAll(demo.panelRoot, 'chat-mode-badge').length, 0, 'demo 不显示真实模型标识');
+
+  demo.open();
+  demo.input.value = '演示问';
+  demo.input.dispatch('input');
+  demo.enter();
+  const demoId = demoClient.calls.send[0]?.id ?? '';
+  demoClient.settle(demoId, { id: demoId, status: 'ok', text: '演示回答' });
+  await Promise.resolve();
+  assert.equal(find(demo.panelRoot, 'chat-demo-tag').textContent, '演示回复');
+  assert.equal(findAll(demo.panelRoot, 'chat-model-tag').length, 0);
+
+  const localClient = createClient();
+  const local = mount(localClient, LOCAL);
+  assert.equal(local.panelRoot.dataset.mode, 'local');
+  assert.equal(findAll(local.panelRoot, 'chat-note').length, 0, 'local 不得留「预览假数据」提示');
+  assert.equal(find(local.panelRoot, 'chat-mode-badge').textContent, 'Qwen · qwen3.8-27b');
+  assert.deepEqual(
+    local.panelBody.children.map((child) => child.className),
+    ['chat-head', 'chat-log', 'chat-composer'],
+    'local 面板：头 → 可滚动正文 → 固定输入区（无 note）',
+  );
+  assert.ok(find(local.panelRoot, 'chat-title').textContent.includes('文字对话预览'), '标题保持原样');
+
+  local.open();
+  local.input.value = '真实问';
+  local.input.dispatch('input');
+  local.enter();
+  const localId = localClient.calls.send[0]?.id ?? '';
+  localClient.settle(localId, { id: localId, status: 'ok', text: '真实回答' });
+  await Promise.resolve();
+  assert.equal(find(local.panelRoot, 'chat-model-tag').textContent, 'Qwen · qwen3.8-27b');
+  assert.equal(findAll(local.panelRoot, 'chat-demo-tag').length, 0, 'local 不得复用 demo 标签样式');
+  assert.ok(find(local.panelRoot, 'chat-log').textContent.includes('真实回答'));
+  assert.equal(byTestId(local.panelBody, 'chat-msg-assistant').parentNode, find(local.panelBody, 'chat-log'));
+});
+
+test('14 local 无模型名时回退「Qwen · 服务器模型」，面板全文不出现「演示」字样', async () => {
+  const c = createClient();
+  const h = mount(c, { mode: 'local' });
+  h.open();
+  h.input.value = '问一句';
+  h.input.dispatch('input');
+  h.enter();
+  const id = c.calls.send[0]?.id ?? '';
+  c.settle(id, { id, status: 'ok', text: '一句回答' });
+  await Promise.resolve();
+
+  assert.equal(find(h.panelRoot, 'chat-model-tag').textContent, CHAT_LOCAL_TAG_FALLBACK);
+  assert.equal(find(h.panelRoot, 'chat-mode-badge').textContent, CHAT_LOCAL_TAG_FALLBACK);
+  assert.ok(!h.panelRoot.textContent.includes('演示'), 'local 面板不得出现「演示」字样');
+
+  // data-testid 契约不变（D 的 E2E 依赖这些 id）。
+  const ids = collectTestIds(h.panelRoot);
+  for (const testId of [
+    'chat-panel',
+    'chat-toggle',
+    'chat-panel-open',
+    'chat-input',
+    'chat-send',
+    'chat-cancel',
+    'chat-close',
+    'chat-msg-user',
+    'chat-msg-assistant',
+  ]) {
+    assert.ok(ids.includes(testId), `缺少 data-testid=${testId}`);
+  }
+});
+
+test('15 local 失败/超时/取消/空正文：只渲染错误或已取消，绝不出现假回复或成功态', async () => {
+  const c = createClient();
+  const h = mount(c, LOCAL);
+  h.open();
+  const assistantCount = () => collectTestIds(h.panelRoot).filter((id) => id === 'chat-msg-assistant').length;
+
+  h.input.value = '会超时';
+  h.input.dispatch('input');
+  h.enter();
+  const timeoutId = c.calls.send[0]?.id ?? '';
+  c.settle(timeoutId, { id: timeoutId, status: 'error', code: 'timeout' });
+  await Promise.resolve();
+  assert.equal(h.panelRoot.dataset.state, 'error');
+  assert.ok(h.logTexts().some((t) => t.includes('发送失败（timeout）')));
+  assert.equal(assistantCount(), 0, 'local 失败必须没有回复气泡');
+
+  // ok 但正文为空：视为链路失败，不渲染空「成功回复」。
+  h.input.value = '空回复';
+  h.input.dispatch('input');
+  h.enter();
+  const emptyId = c.calls.send[1]?.id ?? '';
+  c.settle(emptyId, { id: emptyId, status: 'ok', text: '   ' });
+  await Promise.resolve();
+  assert.equal(h.panelRoot.dataset.state, 'error');
+  assert.ok(h.logTexts().some((t) => t.includes('发送失败（provider-error）')));
+  assert.equal(assistantCount(), 0);
+
+  // client.send reject：同样按 provider-error，不降级成演示回复。
+  h.input.value = '会抛错';
+  h.input.dispatch('input');
+  h.enter();
+  const failId = c.calls.send[2]?.id ?? '';
+  c.fail(failId);
+  await Promise.resolve();
+  assert.equal(h.panelRoot.dataset.state, 'error');
+  assert.ok(h.logTexts().some((t) => t.includes('发送失败（provider-error）')));
+  assert.equal(assistantCount(), 0);
+
+  // 取消：只显示「已取消」，没有回复气泡。
+  h.input.value = '要取消';
+  h.input.dispatch('input');
+  h.enter();
+  h.cancelBtn.dispatch('click');
+  await Promise.resolve();
+  assert.equal(h.panelRoot.dataset.state, 'cancelled');
+  assert.ok(h.logTexts().some((t) => t.includes('已取消')));
+  assert.equal(assistantCount(), 0);
+  assert.ok(!h.panelRoot.textContent.includes('演示'), 'local 任何失败路径都不得出现「演示」字样');
 });
 
 /** 读样式表原文（静态校验用，无需 DOM/CSS 引擎）。 */
