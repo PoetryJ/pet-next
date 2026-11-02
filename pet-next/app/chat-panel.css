@@ -1,0 +1,214 @@
+/*
+ * M3-0 文字对话预览面板样式。独立加载（接线方在 page.html 预览开关下引入），不依赖 page.css。
+ * 类名清单见文件底部注释，供接线与测试对照。
+ */
+
+.chat-panel-root {
+  position: fixed;
+  right: 8px;
+  bottom: 8px;
+  z-index: 40;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-end;
+  gap: 6px;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+  color: #222;
+  pointer-events: auto;
+  user-select: none;
+}
+
+.chat-toggle {
+  width: 34px;
+  height: 34px;
+  border-radius: 50%;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: rgba(255, 255, 255, 0.92);
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+}
+
+.chat-toggle:hover {
+  background: #fff;
+}
+
+.chat-panel {
+  width: 264px;
+  max-height: 320px;
+  display: flex;
+  flex-direction: column;
+  border-radius: 10px;
+  border: 1px solid rgba(0, 0, 0, 0.2);
+  background: rgba(255, 255, 255, 0.96);
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.3);
+  overflow: hidden;
+  user-select: text;
+}
+
+.chat-panel[hidden] {
+  display: none;
+}
+
+.chat-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 6px 10px;
+  background: rgba(0, 0, 0, 0.05);
+  border-bottom: 1px solid rgba(0, 0, 0, 0.08);
+}
+
+.chat-title {
+  font-size: 12px;
+  font-weight: 600;
+}
+
+.chat-close {
+  border: none;
+  background: none;
+  font-size: 14px;
+  line-height: 1;
+  cursor: pointer;
+  color: #555;
+  padding: 2px 4px;
+}
+
+.chat-note {
+  padding: 4px 10px;
+  font-size: 11px;
+  color: #8a6d1a;
+  background: #fff8dc;
+  border-bottom: 1px solid rgba(0, 0, 0, 0.06);
+}
+
+.chat-log {
+  flex: 1;
+  min-height: 72px;
+  max-height: 160px;
+  overflow-y: auto;
+  padding: 8px 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-entry {
+  font-size: 12px;
+  line-height: 1.5;
+  padding: 4px 8px;
+  border-radius: 8px;
+  max-width: 92%;
+  word-break: break-word;
+  white-space: pre-wrap;
+}
+
+.chat-entry-user {
+  align-self: flex-end;
+  background: #d9ecff;
+}
+
+.chat-entry-bot {
+  align-self: flex-start;
+  background: #f1f1f1;
+}
+
+.chat-entry-status {
+  align-self: center;
+  color: #777;
+  background: none;
+  padding: 2px;
+}
+
+.chat-entry-error {
+  align-self: flex-start;
+  color: #a33;
+  background: #fdecec;
+}
+
+.chat-demo-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 4px;
+  border: 1px solid #c9a227;
+  border-radius: 4px;
+  color: #8a6d1a;
+  font-size: 10px;
+  line-height: 16px;
+  vertical-align: middle;
+}
+
+.chat-composer {
+  padding: 8px 10px;
+  border-top: 1px solid rgba(0, 0, 0, 0.08);
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.chat-input {
+  resize: none;
+  font: inherit;
+  font-size: 12px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  padding: 6px;
+  box-sizing: border-box;
+  width: 100%;
+}
+
+.chat-input:focus {
+  outline: 1px solid #4a90d9;
+}
+
+.chat-hint {
+  font-size: 11px;
+  color: #a33;
+  min-height: 0;
+}
+
+.chat-hint:empty {
+  display: none;
+}
+
+.chat-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.chat-send,
+.chat-cancel {
+  font-size: 12px;
+  padding: 4px 12px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: #fff;
+  cursor: pointer;
+}
+
+.chat-send {
+  background: #4a90d9;
+  border-color: #3a7bc0;
+  color: #fff;
+}
+
+.chat-send:disabled,
+.chat-cancel:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+/* 状态标记：chat-panel-root[data-state] ∈ closed|open|typing|pending|reply|error|cancelled */
+.chat-panel-root[data-state='pending'] .chat-input {
+  background: #fafafa;
+}
+
+/*
+ * 类名清单（接线 page.html 用）：
+ * 容器与入口：chat-panel-root（含 data-state、is-open）、chat-toggle
+ * 面板：chat-panel（hidden 收起）、chat-head、chat-title、chat-close、chat-note
+ * 消息：chat-log、chat-entry（chat-entry-user/bot/status/error）、chat-demo-tag、chat-entry-text
+ * 输入：chat-composer、chat-input、chat-hint、chat-actions、chat-send、chat-cancel
+ */
