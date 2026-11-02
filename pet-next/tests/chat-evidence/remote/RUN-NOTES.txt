@@ -1,0 +1,56 @@
+M3-2 chat:remote 验收记录（集成负责人，2026-11-02）
+================================================
+基线：2787f29（M3-1 已通过）。分支：codex/pet-next-m3-windows。
+预算：真实模型调用 0 次（剩 1 次留 Codex）；全部用 fake HTTP + 可控 SSH 替身。
+
+一、测试层级声明（先读）
+------------------------------------------------
+- 本服务器为 Linux。下列结果均为「Linux + fake SSH 替身 + fake 模型服务」，
+  **不等于 Windows 通过**。Windows 由 scripts/verify-windows-chat-remote.ps1 在负责人电脑复跑。
+- 不建真实 SSH 连接、不请求服务器 127.0.0.1:18872、不消耗真实模型预算。
+- 替身：tests/support/fake-ssh.mjs（可编程：ok/auth-fail/port-conflict/no-listen/drop-after-ready）
+  与 fake-ssh-bin.sh（PATH 注入用）；fake 模型：tests/support/fake-model-service.mjs（/models + /v1/chat/completions）。
+
+二、模块测试（退出码 0）
+------------------------------------------------
+[1] 隧道生命周期 adapters/connection/tunnel.test.ts
+    命令：node --experimental-strip-types --test adapters/connection/tunnel.test.ts
+    结果：11/11 通过。覆盖：配置解析（默认/覆盖/fileConfig 优先/缺失/非法/端口相同）、
+    ssh 参数形状（-N、ExitOnForwardFailure、有界 ConnectTimeout、-L 回环、-p、-i、user@host）、
+    就绪成功、就绪超时 not-ready、端口冲突（不 spawn 不抢占）、认证失败 auth-failed、
+    同步/异步 ENOENT→ssh-missing、断线后 isAlive=false、重复 stop 幂等（只 kill 一次）。
+
+[2] chat:remote 编排 scripts/chat-remote-core.test.ts
+    命令：node --experimental-strip-types --test scripts/chat-remote-core.test.ts
+    结果：7/7 通过。覆盖：缺构建产物→非零+可读错误、配置缺失 config-invalid、隧道 auth-failed、
+    /models 缺模型 probe-failed 且隧道关闭、成功全链路（事件顺序、BASE/MODEL/TRANSPORT/LOCAL 注入、
+    退出码透传、隧道只停一次）、隧道断线杀 Electron 且非零、Ctrl-C 130 透传。
+
+三、正式入口 E2E（真实 Electron + CDP 真实鼠标/键盘）
+------------------------------------------------
+[3] tests/chat-remote.e2e.test.ts
+    命令：DISPLAY=:94 node --experimental-strip-types --test --test-concurrency=1 tests/chat-remote.e2e.test.ts
+    结果：2/2 通过（约 4.7s；Xvfb :94 自起自收）。
+    T1：pnpm chat:remote（fake SSH ok + fake 模型）→ 面板 mode=local、无"演示回复"说明、
+         标题徽标含「隧道」、六控件矩形在 320x240 内 → 真实鼠标点 toggle/输入框/发送 →
+         收到"隧道回复"→ 慢回复窗口内点取消→已取消 → 立即重发→第二条回复 → Browser.close →
+         入口退出码 0；ssh 替身日志含 fake-ssh-listening 与 fake-ssh-stopped（只关本次）。
+    T2：FAKE_SSH_MODE=auth-fail → 入口非零退出、stderr 含认证失败、不打印 chat-remote-ready、
+         本地转发端口未残留监听。
+
+四、Windows 复跑（not-run）
+------------------------------------------------
+- 服务端无 Windows 环境：**not-run**，如实记录。
+- 复跑脚本：scripts/verify-windows-chat-remote.ps1（记录 OS/Node/pnpm/Electron/ssh、命令、退出码、
+  耗时、退出后 ssh/electron 残留进程、桌面截图，写 windows-<stamp>/SUMMARY.txt）。
+- 复跑步骤：Windows 安装 OpenSSH → 配 PET_NEXT_SSH_* 或 %USERPROFILE%\.pet-next\qwen-remote.json →
+  pnpm install && pnpm build → powershell -ExecutionPolicy Bypass -File scripts\verify-windows-chat-remote.ps1 →
+  按提示操作（打开→输入→发送→取消→重发→关闭）→ 交回 windows-<stamp> 目录。
+- 未运行的项：Windows 系统缩放（高 DPI）、Windows 无边框窗点击、真实 SSH 认证与网络延迟。
+
+五、未证明项
+------------------------------------------------
+- 真实 SSH 隧道（本机与服务器之间的网络、密钥认证、断线重连）未经真实验证；只用替身证明编排与收尾。
+- Windows 客户端行为未运行（not-run）。
+- 服务器 18872 未在本轮被请求（预算纪律），真实模型质量沿用 M3-1 记录。
+- /models 探测与推理分别记账：本轮 0 次真实调用。

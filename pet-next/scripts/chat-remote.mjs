@@ -45,6 +45,7 @@ const code = await runRemote({
   env: process.env,
   signals: process,
   fileConfig: loaded.fileConfig,
+  sshBin: process.env.PET_NEXT_SSH_BIN ?? 'ssh',
   log: (line) => console.log(line),
   logError: (line) => console.error(line),
 });

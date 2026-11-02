@@ -24,7 +24,6 @@ import {
   type TunnelDeps,
   type TunnelErrorCode,
   type TunnelErrorInfo,
-  type TunnelHandle,
   type TunnelStartResult,
 } from '../../contracts/connection.ts';
 
@@ -182,7 +181,9 @@ export async function startTunnel(
   config: TunnelConfig,
   deps: TunnelDeps & { sshBin?: string } = {},
 ): Promise<TunnelStartResult> {
-  const spawnImpl = deps.spawn ?? (nodeSpawn as unknown as TunnelDeps['spawn']);
+  type SpawnLike = NonNullable<TunnelDeps['spawn']>;
+  const spawnImpl: SpawnLike =
+    deps.spawn ?? ((spawnArgs) => nodeSpawn(spawnArgs[0] as string, spawnArgs.slice(1) as string[]) as unknown);
   const fetchImpl = deps.fetchImpl ?? fetch;
   const now = deps.now ?? Date.now;
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
@@ -198,7 +199,7 @@ export async function startTunnel(
   const [bin, ...args] = sshArgs(config, sshBin);
   let child: ChildProcess;
   try {
-    child = spawnImpl([bin, ...args]) as ChildProcess;
+    child = spawnImpl([bin ?? sshBin, ...args]) as ChildProcess;
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === 'ENOENT') {

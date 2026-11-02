@@ -108,8 +108,12 @@ export async function runRemote(options = {}) {
       model,
     });
 
-    // 3) 建隧道（只管理本次进程）
-    const started = await startTunnelFn(tunnelConfig, { spawn, sshBin, fetchImpl });
+    // 3) 建隧道（只管理本次进程）。隧道层约定 spawn 接收"一个参数数组"；这里把 Node spawn 包成该形状。
+    const tunnelChildSpawn = (tunnelArgs) => {
+      if (tunnelArgs.length === 0) throw new Error('隧道启动参数为空');
+      return spawn(tunnelArgs[0], tunnelArgs.slice(1));
+    };
+    const started = await startTunnelFn(tunnelConfig, { spawn: tunnelChildSpawn, sshBin, fetchImpl });
     if (!started.ok) {
       const { code, message } = started.error;
       logError(`chat-remote 失败：${message}`);
@@ -129,6 +133,8 @@ export async function runRemote(options = {}) {
       return 1;
     }
     record({ event: REMOTE_EVENTS.probe, ok: true, baseUrl, models: probed.models ?? [] });
+    // 链路就绪（隧道 + 转发端模型均可用）；面板可用性由 Electron 侧 ready/local-ready 记录。
+    record({ event: REMOTE_EVENTS.ready, mode: 'local', baseUrl, model, transport: 'tunnel' });
 
     // 5) 复用 chat-local 真实模式起 Electron（不启动 fake、不启动模型）
     record({
