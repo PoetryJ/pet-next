@@ -171,7 +171,7 @@ function openWindowsDecoy(): Decoy {
     pid: run.pid,
     close: async () => {
       await run.stop();
-      if (pidIsAlive(run.pid)) signalPid(run.pid, true);
+      if (pidIsAlive(run.pid)) await signalPid(run.pid, true);
     },
   };
 }

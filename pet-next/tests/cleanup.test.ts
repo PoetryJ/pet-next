@@ -188,9 +188,9 @@ function exitText(exitCode: number | null): string {
 async function release(run: TrackedRun, decoy: Decoy): Promise<void> {
   const childPid = childPidFromMaybe(run.stdout());
   await run.stop();
-  if (childPid !== undefined && pidIsAlive(childPid)) signalPid(childPid, false);
+  if (childPid !== undefined && pidIsAlive(childPid)) await signalPid(childPid, false);
   await decoy.close();
-  if (pidIsAlive(decoy.pid)) signalPid(decoy.pid, true);
+  if (pidIsAlive(decoy.pid)) await signalPid(decoy.pid, true);
 }
 
 function childPidFromMaybe(stdout: string): number | undefined {
