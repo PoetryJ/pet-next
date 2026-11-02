@@ -1,8 +1,7 @@
 /**
- * M3-0 会话状态机骨架：冻结公共 API 形状，语义实现由 core/chat 负责人完成。
- * 骨架仅保证可编译与最小直通行为（TODO 标注处为必须补全的语义）：
- * 至多一在途、重复提交不新增调用、取消后迟到结果按 id 隔离、超时、输入校验、结果截断。
- * 不依赖 Electron、DOM、网络、系统时钟（时钟经 deps.now 注入）。
+ * M3-0 会话状态机：至多一在途、按 id 隔离迟到结果、总超时、输入校验与结果截断。
+ * 纯状态机：不依赖 Electron、DOM、网络；时间源经 deps.now 注入（默认真实时钟），
+ * 超时用 setTimeout 仅作为“检查时钟”的调度时机，判定一律以注入的 now() 对 deadline。
  * @module pet-next/core/chat/session
  */
 import {
@@ -10,20 +9,32 @@ import {
   CHAT_MAX_INPUT_CHARS,
   CHAT_MAX_RESULT_CHARS,
   CHAT_TOTAL_TIMEOUT_MS,
+  type ChatErrorCode,
   type ChatSendRequest,
   type ChatSendResult,
   type ChatSession,
   type ChatSessionDeps,
 } from './types.ts';
 
+/** 在途请求条目：settle 用 once 守卫，迟到结果只可能命中已结算分支而被丢弃。 */
+interface PendingEntry {
+  id: string;
+  controller: AbortController;
+  /** 请求级清理：撤计时器并在 entry 仍是当前在途时释放槽位（绝不误清新请求）。 */
+  settle(result: ChatSendResult): void;
+  /** 外部 cancel 命中本条目时使用：立刻以 cancelled 结算，不等 provider。 */
+  settleCancelled(): void;
+}
+
 export function createChatSession(deps: ChatSessionDeps): ChatSession {
+  const now = deps.now ?? Date.now;
   const timeoutMs = deps.timeoutMs ?? CHAT_TOTAL_TIMEOUT_MS;
   const maxInputChars = deps.maxInputChars ?? CHAT_MAX_INPUT_CHARS;
   const maxResultChars = deps.maxResultChars ?? CHAT_MAX_RESULT_CHARS;
-  let pending: { id: string; controller: AbortController } | null = null;
+  let pending: PendingEntry | null = null;
 
   function validate(request: ChatSendRequest): ChatErrorCode | null {
-    // TODO(A): 按 ChatSendRequest 校验 id 形状、空输入、超长。
+    if (request === null || typeof request !== 'object') return 'bad-request';
     if (typeof request.id !== 'string' || !CHAT_ID_PATTERN.test(request.id)) return 'bad-request';
     if (typeof request.text !== 'string') return 'bad-request';
     if (request.text.length === 0) return 'empty';
@@ -31,35 +42,118 @@ export function createChatSession(deps: ChatSessionDeps): ChatSession {
     return null;
   }
 
+  function clip(text: string): string {
+    return text.length > maxResultChars ? text.slice(0, maxResultChars) : text;
+  }
+
   return {
-    async send(request) {
+    send(request: ChatSendRequest): Promise<ChatSendResult> {
       const invalid = validate(request);
-      if (invalid) return { id: request.id, status: 'error', code: invalid };
-      // TODO(A): busy 语义——已有在途时返回 error/busy，不新增 complete 调用。
-      if (pending) return { id: request.id, status: 'error', code: 'busy' };
+      const echoId = typeof request?.id === 'string' ? request.id : '';
+      if (invalid) return Promise.resolve({ id: echoId, status: 'error', code: invalid });
+      if (pending) return Promise.resolve({ id: request.id, status: 'error', code: 'busy' });
+
       const controller = new AbortController();
-      pending = { id: request.id, controller };
-      // TODO(A): 超时计时、取消后迟到结果隔离（按 id 匹配才采纳）、结果截断到 maxResultChars、provider 异常映射 provider-error。
-      try {
-        const text = await deps.complete({ id: request.id, text: request.text, signal: controller.signal });
-        const clipped = text.length > maxResultChars ? text.slice(0, maxResultChars) : text;
-        return { id: request.id, status: 'ok', text: clipped };
-      } catch (error) {
-        if (controller.signal.aborted) return { id: request.id, status: 'cancelled' };
-        return { id: request.id, status: 'error', code: 'provider-error' };
-      } finally {
-        pending = null;
-      }
-      void timeoutMs;
+      const deadline = now() + timeoutMs;
+      let settled = false;
+      let timerId: ReturnType<typeof setTimeout> | null = null;
+
+      const outcome = new Promise<ChatSendResult>((resolve) => {
+        // 先声明 entry 再定义 settleOnce：清理槽位用引用比较而非 id 比较，
+        // 这样“取消后立刻用同一个 id 重发”时，旧请求的迟到结算绝不可能清掉新请求。
+        let entry: PendingEntry;
+        const settleOnce = (result: ChatSendResult): void => {
+          if (settled) return; // 迟到的 provider 结果在此被隔离：只结算一次。
+          settled = true;
+          if (timerId !== null) clearTimeout(timerId);
+          timerId = null;
+          if (pending === entry) pending = null; // 不清空后来者。
+          resolve(result);
+        };
+
+        entry = {
+          id: request.id,
+          controller,
+          settle: settleOnce,
+          settleCancelled: () => {
+            controller.abort();
+            settleOnce({ id: request.id, status: 'cancelled' });
+          },
+        };
+        pending = entry;
+
+        // 超时驱动：真实 timer 只负责“醒来看时钟”，判定永远用注入的 now() 对 deadline；
+        // 时钟未到点则按剩余量重排（注入慢时钟时可多轮），最终路径仍可被懒检查兜底。
+        const armTimeout = (): void => {
+          if (settled) return;
+          const remaining = deadline - now();
+          if (remaining <= 0) {
+            controller.abort();
+            settleOnce({ id: request.id, status: 'error', code: 'timeout' });
+            return;
+          }
+          timerId = setTimeout(() => {
+            timerId = null;
+            if (settled) return;
+            if (now() >= deadline) {
+              controller.abort();
+              settleOnce({ id: request.id, status: 'error', code: 'timeout' });
+            } else {
+              armTimeout();
+            }
+          }, Math.min(remaining, timeoutMs));
+        };
+
+        // 先发起 provider、再装超时：即便 deadline 已到点（如 timeoutMs=0），
+        // provider 也已被发起过并可被 abort，而不是从未调用。
+        let providerPromise: Promise<string>;
+        try {
+          providerPromise = deps.complete({ id: request.id, text: request.text, signal: controller.signal });
+        } catch (error) {
+          providerPromise = Promise.reject(error); // 同步抛出同样映射 provider-error。
+        }
+        armTimeout();
+
+        providerPromise.then(
+            (text) => {
+              if (now() >= deadline) {
+                // 总超时先于 provider 成功到期：懒检查兜底（signal 可能已被 abort）。
+                controller.abort();
+                settleOnce({ id: request.id, status: 'error', code: 'timeout' });
+                return;
+              }
+              settleOnce({ id: request.id, status: 'ok', text: clip(text) });
+            },
+            () => {
+              if (controller.signal.aborted && !settled) {
+                // cancel 已经由 settleCancelled 即时结算；这里是 abort 后 provider 的
+                // reject（或迟到 reject），settleOnce 幂等丢弃。
+                settleOnce({ id: request.id, status: 'cancelled' });
+                return;
+              }
+              if (now() >= deadline) {
+                controller.abort();
+                settleOnce({ id: request.id, status: 'error', code: 'timeout' });
+                return;
+              }
+              settleOnce({ id: request.id, status: 'error', code: 'provider-error' });
+            },
+          )
+          .catch(() => {
+            // 理论不可达：then 的两个分支均不抛；防御性吞掉以护住状态机。
+          });
+      });
+      return outcome;
     },
-    cancel(id) {
-      // TODO(A): 仅当 id 匹配在途请求才取消；随后 send 可立即新请求。
+
+    cancel(id: string): void {
       if (pending && pending.id === id) {
-        pending.controller.abort();
-        pending = null;
+        const entry = pending;
+        pending = null; // 立即释放槽位：随后 send 可马上发起新请求。
+        entry.settleCancelled();
       }
     },
-    hasPending() {
+    hasPending(): boolean {
       return pending !== null;
     },
   };
