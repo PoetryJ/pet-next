@@ -42,10 +42,17 @@ export const CHAT_LOCAL_ENV = 'PET_NEXT_CHAT_LOCAL';
 /** IPC：invoke 通道，页面获取只读展示信息（mode/model），不含地址与凭据。 */
 export const CHAT_INFO_CHANNEL = 'chat:info';
 
-/** 只读展示信息。demo 模式不给 model；local 模式给真实模型名。 */
+/** 传输方式：direct=直连本机服务；tunnel=经 SSH 本地转发（M3-2 Windows）。 */
+export type ChatTransport = 'direct' | 'tunnel';
+/** 主进程环境变量：传输方式标记（chat:remote 由编排层设置，页面只读展示）。 */
+export const CHAT_TRANSPORT_ENV = 'PET_NEXT_CHAT_TRANSPORT';
+
+/** 只读展示信息。demo 模式不给 model；local 模式给真实模型名与传输方式。 */
 export interface ChatDisplayInfo {
   mode: ChatMode;
   model?: string;
+  /** local 模式下的传输方式；demo 不提供。 */
+  transport?: ChatTransport;
 }
 
 /** 真实服务配置环境变量（主进程读取）。 */
