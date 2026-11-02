@@ -6,8 +6,10 @@
 import { domScreenPointToDip } from '../adapters/window/pointer-point.ts';
 import { DAILY_CADENCE, DEMO_CADENCE } from '../contracts/behavior.ts';
 import { parsePreview, PREVIEW_QUERY } from '../contracts/preview.ts';
+import { CHAT_PREVIEW_QUERY, CHAT_PREVIEW_TOKEN, type ChatSendRequest, type ChatSendResult } from '../contracts/chat.ts';
 import { createBehaviorPet, type BehaviorPet } from './behavior-pet.ts';
 import './bridge.ts';
+import { mountChatPanel } from './chat-panel.ts';
 import { attachPetMedia, type PetMedia } from './pet-media.ts';
 import { previewDataset } from './preview-gate.ts';
 import { createPetController, parseClipRequest, type PetController } from './wire.ts';
@@ -40,6 +42,20 @@ const previewMark = previewDataset(location.search);
 if (previewMark !== null) {
   document.documentElement.dataset.previewRequested = previewMark.previewRequested;
   document.documentElement.dataset.previewActive = previewMark.previewActive;
+}
+
+// M3-0：仅在聊天预览令牌下挂载面板；普通桌宠入口保持既有行为。
+if (params.get(CHAT_PREVIEW_QUERY) === CHAT_PREVIEW_TOKEN) {
+  const bridge = (window as unknown as {
+    petChat?: {
+      send(payload: ChatSendRequest): Promise<ChatSendResult>;
+      cancel(id: string): void;
+    };
+  }).petChat;
+  if (bridge === undefined) {
+    throw new Error('chat preview requested but petChat bridge missing');
+  }
+  mountChatPanel(document.body, bridge);
 }
 
 const holder: { controller?: PetController; behavior?: BehaviorPet } = {};

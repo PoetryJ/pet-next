@@ -60,7 +60,7 @@ export function startFakeChatServer(options: FakeChatServerOptions = {}): Promis
     const chunks: Buffer[] = [];
     req.on('data', (chunk: Buffer) => chunks.push(chunk));
     req.on('end', () => {
-      let payload: { id?: unknown; text?: unknown } = {};
+      let payload: { id?: unknown; text?: unknown };
       try {
         payload = JSON.parse(Buffer.concat(chunks).toString('utf8')) as { id?: unknown; text?: unknown };
       } catch {

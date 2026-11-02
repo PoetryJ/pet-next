@@ -8,12 +8,15 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createWindowController } from '../adapters/window/controller.ts';
 import type { WindowBounds, WorkArea } from '../adapters/window/types.ts';
+import { CHAT_FAKE_URL_ENV, CHAT_PREVIEW_ENV, CHAT_PREVIEW_QUERY, CHAT_PREVIEW_TOKEN } from '../contracts/chat.ts';
 import { PREVIEW_ENV, PREVIEW_QUERY } from '../contracts/preview.ts';
+import { registerChatService, type ChatServiceHandle } from './chat-service.ts';
 import { logReady } from './ready-report.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WINDOW_WIDTH = 320;
 const WINDOW_HEIGHT = 240;
+let chatHandle: ChatServiceHandle | null = null;
 
 if (process.env.PET_NEXT_USER_DATA) {
   app.setPath('userData', process.env.PET_NEXT_USER_DATA);
@@ -113,6 +116,20 @@ function createWindow(): void {
   if (process.env.PET_NEXT_REACTION_URL) query.reaction = process.env.PET_NEXT_REACTION_URL;
   const preview = process.env[PREVIEW_ENV];
   if (preview !== undefined && preview !== '') query[PREVIEW_QUERY] = preview;
+  const chatPreview = process.env[CHAT_PREVIEW_ENV];
+  if (chatPreview !== undefined && chatPreview !== '') query[CHAT_PREVIEW_QUERY] = CHAT_PREVIEW_TOKEN;
+  // M3-0：聊天预览开启时注册受限聊天服务；服务地址只留在主进程，页面只拿到 send/cancel。
+  if (chatPreview !== undefined && chatPreview !== '') {
+    void registerChatService({
+      getWindow: () => win,
+      ...(process.env[CHAT_FAKE_URL_ENV] ? { url: process.env[CHAT_FAKE_URL_ENV] } : {}),
+      onClose() {
+        chatHandle = null;
+      },
+    }).then((handle) => {
+      chatHandle = handle;
+    });
+  }
   void win.loadFile(path.join(root, 'app/page.html'), { query });
 }
 
@@ -129,6 +146,11 @@ function isMove(payload: unknown): payload is { dx: number; dy: number } {
 
 void app.whenReady().then(() => {
   createWindow();
+});
+
+app.on('before-quit', () => {
+  chatHandle?.dispose();
+  chatHandle = null;
 });
 
 app.on('window-all-closed', () => {

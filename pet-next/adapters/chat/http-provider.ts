@@ -41,18 +41,13 @@ export function createHttpChatProvider(options: HttpChatProviderOptions): ChatPr
   const doFetch = options.fetchImpl ?? ((input, init) => fetch(input, init));
   return {
     async complete(input) {
-      let response: Response;
-      try {
-        response = await doFetch(target.toString(), {
-          method: 'POST',
-          headers: { 'content-type': 'application/json', accept: 'application/json' },
-          body: JSON.stringify({ id: input.id, text: input.text }),
-          signal: input.signal,
-        });
-      } catch (error) {
-        // abort 产生的原因原样抛出，session 依据 signal.aborted 归类为 cancelled。
-        throw error;
-      }
+      // abort 产生的原因原样抛出，session 依据 signal.aborted 归类为 cancelled。
+      const response = await doFetch(target.toString(), {
+        method: 'POST',
+        headers: { 'content-type': 'application/json', accept: 'application/json' },
+        body: JSON.stringify({ id: input.id, text: input.text }),
+        signal: input.signal,
+      });
       if (!response.ok) {
         throw new Error(`chat http ${response.status}`);
       }

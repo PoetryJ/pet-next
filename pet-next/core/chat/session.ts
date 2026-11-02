@@ -59,9 +59,14 @@ export function createChatSession(deps: ChatSessionDeps): ChatSession {
       let timerId: ReturnType<typeof setTimeout> | null = null;
 
       const outcome = new Promise<ChatSendResult>((resolve) => {
-        // 先声明 entry 再定义 settleOnce：清理槽位用引用比较而非 id 比较，
+        // entry 先以壳声明、随后回填字段：清理槽位用引用比较而非 id 比较，
         // 这样“取消后立刻用同一个 id 重发”时，旧请求的迟到结算绝不可能清掉新请求。
-        let entry: PendingEntry;
+        const entry: PendingEntry = {
+          id: request.id,
+          controller,
+          settle: () => undefined,
+          settleCancelled: () => undefined,
+        };
         const settleOnce = (result: ChatSendResult): void => {
           if (settled) return; // 迟到的 provider 结果在此被隔离：只结算一次。
           settled = true;
@@ -70,15 +75,10 @@ export function createChatSession(deps: ChatSessionDeps): ChatSession {
           if (pending === entry) pending = null; // 不清空后来者。
           resolve(result);
         };
-
-        entry = {
-          id: request.id,
-          controller,
-          settle: settleOnce,
-          settleCancelled: () => {
-            controller.abort();
-            settleOnce({ id: request.id, status: 'cancelled' });
-          },
+        entry.settle = settleOnce;
+        entry.settleCancelled = () => {
+          controller.abort();
+          settleOnce({ id: request.id, status: 'cancelled' });
         };
         pending = entry;
 
