@@ -200,3 +200,17 @@ M3-1 Qwen 真实调用验收 —— 汇总（agent D）
   dedicatedDirs 含 tests/support（那是 pnpm test:cleanup 的专属目录，整目录被跳过）：一旦有人把 *.test.ts
   挪进 tests/support/**，pnpm test 会静默丢掉整组用例且不报错。tests/support/qwen-fake-server.ts 作为
   helper 放在那里没问题，别把测试文件也放进去。
+
+九、可复现的验证顺序（比结论更有价值：它把"假绿"排除掉了）
+------------------------------------------------
+  真实步骤（命令与退出码见 commands.txt，commit 见下）：
+    1) 基线 2519058，先只写 fake 服务 + 11 条故障用例（零真实调用）
+    2) merge m3q-a（5368755）→ 立刻单跑 `node --experimental-strip-types --test --test-reporter spec
+       tests/qwen-acceptance.fake.test.ts` → 11/11 绿
+    3) 再 merge codex/pet-next-m3q-qwen（2c6d3dc：B chat-config/chat-local、C 面板 local 标签、main 装配）
+       → tsc + 全仓单测 363 绿
+    4) 真实调用：预检 1 → 质量 20（串行，预算硬停脚本）→ 产品路径 6（chat:local + 真 Electron）
+  为什么这个顺序重要：F3/F5 依赖 core/chat/session 注入的 timeoutMs，而该注入面来自 B/main 接线。
+  如果先并接线再跑，一旦失败就分不清是 provider 问题还是会话接缝问题；先在只有 provider 的分支上跑绿，
+  证明"timeoutMs 注入面在 provider 侧独立成立"，后续若并接线后变红，范围立刻收敛到会话/装配层。
+  这也是本项目"假绿"最容易被掩盖的位置（超时/取消恰好都跨 provider 与 session 两层）。
