@@ -81,12 +81,42 @@ C 的面板未加 data-testid，但 class 命名与我的 testid 清单同名。
       node --experimental-strip-types --test --test-reporter spec tests/demo-entry.e2e.test.ts | \
         tee tests/chat-evidence/demo-entry-regression.txt
 
-五、接线合入后的运行记录（待回填）
+五、接线合入后的运行记录（负责人回填，2026-11-02T18:40+08:00）
 ------------------------------------------------
-（等待集成负责人通知 merge codex/pet-next-m3-chat（及指明的 m3c-panel 等）后执行第四节[3]命令并回填：
- 每条场景的命令、退出码、原始输出摘录、时间戳；Xvfb :94 由测试自动拉起/收掉。）
+[4] 集成分支 codex/pet-next-m3-chat 实跑（HEAD 16a84e4，DISPLAY=:99，负责人执行）
+    cmd: pnpm build
+         DISPLAY=:99 node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/chat.e2e.test.ts
+    结果：5/5 全过（exit 0），单次 ~9s：
+      ✔ T1 打开面板→输入→发送→fake 回复显示（含演示回复标注） (718ms)
+      ✔ T2 fake 返回 500→面板报错→恢复后再发成功 (654ms)
+      ✔ T3 取消慢回复→显示已取消→立即再发成功且旧迟到回复不显示（核心断言） (4636ms)
+      ✔ T4 在途时关面板/关窗→fake 观察连接断开，Electron 退出无残留 (717ms)
+      ✔ T5 回归门：未设 PET_NEXT_CHAT_PREVIEW 时不挂聊天面板，pet 仍可退出 (495ms)
+
+[5] 完整 pnpm verify（HEAD 16a84e4，DISPLAY=:99）
+    cmd: DISPLAY=:99 pnpm verify   退出码 0（完整日志：logs/chat-evidence/verify-full.log，不提交）
+    各层：unit 269/269、cleanup 20/20、integration 5/5、e2e 16/16（聊天 5 + 既有 11 回归）、
+          typecheck 0、lint 0、build 成功。
+
+[6] 手工演示（真实 Electron + 本地 fake HTTP，CDP 驱动 + 截图，基线 HEAD 16a84e4）
+    cmd: node /tmp/chat-demo-manual.mjs（编排等价于 pnpm chat:preview，另加 remote-debugging-port 供脚本驱动）
+    状态链（logs/chat-evidence/demo/demo-log.ndjson）：
+      closed → open → 输入"你好，今天吃点什么？" → reply（bots: "演示回复【演示回复】已收到：你好，今天吃点什么？"）
+      → [slow] 发送 → pending（status=发送中…）→ 点取消 → cancelled（status=已取消，bots 未新增）
+    截图：1-closed / 2-open / 3-reply / 4-pending / 5-cancelled.png（同目录）
+    收尾：electron/fake 均 SIGTERM，进程无残留；演示总结 offline_ready=true。
+
+[7] 接线期发现并修复的 3 处集成缺陷（负责人）
+    a) C 面板无 data-testid，而 E2E typeAndSend 只认 testid → 面板补 data-testid（class 保留）；
+    b) 根因：preload 的 cancel 发送字符串 id，主进程 payloadId 只解对象 → 取消被静默丢弃，
+       表现为"取消未撤销 fake 侧连接"。两端对齐（preload 发 {id}，payloadId 兼容 string）。
+       这是 T3/T4 首轮 4 失败中 2 个的唯一根因；
+    c) copy-static 未打包 chat-panel.css → 面板在 dist 无样式；单元收集器未含 electron/ →
+       chat-service.test.ts 不被 verify 收集。均已修。
 
 六、未证明项
 ------------------------------------------------
 - 未接真实模型：fake 服务健康检查口径仅报 offline_ready（本地假服务就绪、真实模型链路未接），
   本 E2E 证明的是"面板↔主进程↔Provider HTTP 链路"的端到端行为，不含真实模型质量。
+- 真实模型的首回复延迟、成本、内容质量未测：地址/协议/凭据未指定，按任务要求不猜、不接。
+- 双击/高 DPI 下的面板视觉无专业设计评审；仅保证功能与不干扰宠物拖动/点击（回归门通过）。
