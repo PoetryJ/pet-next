@@ -2,6 +2,7 @@
  * M3-0 文字对话预览面板：纯注入、无框架，仅由接线方在预览开关下挂载；普通入口不加载，M2 零改动。
  * 面板自持状态机（closed→open→typing→pending→{reply|error|cancelled}），迟到结果按当前会话 id 隔离；
  * DOM 全用 createElement+textContent（绝不 innerHTML）；指针/按键事件在面板根内截停，不影响宠物。
+ * 视口约束：挂载时按实际视口高度写入面板 max-height（320×240 窗口下不越界），标题/关闭/输入/发送/取消恒可见。
  * @module pet-next/app/chat-panel
  */
 import { CHAT_MAX_INPUT_CHARS, type ChatSendRequest, type ChatSendResult } from '../contracts/chat.ts';
@@ -43,6 +44,39 @@ export function phaseForResult(status: ChatSendResult['status']): 'reply' | 'err
   return 'cancelled';
 }
 
+/**
+ * 视口纵向预留 = 底部边距 8 + 开关按钮 34 + 间距 4 + 顶部边距 4 = 50。
+ * 与 chat-panel.css 的 --chat-panel-reserve 同源；改一处必须同步另一处。
+ */
+export const CHAT_VIEWPORT_RESERVE_PX = 50;
+/** 面板高度舒适上限（宽屏用）；小窗口由视口高度进一步收紧。 */
+export const CHAT_PANEL_MAX_HEIGHT_PX = 320;
+
+/**
+ * 面板可用的最大高度（纯函数）：视口高度减纵向预留，并不超过 320。
+ * 退化输入（<=0/非有限）回落到 320 上限；小到放不下预留时返回 0，绝不越过视口。
+ */
+export function panelMaxHeight(viewportHeight: number): number {
+  if (!Number.isFinite(viewportHeight) || viewportHeight <= 0) return CHAT_PANEL_MAX_HEIGHT_PX;
+  return Math.max(0, Math.min(CHAT_PANEL_MAX_HEIGHT_PX, Math.floor(viewportHeight - CHAT_VIEWPORT_RESERVE_PX)));
+}
+
+/** 读实际视口高度：显式注入优先，其次 globalThis.innerHeight，再退到 documentElement.clientHeight；都没有则 null。 */
+export function resolveViewportHeight(explicit?: number): number | null {
+  if (explicit !== undefined && Number.isFinite(explicit) && explicit > 0) return explicit;
+  const inner = (globalThis as { innerHeight?: unknown }).innerHeight;
+  if (typeof inner === 'number' && Number.isFinite(inner) && inner > 0) return inner;
+  const client = (globalThis as { document?: { documentElement?: { clientHeight?: unknown } } }).document
+    ?.documentElement?.clientHeight;
+  if (typeof client === 'number' && Number.isFinite(client) && client > 0) return client;
+  return null;
+}
+
+/** 挂载选项：视口高度可注入（单测/嵌入场景），缺省读真实 innerHeight。 */
+export interface ChatPanelMountOptions {
+  viewportHeight?: number;
+}
+
 /** 请求 id：满足 CHAT_ID_PATTERN（chat-[a-z0-9-]{1,48}）。 */
 let requestSeq = 0;
 function nextRequestId(): string {
@@ -53,7 +87,11 @@ function nextRequestId(): string {
 /**
  * 挂载聊天面板。面板以独立子树追加进 root；unmount 对在途 id 调 client.cancel 并移除 DOM/事件。
  */
-export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): ChatPanelHandle {
+export function mountChatPanel(
+  root: HTMLElement,
+  client: ChatPanelClient,
+  options: ChatPanelMountOptions = {},
+): ChatPanelHandle {
   const panelRoot = document.createElement('div');
   panelRoot.className = 'chat-panel-root';
   panelRoot.dataset.testid = 'chat-panel';
@@ -70,6 +108,11 @@ export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): Chat
   panel.className = 'chat-panel';
   panel.dataset.testid = 'chat-panel-open';
   panel.hidden = true;
+  // 视口约束：行内 max-height 用实测视口压住 CSS 的 100vh 兜底，面板永不高于「视口 - 预留」。
+  const viewportHeight = resolveViewportHeight(options.viewportHeight);
+  if (viewportHeight !== null) {
+    panel.style.maxHeight = `${panelMaxHeight(viewportHeight)}px`;
+  }
 
   const head = document.createElement('div');
   head.className = 'chat-head';
@@ -151,7 +194,13 @@ export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): Chat
     entry.dataset.testid = kind === 'status' ? 'chat-status' : `chat-msg-${kind}`;
     entry.textContent = text;
     log.appendChild(entry);
+    scrollLogToEnd();
     return entry;
+  }
+
+  /** 新条目贴底：小窗口里正文只有几行，最新消息必须自己滚进可视区。 */
+  function scrollLogToEnd(): void {
+    log.scrollTop = log.scrollHeight;
   }
 
   function appendBotEntry(text: string): void {
@@ -167,6 +216,7 @@ export function mountChatPanel(root: HTMLElement, client: ChatPanelClient): Chat
     body.textContent = text;
     entry.appendChild(body);
     log.appendChild(entry);
+    scrollLogToEnd();
   }
 
   function syncState(): void {
