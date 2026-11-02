@@ -191,5 +191,12 @@ M3-1 Qwen 真实调用验收 —— 汇总（agent D）
   单测数量构成（m3q-d HEAD，scripts/unit-tests.mjs 收集口径，实测而非推算）：
     2519058 基线 294 + B/C/main 接线 41（chat-local-core 23 + chat-config 15 + chat-panel 增量 3）
     + A 的 17 + 本人 11 = 363（实测 363 pass / 0 fail）。
-  说明：A 消息里"294+17+11=322"是漏算了 B/C/main 的 41 条；任何分支合并后都应以 scripts/unit-tests.mjs
-  实测数为准，不要按文件删除用例来对齐数字。
+  说明：A 最初按"294+17+11=322"记数，是漏算了 B/C/main 的 41 条（A 自己分支实测 311=294+17，两者不冲突）；
+  任何分支合并后都应以 scripts/unit-tests.mjs 实测数为准，不要按文件删除用例来对齐数字。
+  合流后只跑一条命令下结论：node scripts/unit-tests.mjs | tail -8 → 期望 363 pass / 0 fail（实测一致）；
+  若数字不对，用 git diff --stat 对照四支的文件清单找"被覆盖/被跳过"的文件，而不是调用例数。
+
+  【防坑】本 spec 必须留在 tests/ 根目录（tests/qwen-acceptance.fake.test.ts）。scripts/unit-tests.mjs 的
+  dedicatedDirs 含 tests/support（那是 pnpm test:cleanup 的专属目录，整目录被跳过）：一旦有人把 *.test.ts
+  挪进 tests/support/**，pnpm test 会静默丢掉整组用例且不报错。tests/support/qwen-fake-server.ts 作为
+  helper 放在那里没问题，别把测试文件也放进去。
