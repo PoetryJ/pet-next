@@ -27,7 +27,7 @@ import type { ClickArm } from '../contracts/bench-click.ts';
 import type { BenchSample } from '../contracts/bench.ts';
 import { hashFile } from '../assets-pipeline/asset-report.ts';
 import { measureOnset as measureAssetOnset, type OnsetMeasurement } from './onset.ts';
-import { buildClickOutcomeRecord, summarizeClickOutcomes, type ClickOutcomeRecord, type ClickOutcomeSummary } from './click-record.ts';
+import { buildClickOutcomeRecord, summarizeClickOutcomes, type ClickOutcomeRecord } from './click-record.ts';
 import type { BenchJob } from './job.ts';
 import { DWELL_MS, WINDOW_HEIGHT, WINDOW_WIDTH, WINDOW_X, WINDOW_Y } from './protocol.ts';
 

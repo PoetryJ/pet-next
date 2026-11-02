@@ -16,7 +16,7 @@
 import { app, BrowserWindow } from 'electron';
 import { mkdirSync, appendFileSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
-import { evaluateSample, criterionFor, type PageEvent, type ProductClickSample, type ProductEndState } from './product-observe.ts';
+import { evaluateSample, criterionFor, type PageEvent, type ProductEndState } from './product-observe.ts';
 import type { OnsetMeasurement } from './onset.ts';
 import { WINDOW_HEIGHT, WINDOW_WIDTH, WINDOW_X, WINDOW_Y } from './protocol.ts';
 
