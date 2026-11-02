@@ -3,9 +3,21 @@
  * 覆盖任务 9 条交互态 + 纯函数判定；请求结果用受控 Promise 驱动迟到/隔离场景。
  */
 import assert from 'node:assert/strict';
+import { readFileSync } from 'node:fs';
 import { test } from 'node:test';
 import { CHAT_MAX_INPUT_CHARS, type ChatSendRequest, type ChatSendResult } from '../contracts/chat.ts';
-import { enterShouldSend, mountChatPanel, phaseForResult, validateChatInput, type ChatPanelClient } from './chat-panel.ts';
+import {
+  CHAT_PANEL_MAX_HEIGHT_PX,
+  CHAT_VIEWPORT_RESERVE_PX,
+  enterShouldSend,
+  mountChatPanel,
+  panelMaxHeight,
+  phaseForResult,
+  resolveViewportHeight,
+  validateChatInput,
+  type ChatPanelClient,
+  type ChatPanelMountOptions,
+} from './chat-panel.ts';
 
 interface StubEvent extends Record<string, unknown> {
   type: string;
@@ -25,6 +37,7 @@ class StubElement {
   dataset: Record<string, string> = {};
   listeners = new Map<string, Array<(ev: StubEvent) => void>>();
   classes = new Set<string>();
+  style: Record<string, string> = {};
   hidden = false;
   disabled = false;
   value = '';
@@ -189,6 +202,7 @@ function createClient(): Controlled {
 interface Harness {
   root: StubElement;
   panelRoot: StubElement;
+  panelBody: StubElement;
   toggle: StubElement;
   input: StubElement;
   sendBtn: StubElement;
@@ -200,14 +214,17 @@ interface Harness {
   unmount(): void;
 }
 
-function mount(controlled: Controlled): Harness {
+function mount(controlled: Controlled, options?: ChatPanelMountOptions): Harness {
   const root = new StubElement('div');
-  const handle = mountChatPanel(root as unknown as HTMLElement, controlled.client);
+  const handle = mountChatPanel(root as unknown as HTMLElement, controlled.client, options);
   const panelRoot = root.children[0] ?? assert.fail('panel root missing');
   const open = () => find(panelRoot, 'chat-toggle').dispatch('click');
   return {
     root,
     panelRoot,
+    get panelBody() {
+      return find(panelRoot, 'chat-panel');
+    },
     get toggle() {
       return find(panelRoot, 'chat-toggle');
     },
@@ -458,3 +475,156 @@ test('纯函数：validateChatInput 边界与 enterShouldSend/phaseForResult 判
   assert.equal(phaseForResult('error'), 'error');
   assert.equal(phaseForResult('cancelled'), 'cancelled');
 });
+
+test('10 视口约束：panelMaxHeight/resolveViewportHeight 边界，挂载按视口写入面板行内 max-height', () => {
+  // 320×240 窗口：240 - 50 = 190，面板不再撑到 320 把标题顶出视口。
+  assert.equal(CHAT_VIEWPORT_RESERVE_PX, 50);
+  assert.equal(panelMaxHeight(240), 190);
+  assert.equal(panelMaxHeight(900), CHAT_PANEL_MAX_HEIGHT_PX);
+  assert.equal(panelMaxHeight(CHAT_VIEWPORT_RESERVE_PX + 100.9), 100);
+  assert.equal(panelMaxHeight(CHAT_VIEWPORT_RESERVE_PX), 0); // 退化：宁可 0 也不越界
+  assert.equal(panelMaxHeight(0), CHAT_PANEL_MAX_HEIGHT_PX);
+  assert.equal(panelMaxHeight(Number.NaN), CHAT_PANEL_MAX_HEIGHT_PX);
+
+  assert.equal(resolveViewportHeight(240), 240);
+  assert.equal(resolveViewportHeight(Number.NaN), null);
+
+  const small = mount(createClient(), { viewportHeight: 240 });
+  assert.equal(small.panelBody.style.maxHeight, '190px');
+
+  const big = mount(createClient(), { viewportHeight: 900 });
+  assert.equal(big.panelBody.style.maxHeight, '320px');
+
+  // 未注入时读真实视口（浏览器里等同 window.innerHeight）。
+  const scope = globalThis as unknown as { innerHeight?: number };
+  scope.innerHeight = 240;
+  try {
+    assert.equal(resolveViewportHeight(), 240);
+    assert.equal(mount(createClient()).panelBody.style.maxHeight, '190px');
+  } finally {
+    delete scope.innerHeight;
+  }
+
+  // 拿不到视口高度时留空，交给 CSS 的 100vh 兜底，不写死像素。
+  assert.equal('maxHeight' in mount(createClient()).panelBody.style, false);
+});
+
+test('11 结构：标题/关闭/滚动正文/输入/发送/取消齐备，正文列表为中间可滚动区，data-testid 契约不变', async () => {
+  const c = createClient();
+  const h = mount(c, { viewportHeight: 240 });
+  const panelBody = h.panelBody;
+  assert.deepEqual(
+    panelBody.children.map((child) => child.className),
+    ['chat-head', 'chat-note', 'chat-log', 'chat-composer'],
+    '面板子项顺序：固定头 → 提示 → 可滚动正文 → 固定输入区',
+  );
+  const head = panelBody.children[0] as StubElement;
+  assert.ok(find(head, 'chat-title').textContent.includes('文字对话预览'), '标题必须可见可读');
+  assert.ok(find(head, 'chat-close'), '关闭按钮必须在面板头内');
+
+  h.open();
+  const composer = find(panelBody, 'chat-composer');
+  assert.ok(find(composer, 'chat-input'));
+  assert.ok(find(composer, 'chat-send'));
+  assert.ok(find(composer, 'chat-cancel'));
+
+  // data-testid 全部保留（D 的 E2E 依赖这些 id）。
+  const testIds = collectTestIds(h.panelRoot);
+  for (const id of ['chat-panel', 'chat-toggle', 'chat-panel-open', 'chat-input', 'chat-send', 'chat-cancel', 'chat-close']) {
+    assert.ok(testIds.includes(id), `缺少 data-testid=${id}`);
+  }
+
+  h.input.value = '视口问答';
+  h.input.dispatch('input');
+  h.enter();
+  assert.ok(collectTestIds(h.panelRoot).includes('chat-status'), '在途时应有 chat-status');
+  const id = c.calls.send[0]?.id ?? '';
+  c.settle(id, { id, status: 'ok', text: '回复正文' });
+  await Promise.resolve();
+  const afterSend = collectTestIds(h.panelRoot);
+  for (const idName of ['chat-msg-user', 'chat-msg-assistant']) {
+    assert.ok(afterSend.includes(idName), `发送后缺少 ${idName}`);
+  }
+  // 回复仍挂在滚动容器内（滚动的是列表，不是整块面板）。
+  const botEntry = byTestId(panelBody, 'chat-msg-assistant');
+  assert.equal(botEntry.parentNode, find(panelBody, 'chat-log'));
+});
+
+test('12 CSS 视口方案静态校验：面板高度受 100vh 约束，仅 chat-log 滚动，固定区不收缩，预留值与 TS 常量一致', () => {
+  const css = chatPanelCss();
+  const panel = cssRule(css, '.chat-panel');
+  assert.match(panel, /max-height:\s*min\(320px,\s*calc\(100vh - var\(--chat-panel-reserve\)\)\)/, '面板高度必须随视口收缩');
+  assert.match(panel, /overflow:\s*hidden/, '面板自身不滚动，避免固定区被裁');
+  assert.match(panel, /display:\s*flex/);
+
+  const root = cssRule(css, '.chat-panel-root');
+  assert.match(root, /--chat-panel-reserve:\s*calc\(/, '预留必须由可见变量算出');
+  assert.match(root, /bottom:\s*var\(--chat-gutter\)/);
+
+  const log = cssRule(css, '.chat-log');
+  assert.match(log, /flex:\s*1/, '正文列表吃掉剩余高度');
+  assert.match(log, /min-height:\s*0/, 'flex 子项必须 min-height:0，否则把输入区顶出面板');
+  assert.match(log, /overflow-y:\s*auto/, '正文列表必须内部滚动');
+
+  for (const selector of ['.chat-head', '.chat-note', '.chat-composer']) {
+    assert.match(cssRule(css, selector), /flex:\s*0 0 auto/, `${selector} 不得被压缩`);
+  }
+
+  // 预留 = 底边距 + 开关按钮 + 间隙 + 顶边距；与 chat-panel.ts 的 CHAT_VIEWPORT_RESERVE_PX 必须同源。
+  const reserve =
+    cssPx(css, '--chat-gutter') +
+    cssPx(css, '--chat-toggle-size') +
+    cssPx(css, '--chat-gap') +
+    cssPx(css, '--chat-top-margin');
+  assert.equal(reserve, CHAT_VIEWPORT_RESERVE_PX, `CSS 预留 ${reserve}px 与 TS 常量不一致`);
+});
+
+/** 读样式表原文（静态校验用，无需 DOM/CSS 引擎）。 */
+function chatPanelCss(): string {
+  return readFileSync(new URL('./chat-panel.css', import.meta.url), 'utf8');
+}
+
+/** 取顶层规则体（首个同名规则；@media 内同名规则不在校验范围）。 */
+function cssRule(css: string, selector: string): string {
+  const needle = `${selector} {`;
+  const start = css.indexOf(needle);
+  assert.ok(start >= 0, `CSS 缺少 ${selector} 规则`);
+  const end = css.indexOf('}', start);
+  return css.slice(start + needle.length, end);
+}
+
+/** 取自定义属性的 px 数值。 */
+function cssPx(css: string, name: string): number {
+  const match = new RegExp(`${name}:\\s*(-?\\d+(?:\\.\\d+)?)px`).exec(css);
+  const raw = match?.[1];
+  assert.ok(raw !== undefined, `CSS 缺少 ${name}`);
+  return Number(raw);
+}
+
+/** 按 data-testid 深度查找（testid 与 class 不同名时用）。 */
+function byTestId(root: StubElement, id: string): StubElement {
+  if (root.dataset.testid === id) return root;
+  for (const child of root.children) {
+    const hit = tryByTestId(child, id);
+    if (hit) return hit;
+  }
+  return assert.fail(`missing data-testid=${id}`);
+}
+
+function tryByTestId(root: StubElement, id: string): StubElement | null {
+  if (root.dataset.testid === id) return root;
+  for (const child of root.children) {
+    const hit = tryByTestId(child, id);
+    if (hit) return hit;
+  }
+  return null;
+}
+
+/** 收集子树内所有 data-testid。 */
+function collectTestIds(el: StubElement): string[] {
+  const out: string[] = [];
+  const own = el.dataset.testid;
+  if (own !== undefined && own !== '') out.push(own);
+  for (const child of el.children) out.push(...collectTestIds(child));
+  return out;
+}
