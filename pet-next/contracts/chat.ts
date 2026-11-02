@@ -28,6 +28,63 @@ export const CHAT_PREVIEW_TOKEN = 'preview';
 /** 主进程环境变量：本地假服务地址（http://127.0.0.1:port）。未设置时面板发送立即报 provider-error。 */
 export const CHAT_FAKE_URL_ENV = 'PET_NEXT_CHAT_FAKE_URL';
 
+/* ===== M3-1：真实模型（Qwen）模式 =====
+ * 冻结：Provider 接口、15s 总超时、单在途、取消隔离不变；只新增模式与只读展示信息。
+ * 真实模式不静默降级为演示回复；页面永远拿不到地址与凭据。
+ */
+
+/** M3-1 运行模式：demo=fake 对照；local=连接现有 Qwen 服务。 */
+export type ChatMode = 'demo' | 'local';
+/** 页面查询参数中的 local 令牌。 */
+export const CHAT_LOCAL_TOKEN = 'local';
+/** 主进程环境变量：local 模式开关（真实服务）。与 CHAT_PREVIEW_ENV 互斥，同时设置时 local 优先并 warn。 */
+export const CHAT_LOCAL_ENV = 'PET_NEXT_CHAT_LOCAL';
+/** IPC：invoke 通道，页面获取只读展示信息（mode/model），不含地址与凭据。 */
+export const CHAT_INFO_CHANNEL = 'chat:info';
+
+/** 只读展示信息。demo 模式不给 model；local 模式给真实模型名。 */
+export interface ChatDisplayInfo {
+  mode: ChatMode;
+  model?: string;
+}
+
+/** 真实服务配置环境变量（主进程读取）。 */
+export const QWEN_BASE_URL_ENV = 'PET_NEXT_QWEN_BASE_URL';
+export const QWEN_MODEL_ENV = 'PET_NEXT_QWEN_MODEL';
+/** 已验证服务默认值（可在环境变量覆盖）。 */
+export const QWEN_DEFAULT_BASE_URL = 'http://127.0.0.1:18872/v1';
+export const QWEN_DEFAULT_MODEL = 'qwen3.8-27b';
+
+/** 冻结请求参数：单轮、非流式、关闭 thinking。 */
+export const QWEN_MAX_TOKENS = 96;
+export const QWEN_TEMPERATURE = 0.2;
+/** 冻结系统提示词。 */
+export const QWEN_SYSTEM_PROMPT =
+  '你是友善的桌面宠物，用一到两句简短中文自然回应，通常不超过80字。只做文字交流，不声称已执行提醒、打开软件等操作。';
+
+/** 一次真实调用的主进程测量信息（不进渲染层；供验收脚本与日志）。 */
+export interface QwenCallMeta {
+  id: string;
+  model: string;
+  /** HTTP 状态；网络层失败时缺省。 */
+  status?: number;
+  /** 完整回复延迟（毫秒，请求发出到响应文本就绪）。 */
+  latencyMs?: number;
+  finishReason?: string;
+  /** finish_reason === 'length'：界面按截断处理，不冒充完整回复。 */
+  truncated?: boolean;
+  usage?: { prompt_tokens?: number; completion_tokens?: number; total_tokens?: number };
+  /** 服务未给 usage 时为 true（不编造）。 */
+  usageUnknown?: boolean;
+  error?: string;
+}
+
+/** 真实模型 Provider：保留最近一次调用的测量信息，不改 core 返回文本的接口。 */
+export interface QwenChatProvider extends ChatProvider {
+  readonly model: string;
+  readonly lastMeta: QwenCallMeta | null;
+}
+
 /** 错误码。empty/too-long 为输入校验；busy 为已有在途；timeout/provider-error 为链路；bad-request 为 IPC 载荷不合法。 */
 export type ChatErrorCode = 'empty' | 'too-long' | 'busy' | 'timeout' | 'provider-error' | 'bad-request';
 
