@@ -8,8 +8,19 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createWindowController } from '../adapters/window/controller.ts';
 import type { WindowBounds, WorkArea } from '../adapters/window/types.ts';
-import { CHAT_FAKE_URL_ENV, CHAT_PREVIEW_ENV, CHAT_PREVIEW_QUERY, CHAT_PREVIEW_TOKEN } from '../contracts/chat.ts';
+import { createQwenChatProvider } from '../adapters/chat/qwen-provider.ts';
+import {
+  CHAT_FAKE_URL_ENV,
+  CHAT_INFO_CHANNEL,
+  CHAT_LOCAL_ENV,
+  CHAT_LOCAL_TOKEN,
+  CHAT_PREVIEW_ENV,
+  CHAT_PREVIEW_QUERY,
+  CHAT_PREVIEW_TOKEN,
+  type ChatDisplayInfo,
+} from '../contracts/chat.ts';
 import { PREVIEW_ENV, PREVIEW_QUERY } from '../contracts/preview.ts';
+import { resolveQwenConfig } from './chat-config.ts';
 import { registerChatService, type ChatServiceHandle } from './chat-service.ts';
 import { logReady } from './ready-report.ts';
 
@@ -116,10 +127,44 @@ function createWindow(): void {
   if (process.env.PET_NEXT_REACTION_URL) query.reaction = process.env.PET_NEXT_REACTION_URL;
   const preview = process.env[PREVIEW_ENV];
   if (preview !== undefined && preview !== '') query[PREVIEW_QUERY] = preview;
+  const chatLocal = process.env[CHAT_LOCAL_ENV];
   const chatPreview = process.env[CHAT_PREVIEW_ENV];
-  if (chatPreview !== undefined && chatPreview !== '') query[CHAT_PREVIEW_QUERY] = CHAT_PREVIEW_TOKEN;
-  // M3-0：聊天预览开启时注册受限聊天服务；服务地址只留在主进程，页面只拿到 send/cancel。
-  if (chatPreview !== undefined && chatPreview !== '') {
+  const localMode = chatLocal !== undefined && chatLocal !== '';
+  // M3-1：local 模式连接现有 Qwen 服务；preview 模式仍是 fake 对照。两者互斥，同时设置时 local 优先并告警。
+  if (localMode && chatPreview !== undefined && chatPreview !== '') {
+    console.log(JSON.stringify({ event: 'chat-mode-warn', reason: 'both-local-and-preview-set', using: 'local' }));
+  }
+  if (localMode) {
+    query[CHAT_PREVIEW_QUERY] = CHAT_LOCAL_TOKEN;
+    const resolved = resolveQwenConfig(process.env);
+    if (!resolved.ok) {
+      console.log(JSON.stringify({ event: 'chat-config-error', error: resolved.error }));
+      process.exitCode = 1;
+      app.quit();
+      return;
+    }
+    const provider = createQwenChatProvider({
+      baseUrl: resolved.config.baseUrl,
+      model: resolved.config.model,
+    });
+    const info: ChatDisplayInfo = { mode: 'local', model: resolved.config.model };
+    ipcMain.handle(CHAT_INFO_CHANNEL, () => info);
+    console.log(JSON.stringify({ event: 'chat-mode', mode: 'local', model: resolved.config.model }));
+    void registerChatService({
+      getWindow: () => win,
+      provider,
+      onClose() {
+        chatHandle = null;
+      },
+    }).then((handle) => {
+      chatHandle = handle;
+    });
+  } else if (chatPreview !== undefined && chatPreview !== '') {
+    query[CHAT_PREVIEW_QUERY] = CHAT_PREVIEW_TOKEN;
+    const info: ChatDisplayInfo = { mode: 'demo' };
+    ipcMain.handle(CHAT_INFO_CHANNEL, () => info);
+    console.log(JSON.stringify({ event: 'chat-mode', mode: 'demo' }));
+    // M3-0：聊天预览开启时注册受限聊天服务；服务地址只留在主进程，页面只拿到 send/cancel。
     void registerChatService({
       getWindow: () => win,
       ...(process.env[CHAT_FAKE_URL_ENV] ? { url: process.env[CHAT_FAKE_URL_ENV] } : {}),

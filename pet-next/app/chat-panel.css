@@ -164,6 +164,35 @@
   vertical-align: middle;
 }
 
+/* 真实模型（Qwen · 服务器模型）标签：冷色以区别于 demo 的暖色，一眼可辨来源。 */
+.chat-model-tag {
+  display: inline-block;
+  margin-right: 6px;
+  padding: 0 4px;
+  border: 1px solid #2f7d95;
+  border-radius: 4px;
+  color: #1d5b6f;
+  background: #e8f4f8;
+  font-size: 10px;
+  line-height: 16px;
+  vertical-align: middle;
+}
+
+/* 标题栏常驻来源标识（仅 local）：收起开关右侧，不挤压标题。 */
+.chat-mode-badge {
+  flex: 0 0 auto;
+  margin-left: auto;
+  margin-right: 6px;
+  padding: 0 5px;
+  border: 1px solid #2f7d95;
+  border-radius: 4px;
+  color: #1d5b6f;
+  background: #e8f4f8;
+  font-size: 10px;
+  line-height: 16px;
+  white-space: nowrap;
+}
+
 .chat-composer {
   flex: 0 0 auto;
   padding: 8px 10px;
@@ -263,8 +292,9 @@
 
 /*
  * 类名清单（接线 page.html 用）：
- * 容器与入口：chat-panel-root（含 data-state、is-open）、chat-toggle
- * 面板：chat-panel（hidden 收起）、chat-head、chat-title、chat-close、chat-note
- * 消息：chat-log（唯一滚动容器）、chat-entry（chat-entry-user/bot/status/error）、chat-demo-tag、chat-entry-text
+ * 容器与入口：chat-panel-root（含 data-state、data-mode ∈ demo|local、is-open）、chat-toggle
+ * 面板：chat-panel（hidden 收起）、chat-head、chat-title、chat-mode-badge（仅 local）、chat-close、chat-note（仅 demo）
+ * 消息：chat-log（唯一滚动容器）、chat-entry（chat-entry-user/bot/status/error）、
+ *       chat-demo-tag（demo「演示回复」）、chat-model-tag（local「Qwen · 服务器模型」）、chat-entry-text
  * 输入：chat-composer、chat-input、chat-hint、chat-actions、chat-send、chat-cancel
  */

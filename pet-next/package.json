@@ -27,6 +27,7 @@
     "demo": "pnpm build && node scripts/demo.mjs",
     "demo:record": "pnpm build && node scripts/demo.mjs --demo --asset=short --record",
     "chat:preview": "pnpm build && node scripts/chat-demo.mjs",
+    "chat:local": "pnpm build && node scripts/chat-local.mjs",
     "experiment:arbiter": "node --experimental-strip-types experiments/arbiter/runner/main.ts",
     "experiment:arbiter:check": "node --experimental-strip-types experiments/arbiter/check/main.ts",
     "experiment:arbiter:demo": "node --experimental-strip-types experiments/arbiter/demo/main.ts"
