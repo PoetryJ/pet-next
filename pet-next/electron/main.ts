@@ -17,7 +17,9 @@ import {
   CHAT_PREVIEW_ENV,
   CHAT_PREVIEW_QUERY,
   CHAT_PREVIEW_TOKEN,
+  CHAT_TRANSPORT_ENV,
   type ChatDisplayInfo,
+  type ChatTransport,
 } from '../contracts/chat.ts';
 import { PREVIEW_ENV, PREVIEW_QUERY } from '../contracts/preview.ts';
 import { resolveQwenConfig } from './chat-config.ts';
@@ -147,9 +149,13 @@ function createWindow(): void {
       baseUrl: resolved.config.baseUrl,
       model: resolved.config.model,
     });
-    const info: ChatDisplayInfo = { mode: 'local', model: resolved.config.model };
+    // M3-2：chat:remote 编排会设置 transport=tunnel；页面只读展示，拿不到 SSH 配置。
+    const transport: ChatTransport = process.env[CHAT_TRANSPORT_ENV] === 'tunnel' ? 'tunnel' : 'direct';
+    const info: ChatDisplayInfo = { mode: 'local', model: resolved.config.model, transport };
     ipcMain.handle(CHAT_INFO_CHANNEL, () => info);
-    console.log(JSON.stringify({ event: 'chat-mode', mode: 'local', model: resolved.config.model }));
+    console.log(
+      JSON.stringify({ event: 'chat-mode', mode: 'local', model: resolved.config.model, transport }),
+    );
     void registerChatService({
       getWindow: () => win,
       provider,
