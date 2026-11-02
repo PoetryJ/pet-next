@@ -11,7 +11,8 @@
  *   F4 取消后重发：cancel 立即释放槽位，旧请求的迟到响应不得覆盖新请求
  *   F5 关窗收尾：在途请求被撤销后，迟到的服务端响应不产生任何状态（无泄漏、无残留 pending）
  *   F6 畸形 JSON / F7 空 content / F8 finish_reason=length / F9 连接重置
- *   F10 非回环 baseUrl 拒绝（演示安全，防止真实外网调用）
+ *   F10 服务不返回 usage → usageUnknown（不编造 token 数）
+ *   F11 非回环 baseUrl 拒绝（演示安全，防止真实外网调用）
  *
  * 全部指向 127.0.0.1 的本地假服务；不读取真实服务地址、不消耗真实调用预算。
  * 运行：node --experimental-strip-types --test --test-reporter spec tests/qwen-acceptance.fake.test.ts
@@ -284,7 +285,21 @@ test('F9 连接被重置：会话映射 provider-error（不重试、不假装�
   }
 });
 
-test('F10 非回环 baseUrl 一律拒绝（真实外网地址不被接受）', () => {
+test('F10 服务不返回 usage：记 usageUnknown，不编造 token 数', { timeout: 20000 }, async () => {
+  const h = await harness({ behavior: 'no-usage' });
+  try {
+    const result = await h.session.send({ id: 'chat-f010', text: '没有 usage 的响应' });
+    assert.equal(result.status, 'ok', JSON.stringify(result));
+    const meta = h.provider.lastMeta;
+    assert.equal(meta?.usage, undefined, '服务没给 usage 就不能有 usage 对象');
+    assert.equal(meta?.usageUnknown, true, '缺失必须显式标 unknown');
+    assert.equal(meta?.finishReason, 'stop');
+  } finally {
+    await h.stop();
+  }
+});
+
+test('F11 非回环 baseUrl 一律拒绝（真实外网地址不被接受）', () => {
   for (const bad of ['https://api.example.com/v1', 'http://10.0.0.5:8080/v1', 'http://192.168.1.2/v1']) {
     assert.throws(() => assertQwenBaseUrl(bad), /仅允许/, `应拒绝 ${bad}`);
   }

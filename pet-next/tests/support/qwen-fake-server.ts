@@ -24,8 +24,16 @@
 import { createServer, type IncomingMessage, type ServerResponse } from 'node:http';
 import { pathToFileURL } from 'node:url';
 
-/** 假服务行为：成功 / 可编程 HTTP 错误 / 慢响应 / 畸形 JSON / 空 content / 截断 / 连接重置。 */
-export type QwenFakeBehavior = 'ok' | 'http-error' | 'slow' | 'bad-json' | 'empty-content' | 'truncated' | 'reset';
+/** 假服务行为：成功 / 可编程 HTTP 错误 / 慢响应 / 畸形 JSON / 空 content / 截断 / 无 usage / 连接重置。 */
+export type QwenFakeBehavior =
+  | 'ok'
+  | 'http-error'
+  | 'slow'
+  | 'bad-json'
+  | 'empty-content'
+  | 'truncated'
+  | 'no-usage'
+  | 'reset';
 
 /** 一条请求的观测记录（请求体原样 + 生命周期时刻）。 */
 export interface QwenFakeRequestRecord {
@@ -183,7 +191,7 @@ function completionPayload(shared: Shared, truncated: boolean): Record<string, u
 function isConfig(value: unknown): value is QwenFakeConfig {
   const record = asRecord(value);
   if (record === null) return false;
-  const behaviors = ['ok', 'http-error', 'slow', 'bad-json', 'empty-content', 'truncated', 'reset'];
+  const behaviors = ['ok', 'http-error', 'slow', 'bad-json', 'empty-content', 'truncated', 'no-usage', 'reset'];
   return (
     (record.behavior === undefined || (typeof record.behavior === 'string' && behaviors.includes(record.behavior))) &&
     (record.status === undefined || (typeof record.status === 'number' && record.status > 0)) &&
@@ -273,6 +281,14 @@ function handleCompletion(shared: Shared, req: IncomingMessage, res: ServerRespo
         case 'truncated': {
           entry.responseText = shared.replyText;
           sendJson(res, 200, completionPayload(shared, true));
+          return;
+        }
+        case 'no-usage': {
+          // 服务不返回 usage：调用方必须记 unknown，不能编造 token 数。
+          const payload = completionPayload(shared, false);
+          delete payload.usage;
+          entry.responseText = shared.replyText;
+          sendJson(res, 200, payload);
           return;
         }
         case 'slow':
