@@ -1,0 +1,22 @@
+# fake server 独立冒烟 2026-11-02T17:07:42+08:00
+# cmd: node --experimental-strip-types tests/support/chat-fake-server.ts --port=8901 / 8902(delay=2000)
+CHAT_FAKE_URL=http://127.0.0.1:8901
+mode=ok delayMs=0
+CHAT_FAKE_URL=http://127.0.0.1:8902
+mode=ok delayMs=2000
+--- 8901 health:
+{"ok":true,"mode":"ok","status":500,"delayMs":0}
+--- ok 回复(POST /):
+{"id":"chat-smoke-1","text":"演示回复：已收到「冒烟第一句」"}
+--- 切 error 模式:
+{"ok":true,"mode":"error","status":500,"delayMs":0}
+--- 500 回复(POST /chat):
+{"id":"chat-smoke-2","error":"fake-server-error"}
+HTTP 500
+--- 8902 慢回复中途断开(curl --max-time 0.5):
+curl_exit=28
+--- 8902 state(应含 clientClosed=true 且 respondedAt 非空):
+{"mode":"ok","status":500,"delayMs":2000,"port":8902,"startedAt":1793610462128,"requests":[{"id":"chat-abort-1","text":"会断开","receivedAt":1793610463256,"mode":"ok","status":500,"delayMs":2000,"clientClosed":true,"closedAt":1793610463755,"respondedAt":1793610465257,"responseText":"演示回复：已收到「会断开」","deliverError":null}]}
+--- 8901 state:
+{"mode":"error","status":500,"delayMs":0,"port":8901,"startedAt":1793610462127,"requests":[{"id":"chat-smoke-1","text":"冒烟第一句","receivedAt":1793610463238,"mode":"ok","status":500,"delayMs":0,"clientClosed":false,"closedAt":null,"respondedAt":1793610463239,"responseText":"演示回复：已收到「冒烟第一句」","deliverError":null},{"id":"chat-smoke-2","text":"错误模式","receivedAt":1793610463249,"mode":"error","status":500,"delayMs":0,"clientClosed":false,"closedAt":null,"respondedAt":1793610463250,"responseText":null,"deliverError":null}]}
+--- 停服完成

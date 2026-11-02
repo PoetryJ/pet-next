@@ -1,0 +1,85 @@
+M3-0 聊天 E2E 验收原始记录（agent D）
+================================================
+工作区：/data3/DATA/project/project_meishijiang/dsh-pet-wt/m3d-e2e/pet-next（分支 m3d-e2e，基线 8224143）
+DISPLAY 约定：本 E2E 独占 :94（PET_NEXT_E2E_DISPLAY 可覆盖）；:99/:95 归集成负责人与 C。
+环境：node v24.14.0（/root/.workbuddy/binaries/node/versions/24.14.0/bin），Xvfb/xdotool 系统自带。
+
+一、交付物
+------------------------------------------------
+- tests/support/chat-fake-server.ts   可编程 fake HTTP（延迟/错误/慢回复/{id,text} 与连接事件记录）
+- tests/chat.e2e.test.ts              5 个场景（真实 Electron，Xvfb :94 + CDP 驱动）
+- tests/chat-evidence/                本目录全部验收记录文本（含 fake-server-smoke.txt）
+
+二、fake server 协议（已同步全队）
+------------------------------------------------
+POST {base}/（或任意非 /__* 路径）body {"id","text"}
+  ok 模式:   200 {"id":<同请求>,"text":"演示回复：已收到「<原文>」"}
+  error 模式: 可编程状态码（默认 500）{"id":...,"error":"fake-server-error"}
+GET /__health | POST /__config {"mode","status","delayMs"} | POST /__reset | GET /__state
+行为要点：
+- 每请求的行为参数在收到时快照，之后的 /__config 不影响在途请求；
+- 客户端断开不中断处理：延迟到期仍产出响应（respondedAt 晚于 closedAt 可证），送达失败如实记录；
+  E2E 借此证明"旧请求迟到响应即使产出也不得上屏"。
+
+三、面板 data-testid 契约（已发 team-lead，等 C 落实）
+------------------------------------------------
+必需：chat-panel / chat-input / chat-send / chat-cancel / chat-status / chat-log /
+      chat-msg-user / chat-msg-assistant / chat-msg-error
+可选：chat-close（无则关面板路径退化为直接关窗，RUN-NOTES 如实记录）
+
+四、已完成记录（接线合入前）
+------------------------------------------------
+[1] 2026-11-02T17:05+08:00  静态检查（新增两文件）
+    cmd: ./node_modules/.bin/tsc -p tsconfig.json --noEmit ; ./node_modules/.bin/eslint \
+         tests/chat.e2e.test.ts tests/support/chat-fake-server.ts
+    结果：新增文件 0 错误；eslint 退出码 0。
+    注意：基线 8224143 自带 core/chat/session.ts(25) TS2304（缺 import ChatErrorCode，归 A），
+    使全仓 tsc 退出码=2；该错误非本任务引入（git status core/ 干净），已上报 team-lead。
+    摘录（过滤 core 后无任何输出，即新增文件无报错）：
+      > ./node_modules/.bin/tsc -p tsconfig.json --noEmit 2>&1 | grep -v 'core/chat/session.ts'
+      > （空）
+      > ./node_modules/.bin/eslint tests/chat.e2e.test.ts tests/support/chat-fake-server.ts
+      > ESLINT_EXIT=0
+
+[2] 2026-11-02T17:07:42+08:00  fake server 独立冒烟（原始输出全文见 fake-server-smoke.txt）
+    cmd: node --experimental-strip-types tests/support/chat-fake-server.ts --port=8901
+         node --experimental-strip-types tests/support/chat-fake-server.ts --port=8902 --delay=2000
+         （curl 依次打 /__health、POST 聊天、/__config error、POST 聊天、--max-time 0.5 中断慢回复、
+          /__state、SIGTERM 停服）
+    结果：全部符合预期；临时进程已 SIGTERM 清理（停服完成）。
+    关键摘录：
+      {"ok":true,"mode":"ok","status":500,"delayMs":0}                      ← 健康检查
+      {"id":"chat-smoke-1","text":"演示回复：已收到「冒烟第一句」"}           ← ok 回复
+      {"id":"chat-smoke-2","error":"fake-server-error"} + HTTP 500            ← 错误模式
+      8902 abort 用例 state 摘录：
+      {"id":"chat-abort-1",...,"clientClosed":true,"closedAt":1793610463755,
+       "respondedAt":1793610465257,"responseText":"演示回复：已收到「会断开」","deliverError":null}
+      ← 客户端 0.5s 断开后，服务端仍在 2s 到点产出迟到响应（respondedAt>closedAt），送达被内核丢弃
+    观察：Node 对已断开 socket 的 write 静默丢弃（deliverError 可能为 null），
+    因此"取消/关窗"的可信观测信号是 clientClosed；迟到响应的产出证明是 respondedAt>closedAt。
+
+[3] E2E 用例清单（tests/chat.e2e.test.ts，接线合入后执行并回填）
+    T1 打开面板→输入→发送→fake 回复显示（含"演示回复"标注与原文回显）＋请求 id 形状断言
+    T2 fake 500→面板报错→恢复后再发成功
+    T3 取消慢回复→显示已取消→立即再发成功；旧迟到回复不显示（核心断言：
+       fake 侧等旧 id respondedAt 产出后 +1s，断言面板无该回复）
+    T4 在途时关面板（若有 chat-close）/关窗→fake 观察连接断开→退出码 0、无残留进程
+    T5 回归门：未设 PET_NEXT_CHAT_PREVIEW 不挂面板，pet 仍可正常退出
+    回归（另行执行）：tests/demo-entry.e2e.test.ts 全量
+    运行命令：
+      export PATH=/root/.workbuddy/binaries/node/versions/24.14.0/bin:/opt/conda/envs/siren3/bin:$PATH
+      pnpm build
+      node --experimental-strip-types --test --test-reporter spec tests/chat.e2e.test.ts | \
+        tee tests/chat-evidence/chat-e2e-run.txt
+      node --experimental-strip-types --test --test-reporter spec tests/demo-entry.e2e.test.ts | \
+        tee tests/chat-evidence/demo-entry-regression.txt
+
+五、接线合入后的运行记录（待回填）
+------------------------------------------------
+（等待集成负责人通知 merge codex/pet-next-m3-chat（及指明的 m3c-panel 等）后执行第四节[3]命令并回填：
+ 每条场景的命令、退出码、原始输出摘录、时间戳；Xvfb :94 由测试自动拉起/收掉。）
+
+六、未证明项
+------------------------------------------------
+- 未接真实模型：fake 服务健康检查口径仅报 offline_ready（本地假服务就绪、真实模型链路未接），
+  本 E2E 证明的是"面板↔主进程↔Provider HTTP 链路"的端到端行为，不含真实模型质量。
