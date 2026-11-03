@@ -1,0 +1,19 @@
+M3-2 chat:remote 验收自动化 SUMMARY
+stamp: 2026-11-03T09-06-33-309Z
+os: linux 5.4.119-19.0009.28
+mode: expect=ok fake=true interact=true realInference=false
+exit: 0
+PASS 隧道与模型就绪（chat-remote-ready）
+PASS /models 返回 200 且含目标模型（status=200）
+PASS 面板就绪并截图（退出前）
+PASS 发送并收到回复（fake 服务）
+PASS 取消成功
+PASS 取消后重发成功（旧请求未上屏）（["隧道回复：你好，验收测试","隧道回复：取消后重发"]）
+PASS 入口终态已记录（code=0 signal=null）
+PASS 成功路径退出码为 0（code=0）
+PASS 本次启动的 PID 全部退出（含 pnpm/node/ssh/electron）
+PASS 本地转发端口已释放（port=40843）
+PASS 预先存在的 ssh 进程仍存活（无关进程未受影响）（before=- after=-）
+PASS 本次隧道已由入口停止（PID/端口/退出码）（pids=447253）
+PASS POSIX fake 停止回调已执行
+result: PASS

@@ -21,7 +21,7 @@ const logPath = process.env.FAKE_SSH_LOG ?? '';
 function record(payload) {
   if (!logPath) return;
   try {
-    appendFileSync(logPath, `${JSON.stringify({ ...payload, ts: Date.now() })}\n`);
+    appendFileSync(logPath, `${JSON.stringify({ ...payload, pid: process.pid, ts: Date.now() })}\n`);
   } catch {
     /* 测试环境 */
   }

@@ -1,0 +1,15 @@
+M3-2 chat:remote 验收自动化 SUMMARY
+stamp: 2026-11-03T09-08-39-216Z
+os: linux 5.4.119-19.0009.28
+mode: expect=cancelled fake=true interact=false realInference=false
+exit: 130
+PASS 取消注入目标已定位（chat-remote 进程）（pid=450799）
+PASS 取消：出现 chat-remote-cancelled 事件
+PASS 取消：不得报就绪
+PASS 取消：不得暴露 CDP（未启动 Electron）
+PASS 入口终态已记录（code=130 signal=null）
+PASS 取消终态为 130（done 事件或进程退出码）（doneExit=null code=130）
+PASS 本次启动的 PID 全部退出（含 pnpm/node/ssh/electron）
+PASS 本地转发端口已释放（port=38707）
+PASS 预先存在的 ssh 进程仍存活（无关进程未受影响）（before=- after=-）
+result: PASS

@@ -1,4 +1,4 @@
-# M3-2 Windows 本机验收脚本（薄封装；实际断言在 scripts/verify-remote-entry.mjs）。
+﻿# M3-2 Windows 本机验收脚本（薄封装；实际断言在 scripts/verify-remote-entry.mjs）。
 # 服务端无 Windows：本脚本由 Codex 在负责人电脑执行；不安装/修改系统 SSH，不写真实地址。
 #
 # 默认零推理：只验证 隧道 → /models → 面板就绪 → 关窗收尾 → 本次 PID/端口清理 → 无关进程存活。

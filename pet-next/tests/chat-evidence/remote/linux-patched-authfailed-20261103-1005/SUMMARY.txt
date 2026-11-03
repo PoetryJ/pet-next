@@ -1,0 +1,15 @@
+M3-2 chat:remote 验收自动化 SUMMARY
+stamp: 2026-11-03T09-07-19-493Z
+os: linux 5.4.119-19.0009.28
+mode: expect=auth-failed fake=true interact=false realInference=false
+exit: 1
+PASS 负路径 auth-failed：入口报告失败事件
+PASS 失败原因分类为 auth-failed（reason=auth-failed）
+PASS 失败路径不得报就绪
+PASS 失败路径不得暴露 CDP
+PASS 入口终态已记录（code=1 signal=null）
+PASS 失败路径退出码为 1（code=1）
+PASS 本次启动的 PID 全部退出（含 pnpm/node/ssh/electron）
+PASS 本地转发端口已释放（port=39217）
+PASS 预先存在的 ssh 进程仍存活（无关进程未受影响）（before=- after=-）
+result: PASS

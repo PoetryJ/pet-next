@@ -1,9 +1,10 @@
 /**
  * M3-2 chat:remote 编排：预检、隧道失败分类、/models 校验、收尾、断线、幂等 stop。
- * 全部注入假隧道/假 runner/假探测，不建真实 SSH、不起 Electron、不请求服务器。
+ * 全部使用假子进程/假 runner/假探测，不建真实 SSH、不起 Electron、不请求服务器。
  */
 import assert from 'node:assert/strict';
 import { EventEmitter } from 'node:events';
+import net from 'node:net';
 import { describe, test } from 'node:test';
 import { runRemote } from './chat-remote-core.mjs';
 
@@ -119,6 +120,50 @@ describe('precheckRemote（经 runRemote 观察）', () => {
 });
 
 describe('runRemote', () => {
+  test('Windows Node shim 前缀经过真实 startTunnel 到达 spawn，不能把 -N 直接传给 Node', async () => {
+    const server = net.createServer();
+    await new Promise<void>((resolve, reject) => {
+      server.once('error', reject);
+      server.listen(0, '127.0.0.1', resolve);
+    });
+    const address = server.address();
+    await new Promise<void>((resolve) => server.close(() => resolve()));
+    assert.ok(address !== null && typeof address === 'object');
+
+    const ctx = options();
+    const child = new EventEmitter();
+    const kills: string[] = [];
+    const spawnedChild = Object.assign(child, {
+      stdout: new EventEmitter(),
+      stderr: new EventEmitter(),
+      kill: (signal: string) => {
+        kills.push(signal);
+        setImmediate(() => child.emit('exit', 0, null));
+        return true;
+      },
+    });
+    const calls: Array<{ bin: string; args: string[] }> = [];
+    const shimPath = 'C:/fixture with spaces/fake-ssh.mjs';
+    const code = await runRemote({
+      ...ctx.options,
+      // 不替换 startTunnel：断言生产编排与隧道层连接后的真实 spawn 参数。
+      startTunnelFn: undefined,
+      fileConfig: { localPort: address.port },
+      sshBin: process.execPath,
+      sshArgsPrefix: [shimPath],
+      spawn: ((bin: string, args: string[]) => {
+        calls.push({ bin, args });
+        return spawnedChild;
+      }) as never,
+    });
+    assert.equal(code, 0);
+    assert.equal(calls.length, 1);
+    assert.equal(calls[0]?.bin, process.execPath);
+    assert.deepEqual(calls[0]?.args.slice(0, 2), [shimPath, '-N']);
+    assert.ok(calls[0]?.args.includes(`127.0.0.1:${address.port}:127.0.0.1:18872`));
+    assert.deepEqual(kills, ['SIGTERM']);
+  });
+
   test('配置缺失 → config-invalid 非零，不建隧道', async () => {
     const ctx = options();
     let started = false;

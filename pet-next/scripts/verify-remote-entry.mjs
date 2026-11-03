@@ -255,6 +255,7 @@ const stateExpression = `(() => {
     phase: root?.dataset.state ?? '',
     open: body instanceof HTMLElement ? !body.hidden : false,
     bots: Array.from(document.querySelectorAll('[data-testid="chat-msg-assistant"]')).length,
+    botTexts: Array.from(document.querySelectorAll('[data-testid="chat-msg-assistant"] .chat-entry-text')).map(el => el.textContent),
     status: (document.querySelector('[data-testid="chat-status"]')?.textContent ?? '').trim(),
     rects: { toggle: rect(by('chat-toggle', '.chat-toggle')), input: rect(by('chat-input', '.chat-input')), send: rect(by('chat-send', '.chat-send')), cancel: rect(by('chat-cancel', '.chat-cancel')) },
   };
@@ -280,6 +281,7 @@ async function main() {
   if (expect !== 'ok' && (interact || allowRealInference)) throw new Error('负路径模式不能与 --interact/--allow-real-inference 组合');
   if (interact && !useFake) throw new Error('--interact 只能与 --fake 组合（零推理）；真实发送需 --allow-real-inference');
   if (allowRealInference && useFake) throw new Error('--allow-real-inference 只用于真实目标（fake 模式不需要）');
+  if (isWin && expect === 'cancelled') throw new Error('not-run: Windows process.kill(SIGINT) does not deliver a console Ctrl-C event; use the core signal tests until a native console test is available.');
 
   const envInfo = [
     `os: ${os.type()} ${os.release()} ${os.arch()}`,
@@ -366,6 +368,7 @@ async function main() {
         cdp = await connectCdp(debugPort);
         let state = await waitState(cdp, (s) => s.rects?.toggle, 30000, '面板挂载');
         await cdp.screenshot(path.join(outDir, '01-ready.png'));
+        ownedPids = [...new Set([...ownedPids, ...await collectTree(entry.pid)])];
         record('面板就绪并截图（退出前）', true);
 
         if (interact) {
@@ -381,6 +384,8 @@ async function main() {
           record('发送并收到回复（fake 服务）', state.bots >= 1);
 
           await cdp.click(state.rects.input);
+          await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2 });
+          await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2 });
           await cdp.send('Input.insertText', { text: '这句取消' });
           await sleep(200);
           state = await cdp.evaluate(stateExpression);
@@ -393,13 +398,17 @@ async function main() {
 
           state = await cdp.evaluate(stateExpression);
           await cdp.click(state.rects.input);
+          await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2 });
+          await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, modifiers: 2 });
           await cdp.send('Input.insertText', { text: '取消后重发' });
           await sleep(200);
           state = await cdp.evaluate(stateExpression);
           await cdp.click(state.rects.send);
           state = await waitState(cdp, (s) => s.bots >= 2, 20000, '重发成功');
+          await sleep(650); // Greater than the controlled fake's 300ms delay.
+          state = await cdp.evaluate(stateExpression);
           await cdp.screenshot(path.join(outDir, '04-resend.png'));
-          record('取消后重发成功（旧请求未上屏）', state.bots === 2, `bots=${state.bots}`);
+          record('取消后重发成功（旧请求未上屏）', state.bots === 2 && state.botTexts.at(-1)?.includes('取消后重发') && !state.botTexts.some(text => text.includes('这句取消')), JSON.stringify(state.botTexts));
         }
 
         if (allowRealInference) {
@@ -417,6 +426,8 @@ async function main() {
         }
 
         await cdp.screenshot(path.join(outDir, '06-before-close.png'));
+        ownedPids = [...new Set([...ownedPids, ...await collectTree(entry.pid)])];
+        await writeFile(path.join(outDir, 'owned-pids.txt'), `${ownedPids.join('\n')}\n`);
         // 关闭走产品内 Browser.close（等同于用户关窗），由入口自己收尾。
         void cdp.send('Browser.close', {}).catch(() => undefined);
       }
@@ -487,7 +498,11 @@ async function main() {
     const sshLogPath = path.join(outDir, 'fake-ssh.ndjson');
     if (useFake && existsSync(sshLogPath)) {
       const text = await readFile(sshLogPath, 'utf8');
-      if (expect === 'ok') record('本次隧道已由入口停止（fake-ssh-stopped）', text.includes('fake-ssh-stopped'));
+      if (expect === 'ok') {
+        const fakePids = [...new Set(text.trim().split(/\r?\n/).map(line => JSON.parse(line).pid).filter(pid => Number.isInteger(pid) && pid > 0))];
+        record('本次隧道已由入口停止（PID/端口/退出码）', fakePids.length > 0 && fakePids.every(pid => !pidIsAlive(pid)) && !(await portListening(tunnelPort)) && exitCode === 0, `pids=${fakePids.join(',')}`);
+        if (!isWin) record('POSIX fake 停止回调已执行', text.includes('fake-ssh-stopped'));
+      }
     }
 
     await writeFile(stdoutFile, allOut());

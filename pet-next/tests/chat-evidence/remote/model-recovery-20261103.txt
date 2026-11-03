@@ -1,0 +1,63 @@
+M3-2 冻结附带：Qwen 服务恢复定位（2026-11-03，只读，未启动任何模型/GPU）
+====================================================================
+口径：本文件只记录已查实事实与可执行恢复路径；不提交占位符模板；不自行启动共享模型。
+
+一、服务原始形态（来自 M3-1 真实证据，非本次探测）
+------------------------------------------------
+- 地址：服务器本机 http://127.0.0.1:18872/v1（OpenAI 兼容，vLLM）
+- served id：qwen3.8-27b；max_model_len=8192（tests/chat-evidence/qwen/SUMMARY.txt、
+  pet-next-M3_1_QWEN_START.txt）
+- 产品请求基准：stream=false, max_tokens=96, temperature=0.2,
+  chat_template_kwargs={enable_thinking:false}；服务由负责人预加载，仓库从未保存启动命令。
+
+二、本机现状（2026-11-03 实查）
+------------------------------------------------
+- 18870-18879 无监听；4×H20（各 97871 MiB）全部 0 MiB / 0%，无 compute 进程。
+- 权重目录 /data3/DATA/models/ 仅有：
+  DeepSeek-R1-Distill-Qwen-14B（28G，Qwen2ForCausalLM，48 层，bf16，4 个 safetensors 分片，
+  max_position_embeddings=131072）——不是原服务的 qwen3.8-27b。
+  其余 lyrics(1.6T)/omni_judge(233G)/tuner_rdma2 为其他项目数据。
+  → 本机未找到 qwen3.8-27b 权重。
+- Python：默认解释器为 /opt/conda/envs/siren3/bin/python3.11（pip 26.0.1）；
+  siren3 内 torch 2.8.0+cu128（torch.cuda.is_available()=True），vllm 未安装（import 失败）。
+  /opt/conda/envs 仅此一个环境；conda 可执行文件不在 PATH（用 /opt/conda/envs/siren3/bin/* 直调）。
+- 驱动/CUDA：nvidia driver 580.126.20；nvcc 12.4（vllm wheel 自带 CUDA 运行时，不必装齐 toolkit）。
+- 磁盘：/data3 为 CFS（110T，剩 45T）；/ overlay 200G 剩 198G。
+- 启动记录：无 systemd 单元、无 tmux/screen、无 docker 容器、root 家目录重建后无 shell history、
+  /root/nohup.out 与 /tmp/vllm* 无残留 → 与"环境重置终止服务"一致（推断，非直接日志证据）。
+
+三、可执行恢复命令（由负责人二选一执行，执行方不代跑）
+------------------------------------------------
+方案 A（恢复原模型 qwen3.8-27b）：
+  前置：qwen3.8-27b 权重路径需负责人提供（本机未找到）；siren3 需补装 vllm（见缺项）。
+  /opt/conda/envs/siren3/bin/python -m vllm.entrypoints.openai.api_server \
+    --model <负责人提供的 qwen3.8-27b 权重目录> \
+    --served-model-name qwen3.8-27b \
+    --host 127.0.0.1 --port 18872 --max-model-len 8192
+  健康检查（服务器本机）：curl -s http://127.0.0.1:18872/v1/models | grep qwen3.8-27b
+方案 B（用本机现存 DeepSeek-R1-Distill-Qwen-14B 替代，需产品配置同步改）：
+  /opt/conda/envs/siren3/bin/python -m vllm.entrypoints.openai.api_server \
+    --model /data3/DATA/models/DeepSeek-R1-Distill-Qwen-14B \
+    --served-model-name deepseek-r1-distill-qwen-14b \
+    --host 127.0.0.1 --port 18872 --max-model-len 8192
+  注意：这是推理蒸馏模型（生成含 <think> 链），与产品"一两句简短中文"提示词不匹配，
+  需要负责人物理验收回复质量；且产品侧模型名要改（chat-remote 探测/配置的 model 字段），
+  属产品决策，不在本轮执行。
+
+四、依赖缺项（方案 A/B 共同）
+------------------------------------------------
+- vllm 未装：/opt/conda/envs/siren3/bin/pip install vllm（建议负责人固定版本，如
+  vllm==0.11.x 级别并与 torch 2.8.0+cu128 兼容；安装属环境变更，由负责人决定执行）。
+- 方案 A 另缺：qwen3.8-27b 权重本体（位置未知）。
+
+五、资源占用与回退
+------------------------------------------------
+- 14B bf16 权重约 28G 显存：单卡 H20(96G) 可承载；qwen3.8-27b bf16 约 54G+KV：单卡可承载，
+  现有 4 卡全空闲。
+- 回退：停止服务即 kill 该 api_server 进程（只读文件不落地，除 pip 安装外无系统修改；
+  pip 可 pip uninstall 回退）。产品侧无需改动即可回到 not-ready 明确失败路径（已验证）。
+
+六、对产品的影响
+------------------------------------------------
+服务未恢复期间，pnpm chat:remote 在真实目标上明确失败（not-ready/probe-failed，不静默降级），
+已由本轮与上轮证据覆盖；Windows/传输链路验收均用 fake 完成，不阻塞 M3-2 冻结。

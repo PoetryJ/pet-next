@@ -1,0 +1,55 @@
+
+> pet-next@0.1.0 chat:remote /data3/DATA/project/project_meishijiang/dsh-pet/pet-next
+> pnpm build && node --experimental-strip-types scripts/chat-remote.mjs
+
+
+> pet-next@0.1.0 build /data3/DATA/project/project_meishijiang/dsh-pet/pet-next
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+
+{"event":"chat-remote-config","host":"fake.example.invalid","port":10977,"user":"tester","localPort":40843,"remoteHost":"127.0.0.1","remotePort":18872,"model":"qwen3.8-27b"}
+{"event":"chat-remote-tunnel","ok":true,"baseUrl":"http://127.0.0.1:40843/v1"}
+{"event":"chat-remote-probe","ok":true,"baseUrl":"http://127.0.0.1:40843/v1","models":["qwen3.8-27b"]}
+{"event":"chat-remote-ready","mode":"local","baseUrl":"http://127.0.0.1:40843/v1","model":"qwen3.8-27b","transport":"tunnel"}
+{"event":"chat-remote-electron-config","baseUrl":"http://127.0.0.1:40843/v1","model":"qwen3.8-27b","transport":"tunnel","userData":null}
+{"event":"chat-local-config","mode":"local","baseUrl":"http://127.0.0.1:40843/v1","model":"qwen3.8-27b"}
+{"event":"chat-local-electron-config","debugPort":33529,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=33529","/data3/DATA/project/project_meishijiang/dsh-pet/pet-next/dist/electron/main.js"],"userData":null}
+[electron-stderr] [447263:1103/170714.391629:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+[electron-stderr] [447263:1103/170714.767016:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170714.767141:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+[electron-stderr] [447263:1103/170714.767186:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+[electron-stderr] [447263:1103/170714.769495:ERROR:content/browser/zygote_host/zygote_host_impl_linux.cc:279] Failed to adjust OOM score of renderer with pid 447355: Permission denied (13)
+[electron-stderr] DevTools listening on ws://127.0.0.1:33529/devtools/browser/c8df539d-3086-465d-803c-aff1e223cb44
+[electron-stderr] [447263:1103/170714.809460:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron] {"event":"chat-mode","mode":"local","model":"qwen3.8-27b","transport":"tunnel"}
+[electron-stderr] [447263:1103/170714.817644:ERROR:content/browser/zygote_host/zygote_host_impl_linux.cc:279] Failed to adjust OOM score of renderer with pid 447373: Permission denied (13)
+[electron-stderr] [447263:1103/170714.829544:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170714.829623:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170714.832765:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron] {"event":"console","message":"Electron sandboxed_renderer.bundle.js script failed to run"}
+[electron] {"event":"console","message":"TypeError: Cannot destructure property 'preloadScripts' of 'binding.startupData' as it is null."}
+{"event":"chat-local-ready","mode":"local","baseUrl":"http://127.0.0.1:40843/v1","model":"qwen3.8-27b"}
+[electron] {"event":"ready","alwaysOnTop":true,"transparent":true,"requestedBackground":"#00000000","background":"#000000","bounds":{"x":80,"y":80,"width":320,"height":240},"workArea":{"x":0,"y":0,"width":1280,"height":800},"scaleFactor":1,"forcedDeviceScaleFactor":null,"scaleSource":"os","displayBounds":{"x":0,"y":0,"width":1280,"height":800},"displayCount":1,"physical":{"x":80,"y":80}}
+[electron] {"event":"console","message":"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."}
+[electron-stderr] [447263:1103/170715.161049:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170715.161124:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170715.161184:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170715.161196:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170715.741990:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170715.742068:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170715.742112:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170715.742120:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170716.000657:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170716.000731:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170716.000766:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170716.000774:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170717.218302:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170717.218382:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170717.218417:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170717.218425:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170717.238057:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170717.238093:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [447263:1103/170717.238112:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [447263:1103/170717.238116:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+{"event":"electron-exit","code":0,"signal":null}
+{"event":"chat-local-done","mode":"local","exit":0}
+{"event":"chat-remote-done","exit":0}

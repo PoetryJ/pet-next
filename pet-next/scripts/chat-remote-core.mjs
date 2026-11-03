@@ -154,7 +154,7 @@ export async function runRemote(options = {}) {
     const started = await startTunnelFn(tunnelConfig, {
       spawn: tunnelChildSpawn,
       sshBin,
-      sshArgsPrefix,
+      argsPrefix: sshArgsPrefix,
       fetchImpl,
       signal: abortController.signal,
     });

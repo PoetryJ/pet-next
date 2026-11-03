@@ -1,0 +1,2 @@
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:38707:127.0.0.1:18872","-p","10977","tester@fake.example.invalid"],"mode":"no-listen","targetPort":38483,"pid":450806,"ts":1793696956037}
+{"event":"fake-ssh-no-listen","spec":{"localHost":"127.0.0.1","localPort":38707,"remoteHost":"127.0.0.1","remotePort":18872},"pid":450806,"ts":1793696956037}
