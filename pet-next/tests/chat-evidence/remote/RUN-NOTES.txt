@@ -136,4 +136,20 @@ M3-2 chat:remote 验收记录（集成负责人，2026-11-02）
     unit 392/392、cleanup 22/22（含脚本自测 2）、integration 5/5、e2e 20/20，退出码 0。
     日志中唯一 ELIFECYCLE 是 T4 故意失败路径的预期证据输出。
 
+九、M3-2 冻结（2026-11-03，b2cab0b）
+------------------------------------------------
+并入 Codex 随包补丁 windows-acceptance-fix.patch
+（SHA256 f215bb7faa19bb23a0331eb36edae740fde68a3ceb7111be44eeefd08557b3bf，5 文件）：
+- chat-remote-core.mjs：startTunnel 依赖键名 sshArgsPrefix→argsPrefix（修复 Windows fake
+  实测失败 2）；补真实 startTunnel 路径回归测试（core 单测 13→14）。
+- verify-remote-entry.mjs：回复正文断言、Ctrl+A 清输入、重发后等 650ms 越过 fake 300ms 延迟、
+  Windows -Expect cancelled 明确 not-run 非零、ready/关闭前双采子进程 PID、fake 停止改按
+  实际 PID/端口/退出码验证（fake-ssh.ndjson 增加 pid 字段），POSIX 才断言 fake-ssh-stopped。
+- verify-windows-chat-remote.ps1：首行加 BOM（PowerShell 5.1 UTF-8 中文解析）。
+Linux 复跑（补丁树）：定向 30/30；verify 393/22/5/20 全过（verify-m3win-patch-20261103-1005.log）；
+验收自动化 linux-patched-{ok,authfailed,probefailed,cancelled}-20261103-1005 全 PASS（13/9/9/9）。
+Windows 侧证据以 ACCEPTANCE.txt 随包记录为准（补丁指纹一致），不虚称本机跑过 Windows。
+模型恢复定位见 model-recovery-20261103.txt（只读；本机无 qwen3.8-27b 权重、无 vllm；
+替代方案 B 需产品配置变更，留负责人决定）。
+
 
