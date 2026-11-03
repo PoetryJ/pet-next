@@ -58,6 +58,8 @@ if (chatMode === CHAT_PREVIEW_TOKEN || chatMode === CHAT_LOCAL_TOKEN) {
     petChat?: {
       send(payload: ChatSendRequest): Promise<ChatSendResult>;
       cancel(id: string): void;
+      /** M3-3：新对话——取消在途＋清空主进程历史（无载荷，页面不提交状态）。 */
+      reset(): void;
       info?(): Promise<unknown>;
     };
   }).petChat;

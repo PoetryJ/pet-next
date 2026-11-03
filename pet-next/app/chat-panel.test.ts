@@ -176,14 +176,14 @@ function findAll(root: StubElement, className: string): StubElement[] {
 
 /** 受控 client：send 记录调用并挂起 Promise，测试手动 resolve/reject。 */
 interface Controlled {
-  calls: { send: ChatSendRequest[]; cancel: string[] };
+  calls: { send: ChatSendRequest[]; cancel: string[]; reset: number[] };
   client: ChatPanelClient;
   settle(id: string, result: ChatSendResult): void;
   fail(id: string, error?: unknown): void;
 }
 
 function createClient(): Controlled {
-  const calls = { send: [] as ChatSendRequest[], cancel: [] as string[] };
+  const calls = { send: [] as ChatSendRequest[], cancel: [] as string[], reset: [] as number[] };
   const live = new Map<string, { resolve: (r: ChatSendResult) => void; reject: (e: unknown) => void }>();
   const client: ChatPanelClient = {
     send(request) {
@@ -192,6 +192,9 @@ function createClient(): Controlled {
     },
     cancel(id) {
       calls.cancel.push(id);
+    },
+    reset() {
+      calls.reset.push(1);
     },
   };
   return {
@@ -726,6 +729,77 @@ test('15 local 失败/超时/取消/空正文：只渲染错误或已取消，�
   assert.ok(h.logTexts().some((t) => t.includes('已取消')));
   assert.equal(assistantCount(), 0);
   assert.ok(!h.panelRoot.textContent.includes('演示'), 'local 任何失败路径都不得出现「演示」字样');
+});
+
+/** M3-3：上下文预览开启的 local 展示信息。 */
+const LOCAL_CONTEXT: ChatDisplayInfo = { mode: 'local', model: 'qwen3.8-27b', context: true };
+
+test('16 默认关闭：无「新对话」按钮、无记忆提示、dataset.context=off（与既有面板一致）', () => {
+  const h = mount(createClient(), LOCAL);
+  h.open();
+  assert.equal(h.panelRoot.dataset.context, 'off');
+  assert.equal(findAll(h.panelRoot, 'chat-reset').length, 0, 'context 缺省时不得渲染新对话按钮');
+  assert.equal(findAll(h.panelRoot, 'chat-memory-note').length, 0, 'context 缺省时不得渲染记忆提示');
+});
+
+test('17 显式开启：渲染「新对话」与记忆提示，文案口径诚实（当前会话内、重启不保留）', () => {
+  const h = mount(createClient(), LOCAL_CONTEXT);
+  h.open();
+  assert.equal(h.panelRoot.dataset.context, 'on');
+  const resetBtn = find(h.panelRoot, 'chat-reset');
+  assert.equal(resetBtn.textContent, '新对话');
+  const note = find(h.panelRoot, 'chat-memory-note');
+  assert.ok(note.textContent.includes('只记住当前会话'));
+  assert.ok(note.textContent.includes('重启不保留'));
+});
+
+test('18 新对话：取消在途、清空展示、立即恢复可发送；旧请求迟到结果被忽略', async () => {
+  const c = createClient();
+  const h = mount(c, LOCAL_CONTEXT);
+  h.open();
+  // 第一轮成功
+  h.input.value = '我叫小林';
+  h.input.dispatch('input');
+  h.enter();
+  const firstId = c.calls.send[0]?.id as string;
+  c.settle(firstId, { id: firstId, status: 'ok', text: '你好，小林！' });
+  await Promise.resolve();
+  // 第二轮在途
+  h.input.value = '我叫什么';
+  h.input.dispatch('input');
+  h.enter();
+  const secondId = c.calls.send[1]?.id as string;
+  assert.equal(h.panelRoot.dataset.state, 'pending');
+  // 点新对话：主进程 reset 被调用，本地清空并回到可输入状态（草稿保留 → typing）
+  find(h.panelRoot, 'chat-reset').dispatch('click');
+  assert.equal(c.calls.reset.length, 1);
+  assert.equal(h.panelRoot.dataset.state, 'typing');
+  assert.ok(h.logTexts().some((t) => t.includes('已开启新对话')), JSON.stringify(h.logTexts()));
+  assert.ok(!h.logTexts().some((t) => t.includes('我叫小林')), '历史展示必须被清空');
+  // 在途请求迟到 cancelled：按 id 隔离，不得新增展示
+  c.settle(secondId, { id: secondId, status: 'cancelled' });
+  await Promise.resolve();
+  assert.ok(!h.logTexts().some((t) => t.includes('已取消')));
+  // 立即可再发（不 busy），草稿保留在输入框
+  assert.equal(h.input.value, '我叫什么');
+  h.enter();
+  assert.equal(c.calls.send.length, 3);
+  const thirdId = c.calls.send[2]?.id as string;
+  c.settle(thirdId, { id: thirdId, status: 'ok', text: '新会话第一答' });
+  await Promise.resolve();
+  assert.ok(h.logTexts().some((t) => t.includes('新会话第一答')));
+});
+
+test('19 新对话不调用 cancel（主进程 reset 语义已含取消在途），收起面板时同样可用', async () => {
+  const c = createClient();
+  const h = mount(c, LOCAL_CONTEXT);
+  h.open();
+  h.input.value = '在途';
+  h.input.dispatch('input');
+  h.enter();
+  find(h.panelRoot, 'chat-reset').dispatch('click');
+  assert.equal(c.calls.cancel.length, 0, 'reset 面不复用 cancel（主进程一次完成）');
+  assert.equal(c.calls.reset.length, 1);
 });
 
 /** 读样式表原文（静态校验用，无需 DOM/CSS 引擎）。 */

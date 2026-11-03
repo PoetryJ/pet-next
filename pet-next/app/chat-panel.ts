@@ -19,10 +19,12 @@ import {
   type ChatTransport,
 } from '../contracts/chat.ts';
 
-/** 面板使用的模型客户端（接线方注入：指向 IPC 或测试桩）。 */
+/** 面板使用的模型客户端（接线方注入：指向 IPC 或测试桩）。
+ * M3-3：reset=新对话（取消在途＋清空主进程历史）；页面不带任何历史状态。 */
 export interface ChatPanelClient {
   send(request: ChatSendRequest): Promise<ChatSendResult>;
   cancel(id: string): void;
+  reset(): void;
 }
 
 /** 挂载句柄：unmount 撤销在途请求并移除面板 DOM 与事件。 */
@@ -63,6 +65,12 @@ export function normalizeChatMode(info?: ChatDisplayInfo | null): ChatMode {
 
 /** demo 的假数据提示文案；local 模式不渲染该提示。 */
 export const CHAT_DEMO_NOTE = '以下回复均为演示回复（预览假数据），非真实模型输出。';
+/** M3-3：上下文预览的常驻提示——只记住当前会话、不落盘、重启不保留。 */
+export const CHAT_MEMORY_NOTE = '只记住当前会话内最近几轮，重启不保留。';
+/** M3-3：“新对话”按钮文案；点击=取消在途＋清空主进程历史＋清空展示。 */
+export const CHAT_RESET_LABEL = '新对话';
+/** M3-3：重置后的状态反馈文案。 */
+export const CHAT_RESET_DONE_NOTE = '已开启新对话（此前内容不再带入）';
 /** local 模式没有真实模型名时的回退标签。 */
 export const CHAT_LOCAL_TAG_FALLBACK = 'Qwen · 服务器模型';
 /** tunnel（SSH 本地转发）在回复标签上的后缀，表明链路经过隧道。 */
@@ -73,6 +81,11 @@ export const CHAT_TUNNEL_BADGE = 'Qwen · 隧道';
 /** 传输方式（纯函数）：只有显式 local + tunnel 才认隧道，其余（demo/direct/缺省）按本机直连口径。 */
 export function resolveChatTransport(info?: ChatDisplayInfo | null): ChatTransport {
   return normalizeChatMode(info) === 'local' && info?.transport === 'tunnel' ? 'tunnel' : 'direct';
+}
+
+/** 上下文预览开关（纯函数）：只有主进程显式 context=true 才启用“新对话”与记忆提示。 */
+export function chatContextEnabled(info?: ChatDisplayInfo | null): boolean {
+  return info?.context === true;
 }
 
 /** 回复标签（纯函数）：demo 明示假数据；local 明示真实模型来源，有模型名则带上，隧道再加后缀。 */
@@ -169,6 +182,7 @@ export function mountChatPanel(
   const transport = resolveChatTransport(info);
   const replyTag = replyTagFor(info);
   const badgeTag = badgeTagFor(info);
+  const contextOn = chatContextEnabled(info);
 
   const panelRoot = document.createElement('div');
   panelRoot.className = 'chat-panel-root';
@@ -178,6 +192,8 @@ export function mountChatPanel(
   panelRoot.dataset.mode = mode;
   // 传输方式同样可读（direct|tunnel）：样式与人工排查不必解析文案。
   panelRoot.dataset.transport = transport;
+  // M3-3：上下文预览口径（on|off）；off 时与既有面板完全一致。
+  panelRoot.dataset.context = contextOn ? 'on' : 'off';
 
   const toggle = document.createElement('button');
   toggle.setAttribute('type', 'button');
@@ -215,6 +231,17 @@ export function mountChatPanel(
     badge.textContent = badgeTag;
     badge.setAttribute('title', replyTag);
     head.appendChild(badge);
+  }
+  // M3-3：上下文预览开启时才出现“新对话”——历史在主进程，点这里清空并取消在途。
+  let resetBtn: HTMLButtonElement | null = null;
+  if (contextOn) {
+    resetBtn = document.createElement('button');
+    resetBtn.setAttribute('type', 'button');
+    resetBtn.setAttribute('aria-label', CHAT_RESET_LABEL);
+    resetBtn.className = 'chat-reset';
+    resetBtn.dataset.testid = 'chat-reset';
+    resetBtn.textContent = CHAT_RESET_LABEL;
+    head.appendChild(resetBtn);
   }
   head.appendChild(closeBtn);
 
@@ -258,6 +285,14 @@ export function mountChatPanel(
     note.className = 'chat-note';
     note.textContent = CHAT_DEMO_NOTE;
     panel.appendChild(note);
+  }
+  if (contextOn) {
+    // M3-3：上下文预览的常驻提示——诚实口径：当前会话内有限几轮，重启即空。
+    const memoryNote = document.createElement('div');
+    memoryNote.className = 'chat-note chat-memory-note';
+    memoryNote.dataset.testid = 'chat-memory-note';
+    memoryNote.textContent = CHAT_MEMORY_NOTE;
+    panel.appendChild(memoryNote);
   }
   panel.appendChild(log);
   panel.appendChild(composer);
@@ -390,6 +425,23 @@ export function mountChatPanel(
     syncState();
   }
 
+  /** M3-3“新对话”：主进程 reset（取消在途＋清空历史）；本地清空展示并把旧请求结果按 id 隔离。
+   * 输入框草稿保留——用户往往正要改写后立刻重发；重置后可立即发送。 */
+  function resetConversation(): void {
+    if (disposed) return;
+    client.reset();
+    // 在途请求由主进程取消；这里立即丢弃本地槽位，迟到结果按 activeId 不匹配被忽略。
+    activeId = null;
+    busy = false;
+    outcome = null;
+    clearStatusEntry();
+    log.textContent = ''; // 标准语义：置空文本即移除全部子节点（清空整段会话展示）。
+    appendEntry('status', CHAT_RESET_DONE_NOTE);
+    updateComposer();
+    syncState();
+    input.focus();
+  }
+
   function openPanel(): void {
     if (disposed || open) return;
     open = true;
@@ -423,6 +475,7 @@ export function mountChatPanel(
   }
   on(toggle, 'click', () => (open ? closePanel() : openPanel()));
   on(closeBtn, 'click', closePanel);
+  if (resetBtn) on(resetBtn, 'click', resetConversation);
   on(sendBtn, 'click', submit);
   on(cancelBtn, 'click', cancelActive);
   on(input, 'keydown', handleKeydown);

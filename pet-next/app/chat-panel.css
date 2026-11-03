@@ -95,6 +95,29 @@
   padding: 2px 4px;
 }
 
+/* M3-3“新对话”（仅 data-context=on 渲染）：与来源标识同排，按钮弱化不抢输入焦点。 */
+.chat-reset {
+  flex: 0 0 auto;
+  border: 1px solid rgba(47, 125, 149, 0.55);
+  border-radius: 4px;
+  background: #eef7fa;
+  color: #2f7d95;
+  font-size: 11px;
+  line-height: 1;
+  cursor: pointer;
+  padding: 3px 6px;
+}
+
+.chat-reset:hover {
+  background: #e2f0f5;
+}
+
+/* M3-3 记忆提示：与 demo 提示同位但更弱化（灰字），不占用滚动区。 */
+.chat-memory-note {
+  color: #667;
+  background: #f3f4f6;
+}
+
 .chat-note {
   flex: 0 0 auto;
   padding: 4px 10px;
@@ -266,6 +289,11 @@
     padding: 1px 4px;
   }
 
+  .chat-reset {
+    padding: 2px 5px;
+    font-size: 10px;
+  }
+
   .chat-note {
     padding: 3px 8px;
   }
@@ -292,8 +320,8 @@
 
 /*
  * 类名清单（接线 page.html 用）：
- * 容器与入口：chat-panel-root（含 data-state、data-mode ∈ demo|local、data-transport ∈ direct|tunnel、is-open）、chat-toggle
- * 面板：chat-panel（hidden 收起）、chat-head、chat-title、chat-mode-badge（仅 local；隧道加 --tunnel）、chat-close、chat-note（仅 demo）
+ * 容器与入口：chat-panel-root（含 data-state、data-mode ∈ demo|local、data-transport ∈ direct|tunnel、data-context ∈ on|off、is-open）、chat-toggle
+ * 面板：chat-panel（hidden 收起）、chat-head、chat-title、chat-mode-badge（仅 local；隧道加 --tunnel）、chat-reset（仅 context=on）、chat-close、chat-note（demo 假数据 / context=on 记忆 chat-memory-note）
  * 消息：chat-log（唯一滚动容器）、chat-entry（chat-entry-user/bot/status/error）、
  *       chat-demo-tag（demo「演示回复」）、chat-model-tag（local「Qwen · 服务器模型」，隧道加 --tunnel）、chat-entry-text
  * 输入：chat-composer、chat-input、chat-hint、chat-actions、chat-send、chat-cancel

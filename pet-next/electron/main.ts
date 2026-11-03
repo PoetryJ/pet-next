@@ -9,7 +9,10 @@ import { fileURLToPath } from 'node:url';
 import { createWindowController } from '../adapters/window/controller.ts';
 import type { WindowBounds, WorkArea } from '../adapters/window/types.ts';
 import { createQwenChatProvider } from '../adapters/chat/qwen-provider.ts';
+import { createChatHistory } from '../core/chat/history.ts';
+import { createChatSession } from '../core/chat/session.ts';
 import {
+  CHAT_CONTEXT_ENV,
   CHAT_FAKE_URL_ENV,
   CHAT_INFO_CHANNEL,
   CHAT_LOCAL_ENV,
@@ -149,16 +152,25 @@ function createWindow(): void {
       baseUrl: resolved.config.baseUrl,
       model: resolved.config.model,
     });
+    // M3-3：显式预览开关（PET_NEXT_CHAT_CONTEXT 非空）时启用当前会话有界历史；
+    // 缺省关闭——不创建历史，provider 载荷与 M3-1 完全一致。历史只存在主进程内存。
+    const contextEnabled = process.env[CHAT_CONTEXT_ENV] !== undefined && process.env[CHAT_CONTEXT_ENV] !== '';
+    const session = contextEnabled
+      ? createChatSession({
+          complete: (input) => provider.complete(input),
+          history: createChatHistory(),
+        })
+      : undefined;
     // M3-2：chat:remote 编排会设置 transport=tunnel；页面只读展示，拿不到 SSH 配置。
     const transport: ChatTransport = process.env[CHAT_TRANSPORT_ENV] === 'tunnel' ? 'tunnel' : 'direct';
-    const info: ChatDisplayInfo = { mode: 'local', model: resolved.config.model, transport };
+    const info: ChatDisplayInfo = { mode: 'local', model: resolved.config.model, transport, context: contextEnabled };
     ipcMain.handle(CHAT_INFO_CHANNEL, () => info);
     console.log(
-      JSON.stringify({ event: 'chat-mode', mode: 'local', model: resolved.config.model, transport }),
+      JSON.stringify({ event: 'chat-mode', mode: 'local', model: resolved.config.model, transport, context: contextEnabled }),
     );
     void registerChatService({
       getWindow: () => win,
-      provider,
+      ...(session ? { session } : { provider }),
       onClose() {
         chatHandle = null;
       },
