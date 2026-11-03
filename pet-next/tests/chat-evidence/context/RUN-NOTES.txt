@@ -1,0 +1,82 @@
+M3-3 当前会话上下文预览 —— 运行记录（fake 测试，零真实推理）
+分支 codex/pet-next-m3-context（自 M3-2 最终 HEAD a1caf7d 开出，不合并 main）
+基线：a1caf7d → 契约 f1bdc4b → A a3cb752 → B 107fce4 → C 14f7cfa → D b5f3e17 → E2E c86a452
+
+一、范围与红线
+------------------------------------------------
+做：当前会话内有界历史注入请求；「新对话」按钮；两臂对照与请求体增长记录。
+不做：长期记忆、落盘、播放器改动、真实推理。缺省关闭（不设 PET_NEXT_CHAT_CONTEXT
+时 provider 载荷与 M3-1 逐字节一致——B/D 均有逐字节断言）。
+fake 测试只证明工程语义（历史确实进入请求体、清空确实不进入），不宣称模型记忆质量提升。
+
+二、契约（contracts/chat.ts，f1bdc4b）
+------------------------------------------------
+- ChatHistoryEntry { user, assistant }（不可变，readonly）。
+- ChatProvider.complete 增加 input.history?: readonly ChatHistoryEntry[]（缺省=旧行为）。
+- CHAT_CONTEXT_ENV = 'PET_NEXT_CHAT_CONTEXT'（主进程读，非空开启）。
+- CHAT_RESET_CHANNEL = 'chat:reset'（单向，页面→主进程，无载荷）。
+- ChatDisplayInfo.context?: boolean（主进程决定，页面只读）。
+
+三、A 有界历史与隔离（a3cb752）
+------------------------------------------------
+core/chat/history.ts：4 轮 / 2000 字符上限，整轮淘汰（先丢最旧完整轮次）；
+snapshot() 返回浅拷贝（push 后旧快照不变——不可变快照测试锁定）。
+core/chat/session.ts：
+- 请求接受时取快照注入 complete（本请求自身文本绝不进入本次 history）；
+- 仅真正以 ok 结算（文本已交付界面）的轮次 push；取消/超时/provider-error 迟到成功一律不入；
+- reset() = 取消在途（引用隔离、槽位立即释放）+ 清空历史，立即可再发。
+单测 37 条（history.test.ts 17 + session.test.ts 新增 10 条含既有 10 条重跑）全过。
+
+四、B Provider 消息构造与主进程接线（107fce4）
+------------------------------------------------
+adapters/chat/qwen-provider.ts：messages = [system] + 历史 user/assistant 对 + [当前 user]；
+history 为 undefined 或空数组时请求体与 M3-1 逐字节一致（字符串级断言）；
+畸形历史（非字符串字段）发请求前早失败；采样参数不随历史改变。
+electron/chat-service.ts：parseChatSendRequest 键白名单——渲染层载荷多出任何键
+（history/system/messages/...）一律 bad-request；注册 chat:reset（sender 必须主窗口，
+dispose 移除）。
+
+五、C 面板与集成（14f7cfa）
+------------------------------------------------
+app/chat-panel.ts：仅 context=on 渲染「新对话」按钮（chat-reset）与记忆提示
+（chat-memory-note「只记住当前会话内最近几轮，重启不保留。」）；
+resetConversation = client.reset() + 本地清空展示 + 在途结果按 id 隔离 + 草稿保留立即可发；
+dataset.context ∈ on|off（样式/E2E 可读）。
+electron/preload.ts：petChat.reset()（send chat:reset，无载荷）。
+electron/main.ts：local 模式且 PET_NEXT_CHAT_CONTEXT 非空才创建带历史会话；info.context 下发。
+面板单测 20 条全过（含 16 默认关闭回归：无按钮无提示 dataset=off）。
+
+六、D 独立回归与对照（b5f3e17，tests/chat-context.test.ts 7 条）
+------------------------------------------------
+两臂：同输入同回复脚本，context=false vs true 的 session 对照。
+- 延续：第二问请求体含第一轮 user/assistant；
+- 纠正（失败后重发）：失败轮不入史，第三问只带成功轮；
+- 清空：reset 后同文本请求体逐字节回到首问基线；
+- 在途清空后重发：新请求不带被取消轮；
+- 迟到隔离：被取消请求的迟到成功不污染后续请求；
+- 失败/取消不入史；
+- 上界：连续 6 问后请求体只含最近 4 轮（字节 373→469→562B 增长记录在断言消息）。
+
+七、Electron 演示（c86a452，tests/chat-context.e2e.test.ts 2 条，tests/chat-evidence/context/）
+------------------------------------------------
+正式入口 pnpm chat:local + 自起 fake-model-service（新增 FAKE_MODEL_LOG NDJSON 落盘
+完整请求体；回显改“最后一条 user”，修复历史注入时回显错位）。真实输入事件（CDP
+Input.*），DOM 只读。
+- T1 context=on：第一问→回复→第二问→回复；断言请求2 messages 角色
+  [system,user,assistant,user]、历史 assistant=已交付完整回复、字节增长；
+  真实鼠标点「新对话」→展示清空+状态提示→第三问请求体回 [system,user] 且无旧轮次；
+  window.pet.quit() 退出码 0。证据 t1-context-on.txt。
+- T2 缺省：两问请求体均 [system,user] 无 assistant 消息、字节一致；面板无「新对话」、
+  dataset.context=off；退出码 0。证据 t2-context-off.txt。
+（面板“发送后草稿保留”为既有行为——E2E 用 Ctrl+A 替换式输入，不改产品。）
+
+八、账本
+------------------------------------------------
+M3-1 交接 29/30（28 交付 + 1 Codex 验收）；M3-2 维持 29/30；本轮 M3-3 全程 fake，
+真实推理新增 0，账本维持 29/30，最后 1 次仍留 Codex。
+
+九、完整验证（Linux，DISPLAY=:1，logs/chat-evidence/verify-m3context.log）
+------------------------------------------------
+unit 430/430（含 chat-context.test.ts 7、history 17、session/panel/provider/service 新增）、
+cleanup 22/22、integration 5/5、e2e 22/22（既有 20 + M3-3 两臂 2），退出码 0，0 失败。
+日志中 1 个 ELIFECYCLE 为 chat-remote T4 故意失败路径的既有预期证据。
