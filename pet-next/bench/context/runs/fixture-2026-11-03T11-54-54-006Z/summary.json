@@ -1,0 +1,302 @@
+{
+  "runId": "fixture-2026-11-03T11-54-54-006Z",
+  "mode": "fixture",
+  "attempts": 18,
+  "skippedReplay": 0,
+  "settled": {
+    "ok": 18,
+    "error": 0,
+    "cancelled": 0,
+    "other": 0
+  },
+  "cases": [
+    {
+      "seq": 1,
+      "case": "S1",
+      "arm": "off",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "好的，我知道了。"
+      },
+      "bytes": 412,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 2,
+      "case": "S1",
+      "arm": "off",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "好的，我知道了。"
+      },
+      "bytes": 400,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 3,
+      "case": "S1",
+      "arm": "off",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "抱歉，我没有看到你提过名字。"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 4,
+      "case": "S1",
+      "arm": "on",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "好的，我知道了。"
+      },
+      "bytes": 412,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 5,
+      "case": "S1",
+      "arm": "on",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "好的，我知道了。"
+      },
+      "bytes": 538,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 6,
+      "case": "S1",
+      "arm": "on",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "你叫林小满。"
+      },
+      "bytes": 658,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 7,
+      "case": "S2",
+      "arm": "off",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "绿色，不错。"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 8,
+      "case": "S2",
+      "arm": "off",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "好的，橙色，记住了。"
+      },
+      "bytes": 427,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 9,
+      "case": "S2",
+      "arm": "off",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "你没有告诉过我。"
+      },
+      "bytes": 400,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 10,
+      "case": "S2",
+      "arm": "on",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "绿色，不错。"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 11,
+      "case": "S2",
+      "arm": "on",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "好的，橙色，记住了。"
+      },
+      "bytes": 541,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 12,
+      "case": "S2",
+      "arm": "on",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "你最喜欢的是橙色。"
+      },
+      "bytes": 673,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 13,
+      "case": "S3",
+      "arm": "off",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "好的，我知道了。"
+      },
+      "bytes": 400,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 14,
+      "case": "S3",
+      "arm": "off",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "好的，我知道了。"
+      },
+      "bytes": 385,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 15,
+      "case": "S3",
+      "arm": "off",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "我没有听到你提过宠物的名字。"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 16,
+      "case": "S3",
+      "arm": "on",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "好的，我知道了。"
+      },
+      "bytes": 400,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 17,
+      "case": "S3",
+      "arm": "on",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "好的，我知道了。"
+      },
+      "bytes": 511,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    },
+    {
+      "seq": 18,
+      "case": "S3",
+      "arm": "on",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "我没有听到你提过宠物的名字。"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 0,
+        "completion_tokens": 0,
+        "total_tokens": 0
+      }
+    }
+  ]
+}
