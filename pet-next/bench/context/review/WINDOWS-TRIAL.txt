@@ -1,0 +1,28 @@
+M3-4 负责人 Windows 试用说明（最短版）
+======================================
+
+一、体验（fake 服务，零真实调用、零费用）
+----------------------------------------
+  cd pet-next
+  node --experimental-strip-types --test --test-concurrency=1 tests/independent-context-windows.check.ts
+  （若文件不存在先生成：node scripts/win-context-recheck.mjs）
+
+看什么：T1 上下文开（第二轮问“我叫什么名字”能答出）；T2 默认关（答不出且无“新对话”按钮）；
+T3 连发后点“新对话”立即重发（旧内容不上屏）。证据：tests/chat-evidence/context-live/win/。
+
+二、真实服务试用（需先恢复 127.0.0.1:18872，见恢复说明 B 节）
+----------------------------------------
+  PowerShell：
+    $env:PET_NEXT_CHAT_CONTEXT='1'; pnpm chat:local     # 上下文开（按钮出现即生效）
+    pnpm chat:local                                     # 默认关（完全旧行为）
+  退出：点窗口“新对话”清空当前会话；关窗即退出（退出码 0）。
+  模式标签：面板角标显示 local；回复前的模型名 qwen3.8-27b。
+
+三、怎么区分 fake / 真实
+----------------------------------------
+  fake：回复固定以“隧道回复：”开头（fake-model-service 回显）；
+  真实：自然语言回复，延迟数秒，GPU 有负载。账本/证据见 bench/context/runs/。
+
+四、边界（如实）
+----------------------------------------
+  只记住当前会话最近 4 轮/2000 字符；重启即空；不落盘；默认开关仍由你决定。
