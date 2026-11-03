@@ -3,6 +3,7 @@
  * 全部注入假 spawn/假探测，不建立真实 SSH 连接、不请求服务器。
  */
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import { EventEmitter } from 'node:events';
 import net from 'node:net';
 import { describe, test } from 'node:test';
@@ -282,5 +283,75 @@ describe('startTunnel', () => {
     assert.equal(result.handle.isAlive(), false);
     await result.handle.stop();
     assert.equal(child.killed.length, 0, '已断线的隧道不应再被 kill');
+  });
+
+  test('探测成功的瞬间 ssh 已退出（认证竞态）→ auth-failed，不得返回 ok/isAlive=false 的句柄', async () => {
+    const port = await freePort();
+    const child = new FakeChild();
+    const result = await startTunnel(baseConfig({ localPort: port }), {
+      spawn: (() => child) as never,
+      // 模拟审计现场：探测尚未返回时 ssh 已写完 stderr 并退出，探测随后才拿到 200。
+      fetchImpl: (async () => {
+        await new Promise((r) => setImmediate(r));
+        child.writeStderr('Permission denied (publickey).\n');
+        child.emitExit(255);
+        return new Response('{}', { status: 200 });
+      }) as unknown as typeof fetch,
+      sleep: () => new Promise((r) => setTimeout(r, 5)),
+    });
+    assert.equal(result.ok, false);
+    if (result.ok) return;
+    assert.equal(result.error.code, 'auth-failed');
+  });
+
+  test('就绪探测期间取消（AbortSignal）→ cancelled，只关闭本次 ssh，无关进程存活', async () => {
+    const port = await freePort();
+    const child = new FakeChild();
+    const sentinel = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)']);
+    try {
+      const controller = new AbortController();
+      const pending = startTunnel(baseConfig({ localPort: port }), {
+        spawn: (() => child) as never,
+        fetchImpl: (async () => {
+          throw new Error('down');
+        }) as unknown as typeof fetch,
+        sleep: () => new Promise((r) => setTimeout(r, 20)),
+        signal: controller.signal,
+      });
+      setTimeout(() => controller.abort(), 30);
+      const result = await pending;
+      assert.equal(result.ok, false);
+      if (result.ok) return;
+      assert.equal(result.error.code, 'cancelled');
+      assert.equal(child.killed.length, 1, '取消时应关闭本次 ssh');
+      assert.equal(sentinel.exitCode, null, '无关进程必须存活');
+    } finally {
+      sentinel.kill('SIGKILL');
+    }
+  });
+
+  test('并发 stop：只 kill 一次，两个调用都等到实际退出', async () => {
+    const port = await freePort();
+    const child = new FakeChild();
+    let exitEmitted = false;
+    child.kill = (signal: string) => {
+      child.killed.push(signal);
+      setTimeout(() => {
+        exitEmitted = true;
+        child.emit('exit', 0, null);
+      }, 40);
+      return true;
+    };
+    const result = await startTunnel(baseConfig({ localPort: port }), {
+      spawn: (() => child) as never,
+      fetchImpl: (async () => new Response('{}')) as unknown as typeof fetch,
+      sleep: () => new Promise((r) => setTimeout(r, 5)),
+    });
+    assert.equal(result.ok, true);
+    if (!result.ok) return;
+    await Promise.all([result.handle.stop(), result.handle.stop(), result.handle.stop()]);
+    assert.equal(child.killed.length, 1, '并发 stop 只能 kill 一次');
+    assert.equal(exitEmitted, true, 'stop 完成代表 ssh 已实际退出');
+    assert.equal(result.handle.isAlive(), false);
   });
 });

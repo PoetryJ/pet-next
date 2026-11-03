@@ -188,6 +188,12 @@ export async function startTunnel(
   const now = deps.now ?? Date.now;
   const sleep = deps.sleep ?? ((ms: number) => new Promise<void>((resolve) => setTimeout(resolve, ms)));
   const sshBin = deps.sshBin ?? 'ssh';
+  const signal = deps.signal;
+  const aborted = (): boolean => signal?.aborted === true;
+
+  if (aborted()) {
+    return fail('cancelled', '已取消：未建立隧道，本次不启动 ssh');
+  }
 
   if (await portInUse(config.localPort)) {
     return fail(
@@ -197,9 +203,10 @@ export async function startTunnel(
   }
 
   const [bin, ...args] = sshArgs(config, sshBin);
+  const argsPrefix = deps.argsPrefix ?? [];
   let child: ChildProcess;
   try {
-    child = spawnImpl([bin ?? sshBin, ...args]) as ChildProcess;
+    child = spawnImpl([bin ?? sshBin, ...argsPrefix, ...args]) as ChildProcess;
   } catch (error) {
     const code = (error as NodeJS.ErrnoException).code;
     if (code === 'ENOENT') {
@@ -209,7 +216,6 @@ export async function startTunnel(
   }
   let stderr = '';
   let alive = true;
-  let stopped = false;
   let spawnErrorCode: string | undefined;
 
   const finished = new Promise<void>((resolve) => {
@@ -229,45 +235,69 @@ export async function startTunnel(
   });
   child.stdout?.on?.('data', () => undefined);
 
-  const stop = async (): Promise<void> => {
-    if (stopped) return;
-    stopped = true;
-    if (!alive) return;
-    try {
-      child.kill('SIGTERM');
-    } catch {
-      /* 已退出 */
-    }
-    const deadline = now() + 3000;
-    while (alive && now() < deadline) await sleep(50);
-    if (alive) {
+  /** 幂等且并发安全的停止：所有调用方共享同一次收尾，完成代表本次 ssh 实际退出。 */
+  let stopPromise: Promise<void> | null = null;
+  const stop = (): Promise<void> => {
+    stopPromise ??= (async () => {
+      if (!alive) return;
       try {
-        child.kill('SIGKILL');
+        child.kill('SIGTERM');
       } catch {
         /* 已退出 */
       }
-    }
+      const deadline = now() + 3000;
+      while (alive && now() < deadline) await sleep(50);
+      if (alive) {
+        try {
+          child.kill('SIGKILL');
+        } catch {
+          /* 已退出 */
+        }
+        // SIGKILL 之后仍等退出事件（有界），让 stop 的完成代表实际退出。
+        await Promise.race([
+          finished,
+          sleep(500),
+        ]);
+      }
+    })();
+    return stopPromise;
   };
 
   const deadline = now() + config.readyTimeoutMs;
+  let cancelled = false;
   while (now() < deadline) {
     if (!alive) break;
+    if (aborted()) {
+      cancelled = true;
+      break;
+    }
     if (await probeReady(config.localPort, fetchImpl)) {
-      return {
-        ok: true,
-        handle: {
-          localBaseUrl: `http://127.0.0.1:${config.localPort}`,
-          stop,
-          isAlive: () => alive,
-        },
-      };
+      // 探测成功的瞬间 ssh 可能已退出（如认证失败与探测并发）：必须复查存活，
+      // 不能返回 ok=true 但 isAlive=false 的句柄。
+      if (alive && !aborted()) {
+        return {
+          ok: true,
+          handle: {
+            localBaseUrl: `http://127.0.0.1:${config.localPort}`,
+            stop,
+            isAlive: () => alive,
+          },
+        };
+      }
+      if (aborted()) cancelled = true;
+      break;
     }
     await sleep(200);
   }
 
   await stop();
   await finished;
+  // 让已排队但尚未分发的 stderr 数据先到，避免把 auth-failed 误分类成 not-ready。
+  await new Promise<void>((resolve) => setImmediate(resolve));
 
+  if (cancelled || aborted()) {
+    return fail('cancelled', '已取消：隧道启动被中断，本次 ssh 已关闭');
+  }
   if (spawnErrorCode === 'ENOENT') {
     return fail('ssh-missing', '找不到 ssh 可执行文件：Windows 请安装 OpenSSH 客户端，或用 PET_NEXT_SSH_BIN 指定路径');
   }

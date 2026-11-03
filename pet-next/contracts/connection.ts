@@ -52,7 +52,8 @@ export type TunnelErrorCode =
   | 'port-conflict'
   | 'not-ready'
   | 'disconnected'
-  | 'config-invalid';
+  | 'config-invalid'
+  | 'cancelled';
 
 export interface TunnelErrorInfo {
   code: TunnelErrorCode;
@@ -78,6 +79,10 @@ export interface TunnelDeps {
   fetchImpl?: typeof fetch;
   now?(): number;
   sleep?(ms: number): Promise<void>;
+  /** 取消信号：启动/就绪等待期间 abort 会关闭本次 ssh 并返回 cancelled（绝不收无关进程）。 */
+  signal?: AbortSignal;
+  /** 可执行文件前置参数（如用 node 执行 .mjs 替身）；默认为空。 */
+  argsPrefix?: readonly string[];
 }
 
 /** 启动隧道：spawn ssh -N -L ...，启用 ExitOnForwardFailure 与有界 ConnectTimeout；就绪以本地端口可探测为准。 */
