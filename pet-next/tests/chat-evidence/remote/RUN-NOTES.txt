@@ -54,3 +54,36 @@ M3-2 chat:remote 验收记录（集成负责人，2026-11-02）
 - Windows 客户端行为未运行（not-run）。
 - 服务器 18872 未在本轮被请求（预算纪律），真实模型质量沿用 M3-1 记录。
 - /models 探测与推理分别记账：本轮 0 次真实调用。
+
+六、恢复会话补验（2026-11-03，负责人）
+------------------------------------------------
+背景：上轮交付后服务器开发环境重置，root 家目录被重建，上次会话用于真实隧道的 SSH 凭据不可用
+（ssh -p 10977 root@42.192.34.154 → Permission denied (publickey)；全盘与仓库内均无私钥——符合
+"不提交密钥"要求）。按"不无限等待"原则：交付可复跑脚本 + 明确 not-run。
+
+[4] 新增 scripts/verify-linux-chat-remote.sh（Linux 真实复跑脚本，与 Windows ps1 对应）
+    覆盖：配置预检（缺 host 明确失败）→ 环境记录 → 端口占用预检（不抢占）→ 自起 Xvfb →
+    pnpm chat:remote → 就绪/失败事件解析 → /models 探测证据 → SIGTERM 收尾（预期 143）→
+    残留检查（本次 ssh/electron 必须退出，无关进程不受影响）。零推理（不发送聊天消息）。
+    语法检查：bash -n 通过；无 host 干跑：明确报错退出码 1（SUMMARY 记录 config-missing 路径）。
+
+[5] 真实服务器负路径实测（零推理）：linux-real-2026-11-03T03-43-15Z/
+    命令：PET_NEXT_SSH_HOST=42.192.34.154 PET_NEXT_SSH_PORT=10977 PET_NEXT_SSH_USER=root \
+          bash scripts/verify-linux-chat-remote.sh
+    结果：入口事件序列 chat-remote-config → chat-remote-failed(reason=auth-failed)，退出码 1，
+    stderr 为可读中文（密钥/ssh-agent/公钥授权指引），失败后本地 18873 无监听残留，脚本判 PASS。
+    意义：真实服务器拒绝认证时，入口分类与收尾路径在真实 SSH 下成立（此前仅替身证明）。
+
+[6] 真实隧道成功路径（建隧道→/models→聊天→收尾）：**not-run**
+    原因：本机无私钥（环境重置后凭据丢失）。需有权限方执行：
+      PET_NEXT_SSH_HOST=42.192.34.154 PET_NEXT_SSH_PORT=10977 PET_NEXT_SSH_USER=root \
+      PET_NEXT_SSH_IDENTITY_FILE=<私钥路径> bash scripts/verify-linux-chat-remote.sh
+    或在 Windows 按 docs/chat-remote.md / verify-windows-chat-remote.ps1 复跑（含真实回复，
+    使用账本保留的最后 1 次真实推理）。
+
+七、账本（2026-11-03 核查）
+------------------------------------------------
+- M3-1 交接时 29/30（28 交付 + 1 Codex 验收）；上轮 M3-2 开发 0 次真实调用；
+  本轮补验 0 次真实推理（仅 1 次真实 SSH 认证失败尝试 + 0 次 /models 探测）。
+- 账本维持 29/30，最后 1 次保留给 Codex 的 Windows 一键验收（含真实回复）。
+
