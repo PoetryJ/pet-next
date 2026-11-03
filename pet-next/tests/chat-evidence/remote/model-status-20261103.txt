@@ -1,0 +1,48 @@
+M3-2 模型服务现场只读核查（2026-11-03）
+================================================
+约束：只读，不重启共享 GPU、不改服务配置、不把 SSH 端口(10977)当模型 HTTP 端口。
+
+一、结论
+------------------------------------------------
+127.0.0.1:18872 当前未监听；本机 GPU 全空、无模型进程。与"开发环境在 2026-11-03 10:54
+前后被重置（root 家目录重建、系统包丢失）"一致——此前承载 vLLM 服务的进程随环境终止。
+现有证据是"无进程 + 无监听 + GPU 0 使用"，没有 journal 能直接证明终止原因，故记为高置信
+推断，而非已证实事实。
+
+二、原始观测（命令与输出摘录）
+------------------------------------------------
+$ ss -tlnp | grep -E ':1887[0-9]'
+  （无输出：18870-18879 无监听）
+$ nvidia-smi --query-gpu=index,name,memory.used,memory.total,utilization.gpu --format=csv
+  index, name, memory.used [MiB], memory.total [MiB], utilization.gpu [%]
+  0, NVIDIA H20, 0 MiB, 97871 MiB, 0 %
+  1, NVIDIA H20, 0 MiB, 97871 MiB, 0 %
+  2, NVIDIA H20, 0 MiB, 97871 MiB, 0 %
+  3, NVIDIA H20, 0 MiB, 97871 MiB, 0 %
+$ nvidia-smi --query-compute-apps=pid,process_name,used_memory --format=csv
+  pid, process_name, used_gpu_memory [MiB]
+  （无 compute 进程）
+$ pgrep -af 'vllm|sglang|triton' → 无匹配
+仓库检索（*.md/*.txt/*.mjs/*.json，排除 node_modules）：
+  grep -riE 'vllm serve|python -m vllm|--served-model-name' → 无命中
+  → 仓库没有保存服务启动命令；不能据此重建原始参数。
+
+三、对产品的影响
+------------------------------------------------
+- 这不是产品缺陷：入口在真实目标上会正确报告 not-ready（隧道通但 /models 不可用），
+  不发推理、不静默转 fake（Codex 2026-11-03 Windows 实测：/v1/models 两次连接拒绝，
+  正式入口 not-ready / exit 1）。
+- 传输链路已由 fake 模型端到端证明（windows fixture v3 + 本仓 linux-auto-20261103-0709）。
+
+四、恢复建议（需负责人决定，不由执行方自动执行）
+------------------------------------------------
+模型服务是共享 GPU 资源，重启需负责人确认。若确认可恢复，按下述形态在服务器本机执行
+（具体权重路径/并行参数以运维记录为准，仓库无该配置）：
+  # 需在服务器本机（127.0.0.1:18872）启动 OpenAI 兼容服务，并保证 /v1/models 含 qwen3.8-27b
+  # 例：python -m vllm.entrypoints.openai.api_server \
+  #       --model <权重路径> --served-model-name qwen3.8-27b \
+  #       --host 127.0.0.1 --port 18872
+  # 启动后自检（在服务器本机）：curl -s http://127.0.0.1:18872/v1/models | grep qwen3.8-27b
+服务恢复后，Windows 侧无需改配置，直接 `pnpm chat:remote`；验收用
+`powershell -ExecutionPolicy Bypass -File scripts\verify-windows-chat-remote.ps1`（默认零推理）。
+真实推理仍只用账本保留的最后 1 次（显式 -AllowRealInference 单次模式）。

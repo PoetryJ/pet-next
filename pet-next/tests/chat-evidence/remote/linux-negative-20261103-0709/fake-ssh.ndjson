@@ -1,0 +1,2 @@
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:39481:127.0.0.1:18872","-p","10977","tester@fake.example.invalid"],"mode":"auth-fail","targetPort":45107,"ts":1793689867597}
+{"event":"fake-ssh-auth-fail","ts":1793689867609}

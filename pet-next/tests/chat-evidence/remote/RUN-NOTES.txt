@@ -87,3 +87,53 @@ M3-2 chat:remote 验收记录（集成负责人，2026-11-02）
   本轮补验 0 次真实推理（仅 1 次真实 SSH 认证失败尝试 + 0 次 /models 探测）。
 - 账本维持 29/30，最后 1 次保留给 Codex 的 Windows 一键验收（含真实回复）。
 
+八、M3-2 有限收尾（2026-11-03，按 Codex 独立验收意见）
+------------------------------------------------
+基线 2854b2d。只修确认的缺口，未重写 Provider/会话/面板，未动已排除的 Esc 时序问题。
+
+[7] A 隧道（adapters/connection/tunnel.ts + 3 条新单测，共 14 条）
+    修：就绪探测返回后复查 alive（此前可返回 ok=true 且 isAlive=false，审计脚本已复现）；
+    启动/探测期间支持 AbortSignal 取消（返回 cancelled，只关本次 ssh）；
+    stop 并发安全且完成代表 ssh 实际退出（此前并发调用会提前返回）。
+    验证：node --experimental-strip-types --test adapters/connection/tunnel.test.ts → 14/14。
+    原审计脚本 audit-tunnel 断言"旧错误行为"，现已按预期断言失败（不在正式单测里保留错误预期）。
+
+[8] B 编排（scripts/chat-remote-core.mjs、chat-remote.mjs + 6 条新单测，共 13 条）
+    修：SIGINT/SIGTERM 从第一次异步操作前注册，覆盖预检/隧道/探测；取消后不进 Electron；
+    probe-failed 等早退路径的 chat-remote-done exit 与真实退出码一致（此前写 0）；
+    取消时先接管隧道句柄再判取消（否则会遗留 ssh）；
+    预检 Node 要求 20+ → 22.12+（与 package.json engines 对齐）；
+    chat:remote 自带 pnpm build（空 dist 一条命令可用）；
+    PET_NEXT_SSH_BIN 支持 .mjs 替身（Windows 无法直接执行脚本，交 node 执行）。
+    验证：node --experimental-strip-types --test scripts/chat-remote-core.test.ts → 13/13；
+    宿主复现脚本 repro-remote-lifecycle.mjs：probe-failure code=1 done=1；interrupt-during-probe
+    code=130 runner=0 done=130（此前：done=0、信号被忽略仍启动 runner）。
+
+[9] C 验收脚本（scripts/verify-remote-entry.mjs 单一实现 + sh/ps1 薄封装）
+    默认零推理：隧道 → /models → 面板就绪 → Browser.close 收尾 → 断言；
+    成功路径与 --expect=<reason> 负路径分开；退出码必须是明确数字（null/超时即失败）；
+    断言本次启动 PID 全退、本地端口释放、预先存在 ssh 存活（不按全系统进程数判断）；
+    截图在退出前抓取；--interact 仅与 --fake 组合；--allow-real-inference 显式单次、默认关闭。
+    自测：tests/verify-remote-scripts.test.ts 2/2（auth-failed 负路径判 PASS + 缺配置非零）。
+    本机实测（Linux，替身，零推理）：见 linux-auto-20261103-0709/（12 项 PASS，含发送/取消/
+    重发、退出码 0）与 linux-negative-20261103-0709/（auth-failed 判 PASS）。
+    同实现另测 probe-failed / cancelled 负路径均 PASS（cancelled 退出码 130、未起 Electron）。
+
+[10] D 说明与 E2E（docs/chat-remote.md、tests/chat-remote.e2e.test.ts）
+    文档：PowerShell 正确语法（此前混用 CMD set）、去除 Windows 不存在的 ssh-copy-id、
+    已有密钥/ssh-agent 用法、首次启动（chat:remote 自带 build）、Node 22.12、验收模式。
+    E2E 新增：T3 空 dist 首次启动（自动 build 后正常退出 0）；T4 隧道启动中 Ctrl-C（130、
+    无 ready、无端口残留，仅 Linux）；T5 转发端缺模型（probe-failed、done=1、不起 Electron）；
+    T1 增加无关进程哨兵断言；T2 断言数字退出码 1 且无 done（无句柄时不产生 done）。
+    全部断言不再用 `code !== 0` 接受 null。
+
+[11] 模型现场（只读，见 model-status-20261103.txt）
+    127.0.0.1:18872 未监听；4×H20 全部 0 MiB、无 compute 进程、无 vllm/sglang；仓库无
+    启动命令记录 → 高置信推断为环境重置终止，未重启共享 GPU，恢复命令交负责人决定。
+    真实推理新增 0，账本维持 29/30。
+
+[12] 完整验证（Linux，DISPLAY=:1，logs/chat-evidence/verify-remote-m3w2.log）
+    unit 392/392、cleanup 22/22（含脚本自测 2）、integration 5/5、e2e 20/20，退出码 0。
+    日志中唯一 ELIFECYCLE 是 T4 故意失败路径的预期证据输出。
+
+

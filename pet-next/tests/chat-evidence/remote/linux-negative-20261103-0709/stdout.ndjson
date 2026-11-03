@@ -1,0 +1,11 @@
+
+> pet-next@0.1.0 chat:remote /data3/DATA/project/project_meishijiang/dsh-pet/pet-next
+> pnpm build && node --experimental-strip-types scripts/chat-remote.mjs
+
+
+> pet-next@0.1.0 build /data3/DATA/project/project_meishijiang/dsh-pet/pet-next
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+
+{"event":"chat-remote-config","host":"fake.example.invalid","port":10977,"user":"tester","localPort":39481,"remoteHost":"127.0.0.1","remotePort":18872,"model":"qwen3.8-27b"}
+{"event":"chat-remote-failed","reason":"auth-failed","error":"SSH 认证失败：请确认密钥已加载（ssh-agent）或 -i 私钥路径正确，服务器已授权该公钥","exit":1}
+ ELIFECYCLE  Command failed with exit code 1.
