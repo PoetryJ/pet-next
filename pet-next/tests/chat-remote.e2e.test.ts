@@ -62,11 +62,11 @@ function launch(command: string, args: string[], options: { env: NodeJS.ProcessE
   return { child, output: () => out, errors: () => err };
 }
 
-async function startFakeModel(): Promise<{ child: ChildProcess; port: number }> {
+async function startFakeModel(modelId = 'qwen3.8-27b'): Promise<{ child: ChildProcess; port: number }> {
   let out = '';
   const child = spawn(process.execPath, [path.join(petRoot, 'tests/support/fake-model-service.mjs')], {
     cwd: petRoot,
-    env: { ...process.env, FAKE_MODEL_DELAY_MS: '300' },
+    env: { ...process.env, FAKE_MODEL_DELAY_MS: '300', FAKE_MODEL_ID: modelId },
   });
   child.stdout?.on('data', (chunk) => {
     out += String(chunk);
@@ -75,6 +75,71 @@ async function startFakeModel(): Promise<{ child: ChildProcess; port: number }> 
   const line = out.split('\n').find((l) => l.includes('fake-model-ready')) ?? '{}';
   const record = JSON.parse(line.slice(line.indexOf('{'))) as { port: number };
   return { child, port: record.port };
+}
+
+/** 等入口退出：超时必须显式失败，不能返回 null 让 `code !== 0` 混过。 */
+async function waitExit(
+  child: ChildProcess,
+  timeoutMs: number,
+): Promise<{ code: number | null; signal: string | null }> {
+  if (child.exitCode !== null || child.signalCode !== null) {
+    return { code: child.exitCode, signal: child.signalCode };
+  }
+  return new Promise((resolve, reject) => {
+    const timer = setTimeout(() => reject(new Error(`入口 ${timeoutMs}ms 内未退出`)), timeoutMs);
+    child.once('exit', (code, signal) => {
+      clearTimeout(timer);
+      resolve({ code: code ?? null, signal: signal ?? null });
+    });
+  });
+}
+
+async function waitOutput(app: Running, needle: string, timeoutMs: number): Promise<void> {
+  await waitFor(() => Promise.resolve(app.output().includes(needle)), timeoutMs, `stdout 出现 ${needle}`);
+}
+
+/** 从入口 NDJSON 输出里取最后一个指定事件；缺失时返回 null（调用方负责给出可读断言信息）。 */
+function lastEvent(app: Running, name: string): Record<string, unknown> | null {
+  const line = app
+    .output()
+    .split('\n')
+    .filter((item) => item.includes(`"event":"${name}"`))
+    .at(-1);
+  if (!line) return null;
+  try {
+    return JSON.parse(line.slice(line.indexOf('{'))) as Record<string, unknown>;
+  } catch {
+    return null;
+  }
+}
+
+function findNodeEntryPid(rootPid: number): number | null {
+  try {
+    const out = execFileSync('ps', ['-eo', 'pid=,args='], { encoding: 'utf8' });
+    for (const line of out.split('\n')) {
+      const match = line.trim().match(/^(\d+)\s+(.+)$/);
+      if (!match) continue;
+      const pid = Number(match[1]);
+      const cmd = match[2] ?? '';
+      if (cmd.includes('chat-remote.mjs') && !cmd.includes('&&') && !/^(sh|bash|dash)\b/.test(cmd.trim())) {
+        // 只接受本次进程树里的 node（父链能回到 rootPid）。
+        let cursor = pid;
+        for (let depth = 0; depth < 6; depth += 1) {
+          if (cursor === rootPid) return pid;
+          try {
+            const ppid = Number(execFileSync('ps', ['-o', 'ppid=', '-p', String(cursor)], { encoding: 'utf8' }).trim());
+            if (!Number.isInteger(ppid) || ppid <= 1) break;
+            cursor = ppid;
+          } catch {
+            break;
+          }
+        }
+      }
+    }
+  } catch {
+    /* ps 不可用 */
+  }
+  return null;
 }
 
 interface Rect {
@@ -274,6 +339,8 @@ describe('chat:remote 正式入口（fake SSH 替身 + fake 模型）', () => {
     const tunnelPort = await freePort();
     const debugPort = await freePort();
     const sshLog = path.join(userData, 'ssh.ndjson');
+    // 无关进程哨兵：整个入口生命周期内必须存活（只清理本次进程）。
+    const sentinel = spawn(process.execPath, ['-e', 'setInterval(()=>{},1000)']);
     const app = launch('pnpm', ['chat:remote'], {
       env: remoteEnv(tunnelPort, sshLog, {
         PET_NEXT_CHAT_DEBUG_PORT: String(debugPort),
@@ -325,22 +392,17 @@ describe('chat:remote 正式入口（fake SSH 替身 + fake 模型）', () => {
 
       // Browser.close 会断开 CDP 连接，收不到响应；不等待其返回。
       void cdp.send('Browser.close', {}).catch(() => undefined);
-      const code = await new Promise<number | null>((resolve) => {
-        if (app.child.exitCode !== null) return resolve(app.child.exitCode);
-        const timer = setTimeout(() => resolve(null), 20000);
-        app.child.once('exit', (exited) => {
-          clearTimeout(timer);
-          resolve(exited);
-        });
-      });
-      assert.equal(code, 0, `入口退出码应为 0；stdout=${tail(app.output())} stderr=${tail(app.errors())}`);
+      const exit = await waitExit(app.child, 60000);
+      assert.equal(exit.code, 0, `入口退出码应为数字 0；got code=${exit.code} signal=${exit.signal} stdout=${tail(app.output())} stderr=${tail(app.errors())}`);
       assert.match(app.output(), /chat-remote-ready/);
+      assert.equal(sentinel.exitCode, null, '无关进程必须存活（只清理本次进程）');
       const sshLogText = await readFile(sshLog, 'utf8');
       assert.match(sshLogText, /fake-ssh-listening/);
       assert.match(sshLogText, /fake-ssh-stopped/, '隧道应被本次收尾关闭');
     } finally {
       cdp.close();
       if (app.child.exitCode === null) app.child.kill('SIGKILL');
+      sentinel.kill('SIGKILL');
     }
   });
 
@@ -355,16 +417,15 @@ describe('chat:remote 正式入口（fake SSH 替身 + fake 模型）', () => {
         FAKE_SSH_TARGET_PORT: String(fakeModel.port),
       }),
     });
-    const code = await new Promise<number | null>((resolve) => {
-      const timer = setTimeout(() => resolve(null), 30000);
-      app.child.once('exit', (exited) => {
-        clearTimeout(timer);
-        resolve(exited);
-      });
-    });
-    assert.notEqual(code, 0, '认证失败必须非零退出');
+    const exit = await waitExit(app.child, 60000);
+    assert.equal(exit.code, 1, `认证失败必须退出码 1（不是 null）；got code=${exit.code} signal=${exit.signal}`);
     assert.match(app.errors(), /认证失败|auth-failed/);
     assert.ok(!app.output().includes('chat-remote-ready'), '失败时不得报就绪');
+    const failedEvent = lastEvent(app, 'chat-remote-failed');
+    assert.ok(failedEvent !== null, `缺少 chat-remote-failed 事件；stdout=${tail(app.output())}`);
+    assert.equal(failedEvent.reason, 'auth-failed');
+    // 认证失败发生在隧道句柄建立之前：没有 done 事件是正确的（否则说明句柄泄漏）。
+    assert.equal(lastEvent(app, 'chat-remote-done'), null, '无隧道句柄时不应出现 done 事件');
     const listening = await new Promise<boolean>((resolve) => {
       const socket = net.createConnection({ host: '127.0.0.1', port: tunnelPort });
       socket.once('connect', () => {
@@ -374,5 +435,108 @@ describe('chat:remote 正式入口（fake SSH 替身 + fake 模型）', () => {
       socket.once('error', () => resolve(false));
     });
     assert.equal(listening, false, '失败后本地转发端口不应残留监听');
+  });
+
+  test('T3 空 dist 首次启动：chat:remote 自带 build，一条命令即可就绪（退出码 0）', { timeout: 180000 }, async () => {
+    const mainJs = path.join(petRoot, 'dist/electron/main.js');
+    await rm(mainJs, { force: true });
+    assert.equal(existsSync(mainJs), false, '前置：构建产物已删除');
+    const tunnelPort = await freePort();
+    const debugPort = await freePort();
+    const sshLog = path.join(userData, 'ssh-build.ndjson');
+    const app = launch('pnpm', ['chat:remote'], {
+      env: remoteEnv(tunnelPort, sshLog, {
+        PET_NEXT_CHAT_DEBUG_PORT: String(debugPort),
+        PET_NEXT_USER_DATA: `${userData}-build`,
+        FAKE_SSH_MODE: 'ok',
+        FAKE_SSH_TARGET_PORT: String(fakeModel.port),
+      }),
+    });
+    const cdp = await connectCdp(await resolvePageSocket(debugPort));
+    try {
+      await waitForState(cdp, '面板挂载', (s) => s.hasPanel, 60000);
+      assert.equal(existsSync(mainJs), true, 'chat:remote 应自动 pnpm build 出产物');
+      void cdp.send('Browser.close', {}).catch(() => undefined);
+      const exit = await waitExit(app.child, 60000);
+      assert.equal(exit.code, 0, `空 dist 首次启动应成功退出；code=${exit.code}`);
+    } finally {
+      cdp.close();
+      if (app.child.exitCode === null) app.child.kill('SIGKILL');
+      // 本用例删过构建产物：无论成败都恢复，避免拖累后续用例。
+      if (!existsSync(mainJs)) execFileSync('pnpm', ['build'], { cwd: petRoot, stdio: 'ignore' });
+    }
+  });
+
+  test('T4 隧道启动中 Ctrl-C：退出码 130、不起 Electron、不残留端口', { timeout: 120000, skip: process.platform === 'win32' }, async () => {
+    const tunnelPort = await freePort();
+    const debugPort = await freePort();
+    const sshLog = path.join(userData, 'ssh-cancel.ndjson');
+    const app = launch('pnpm', ['chat:remote'], {
+      env: remoteEnv(tunnelPort, sshLog, {
+        PET_NEXT_CHAT_DEBUG_PORT: String(debugPort),
+        PET_NEXT_USER_DATA: `${userData}-cancel`,
+        FAKE_SSH_MODE: 'no-listen', // 隧道一直不就绪，取消必然发生在启动阶段
+        FAKE_SSH_TARGET_PORT: String(fakeModel.port),
+      }),
+    });
+    try {
+      await waitOutput(app, '"event":"chat-remote-config"', 90000);
+      await sleep(400);
+      const nodePid = findNodeEntryPid(app.child.pid as number);
+      assert.ok(nodePid !== null, '应能定位 chat-remote 进程');
+      process.kill(nodePid as number, 'SIGINT');
+      const exit = await waitExit(app.child, 60000);
+      assert.equal(exit.code, 130, `取消应返回数字 130；got code=${exit.code} signal=${exit.signal}`);
+      assert.ok(app.output().includes('"event":"chat-remote-cancelled"'), '应记录取消事件');
+      assert.ok(!app.output().includes('chat-remote-ready'), '取消后不得报就绪');
+      const listening = await new Promise<boolean>((resolve) => {
+        const socket = net.createConnection({ host: '127.0.0.1', port: tunnelPort });
+        socket.once('connect', () => {
+          socket.destroy();
+          resolve(true);
+        });
+        socket.once('error', () => resolve(false));
+      });
+      assert.equal(listening, false, '取消后不得残留本地转发端口');
+    } finally {
+      if (app.child.exitCode === null) app.child.kill('SIGKILL');
+    }
+  });
+
+  test('T5 转发的模型服务缺目标模型：退出码 1、done 退出码一致、不起 Electron', { timeout: 120000 }, async () => {
+    const otherModel = await startFakeModel('other-9b');
+    const tunnelPort = await freePort();
+    const debugPort = await freePort();
+    const sshLog = path.join(userData, 'ssh-nomodel.ndjson');
+    const app = launch('pnpm', ['chat:remote'], {
+      env: remoteEnv(tunnelPort, sshLog, {
+        PET_NEXT_CHAT_DEBUG_PORT: String(debugPort),
+        PET_NEXT_USER_DATA: `${userData}-nomodel`,
+        FAKE_SSH_MODE: 'ok',
+        FAKE_SSH_TARGET_PORT: String(otherModel.port),
+      }),
+    });
+    try {
+      const exit = await waitExit(app.child, 90000);
+      assert.equal(exit.code, 1, `缺模型应退出码 1；got code=${exit.code}`);
+      const failedEvent = lastEvent(app, 'chat-remote-failed');
+      assert.ok(failedEvent !== null, `缺少 chat-remote-failed 事件；stdout=${tail(app.output())}`);
+      assert.equal(failedEvent.reason, 'probe-failed');
+      const doneEvent = lastEvent(app, 'chat-remote-done');
+      assert.ok(doneEvent !== null, `缺少 chat-remote-done 事件；stdout=${tail(app.output())}`);
+      assert.equal(doneEvent.exit, 1, 'done 退出码必须为 1');
+      const listening = await new Promise<boolean>((resolve) => {
+        const socket = net.createConnection({ host: '127.0.0.1', port: tunnelPort });
+        socket.once('connect', () => {
+          socket.destroy();
+          resolve(true);
+        });
+        socket.once('error', () => resolve(false));
+      });
+      assert.equal(listening, false, '失败后不得残留本地转发端口');
+    } finally {
+      otherModel.child.kill('SIGTERM');
+      if (app.child.exitCode === null) app.child.kill('SIGKILL');
+    }
   });
 });
