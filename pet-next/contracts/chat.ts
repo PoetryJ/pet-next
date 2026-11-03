@@ -47,12 +47,31 @@ export type ChatTransport = 'direct' | 'tunnel';
 /** 主进程环境变量：传输方式标记（chat:remote 由编排层设置，页面只读展示）。 */
 export const CHAT_TRANSPORT_ENV = 'PET_NEXT_CHAT_TRANSPORT';
 
+/* ===== M3-3：当前会话上下文预览（默认关闭） =====
+ * 冻结：有界历史只存在于主进程/核心内存；渲染层不能提交权威历史或伪造 system。
+ * 历史按“请求接受时的不可变快照”注入 Provider；每次发送仍最多 1 个 HTTP 请求，不重试。
+ * 默认关闭（不设环境变量时行为与 M3-1/M3-2 完全一致）；不做长期记忆、不落盘。
+ */
+
+/** 一轮成功对话的不可变记录（user+assistant 均为已交付界面的完整文本）。 */
+export interface ChatHistoryEntry {
+  readonly user: string;
+  readonly assistant: string;
+}
+
+/** 主进程环境变量：当前会话上下文预览开关。存在且非空时开启；缺省关闭。 */
+export const CHAT_CONTEXT_ENV = 'PET_NEXT_CHAT_CONTEXT';
+/** IPC：单向通道，页面 -> 主进程重置当前会话（取消在途 + 清空历史 + 隔离旧结果）。 */
+export const CHAT_RESET_CHANNEL = 'chat:reset';
+
 /** 只读展示信息。demo 模式不给 model；local 模式给真实模型名与传输方式。 */
 export interface ChatDisplayInfo {
   mode: ChatMode;
   model?: string;
   /** local 模式下的传输方式；demo 不提供。 */
   transport?: ChatTransport;
+  /** M3-3：上下文预览是否开启（主进程决定，页面只读；缺省 false 不显示“新对话”）。 */
+  context?: boolean;
 }
 
 /** 真实服务配置环境变量（主进程读取）。 */
@@ -111,5 +130,9 @@ export interface ChatSendResult {
 
 /** 可替换模型适配器。signal 触发后必须停止并 reject/短返回，不得继续占用。 */
 export interface ChatProvider {
-  complete(input: { id: string; text: string; signal: AbortSignal }): Promise<string>;
+  /**
+   * M3-3：input.history 为请求接受时的历史快照（只读，主进程/核心持有）。
+   * 缺省（undefined 或空）＝旧单轮行为，消息体与 M3-1 完全一致；适配器不得修改快照。
+   */
+  complete(input: { id: string; text: string; signal: AbortSignal; history?: readonly ChatHistoryEntry[] }): Promise<string>;
 }
