@@ -3,6 +3,7 @@
  * 全部注入假隧道/假 runner/假探测，不建真实 SSH、不起 Electron、不请求服务器。
  */
 import assert from 'node:assert/strict';
+import { EventEmitter } from 'node:events';
 import { describe, test } from 'node:test';
 import { runRemote } from './chat-remote-core.mjs';
 
@@ -41,17 +42,20 @@ function options(overrides: Record<string, unknown> = {}) {
   const logs: string[] = [];
   const errors: string[] = [];
   const tunnel = fakeTunnel();
+  const signals = new EventEmitter();
   return {
     tunnel,
     events,
     logs,
     errors,
+    signals,
     options: {
       spawn: (() => ({ pid: 1 })) as never,
       env: baseEnv(),
       petRoot: '/nonexistent',
       platform: 'linux',
       sshBin: 'ssh',
+      signals,
       startTunnelFn: (async () => ({ ok: true, handle: tunnel })) as never,
       fetchImpl: (async () => new Response('{}')) as unknown as typeof fetch,
       probeService: async () => ({ ok: true, models: ['qwen3.8-27b'] }),
@@ -81,6 +85,36 @@ describe('precheckRemote（经 runRemote 观察）', () => {
     assert.ok(ctx.errors.some((line) => line.includes('pnpm build')));
     assert.equal(ctx.events.at(-1)?.event, 'chat-remote-failed');
     assert.equal(ctx.tunnel.stopped, 0);
+  });
+
+  test('Node 版本要求与 engines 对齐：22.11 不足、22.12 通过、20 被拒', async () => {
+    const cases: Array<{ version: string; ok: boolean }> = [
+      { version: '22.11.0', ok: false },
+      { version: '22.12.0', ok: true },
+      { version: '20.19.0', ok: false },
+    ];
+    for (const item of cases) {
+      const ctx = options();
+      let runnerStarted = false;
+      const code = await runRemote({
+        ...ctx.options,
+        nodeVersion: item.version,
+        localRunner: async () => {
+          runnerStarted = true;
+          return 0;
+        },
+      });
+      if (item.ok) {
+        assert.equal(code, 0, `${item.version} 应通过预检`);
+        assert.equal(runnerStarted, true);
+      } else {
+        assert.equal(code, 1, `${item.version} 应被预检拒绝`);
+        assert.equal(runnerStarted, false);
+        const failed = ctx.events.find((e) => e.event === 'chat-remote-failed');
+        assert.equal(failed?.reason, 'precheck-failed');
+        assert.match(String((failed?.problems as string[]).join(' ')), /22\.12\+/);
+      }
+    }
   });
 });
 
@@ -125,6 +159,83 @@ describe('runRemote', () => {
     assert.equal(code, 1);
     assert.equal(ctx.tunnel.stopped, 1);
     assert.equal(ctx.events.find((e) => e.event === 'chat-remote-failed')?.reason, 'probe-failed');
+  });
+
+  test('probe-failed 的 done 事件退出码必须与返回码一致（1，而不是 0）', async () => {
+    const ctx = options();
+    const code = await runRemote({
+      ...ctx.options,
+      probeService: async () => ({ ok: false, error: '缺少模型 qwen3.8-27b' }),
+    });
+    assert.equal(code, 1);
+    const done = ctx.events.find((e) => e.event === 'chat-remote-done');
+    assert.equal(done?.exit, 1, 'done.exit 必须等于真实退出码');
+  });
+
+  test('探测阶段 Ctrl-C：返回 130、不启动 runner、隧道关闭、记录 cancelled', async () => {
+    const ctx = options();
+    let runnerStarted = false;
+    const code = await runRemote({
+      ...ctx.options,
+      probeService: async () => {
+        ctx.signals.emit('SIGINT'); // 模拟探测期间用户按 Ctrl-C
+        return { ok: true, models: ['qwen3.8-27b'] };
+      },
+      localRunner: async () => {
+        runnerStarted = true;
+        return 0;
+      },
+    });
+    assert.equal(code, 130);
+    assert.equal(runnerStarted, false, '取消后不得进入 Electron');
+    assert.equal(ctx.tunnel.stopped, 1);
+    assert.ok(ctx.events.some((e) => e.event === 'chat-remote-cancelled' && e.code === 130));
+    assert.ok(!ctx.events.some((e) => e.event === 'chat-remote-ready'), '取消后不得报就绪');
+  });
+
+  test('隧道启动阶段 Ctrl-C：返回 130、不启动 runner、隧道关闭', async () => {
+    const ctx = options();
+    let runnerStarted = false;
+    const code = await runRemote({
+      ...ctx.options,
+      startTunnelFn: (async (_config: unknown, deps: { signal?: AbortSignal }) => {
+        ctx.signals.emit('SIGINT'); // 隧道建立过程中被中断
+        assert.equal(deps.signal?.aborted, true, '取消信号必须传给隧道层');
+        return { ok: true, handle: ctx.tunnel };
+      }) as never,
+      localRunner: async () => {
+        runnerStarted = true;
+        return 0;
+      },
+    });
+    assert.equal(code, 130);
+    assert.equal(runnerStarted, false);
+    assert.equal(ctx.tunnel.stopped, 1);
+    assert.ok(ctx.events.some((e) => e.event === 'chat-remote-cancelled' && e.stage === 'tunnel'));
+  });
+
+  test('隧道层返回 cancelled：入口退出码 130（而非 1）', async () => {
+    const ctx = options();
+    const code = await runRemote({
+      ...ctx.options,
+      startTunnelFn: (async () => ({ ok: false, error: { code: 'cancelled', message: '已取消' } })) as never,
+    });
+    assert.equal(code, 130);
+    assert.ok(ctx.events.some((e) => e.event === 'chat-remote-cancelled'));
+  });
+
+  test('运行期 SIGINT 由 runLocal 处理：退出码取 runner 的 130，隧道仍关闭', async () => {
+    const ctx = options();
+    const code = await runRemote({
+      ...ctx.options,
+      localRunner: async () => {
+        ctx.signals.emit('SIGINT');
+        return 130;
+      },
+    });
+    assert.equal(code, 130);
+    assert.equal(ctx.tunnel.stopped, 1);
+    assert.equal(ctx.events.find((e) => e.event === 'chat-remote-done')?.exit, 130);
   });
 
   test('成功全链路：事件顺序、model/baseUrl 注入、退出码透传、隧道只停一次', async () => {

@@ -15,7 +15,7 @@
     "typecheck": "tsc -p tsconfig.json --noEmit && tsc -p tsconfig.preload.json --noEmit",
     "lint": "eslint .",
     "test": "node scripts/unit-tests.mjs",
-    "test:cleanup": "node --experimental-strip-types --test --test-reporter spec tests/cleanup.test.ts tests/support/process-tree.test.ts tests/support/process-table.test.ts tests/support/run-record.test.ts tests/support/record-cli.test.ts",
+    "test:cleanup": "node --experimental-strip-types --test --test-reporter spec tests/cleanup.test.ts tests/support/process-tree.test.ts tests/support/process-table.test.ts tests/support/run-record.test.ts tests/support/record-cli.test.ts tests/verify-remote-scripts.test.ts",
     "test:integration": "node --experimental-strip-types --test --test-reporter spec tests/assets/pipeline.test.ts && pnpm assets:check",
     "test:e2e": "node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts",
     "preflight": "node scripts/preflight.mjs",
@@ -28,7 +28,7 @@
     "demo:record": "pnpm build && node scripts/demo.mjs --demo --asset=short --record",
     "chat:preview": "pnpm build && node scripts/chat-demo.mjs",
     "chat:local": "pnpm build && node scripts/chat-local.mjs",
-    "chat:remote": "node --experimental-strip-types scripts/chat-remote.mjs",
+    "chat:remote": "pnpm build && node --experimental-strip-types scripts/chat-remote.mjs",
     "experiment:arbiter": "node --experimental-strip-types experiments/arbiter/runner/main.ts",
     "experiment:arbiter:check": "node --experimental-strip-types experiments/arbiter/check/main.ts",
     "experiment:arbiter:demo": "node --experimental-strip-types experiments/arbiter/demo/main.ts"

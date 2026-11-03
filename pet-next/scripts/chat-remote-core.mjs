@@ -29,13 +29,26 @@ export const REMOTE_EVENTS = {
   done: 'chat-remote-done',
   failed: 'chat-remote-failed',
   tunnelLost: 'chat-remote-tunnel-lost',
+  cancelled: 'chat-remote-cancelled',
 };
+
+/** 与 package.json engines 对齐：--experimental-strip-types 需要 Node 22.12+。 */
+export const MIN_NODE = { major: 22, minor: 12 };
 
 /** 预检：Node 版本、构建产物；缺什么给可读中文错误。ssh 是否存在由隧道层分类（ssh-missing）。 */
 export function precheckRemote({ petRoot, electronExists = null, nodeVersion = process.versions.node } = {}) {
   const problems = [];
-  const major = Number(String(nodeVersion).split('.')[0]);
-  if (!Number.isFinite(major) || major < 20) problems.push(`Node 版本过低（${nodeVersion}），需要 20+`);
+  const [majorText, minorText] = String(nodeVersion).split('.');
+  const major = Number(majorText);
+  const minor = Number(minorText ?? 0);
+  const tooLow =
+    !Number.isInteger(major) ||
+    !Number.isInteger(minor) ||
+    major < MIN_NODE.major ||
+    (major === MIN_NODE.major && minor < MIN_NODE.minor);
+  if (tooLow) {
+    problems.push(`Node 版本过低（${nodeVersion}），需要 ${MIN_NODE.major}.${MIN_NODE.minor}+（--experimental-strip-types）`);
+  }
   const hasElectron =
     typeof electronExists === 'function'
       ? electronExists()
@@ -63,6 +76,7 @@ export async function runRemote(options = {}) {
     petRoot = process.cwd(),
     platform = process.platform,
     sshBin = 'ssh',
+    sshArgsPrefix = [],
     fileConfig = {},
     model = env[REMOTE_ENV.model] ?? DEFAULT_REMOTE_MODEL,
     probeService = probeLocalService,
@@ -78,6 +92,21 @@ export async function runRemote(options = {}) {
   let tunnelLost = false;
   let electronChild = null;
   let exitCode = 0;
+  /** 'starting' 覆盖预检/建隧道/探测；'running' 后由 runLocal 自己处理信号；'done' 已收尾。 */
+  let phase = 'starting';
+  let cancelCode = 0;
+  const abortController = new AbortController();
+  const onSignal = (code) => {
+    if (phase !== 'starting') return; // 运行期信号交给 runLocal（它自己会收窗口并返回 130/143）。
+    if (cancelCode !== 0) return;
+    cancelCode = code;
+    abortController.abort();
+  };
+  const onSigint = () => onSignal(130);
+  const onSigterm = () => onSignal(143);
+  // 信号从第一个异步操作之前就注册：隧道/探测阶段的 Ctrl-C 也必须收尾，不得继续起 Electron。
+  signals.on?.('SIGINT', onSigint);
+  signals.on?.('SIGTERM', onSigterm);
 
   try {
     // 1) 预检
@@ -85,7 +114,8 @@ export async function runRemote(options = {}) {
     if (!pre.ok) {
       for (const problem of pre.problems) logError(`chat-remote 失败：${problem}`);
       record({ event: REMOTE_EVENTS.failed, reason: 'precheck-failed', problems: pre.problems, exit: 1 });
-      return 1;
+      exitCode = 1;
+      return exitCode;
     }
 
     // 2) 配置
@@ -94,7 +124,8 @@ export async function runRemote(options = {}) {
       const { code, message } = configResult.error;
       logError(`chat-remote 失败：配置无效（${message}）`);
       record({ event: REMOTE_EVENTS.failed, reason: code, error: message, exit: 1 });
-      return 1;
+      exitCode = 1;
+      return exitCode;
     }
     const tunnelConfig = configResult.config;
     record({
@@ -108,29 +139,63 @@ export async function runRemote(options = {}) {
       model,
     });
 
+    if (cancelCode !== 0) {
+      record({ event: REMOTE_EVENTS.cancelled, code: cancelCode, stage: 'pre-tunnel' });
+      logError('chat-remote 已取消：未建立隧道');
+      exitCode = cancelCode;
+      return exitCode;
+    }
+
     // 3) 建隧道（只管理本次进程）。隧道层约定 spawn 接收"一个参数数组"；这里把 Node spawn 包成该形状。
     const tunnelChildSpawn = (tunnelArgs) => {
       if (tunnelArgs.length === 0) throw new Error('隧道启动参数为空');
       return spawn(tunnelArgs[0], tunnelArgs.slice(1));
     };
-    const started = await startTunnelFn(tunnelConfig, { spawn: tunnelChildSpawn, sshBin, fetchImpl });
+    const started = await startTunnelFn(tunnelConfig, {
+      spawn: tunnelChildSpawn,
+      sshBin,
+      sshArgsPrefix,
+      fetchImpl,
+      signal: abortController.signal,
+    });
     if (!started.ok) {
       const { code, message } = started.error;
+      if (code === 'cancelled') {
+        record({ event: REMOTE_EVENTS.cancelled, code: cancelCode || 130, stage: 'tunnel' });
+        logError('chat-remote 已取消：启动阶段中断，本次隧道已关闭');
+        exitCode = cancelCode || 130;
+        return exitCode;
+      }
       logError(`chat-remote 失败：${message}`);
       record({ event: REMOTE_EVENTS.failed, reason: code, error: message, exit: 1 });
-      return 1;
+      exitCode = 1;
+      return exitCode;
     }
+    // 先接管本次隧道句柄再判取消：取消发生在隧道路由之后时，也必须由 finally 关闭它。
     tunnel = started.handle;
+    if (cancelCode !== 0) {
+      record({ event: REMOTE_EVENTS.cancelled, code: cancelCode, stage: 'tunnel' });
+      logError('chat-remote 已取消：启动阶段中断，本次隧道已关闭');
+      exitCode = cancelCode;
+      return exitCode;
+    }
     const baseUrl = `${tunnel.localBaseUrl}/v1`;
     record({ event: REMOTE_EVENTS.tunnel, ok: true, baseUrl });
 
     // 4) 校验转发端模型服务（不推理，只 GET /models）
     const probed = await probeService({ baseUrl, model }, fetchImpl);
+    if (cancelCode !== 0) {
+      record({ event: REMOTE_EVENTS.cancelled, code: cancelCode, stage: 'probe' });
+      logError('chat-remote 已取消：模型探测阶段中断，不启动聊天窗口');
+      exitCode = cancelCode;
+      return exitCode;
+    }
     if (!probed || probed.ok !== true) {
       const error = (probed && probed.error) || '未知错误';
       logError(`chat-remote 失败：转发端模型服务不可用（${error}）`);
       record({ event: REMOTE_EVENTS.failed, reason: 'probe-failed', baseUrl, error, exit: 1 });
-      return 1;
+      exitCode = 1;
+      return exitCode;
     }
     record({ event: REMOTE_EVENTS.probe, ok: true, baseUrl, models: probed.models ?? [] });
     // 链路就绪（隧道 + 转发端模型均可用）；面板可用性由 Electron 侧 ready/local-ready 记录。
@@ -158,6 +223,7 @@ export async function runRemote(options = {}) {
     }, monitorIntervalMs);
     monitor.unref?.();
 
+    phase = 'running';
     try {
       exitCode = await localRunner({
         spawn,
@@ -180,12 +246,17 @@ export async function runRemote(options = {}) {
     } finally {
       clearInterval(monitor);
     }
-    if (tunnelLost) return 1;
+    if (tunnelLost) exitCode = 1;
+    if (cancelCode !== 0 && exitCode === 0) exitCode = cancelCode;
     return exitCode;
   } finally {
+    phase = 'done';
+    signals.off?.('SIGINT', onSigint);
+    signals.off?.('SIGTERM', onSigterm);
     if (tunnel !== null) {
       await tunnel.stop();
-      record({ event: REMOTE_EVENTS.done, exit: tunnelLost ? 1 : exitCode });
+      // done 的 exit 必须与真实退出码一致（此前 probe-failed 返回 1 但 done 写 0）。
+      record({ event: REMOTE_EVENTS.done, exit: exitCode });
     }
   }
 }

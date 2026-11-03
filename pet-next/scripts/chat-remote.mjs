@@ -38,6 +38,15 @@ if (!loaded.ok) {
   process.exit(1);
 }
 
+/*
+ * PET_NEXT_SSH_BIN 允许指向 .mjs/.js 替身（验收用）：Windows 不能直接执行脚本文件，
+ * 因此统一交给 node 执行；真实 OpenSSH 仍是可执行文件，行为不变。
+ */
+const rawSshBin = process.env.PET_NEXT_SSH_BIN ?? 'ssh';
+const sshIsNodeScript = /\.(mjs|cjs|js)$/i.test(rawSshBin);
+const sshBin = sshIsNodeScript ? process.execPath : rawSshBin;
+const sshArgsPrefix = sshIsNodeScript ? [rawSshBin] : [];
+
 const code = await runRemote({
   spawn,
   petRoot,
@@ -45,7 +54,8 @@ const code = await runRemote({
   env: process.env,
   signals: process,
   fileConfig: loaded.fileConfig,
-  sshBin: process.env.PET_NEXT_SSH_BIN ?? 'ssh',
+  sshBin,
+  sshArgsPrefix,
   log: (line) => console.log(line),
   logError: (line) => console.error(line),
 });
