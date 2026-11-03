@@ -1,0 +1,12 @@
+# M3-3 E2E t2-context-off
+# 2026-11-03T11:02:15.479Z
+
+cmd: DISPLAY=:94 PET_NEXT_QWEN_BASE_URL=http://127.0.0.1:41487/v1 PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:local
+panel mounted: phase=closed context=off
+panel open: context=off hasReset=false
+send: 第一句话
+send: 第二句话
+request[0].bytes=373 request[1].bytes=373
+no history injected: both [system,user]
+entry exit: code=0 signal=null
+PASS

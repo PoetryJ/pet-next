@@ -1,0 +1,15 @@
+# M3-3 E2E t1-context-on
+# 2026-11-03T11:01:38.237Z
+
+cmd: DISPLAY=:94 PET_NEXT_QWEN_BASE_URL=http://127.0.0.1:44185/v1 PET_NEXT_CHAT_CONTEXT=1 pnpm chat:local
+panel mounted: phase=closed context=on
+panel open: context=on hasReset=true
+send: 我叫小林
+send: 我叫什么名字
+request[0].bytes=373 request[1].bytes=481
+history injected: [{"role":"user","content":"我叫小林"},{"role":"assistant","content":"隧道回复：我叫小林"}]
+reset ok: phase=typing status=["已开启新对话（此前内容不再带入）"]
+send: 新话题
+after reset: bytes=370 messages=["system","user"]
+entry exit: code=0 signal=null
+PASS

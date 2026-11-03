@@ -6,10 +6,13 @@
  * @module pet-next/tests/support/fake-model-service
  */
 import http from 'node:http';
+import { appendFileSync } from 'node:fs';
 
 const modelId = process.env.FAKE_MODEL_ID ?? 'qwen3.8-27b';
 const delayMs = Number(process.env.FAKE_MODEL_DELAY_MS ?? '0');
 const mode = process.env.FAKE_MODEL_MODE ?? 'ok';
+/** 可选 NDJSON 观测：完整请求体落盘（M3-3 E2E 断言历史注入用；未设置不写文件）。 */
+const logFile = process.env.FAKE_MODEL_LOG ?? '';
 
 const server = http.createServer((req, res) => {
   if (req.method === 'GET' && (req.url === '/models' || req.url === '/v1/models')) {
@@ -21,14 +24,23 @@ const server = http.createServer((req, res) => {
     const chunks = [];
     req.on('data', (chunk) => chunks.push(chunk));
     req.on('end', () => {
+      const raw = Buffer.concat(chunks).toString('utf8');
       let body = {};
       try {
-        body = JSON.parse(Buffer.concat(chunks).toString('utf8'));
+        body = JSON.parse(raw);
       } catch {
         /* ignore */
       }
+      if (logFile !== '') {
+        try {
+          appendFileSync(logFile, `${JSON.stringify({ event: 'chat-request', at: Date.now(), bytes: Buffer.byteLength(raw, 'utf8'), body })}\n`);
+        } catch {
+          /* 观测失败不影响服务 */
+        }
+      }
+      // 回显“最后一条” user 消息：带历史时 messages 里有多个 user（M3-3），当前问才是最后一条。
       const userText = Array.isArray(body.messages)
-        ? String(body.messages.find((m) => m && m.role === 'user')?.content ?? '')
+        ? String([...body.messages].reverse().find((m) => m && m.role === 'user')?.content ?? '')
         : '';
       const respond = () => {
         if (mode === 'error') {
