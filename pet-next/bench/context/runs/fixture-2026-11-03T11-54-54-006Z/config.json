@@ -1,0 +1,42 @@
+{
+  "v": 1,
+  "mode": "fixture",
+  "runId": "fixture-2026-11-03T11-54-54-006Z",
+  "head": "389b0e924272b7ee92550de3b00c05c7ac9ce077",
+  "fixturesHash": "f86992a0179b5fd98454e1a0be1f39e5de0da0b2ba1e598e5b7a3312decfc1d5",
+  "plan": [
+    {
+      "case": "S1",
+      "arm": "off"
+    },
+    {
+      "case": "S1",
+      "arm": "on"
+    },
+    {
+      "case": "S2",
+      "arm": "off"
+    },
+    {
+      "case": "S2",
+      "arm": "on"
+    },
+    {
+      "case": "S3",
+      "arm": "off"
+    },
+    {
+      "case": "S3",
+      "arm": "on"
+    }
+  ],
+  "frozenParams": {
+    "QWEN_MAX_TOKENS": 96,
+    "QWEN_TEMPERATURE": 0.2,
+    "QWEN_SYSTEM_PROMPT": "你是友善的桌面宠物，用一到两句简短中文自然回应，通常不超过80字。只做文字交流，不声称已执行提醒、打开软件等操作。",
+    "stream": false,
+    "timeoutMs": 15000,
+    "thinking": false
+  },
+  "startedAt": "2026-11-03T11:54:54.176Z"
+}
