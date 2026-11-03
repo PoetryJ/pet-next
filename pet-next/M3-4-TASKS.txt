@@ -1,0 +1,41 @@
+M3-4 真实上下文对照 —— 接口冻结（集成人持，2026-11-03）
+=====================================================
+基线 389b0e9（codex/pet-next-m3-context）。集成分支 codex/pet-next-m3-live-eval。
+worker 分支：m3l-a / m3l-c / m3l-d（各自 worktree，基线同 389b0e9）。
+B（服务恢复）由集成人执行，runtime 目录见下。
+
+一、目录与产物归属（冻结，不得越界）
+------------------------------------------------
+A：tests/chat-context.test.ts、tests/chat-context.e2e.test.ts、tests/support/
+   持久证据目录：tests/chat-evidence/context-live/（E2E 请求 NDJSON 落此，含 README）
+   Windows 复跑入口：scripts/win-context-recheck.mjs（或等价，附最短说明）
+C：bench/context/（runner、fixtures、plan、自测）
+   运行产物：bench/context/runs/<runId>/
+     ledger.ndjson   发 POST 前持久写入：{seq, case, arm, round, at, status}
+     cases.ndjson    每轮完整记录：request body/messages、response、http、error、
+                     usage(缺则 "unknown")、fullLatencyMs、bytes、historySnapshot
+     config.json     源码HEAD、固定参数、fixtures hash、启动时间、模式(fixture|live)
+     summary.json    每例结果与计划对照
+D：bench/context/review/（评分规则冻结文档、人工复核工作簿、试用说明）
+   只读 bench/context/runs/，不得改 C 的样本/阈值。
+
+二、C/D 共同冻结的对照参数
+------------------------------------------------
+18 次 = 3 场景 × 3 轮 × 两臂(off/on)。每臂独立新 session；场景内 on/off 用户文本相同。
+场景：S1 姓名延续；S2 偏好纠正；S3 第三问前 reset（两臂同一 reset 事件）。
+固定：temperature=0.2、max_tokens=96、thinking=false、非流式、15s 超时、系统词用产品缺省。
+执行顺序（预先固定交错，禁止按结果换题重跑）：
+  S1-off, S1-on, S2-off, S2-on, S3-off, S3-on
+请求必须经 core/chat/session.ts + adapters/chat/qwen-provider.ts（import，不复制逻辑）。
+记账：发请求前写 ledger；重启续账（读已完成 seq，不重复消费）；失败/超时/取消也计数；
+不自动重试、不热身。fixture 模式默认（零真实调用）；--live 需显式且健康预检过。
+
+三、B runtime（集成人管，worker 只读）
+------------------------------------------------
+pet-next/runtime/qwen38/：pid.json（PID/boot_id/starttime/cmdline/GPU）、boot.log、identity.md。
+服务目标：127.0.0.1:18872，GET /v1/models 含 qwen3.8-27b 才算 ready；不热身。
+
+四、账本口径
+------------------------------------------------
+新增 M3-4 推理额度 18（POST 计数，失败也计）。旧账本 29/30 + 1 留 Codex，不动。
+GPU 等待期间状态 ready_waiting_gpu，不得抢占 project_revol/llama-factory 等他人任务。
