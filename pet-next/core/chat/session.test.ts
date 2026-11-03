@@ -5,6 +5,8 @@
  */
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
+import { createChatHistory } from './history.ts';
+import type { ChatHistoryEntry } from './history.ts';
 import { createChatSession } from './session.ts';
 import type { ChatCompleter, ChatSessionDeps, ChatSendResult } from './types.ts';
 
@@ -275,5 +277,155 @@ describe('core/chat/session', () => {
     const retry = session.send(okRequest('chat-b', '二'));
     calls[1]?.resolve('答二');
     assert.deepEqual(await retry, { id: 'chat-b', status: 'ok', text: '答二' });
+  });
+});
+
+describe('core/chat/session × 有界历史（M3-3）', () => {
+  /** 记录每次 complete 收到的 history 载荷的手动 provider。 */
+  function createRecordingCompleter(): {
+    calls: HeldCall[];
+    histories: Array<readonly ChatHistoryEntry[] | undefined>;
+    deps: Pick<ChatSessionDeps, 'complete'>;
+  } {
+    const calls: HeldCall[] = [];
+    const histories: Array<readonly ChatHistoryEntry[] | undefined> = [];
+    const complete: ChatCompleter['complete'] = (input) => {
+      histories.push(input.history);
+      return new Promise<string>((resolve, reject) => {
+        calls.push({ id: input.id, text: input.text, signal: input.signal, resolve, reject });
+      });
+    };
+    return { calls, histories, deps: { complete } };
+  }
+
+  test('未注入 history（默认关闭）：complete 载荷不含 history 键，行为与旧版一致', async () => {
+    const { calls, deps } = createHeldCompleter();
+    const session = createChatSession(deps);
+    const sent = session.send(okRequest());
+    calls[0]?.resolve('在呢');
+    await sent;
+    assert.equal('history' in (calls[0] as unknown as object), false, '旧单轮路径不得新增 history 键');
+  });
+
+  test('成功轮入史：第一次请求 history 为空数组，第二次携带上一轮 user/assistant', async () => {
+    const { calls, histories, deps } = createRecordingCompleter();
+    const history = createChatHistory();
+    const session = createChatSession({ ...deps, history });
+    const first = session.send(okRequest('chat-a', '我叫小林'));
+    calls[0]?.resolve('你好，小林！');
+    assert.deepEqual(await first, { id: 'chat-a', status: 'ok', text: '你好，小林！' });
+    assert.equal(history.turns(), 1);
+    const second = session.send(okRequest('chat-b', '我叫什么'));
+    assert.deepEqual(
+      histories[1]?.map((entry) => [entry.user, entry.assistant]),
+      [['我叫小林', '你好，小林！']],
+      '第二问请求必须携带第一轮完整内容',
+    );
+    calls[1]?.resolve('你叫小林。');
+    await second;
+  });
+
+  test('取消的请求不入史：取消后 provider 迟到成功也不 push', async () => {
+    const { calls, deps } = createHeldCompleter();
+    const history = createChatHistory();
+    const session = createChatSession({ ...deps, history });
+    const sent = session.send(okRequest('chat-a', '这句取消'));
+    session.cancel('chat-a');
+    assert.deepEqual(await sent, { id: 'chat-a', status: 'cancelled' });
+    calls[0]?.resolve('迟到的回复'); // 迟到成功：结算已被隔离
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.equal(history.turns(), 0, '取消轮绝不入史');
+  });
+
+  test('失败的请求不入史', async () => {
+    const { calls, deps } = createHeldCompleter();
+    const history = createChatHistory();
+    const session = createChatSession({ ...deps, history });
+    const sent = session.send(okRequest('chat-a', '你好'));
+    calls[0]?.reject(new Error('boom'));
+    assert.deepEqual(await sent, { id: 'chat-a', status: 'error', code: 'provider-error' });
+    assert.equal(history.turns(), 0);
+  });
+
+  test('超时的请求不入史', async () => {
+    const { calls, deps } = createHeldCompleter();
+    const clock = createManualClock(0);
+    const history = createChatHistory();
+    const session = createChatSession({ ...deps, now: clock.now, timeoutMs: 1_000, history });
+    const sent = session.send(okRequest('chat-a', '你好'));
+    clock.advance(1_000);
+    await new Promise((resolve) => setTimeout(resolve, 5));
+    calls[0]?.resolve('迟到');
+    assert.deepEqual(await sent, { id: 'chat-a', status: 'error', code: 'timeout' });
+    assert.equal(history.turns(), 0);
+  });
+
+  test('截断后的文本按交付口径入史（maxResultChars 注入）', async () => {
+    const { calls, deps } = createHeldCompleter();
+    const history = createChatHistory();
+    const session = createChatSession({ ...deps, maxResultChars: 3, history });
+    const sent = session.send(okRequest('chat-a', '你好'));
+    calls[0]?.resolve('一二三四五');
+    assert.deepEqual(await sent, { id: 'chat-a', status: 'ok', text: '一二三' });
+    assert.deepEqual(history.snapshot(), [{ user: '你好', assistant: '一二三' }]);
+  });
+
+  test('reset：取消在途、清空历史、旧结果隔离且立即可再发', async () => {
+    const { calls, histories, deps } = createRecordingCompleter();
+    const history = createChatHistory();
+    const session = createChatSession({ ...deps, history });
+    const first = session.send(okRequest('chat-a', '第一句'));
+    calls[0]?.resolve('第一答');
+    await first;
+    const pending = session.send(okRequest('chat-b', '在途这句'));
+    assert.equal(session.hasPending(), true);
+    session.reset();
+    assert.deepEqual(await pending, { id: 'chat-b', status: 'cancelled' }, '在途请求被取消');
+    assert.equal(history.turns(), 0, '历史被清空');
+    assert.equal(session.hasPending(), false);
+    // 立即重发：不 busy，且请求不携带清空前的历史
+    const next = session.send(okRequest('chat-c', '新开始'));
+    assert.deepEqual(histories[2], [], '清空后的第一问不得携带旧历史');
+    calls[2]?.resolve('新答复');
+    assert.deepEqual(await next, { id: 'chat-c', status: 'ok', text: '新答复' });
+    // 被 reset 取消的 chat-b 若迟到成功，也绝不入史
+    calls[1]?.resolve('迟到的旧回复');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(
+      history.snapshot().map((entry) => entry.user),
+      ['新开始'],
+    );
+  });
+
+  test('reset 后同 id 重发：旧引用隔离不误伤新请求（沿用既有语义）', async () => {
+    const { calls, deps } = createHeldCompleter();
+    const history = createChatHistory();
+    const session = createChatSession({ ...deps, history });
+    const first = session.send(okRequest('chat-a', '旧请求'));
+    session.reset();
+    assert.deepEqual(await first, { id: 'chat-a', status: 'cancelled' });
+    const second = session.send(okRequest('chat-a', '新请求'));
+    assert.equal(session.hasPending(), true, '同 id 重发立即占用槽位');
+    calls[1]?.resolve('新回复');
+    assert.deepEqual(await second, { id: 'chat-a', status: 'ok', text: '新回复' });
+    calls[0]?.resolve('旧迟到');
+    await new Promise((resolve) => setImmediate(resolve));
+    assert.deepEqual(history.snapshot(), [{ user: '新请求', assistant: '新回复' }]);
+  });
+
+  test('历史上界在会话内生效：第 6 次请求最多见到最近 4 轮', async () => {
+    const { calls, histories, deps } = createRecordingCompleter();
+    const history = createChatHistory();
+    const session = createChatSession({ ...deps, history });
+    for (let i = 1; i <= 5; i += 1) {
+      const sent = session.send(okRequest(`chat-${i}`, `第${i}句`));
+      calls[i - 1]?.resolve(`第${i}答`);
+      await sent;
+    }
+    const sixth = session.send(okRequest('chat-6', '第6句'));
+    assert.equal(histories[5]?.length, 4, '第 6 问只携带最近 4 轮');
+    assert.equal(histories[5]?.[0]?.user, '第2句');
+    calls[5]?.resolve('第6答');
+    await sixth;
   });
 });

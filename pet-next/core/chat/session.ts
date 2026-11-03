@@ -106,9 +106,15 @@ export function createChatSession(deps: ChatSessionDeps): ChatSession {
 
         // 先发起 provider、再装超时：即便 deadline 已到点（如 timeoutMs=0），
         // provider 也已被发起过并可被 abort，而不是从未调用。
+        // M3-3：历史快照在请求接受时取（本请求自己的文本绝不进入本次 history）；
+        // 未注入 history 依赖时载荷不含 history 键，与旧行为逐字节一致。
         let providerPromise: Promise<string>;
         try {
-          providerPromise = deps.complete({ id: request.id, text: request.text, signal: controller.signal });
+          const historySnapshot = deps.history ? deps.history.snapshot() : undefined;
+          providerPromise =
+            historySnapshot === undefined
+              ? deps.complete({ id: request.id, text: request.text, signal: controller.signal })
+              : deps.complete({ id: request.id, text: request.text, signal: controller.signal, history: historySnapshot });
         } catch (error) {
           providerPromise = Promise.reject(error); // 同步抛出同样映射 provider-error。
         }
@@ -122,7 +128,11 @@ export function createChatSession(deps: ChatSessionDeps): ChatSession {
                 settleOnce({ id: request.id, status: 'error', code: 'timeout' });
                 return;
               }
-              settleOnce({ id: request.id, status: 'ok', text: clip(text) });
+              const clipped = clip(text);
+              // 只有真正以 ok 结算（=文本将交付界面）的这一轮才入史；
+              // 已被取消/超时结算过（settled）的迟到成功绝不入史。
+              if (deps.history && !settled) deps.history.push(request.text, clipped);
+              settleOnce({ id: request.id, status: 'ok', text: clipped });
             },
             () => {
               if (controller.signal.aborted && !settled) {
@@ -152,6 +162,15 @@ export function createChatSession(deps: ChatSessionDeps): ChatSession {
         pending = null; // 立即释放槽位：随后 send 可马上发起新请求。
         entry.settleCancelled();
       }
+    },
+    reset(): void {
+      // 先取消在途（与 cancel 同语义：槽位立即释放、旧结果按引用隔离、绝不入史），再清空历史。
+      if (pending) {
+        const entry = pending;
+        pending = null;
+        entry.settleCancelled();
+      }
+      deps.history?.clear();
     },
     hasPending(): boolean {
       return pending !== null;
