@@ -46,28 +46,54 @@ function stubFetch(script: string[]): { captured: CapturedRequest[]; fetchImpl: 
   return { captured, fetchImpl };
 }
 
-/** 受控 fetch：每个请求都挂起，测试按序 release(value) 才完成（模拟在途/迟到）。 */
-function heldFetch(): { captured: CapturedRequest[]; fetchImpl: FetchLike; release(value: string): void } {
+/**
+ * 受控 fetch：每个请求都挂起，测试按请求序号 release 才完成（模拟在途/迟到）。
+ * M3-4 修复：resolver 按请求索引保留——旧单槽位实现里后发请求会覆盖前者的 resolver，
+ * 释放“旧响应”实际是 no-op（旧请求从未收到 HTTP 响应，迟到路径根本没被触发）。
+ * 修复后 release(1, ...) 能让第 1 个请求真正完成，测试可断言“迟到成功确实发生”。
+ */
+function heldFetch(): {
+  captured: CapturedRequest[];
+  fetchImpl: FetchLike;
+  /** 每个请求的 fetch promise 镜像：fulfill 即证明该请求的 HTTP 确实完成。 */
+  settled: Array<Promise<Response>>;
+  /** 已完成的记录（index + value），供断言迟到释放真的生效。 */
+  completed: Array<{ index: number; value: string }>;
+  release(index: number, value: string): void;
+} {
   const captured: CapturedRequest[] = [];
-  let pendingResolve: ((response: Response) => void) | null = null;
+  const settled: Array<Promise<Response>> = [];
+  const completed: Array<{ index: number; value: string }> = [];
+  const resolvers: Array<((response: Response) => void) | null> = [];
   const fetchImpl: FetchLike = (_input, init) => {
     const body = String(init?.body ?? '');
     captured.push({ body, bytes: Buffer.byteLength(body, 'utf8') });
-    return new Promise<Response>((resolve) => {
-      pendingResolve = resolve;
+    let settle!: (response: Response) => void;
+    const promise = new Promise<Response>((resolve) => {
+      settle = resolve;
     });
+    resolvers.push(settle);
+    settled.push(promise);
+    return promise;
   };
   return {
     captured,
     fetchImpl,
-    release(value: string) {
-      pendingResolve?.(
+    settled,
+    completed,
+    release(index: number, value: string) {
+      const settle = resolvers[index] ?? null;
+      if (settle === null) {
+        throw new Error(`heldFetch.release(${index})：无第 ${index} 个请求或已释放过`);
+      }
+      resolvers[index] = null;
+      completed.push({ index, value });
+      settle(
         new Response(JSON.stringify({ choices: [{ message: { content: value } }] }), {
           status: 200,
           headers: { 'content-type': 'application/json' },
         }),
       );
-      pendingResolve = null;
     },
   };
 }
@@ -194,7 +220,7 @@ test('在途清空后重发：新请求不带任何旧文本，旧请求迟到�
     history: createChatHistory(),
   });
   const first = session.send({ id: 'chat-a', text: '已完成的第一句' });
-  held.release('第一答');
+  held.release(0, '第一答');
   assert.deepEqual(await first, { id: 'chat-a', status: 'ok', text: '第一答' });
 
   const pending = session.send({ id: 'chat-b', text: '在途这句' });
@@ -206,15 +232,17 @@ test('在途清空后重发：新请求不带任何旧文本，旧请求迟到�
     nextMessages.every((m) => m.content !== '在途这句' && m.content !== '已完成的第一句' && m.content !== '第一答'),
     '清空后的请求不得携带任何旧文本（含已交付回复）',
   );
-  held.release('新答');
+  held.release(2, '新答');
   assert.deepEqual(await next, { id: 'chat-c', status: 'ok', text: '新答' });
-  // 旧 chat-b 的 HTTP 请求此刻迟到成功：绝不入史
-  held.release('迟到的旧回复');
+  // 旧 chat-b（请求 1）此刻迟到成功：HTTP 必须真的完成（修复前单槽位释放是 no-op）
+  held.release(1, '迟到的旧回复');
+  assert.deepEqual(held.completed.at(-1), { index: 1, value: '迟到的旧回复' }, '迟到释放必须命中第 1 个请求');
+  assert.equal((await held.settled[1] ?? assert.fail('missing settled[1]')).status, 200, '旧请求的 HTTP 必须确实完成');
   await new Promise((resolve) => setImmediate(resolve));
   const probe = session.send({ id: 'chat-d', text: '再看一眼' });
   const probeContents = messagesOf(held.captured.at(-1) ?? assert.fail('missing')).map((m) => m.content);
   assert.ok(!probeContents.includes('迟到的旧回复') && !probeContents.includes('在途这句'), '迟到/在途旧轮不得进入历史');
-  held.release('最后一答');
+  held.release(3, '最后一答');
   await probe;
 });
 

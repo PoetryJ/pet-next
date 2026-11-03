@@ -15,7 +15,7 @@
 import assert from 'node:assert/strict';
 import { type ChildProcess, spawn } from 'node:child_process';
 import { existsSync, readFileSync } from 'node:fs';
-import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
@@ -286,7 +286,7 @@ async function flushEvidence(evidence: Evidence, name: string): Promise<void> {
 }
 
 /** 启动 chat:local（指向 fake），接管 CDP；返回句柄与退出等待。 */
-async function launchLocal(options: { context: boolean; _label: string; evidence: Evidence }): Promise<{
+async function launchLocal(options: { context: boolean; label: string; evidence: Evidence }): Promise<{
   cdp: Cdp;
   fake: { child: ChildProcess; port: number };
   entry: ChildProcess;
@@ -351,6 +351,20 @@ async function launchLocal(options: { context: boolean; _label: string; evidence
       if (entry.exitCode === null) entry.kill('SIGKILL');
     }
     fake.child.kill('SIGTERM');
+    // 原始请求 NDJSON 是对照证据：清理临时 userData 前先落到持久证据目录（M3-4 要求）。
+    if (existsSync(logFile)) {
+      try {
+        const keepDir = path.join(petRoot, 'tests/chat-evidence/context-live', options.label);
+        await mkdir(keepDir, { recursive: true });
+        await copyFile(logFile, path.join(keepDir, 'requests.ndjson'));
+        await writeFile(
+          path.join(keepDir, 'meta.txt'),
+          `label=${options.label}\ncontext=${options.context ? 'on' : 'off'}\ncopiedAt=${new Date().toISOString()}\nsource=${logFile}\n`,
+        );
+      } catch (error) {
+        console.error(`[context-live] 证据落盘失败（不阻塞清理）：${String(error)}`);
+      }
+    }
     await rm(userData, { recursive: true, force: true }).catch(() => undefined);
     return { code: entry.exitCode, signal: entry.signalCode };
   };
@@ -391,7 +405,7 @@ test('T1 PET_NEXT_CHAT_CONTEXT=1：第二问携带第一轮，新对话后回到
   const evidence = createEvidence('t1-context-on');
   let handle: Awaited<ReturnType<typeof launchLocal>> | undefined;
   try {
-    handle = await launchLocal({ context: true, _label: 'ctx-on', evidence });
+    handle = await launchLocal({ context: true, label: 'ctx-on', evidence });
     const { cdp } = handle;
     await openPanel(cdp, evidence);
     assert.equal((await readDom(cdp)).context, 'on', 'dataset.context 必须为 on');
@@ -469,7 +483,7 @@ test('T2 缺省关闭：两问均为单轮形态、无「新对话」（与 M3-1
   const evidence = createEvidence('t2-context-off');
   let handle: Awaited<ReturnType<typeof launchLocal>> | undefined;
   try {
-    handle = await launchLocal({ context: false, _label: 'ctx-off', evidence });
+    handle = await launchLocal({ context: false, label: 'ctx-off', evidence });
     const { cdp } = handle;
     const opened = await openPanel(cdp, evidence);
     assert.equal(opened.context, 'off', '缺省时 dataset.context 必须为 off');
