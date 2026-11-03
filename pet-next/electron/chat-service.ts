@@ -1,7 +1,8 @@
 /**
- * M3-0 主进程聊天服务：把冻结的 chat:send / chat:cancel IPC 接到 core 会话与可注入 Provider。
- * 安全边界：只注册这两个通道；sender 必须是主窗口 webContents，否则忽略；载荷形状/长度不合法直接
+ * M3-0 主进程聊天服务：把冻结的 chat:send / chat:cancel / chat:reset IPC 接到 core 会话与可注入 Provider。
+ * 安全边界：只注册这三个通道；sender 必须是主窗口 webContents，否则忽略；载荷形状/长度不合法直接
  * bad-request，不透传 session；url 只在主进程构造 Provider，页面拿不到服务地址。
+ * M3-3：历史只在主进程/核心持有；渲染层载荷只允许 {id,text}，携带 history/system/messages 一律 bad-request。
  * @module pet-next/electron/chat-service
  */
 import { createHttpChatProvider } from '../adapters/chat/http-provider.ts';
@@ -9,6 +10,7 @@ import {
   CHAT_CANCEL_CHANNEL,
   CHAT_ID_PATTERN,
   CHAT_MAX_INPUT_CHARS,
+  CHAT_RESET_CHANNEL,
   CHAT_SEND_CHANNEL,
   type ChatSendRequest,
   type ChatSendResult,
@@ -73,10 +75,15 @@ function resolveSession(options: RegisterChatServiceOptions): ChatSession {
   return createChatSession({ complete: (input) => provider.complete(input) });
 }
 
-/** IPC 载荷校验：id 形状 + text 类型 + 长度上限；不合法返回 null（bad-request，不透传）。 */
+/** IPC 载荷校验：id 形状 + text 类型 + 长度上限 + 键白名单（只允许 id/text）。
+ * M3-3：渲染层不能提交权威历史或伪造 system——载荷多出任何键（history/system/messages/...）
+ * 一律 bad-request，不透传 session。 */
 export function parseChatSendRequest(payload: unknown): ChatSendRequest | null {
   if (typeof payload !== 'object' || payload === null) return null;
-  const record = payload as { id?: unknown; text?: unknown };
+  const record = payload as Record<string, unknown>;
+  for (const key of Object.keys(record)) {
+    if (key !== 'id' && key !== 'text') return null;
+  }
   if (typeof record.id !== 'string' || !CHAT_ID_PATTERN.test(record.id)) return null;
   if (typeof record.text !== 'string' || record.text.length > CHAT_MAX_INPUT_CHARS) return null;
   return { id: record.id, text: record.text };
@@ -126,6 +133,12 @@ export async function registerChatService(options: RegisterChatServiceOptions): 
     session.cancel(id);
   };
 
+  // M3-3“新对话”：取消在途 + 清空主进程历史 + 隔离旧结果；无载荷，不接收任何渲染层状态。
+  const resetListener = (event: ChatServiceEvent): void => {
+    if (!isFromMainWindow(event)) return;
+    session.reset();
+  };
+
   let closedListener: (() => void) | null = null;
 
   const dispose = (): void => {
@@ -134,6 +147,7 @@ export async function registerChatService(options: RegisterChatServiceOptions): 
     if (activeRequestId !== '') session.cancel(activeRequestId);
     ipc.removeHandler(CHAT_SEND_CHANNEL);
     ipc.removeListener(CHAT_CANCEL_CHANNEL, cancelListener as unknown as (...args: never[]) => unknown);
+    ipc.removeListener(CHAT_RESET_CHANNEL, resetListener as unknown as (...args: never[]) => unknown);
     const win = options.getWindow();
     if (win && closedListener) win.removeListener('closed', closedListener);
     options.onClose?.();
@@ -141,6 +155,7 @@ export async function registerChatService(options: RegisterChatServiceOptions): 
 
   ipc.handle(CHAT_SEND_CHANNEL, sendListener);
   ipc.on(CHAT_CANCEL_CHANNEL, cancelListener);
+  ipc.on(CHAT_RESET_CHANNEL, resetListener);
 
   closedListener = () => dispose();
   const win = options.getWindow();

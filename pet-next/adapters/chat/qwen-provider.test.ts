@@ -360,3 +360,97 @@ describe('createQwenChatProvider / 取消与地址白名单', () => {
     assert.equal(provider.lastMeta?.error, 'qwen http 502');
   });
 });
+
+describe('createQwenChatProvider × 有界历史（M3-3）', () => {
+  test('携带历史：固定 system → 历史 user/assistant 对 → 当前 user，顺序逐字锁定', async () => {
+    const { captured, fetchImpl } = stubFetch(() => jsonResponse(okPayload('你叫小林。')));
+    const provider = build(fetchImpl);
+    const history = [
+      { user: '我叫小林', assistant: '你好，小林！' },
+      { user: '我喜欢蓝色', assistant: '蓝色很好看。' },
+    ];
+    const text = await provider.complete({ id: 'chat-c', text: '我叫什么', signal: noSignal(), history });
+    assert.equal(text, '你叫小林。');
+    assert.equal(captured.length, 1, '携带历史也仍只发 1 个 HTTP 请求');
+    const body = JSON.parse(String(captured[0]?.init.body)) as { messages: Array<{ role: string; content: string }> };
+    assert.deepEqual(body.messages, [
+      { role: 'system', content: QWEN_SYSTEM_PROMPT },
+      { role: 'user', content: '我叫小林' },
+      { role: 'assistant', content: '你好，小林！' },
+      { role: 'user', content: '我喜欢蓝色' },
+      { role: 'assistant', content: '蓝色很好看。' },
+      { role: 'user', content: '我叫什么' },
+    ], '顺序必须为 system → 历史 user/assistant 对 → 当前 user');
+  });
+
+  test('不携带历史（undefined）：消息体与 M3-1 逐字节一致（默认关闭回归）', async () => {
+    const { captured, fetchImpl } = stubFetch(() => jsonResponse(okPayload('在呢')));
+    const provider = build(fetchImpl);
+    await provider.complete({ id: 'chat-a', text: '你好', signal: noSignal() });
+    const expectedBody =
+      '{"model":"qwen3.8-27b","messages":[{"role":"system","content":"' +
+      QWEN_SYSTEM_PROMPT +
+      '"},{"role":"user","content":"你好"}],"stream":false,"max_tokens":96,' +
+      '"temperature":0.2,"chat_template_kwargs":{"enable_thinking":false}}';
+    assert.equal(captured[0]?.init.body, expectedBody);
+  });
+
+  test('空历史数组：与 undefined 逐字节一致', async () => {
+    const { captured, fetchImpl } = stubFetch(() => jsonResponse(okPayload('在呢')));
+    const provider = build(fetchImpl);
+    await provider.complete({ id: 'chat-a', text: '你好', signal: noSignal(), history: [] });
+    const expectedBody =
+      '{"model":"qwen3.8-27b","messages":[{"role":"system","content":"' +
+      QWEN_SYSTEM_PROMPT +
+      '"},{"role":"user","content":"你好"}],"stream":false,"max_tokens":96,' +
+      '"temperature":0.2,"chat_template_kwargs":{"enable_thinking":false}}';
+    assert.equal(captured[0]?.init.body, expectedBody);
+  });
+
+  test('历史不改采样参数：max_tokens/temperature/chat_template_kwargs 与冻结值一致', async () => {
+    const { captured, fetchImpl } = stubFetch(() => jsonResponse(okPayload('好')));
+    const provider = build(fetchImpl);
+    await provider.complete({
+      id: 'chat-a',
+      text: '继续',
+      signal: noSignal(),
+      history: [{ user: '前文', assistant: '前答' }],
+    });
+    const body = JSON.parse(String(captured[0]?.init.body)) as Record<string, unknown>;
+    assert.equal(body.max_tokens, QWEN_MAX_TOKENS);
+    assert.equal(body.temperature, QWEN_TEMPERATURE);
+    assert.deepEqual(body.chat_template_kwargs, { enable_thinking: false });
+    assert.equal(body.model, QWEN_DEFAULT_MODEL);
+  });
+
+  test('畸形历史条目（非字符串字段）：早失败为 provider-error 语义，不发出请求', async () => {
+    const { captured, fetchImpl } = stubFetch(() => jsonResponse(okPayload('x')));
+    const provider = build(fetchImpl);
+    await assert.rejects(
+      provider.complete({
+        id: 'chat-a',
+        text: '你好',
+        signal: noSignal(),
+        history: [{ user: 1, assistant: 'x' }] as unknown as Array<{ user: string; assistant: string }>,
+      }),
+      /历史条目字段必须是字符串/,
+    );
+    assert.equal(captured.length, 0, '畸形历史必须在发请求前失败');
+  });
+
+  test('UTF-8 请求体字节数随历史线性增长（对照记录用）', async () => {
+    const { captured, fetchImpl } = stubFetch(() => jsonResponse(okPayload('好')));
+    const provider = build(fetchImpl);
+    await provider.complete({ id: 'chat-a', text: '我叫什么', signal: noSignal() });
+    const baseBytes = Buffer.byteLength(String(captured[0]?.init.body), 'utf8');
+    await provider.complete({
+      id: 'chat-b',
+      text: '我叫什么',
+      signal: noSignal(),
+      history: [{ user: '我叫小林', assistant: '你好，小林！' }],
+    });
+    const withHistoryBytes = Buffer.byteLength(String(captured[1]?.init.body), 'utf8');
+    assert.ok(withHistoryBytes > baseBytes, '带历史的请求体必须更大');
+    assert.equal(captured.length, 2);
+  });
+});

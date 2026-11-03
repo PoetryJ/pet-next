@@ -11,6 +11,7 @@ import {
   QWEN_MAX_TOKENS,
   QWEN_SYSTEM_PROMPT,
   QWEN_TEMPERATURE,
+  type ChatHistoryEntry,
   type QwenCallMeta,
   type QwenChatProvider,
 } from '../../contracts/chat.ts';
@@ -82,6 +83,20 @@ function pickUsage(payload: unknown): QwenCallMeta['usage'] {
   return Object.keys(picked).length > 0 ? picked : undefined;
 }
 
+/** 历史条目 -> 消息对（user/assistant 交替）；只接受字符串字段，畸形一律早失败。 */
+function historyMessages(history: readonly ChatHistoryEntry[] | undefined): Array<{ role: string; content: string }> {
+  if (history === undefined || history.length === 0) return [];
+  const messages: Array<{ role: string; content: string }> = [];
+  for (const entry of history) {
+    if (typeof entry.user !== 'string' || typeof entry.assistant !== 'string') {
+      throw new Error('qwen 历史条目字段必须是字符串');
+    }
+    messages.push({ role: 'user', content: entry.user });
+    messages.push({ role: 'assistant', content: entry.assistant });
+  }
+  return messages;
+}
+
 export function createQwenChatProvider(options: QwenChatProviderOptions): QwenChatProvider {
   const endpoint = `${assertQwenBaseUrl(options.baseUrl)}/chat/completions`;
   const doFetch: typeof fetch = options.fetchImpl ?? ((input, init) => fetch(input, init));
@@ -98,6 +113,9 @@ export function createQwenChatProvider(options: QwenChatProviderOptions): QwenCh
       const started = now();
       const meta: QwenCallMeta = { id: input.id, model };
       lastMeta = meta;
+      // M3-3：固定 system → 历史 user/assistant 对（请求接受时快照）→ 当前 user；
+      // 历史为空时消息体与 M3-1 逐字节一致；provider 不改快照、不重试、仍只发 1 个请求。
+      const history = historyMessages(input.history);
       try {
         const response = await doFetch(endpoint, {
           method: 'POST',
@@ -106,6 +124,7 @@ export function createQwenChatProvider(options: QwenChatProviderOptions): QwenCh
             model,
             messages: [
               { role: 'system', content: QWEN_SYSTEM_PROMPT },
+              ...history,
               { role: 'user', content: input.text },
             ],
             stream: false,
