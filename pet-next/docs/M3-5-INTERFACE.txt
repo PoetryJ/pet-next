@@ -1,0 +1,94 @@
+M3-5 接口冻结与文件归属（集成负责人，2026-11-04）
+====================================================
+基线 b7728a79493311b411fb3b469bf1d85bfc343c4a（codex/pet-next-m3-live-eval 末端）
+分支 codex/pet-next-m3-windows-trial（不合并 main、不 force push、不改写历史）
+worktree：dsh-pet-wt/m3w-{a,b,c,d}
+
+零真实推理约束：本轮全部开发/验收用 fake；零真实 POST；不开/停共享模型；
+不借其他项目服务调用；不重跑 M3-4 的 18 次；不改 18 条历史样本与已交付评分。
+
+一、文件归属（先冻结再并行；越界改动集成时退回）
+------------------------------------------------
+A 工具保护（m3w-a）：
+  - bench/context/runner.ts、bench/context/runner.test.ts
+  - scripts/qwen-recover.mjs、scripts/qwen-recover.test.ts
+B Windows 试用入口（m3w-b）：
+  - scripts/chat-trial.mjs（入口薄壳）
+  - scripts/chat-trial-args.mjs（纯参数模块，无 IO）
+  - scripts/chat-trial-args.test.ts
+C 干净交付与短说明（m3w-c）：
+  - docs/WINDOWS-TRIAL.md（一页上手）
+  - docs/M3-5-PACKAGE.md（打包清单与体积记录）
+  - scripts/make-trial-package.mjs、scripts/make-trial-package.test.ts
+  - .gitignore、以及"停止跟踪自动 logs/userdata/cache/environment 快照"的
+    git rm --cached 提交（普通提交，不改历史，不删磁盘文件，不动已交付 bundle）
+D 独立验收（m3w-d）：
+  - tests/chat-trial.e2e.test.ts（进 pnpm test:e2e 通配）
+  - scripts/win-trial-recheck.mjs（Windows 复跑驱动生成器，仿 win-context-recheck）
+负责人（集成分支）：
+  - package.json（仅 chat:trial 接线一行）
+  - docs/M3-5-INTERFACE.txt（本文件）
+任何公共文件冲突由负责人裁决；A/B/C/D 不得修改上述归属之外的他人文件。
+
+二、试用入口接口（B 实现依据，D 验收依据）
+------------------------------------------------
+命令：pnpm chat:trial [--context=on|off]
+  - 缺省 off；on|off 之外任何值（含 --context 不带值、未知 flag）→ 非零退出（exit 2）
+  - on  → 子进程 env 设 PET_NEXT_CHAT_CONTEXT='1'
+  - off → 从子进程 env 删除 PET_NEXT_CHAT_CONTEXT（父 shell 继承值必须清除）
+  - 启动第一行日志：[chat-trial] 上下文=on（连续对话，4 轮/2000 字符上界）
+                     或 [chat-trial] 上下文=off（单轮，与 M3-1 行为一致）
+实现约束：
+  - chat-trial.mjs 解析参数并改 env 后**复用 chat-remote.mjs 全链**
+    （动态 import；配置/隧道/健康探测/退出链不重实现）
+  - 不自动发送消息、不暗中 fallback fake、不硬编码地址/凭据
+  - 产品消费点已存在：electron/main.ts 按 PET_NEXT_CHAT_CONTEXT 非空启用有界历史
+  - pnpm 参数透传由接线保证：参数追加到 script 命令末尾（B 的模块测试直接测
+    process.argv 解析，不依赖 pnpm 行为）
+package.json 接线（负责人已完成）：
+  "chat:trial": "pnpm build && node scripts/chat-trial.mjs"
+
+三、A 行为规格（fail-closed）
+------------------------------------------------
+runner.ts 续跑保护：
+  - run 目录已存在且完整（18/18 settled、账本/cases/summary 一致）→ 只读复核模式，
+    不新增 POST、不覆盖任何文件
+  - run 目录部分完成/损坏/账本不一致 → 非零拒绝继续；不静默跳过坏行、
+    不覆盖 config/summary、不另开新 run 自动重试、不做 checkpoint 恢复
+  - 测试：完整/中断/坏账本重入均零新增 POST 且原目录既有文件 hash 不变；
+    新 fixture run 仍正常 18 次；保留既有 live 证据原样
+qwen-recover.mjs GPU 防护：
+  - GPU 列表/进程查询失败、超时、解析失败、无有效 GPU → 状态 unknown，
+    不得选择 GPU0、不得启动
+  - 需两份**有效**查询（两次独立 nvidia-smi）证明整卡无其他 compute 进程才可继续
+  - 命令执行可注入（测试用假 nvidia-smi）；测试零真实模型启动
+
+四、C 交付规格
+------------------------------------------------
+  - 保全校验现有证据（SHA256 清单）后再停止跟踪；仅普通提交移除
+  - 试用包：pet-next-trial-src-<shortsha>.zip；按明确文件清单打包，排除
+    node_modules、dist、运行缓存（logs/chat-evidence 下 userdata/Cache 等）、
+    身份/私钥文件、原始全量 env 快照；附 SHA256 与 source HEAD
+  - 独立验收证据包：pet-next-trial-evidence-<date>.tar.gz
+  - docs/WINDOWS-TRIAL.md 一页：首次安装依赖、连续/单轮两条命令、配置/退出/
+    新对话/错误处理、会话 4 轮/2000 JS.length 上界/重启不保留；明确
+    "JS 字符不是 token"
+  - 修正既有误导：旧文档"设 on 后直接再启动就是 off"与
+    "Windows chat:local 自动连服务器"两处
+  - 记录包体积、文件数、启动步骤；不得称"免安装成品"（源码试用包）
+
+五、D 验收规格
+------------------------------------------------
+  - 经正式 pnpm chat:trial 入口注入 fake/隧道替身，覆盖：on/off 真实请求体、
+    新对话、在途 reset 重发、迟到不显示、窗口可操作、关窗退出、本次进程清理
+  - 场景：空 dist、带空格路径、父 env 残留 on 但显式 off
+  - 每 run 隔离目录/端口/显示；先留失败原始日志再判因；不靠加长超时/改断言过关
+  - 无 Windows → 输出 not-run，交一条本机复跑命令；Linux 结果不替代 Windows
+  - 证据 NDJSON/截图/退出码落 tests/chat-evidence/trial/；避免环境值全量落盘
+
+六、验收顺序（负责人串行）
+------------------------------------------------
+1) 各模块自测（pnpm test 收集 scripts/bench/tests 单元）
+2) 完整 pnpm verify（Linux；e2e 数量因 D 新增用例会变，如实记录）
+3) 正式入口 Electron（Linux 跑 pnpm chat:trial，fake 端点，零真实模型）
+4) 干净源码包解压 → 安装/构建/启动复验（隔离目录）

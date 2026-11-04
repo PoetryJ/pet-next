@@ -31,7 +31,8 @@
     "chat:remote": "pnpm build && node --experimental-strip-types scripts/chat-remote.mjs",
     "experiment:arbiter": "node --experimental-strip-types experiments/arbiter/runner/main.ts",
     "experiment:arbiter:check": "node --experimental-strip-types experiments/arbiter/check/main.ts",
-    "experiment:arbiter:demo": "node --experimental-strip-types experiments/arbiter/demo/main.ts"
+    "experiment:arbiter:demo": "node --experimental-strip-types experiments/arbiter/demo/main.ts",
+    "chat:trial": "pnpm build && node scripts/chat-trial.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
