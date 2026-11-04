@@ -445,6 +445,8 @@ async function launchTrial(options: {
       try {
         await mkdir(keepDir, { recursive: true });
         await copyFile(sshLog, path.join(keepDir, 'ssh.ndjson'));
+        // 请求 NDJSON 是 on/off 请求体断言的原始证据：随 userData 一起删除前必须先拷出。
+        if (existsSync(logFile)) await copyFile(logFile, path.join(keepDir, 'requests.ndjson'));
       } catch {
         /* 证据拷贝失败不阻塞清理 */
       }
