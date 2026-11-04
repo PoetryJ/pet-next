@@ -1,0 +1,255 @@
+000dc4a9f1b27727587dce558b59829edb9515c8f0352997a2d17a234a0a91c6  pet-next/bench/runs-click-product/2026-11-02T04-37-25-303Z/environment.json
+d7a550867692ff763bd80d0d821bb19a78836dd3718a61e9c303019b28fc35f7  pet-next/bench/runs-click-product/2026-11-02T04-54-34-187Z/environment.json
+3f4bac411fbedc4906984ef83416d032d4cf0e77b3e03c7b85884309d8a550fa  pet-next/bench/runs-click/2026-10-30T09-54-36-271Z/environment.json
+c5b6fc42bb9193a3d7dff25d40cbf910e67ef5d0ffb5bcc59db5b5e186b3c0b9  pet-next/bench/runs-click/2026-11-02T04-38-46-065Z/environment.json
+1f10f3c3666c35f9bb851089bbccc459ecd9e8ada70931761fb15b0b326e5273  pet-next/bench/runs/2026-10-29T16-33-51-374Z/environment.json
+494deb9d051500062bc35931fa1f9eb7b3df27f38138aeaeec83430c84a0cb1b  pet-next/logs/chat-evidence/closeout-demo/userdata/Cache/Cache_Data/3d12a0d0b1ee6040_0
+80fd9307f75b69ab1ddaee1b1c1f86eb67df36d0c99599005e5a98b0cff9aabb  pet-next/logs/chat-evidence/closeout-demo/userdata/Cache/Cache_Data/5283edf90cf4ab50_0
+fbcfe23a2ecb82b7100c50811691dde0a33aa3da8d176be9882a9db485dc0f2d  pet-next/logs/chat-evidence/closeout-demo/userdata/Cache/Cache_Data/index
+8972db831118a4ec15f460b5773589ac287cc312b1c9f866d319de1ebde46fbb  pet-next/logs/chat-evidence/closeout-demo/userdata/Cache/Cache_Data/index-dir/the-real-index
+9c169428d852e25bd59b27652ed533d2a1f09f96e4c329fa5e06f47e16731543  pet-next/logs/chat-evidence/closeout-demo/userdata/Cache/No_Vary_Search/journal.baj
+0c2dd377ed0cc66161e9db8f89f7d8bcb3ad8c06c4a054bdcba214ab05f58c9a  pet-next/logs/chat-evidence/closeout-demo/userdata/Cache/No_Vary_Search/snapshot.baf
+8ffed802ec5b980af2203de994388e4a4df9b2b94a1ae67d882fea2ac114306d  pet-next/logs/chat-evidence/closeout-demo/userdata/Code Cache/electron-preload/BBC7B0A842CE2F21EC141530CE19895D2BA35C4ECC3533FE0EE5CAEAED0C3A50.cache
+fbcfe23a2ecb82b7100c50811691dde0a33aa3da8d176be9882a9db485dc0f2d  pet-next/logs/chat-evidence/closeout-demo/userdata/Code Cache/js/index
+95f8f3e3810af8aa09938726114447caebc3a4d0c0357e8474e35729ce44d0a7  pet-next/logs/chat-evidence/closeout-demo/userdata/Code Cache/js/index-dir/the-real-index
+fbcfe23a2ecb82b7100c50811691dde0a33aa3da8d176be9882a9db485dc0f2d  pet-next/logs/chat-evidence/closeout-demo/userdata/Code Cache/wasm/index
+95f8f3e3810af8aa09938726114447caebc3a4d0c0357e8474e35729ce44d0a7  pet-next/logs/chat-evidence/closeout-demo/userdata/Code Cache/wasm/index-dir/the-real-index
+385dfdbfdf47e4bdf38ce2c8353b955bc1c75c2fb16acb848a6adfb3c6c9aae3  pet-next/logs/chat-evidence/closeout-demo/userdata/Crashpad/client_id
+875b33c30b6e6b18af95c962192397c8d69101659ce9ce0dbe2cc3f4b78e8dd3  pet-next/logs/chat-evidence/closeout-demo/userdata/DIPS
+d6a5fe39cd672781b256e0e3102f7022635f1d4bb7cfcc90a80fffe4d0f3877e  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnGraphiteCache/data_0
+b1e963d702392fb7224786e7d56d43973e9b9efd1b89c17814d7c558ffc0cdec  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnGraphiteCache/data_1
+ec1702806f4cc7c42a82fc2b38e89835fde7c64bb32060e0823c9077ca92efb7  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnGraphiteCache/data_2
+e09f42c398d688dce168570291f1f92d079987deda3099a34adb9e8c0522b30c  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnGraphiteCache/data_3
+23044f1beb2ed9e653a94182d72162171972acf2893172de7f8e7eef7f4c53d1  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnGraphiteCache/index
+d6a5fe39cd672781b256e0e3102f7022635f1d4bb7cfcc90a80fffe4d0f3877e  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnWebGPUCache/data_0
+b1e963d702392fb7224786e7d56d43973e9b9efd1b89c17814d7c558ffc0cdec  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnWebGPUCache/data_1
+ec1702806f4cc7c42a82fc2b38e89835fde7c64bb32060e0823c9077ca92efb7  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnWebGPUCache/data_2
+e09f42c398d688dce168570291f1f92d079987deda3099a34adb9e8c0522b30c  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnWebGPUCache/data_3
+28cf84c6c245a55b65cea0eef1bd8182d12f6c3f04db1d0459723e51a0a5b575  pet-next/logs/chat-evidence/closeout-demo/userdata/DawnWebGPUCache/index
+0633b33279226ffc85a3fc667a4ccc0f0d09db4626d487cbf1507953f54b82e1  pet-next/logs/chat-evidence/closeout-demo/userdata/DevToolsActivePort
+a075b01d9b015c616511a9e87da77da3d9881621db32f584e4606ddabf1c1100  pet-next/logs/chat-evidence/closeout-demo/userdata/Dictionaries/en-US-10-1.bdic
+d6a5fe39cd672781b256e0e3102f7022635f1d4bb7cfcc90a80fffe4d0f3877e  pet-next/logs/chat-evidence/closeout-demo/userdata/GPUCache/data_0
+b1e963d702392fb7224786e7d56d43973e9b9efd1b89c17814d7c558ffc0cdec  pet-next/logs/chat-evidence/closeout-demo/userdata/GPUCache/data_1
+ec1702806f4cc7c42a82fc2b38e89835fde7c64bb32060e0823c9077ca92efb7  pet-next/logs/chat-evidence/closeout-demo/userdata/GPUCache/data_2
+e09f42c398d688dce168570291f1f92d079987deda3099a34adb9e8c0522b30c  pet-next/logs/chat-evidence/closeout-demo/userdata/GPUCache/data_3
+2b6b285b0060de20fa0053bf3c5408cf788629144f814d59613d0fb5ccbc15aa  pet-next/logs/chat-evidence/closeout-demo/userdata/GPUCache/index
+5e644f6ce756938ef57c94fa36114de027284fff167a0a1223cbb0e5c8f714f4  pet-next/logs/chat-evidence/closeout-demo/userdata/Local State
+0f1bad70c7bd1e0a69562853ec529355462fcd0423263a3d39d6d0d70b780443  pet-next/logs/chat-evidence/closeout-demo/userdata/Local Storage/leveldb/CURRENT
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/closeout-demo/userdata/Local Storage/leveldb/LOCK
+fef21f88ae5abb144d0c3ca3eacfffa4f7e4fa02a70fffe4a8837920ac3ec85a  pet-next/logs/chat-evidence/closeout-demo/userdata/Local Storage/leveldb/LOG
+d0fdb3bd4e88b8682e7e1fa898e1b2de57a72f94914b90d8d9dcfcac06e1b7f6  pet-next/logs/chat-evidence/closeout-demo/userdata/Local Storage/leveldb/LOG.old
+f9d31b278e215eb0d0e9cd709edfa037e828f36214ab7906f612160fead4b2b4  pet-next/logs/chat-evidence/closeout-demo/userdata/Local Storage/leveldb/MANIFEST-000001
+86b2959355fbd957348172f283add4c7d5237a6c64e4e96c24df0aa830e105bc  pet-next/logs/chat-evidence/closeout-demo/userdata/Network Persistent State
+be4b8924ab38e8acf350e6e3b9f1f63a1a94952d8002759acd6946c4d5d0b5de  pet-next/logs/chat-evidence/closeout-demo/userdata/Preferences
+0f1bad70c7bd1e0a69562853ec529355462fcd0423263a3d39d6d0d70b780443  pet-next/logs/chat-evidence/closeout-demo/userdata/Session Storage/CURRENT
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/closeout-demo/userdata/Session Storage/LOCK
+fc9fa878e2f3473d72f4ae86ee2e3aabcdef3e02700a5231b1c1bf22f405ce50  pet-next/logs/chat-evidence/closeout-demo/userdata/Session Storage/LOG
+f4d4996e7c91ccdc8f91e7e8d4c6ebe2989d9f37942cbf806bee02b71a56d55b  pet-next/logs/chat-evidence/closeout-demo/userdata/Session Storage/LOG.old
+f9d31b278e215eb0d0e9cd709edfa037e828f36214ab7906f612160fead4b2b4  pet-next/logs/chat-evidence/closeout-demo/userdata/Session Storage/MANIFEST-000001
+fbcfe23a2ecb82b7100c50811691dde0a33aa3da8d176be9882a9db485dc0f2d  pet-next/logs/chat-evidence/closeout-demo/userdata/Shared Dictionary/cache/index
+95f8f3e3810af8aa09938726114447caebc3a4d0c0357e8474e35729ce44d0a7  pet-next/logs/chat-evidence/closeout-demo/userdata/Shared Dictionary/cache/index-dir/the-real-index
+fbb86c665b2fed35c372ce8996eb1c4e31082aedd6ad5fc6086cfac889c3471b  pet-next/logs/chat-evidence/closeout-demo/userdata/Shared Dictionary/db
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/closeout-demo/userdata/Shared Dictionary/db-journal
+8b5a62a399e316009e0c0ee1727ede327893d7f82f38a136e795422b3f9c333c  pet-next/logs/chat-evidence/closeout-demo/userdata/Trust Tokens
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/closeout-demo/userdata/Trust Tokens-journal
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/closeout-demo/userdata/VideoDecodeStats/LOCK
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/closeout-demo/userdata/VideoDecodeStats/LOG
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/closeout-demo/userdata/VideoDecodeStats/LOG.old
+13d77355f9c4d79808b11de0a24a663a7398778502f7777545a891845b6d2a09  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Cache/Cache_Data/3520c3c491c40b61_0
+9bb461d393ddfa20e8d4e2a3ab98bbee524eb4f74b000baf095d6550c2e1dd14  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Cache/Cache_Data/5283edf90cf4ab50_0
+fbcfe23a2ecb82b7100c50811691dde0a33aa3da8d176be9882a9db485dc0f2d  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Cache/Cache_Data/index
+cf4fe2e31f5d37db737f8956645f906f7a5d227f40e5eb557391dd6023975a3c  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Cache/Cache_Data/index-dir/the-real-index
+9c169428d852e25bd59b27652ed533d2a1f09f96e4c329fa5e06f47e16731543  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Cache/No_Vary_Search/journal.baj
+0c2dd377ed0cc66161e9db8f89f7d8bcb3ad8c06c4a054bdcba214ab05f58c9a  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Cache/No_Vary_Search/snapshot.baf
+aca1d6973ecd8cf1d9d799faed5c33f50606db99ba1a462f0f87053128a956c2  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Code Cache/electron-preload/BBC7B0A842CE2F21EC141530CE19895D2BA35C4ECC3533FE0EE5CAEAED0C3A50.cache
+fbcfe23a2ecb82b7100c50811691dde0a33aa3da8d176be9882a9db485dc0f2d  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Code Cache/js/index
+131cf1557234a76238766c64edb4013167601d2600263c2a97eb1211454475ea  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Code Cache/js/index-dir/the-real-index
+fbcfe23a2ecb82b7100c50811691dde0a33aa3da8d176be9882a9db485dc0f2d  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Code Cache/wasm/index
+131cf1557234a76238766c64edb4013167601d2600263c2a97eb1211454475ea  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Code Cache/wasm/index-dir/the-real-index
+333d1dac02a8ba2b08fc47662b53b5aa63295664ca818a41797c709894c81bd3  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Crashpad/client_id
+7f98c21a7d9f3267006bb03621ce5c32d3f7f8d44419c1215efeef7abce92372  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DIPS
+d6a5fe39cd672781b256e0e3102f7022635f1d4bb7cfcc90a80fffe4d0f3877e  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnGraphiteCache/data_0
+b1e963d702392fb7224786e7d56d43973e9b9efd1b89c17814d7c558ffc0cdec  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnGraphiteCache/data_1
+ec1702806f4cc7c42a82fc2b38e89835fde7c64bb32060e0823c9077ca92efb7  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnGraphiteCache/data_2
+e09f42c398d688dce168570291f1f92d079987deda3099a34adb9e8c0522b30c  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnGraphiteCache/data_3
+99944b2d1e059bd91bbaadd865772500b8b5684cc0199fc0ac34f4e0488e5f73  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnGraphiteCache/index
+d6a5fe39cd672781b256e0e3102f7022635f1d4bb7cfcc90a80fffe4d0f3877e  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnWebGPUCache/data_0
+b1e963d702392fb7224786e7d56d43973e9b9efd1b89c17814d7c558ffc0cdec  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnWebGPUCache/data_1
+ec1702806f4cc7c42a82fc2b38e89835fde7c64bb32060e0823c9077ca92efb7  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnWebGPUCache/data_2
+e09f42c398d688dce168570291f1f92d079987deda3099a34adb9e8c0522b30c  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnWebGPUCache/data_3
+f0cc5f7eb3f355a8d9c0302f9f186007edff11f9d194c6a595e6b02ca3de63ec  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DawnWebGPUCache/index
+03461382f3609db8e891dcf85b6dc58ae1bc982379a70abb2d986f9b848ad563  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/DevToolsActivePort
+a075b01d9b015c616511a9e87da77da3d9881621db32f584e4606ddabf1c1100  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Dictionaries/en-US-10-1.bdic
+d6a5fe39cd672781b256e0e3102f7022635f1d4bb7cfcc90a80fffe4d0f3877e  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/GPUCache/data_0
+b1e963d702392fb7224786e7d56d43973e9b9efd1b89c17814d7c558ffc0cdec  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/GPUCache/data_1
+ec1702806f4cc7c42a82fc2b38e89835fde7c64bb32060e0823c9077ca92efb7  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/GPUCache/data_2
+e09f42c398d688dce168570291f1f92d079987deda3099a34adb9e8c0522b30c  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/GPUCache/data_3
+69bdf250b14fde1eccdb3089e588dd0a9681e6ad72eef95d54d026e6c2b4bc99  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/GPUCache/index
+18e1c69d6e94568cb1fdd326ca10d47b4d9517fdbdbf8afb5ca02e9a09ec0444  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Local State
+0f1bad70c7bd1e0a69562853ec529355462fcd0423263a3d39d6d0d70b780443  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Local Storage/leveldb/CURRENT
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Local Storage/leveldb/LOCK
+061d17c36f1e3ae7f11081ed85a09b6883daca494d44eac897de03976c943d6a  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Local Storage/leveldb/LOG
+f9d31b278e215eb0d0e9cd709edfa037e828f36214ab7906f612160fead4b2b4  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Local Storage/leveldb/MANIFEST-000001
+73aba4b201ea5670b443869020b7efa6a8bda5a48aa040cbe1335307138affbd  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Network Persistent State
+be4b8924ab38e8acf350e6e3b9f1f63a1a94952d8002759acd6946c4d5d0b5de  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Preferences
+0f1bad70c7bd1e0a69562853ec529355462fcd0423263a3d39d6d0d70b780443  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Session Storage/CURRENT
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Session Storage/LOCK
+1b91f646e67c04f36e1f158722be809b69b884615c393cbb0c393af71bebd99d  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Session Storage/LOG
+f9d31b278e215eb0d0e9cd709edfa037e828f36214ab7906f612160fead4b2b4  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Session Storage/MANIFEST-000001
+fbcfe23a2ecb82b7100c50811691dde0a33aa3da8d176be9882a9db485dc0f2d  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Shared Dictionary/cache/index
+131cf1557234a76238766c64edb4013167601d2600263c2a97eb1211454475ea  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Shared Dictionary/cache/index-dir/the-real-index
+fbb86c665b2fed35c372ce8996eb1c4e31082aedd6ad5fc6086cfac889c3471b  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Shared Dictionary/db
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Shared Dictionary/db-journal
+8b5a62a399e316009e0c0ee1727ede327893d7f82f38a136e795422b3f9c333c  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Trust Tokens
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  pet-next/logs/chat-evidence/qwen-local-smoke/userdata/Trust Tokens-journal
+9098d7b664c50a4731c9143b6fd556065f48b51c0cba9fbe16145f75f3640e00  pet-next/logs/platform-runs/linux/2026-10-29T13-20-55-289Z-electron-idle-4005/environment.json
+bfa55f5c3319fb83719560790097019b81f613c6fc704d1facbe990b1096e875  pet-next/logs/platform-runs/linux/2026-10-29T13-20-59-661Z-electron-missing-media-4081/environment.json
+4afd3b777cf322fa0b42034b3c50c3c2ba56eca7ee004e9bc9d6ff8c82b5f1ae  pet-next/logs/platform-runs/linux/2026-10-29T13-33-34-390Z-cases/2026-10-29T13-33-34-499Z-cleanup-fail-4807/environment.json
+94ad82694a0d1abbf49d3d57c88b89a33aebf852abfd482af9c1ae0bd8e4e54a  pet-next/logs/platform-runs/linux/2026-10-29T13-33-34-390Z-cases/2026-10-29T13-33-35-229Z-cleanup-hang-4857/environment.json
+fafb0463199c3b87bc1a38af61a4ab854a8bb62965c6bda4db56f9651fcdefb3  pet-next/logs/platform-runs/linux/2026-10-29T13-33-34-390Z-cases/2026-10-29T13-33-36-028Z-cleanup-exit-4873/environment.json
+ae8f1d4c8564c12da3e6436de16190fea7b1de17a4c5f6d2b247730da498637f  pet-next/logs/platform-runs/linux/2026-10-29T13-33-34-394Z-record-platform-run-4780/environment.json
+13a8543d2d0b8c433046515cae5613aae5ef66ef0fd24d7076586f47e68e4f86  pet-next/logs/platform-runs/linux/2026-10-29T16-13-33-427Z-platform-fail-5187/environment.json
+fd84fcd3e4244ce12b0339497e203ee6079c8fb9d70f88574a74b608e3fbf8bf  pet-next/logs/platform-runs/linux/2026-10-29T16-13-34-148Z-platform-hang-5203/environment.json
+c9c9dcc297e259abb8cd8ef7d63a5f23869fdc52baec0e325bd0ad58dd30613e  pet-next/logs/platform-runs/linux/2026-10-29T16-13-34-950Z-platform-exit-5219/environment.json
+c9c9dcc297e259abb8cd8ef7d63a5f23869fdc52baec0e325bd0ad58dd30613e  pet-next/logs/platform-runs/linux/2026-10-29T16-13-35-485Z-platform-exit-5235/environment.json
+aca9d10981136745f153d0cb6e11c4d7c083f8313a39c3f6bc3b4a9d7ddd1eba  pet-next/logs/platform-runs/linux/2026-10-29T16-13-36-031Z-platform-default-5251/environment.json
+469f42b924c75c3224aaea0ede3dc37a0e947e015f0e4f31f78c78f12ff1aeb2  pet-next/logs/platform-runs/linux/2026-10-29T16-13-53-967Z-platform-sim-100-5343/environment.json
+ec914f4a8a3f1f72df1afd53e4484d14cc1ce89f4ae0090f4e238c9d50a913ed  pet-next/logs/platform-runs/linux/2026-10-29T16-13-54-613Z-platform-sim-125-5421/environment.json
+475cd147373b2aff832d96b241a39e6af541dfa102f1d56b4c27ec06bdb9b406  pet-next/logs/platform-runs/linux/2026-10-29T16-13-55-256Z-platform-sim-150-5500/environment.json
+02d34879c23dd1e6c51af967fb5c9956cc2f0ea406b46e740b1adf51a96a1f1e  pet-next/logs/platform-runs/linux/2026-10-29T17-22-04-235Z-electron-idle-5771/environment.json
+118ef6e4adcb911a8b1a9f27f2c130c50a8616beb2fd51274dec336cfd75b3a4  pet-next/logs/platform-runs/linux/2026-10-29T17-22-08-612Z-electron-missing-media-5855/environment.json
+bc6ded34642b8e7b0d109ba144eb9a0f57a7f8cd3495bc6d864831dc46f6231f  pet-next/logs/platform-runs/linux/2026-11-02T04-16-06-148Z-electron-idle-943160/environment.json
+d568bfaa6f703fc1a4f49e88add6b9a25c8169cc918f41706f624eedfe4cd66e  pet-next/logs/platform-runs/linux/2026-11-02T04-16-06-279Z-electron-missing-media-943161/environment.json
+61e47a6a2be64fbb180b44fdb583bcf0fa66012bee9fdfe1a78842c264b012de  pet-next/logs/platform-runs/linux/2026-11-02T04-19-09-594Z-electron-idle-950389/environment.json
+7636c3fb705606773318831a73300163f03b7dce34252cea8ee5688ccd307b64  pet-next/logs/platform-runs/linux/2026-11-02T04-19-14-084Z-electron-missing-media-950601/environment.json
+6cd7c92a787ffd74e08997ac1273aaefd89f15024a1b42102d8586fd6a1293e4  pet-next/logs/platform-runs/linux/2026-11-02T04-51-09-248Z-electron-idle-1460178/environment.json
+4063c16a89c8225e110018b3b4154ec482fd2bf7e012b9910c74515ed4b825bd  pet-next/logs/platform-runs/linux/2026-11-02T04-51-13-683Z-electron-missing-media-1460778/environment.json
+579bbd90cd25a92f80201f30a5206a97d86f5d42e983fc31c1a3a137d4faabe7  pet-next/logs/platform-runs/linux/2026-11-02T05-22-46-785Z-electron-idle-1556896/environment.json
+55ecd280cf843bfecea5f7660240d16874ac80308390a248015b1e3b8f5feb83  pet-next/logs/platform-runs/linux/2026-11-02T05-22-51-274Z-electron-missing-media-1556999/environment.json
+5d77320ea6f5d01c2ccbd15dac292126bf2ba928278b3b5d06d52dbe6784657b  pet-next/logs/platform-runs/linux/2026-11-02T08-17-56-726Z-electron-idle-1731458/environment.json
+c03e1cfe6a2afde3557a7180478863bded2640fe55cf191b6d7985ca58734a77  pet-next/logs/platform-runs/linux/2026-11-02T08-18-01-195Z-electron-missing-media-1731573/environment.json
+b8a4888251a3e95383bb7870b842c00f3f0315b7d3a0f3bb907b5a0d308734e8  pet-next/logs/platform-runs/linux/2026-11-02T10-26-26-481Z-chat-e2e-open-1882235/environment.json
+c81701b2962bbd9d657a640efdd9ee01835ce89c4ffd1409d76c241ef03312c1  pet-next/logs/platform-runs/linux/2026-11-02T10-26-29-358Z-chat-e2e-error-1882341/environment.json
+3228b92b7d66da0d62ec241a4092c14a0cb69b48108c35bf5c706b3b82397305  pet-next/logs/platform-runs/linux/2026-11-02T10-26-29-855Z-chat-e2e-cancel-1882475/environment.json
+ed59fc077a2fba1a0411cfcd5e5570f463432cef43b23e5af89884414dad61f0  pet-next/logs/platform-runs/linux/2026-11-02T10-26-30-337Z-chat-e2e-close-1882576/environment.json
+4dbc0270bf0a4110da7a8fac893555cb6cff551a7e26aedb738317af6d4a1f68  pet-next/logs/platform-runs/linux/2026-11-02T10-26-30-915Z-chat-e2e-gate-1882664/environment.json
+92c0272072e54f758563bf389f97bba17cab555ab0c7b4484868ad3830b1a658  pet-next/logs/platform-runs/linux/2026-11-02T10-26-37-572Z-chat-e2e-open-1882896/environment.json
+5340c5f6dc1377e4fed50a87bdf1b54cdc075eefb16a03b3d9c579670a781109  pet-next/logs/platform-runs/linux/2026-11-02T10-27-23-717Z-chat-e2e-open-1884125/environment.json
+b95692cd09542a611aa31c08f061ad11a0c33b39ca8a233a0858739ecdb5a059  pet-next/logs/platform-runs/linux/2026-11-02T10-27-24-318Z-chat-e2e-error-1884217/environment.json
+49e1b5ee8b65c1b825b58ae51775cf2a95830d43aefd3d088eff0fafedda5d78  pet-next/logs/platform-runs/linux/2026-11-02T10-27-25-013Z-chat-e2e-cancel-1884312/environment.json
+a99f94b161abacec14b9714b4d8b84edf1f46e376ef1dab5545f10d538cafab6  pet-next/logs/platform-runs/linux/2026-11-02T10-27-33-731Z-chat-e2e-close-1884554/environment.json
+01166086a9bbee65ce0172f33be417b534019eeb1c190b454191ed325cb48dbb  pet-next/logs/platform-runs/linux/2026-11-02T10-27-42-279Z-chat-e2e-gate-1884760/environment.json
+0aa3bc5d9a548badf1aa100f339ba6163beae27bc4c2dd72076b0e65669caa08  pet-next/logs/platform-runs/linux/2026-11-02T10-27-46-092Z-chat-e2e-cancel-1884942/environment.json
+5089ce4f1d40f94eac449185d3b0553d59cdcacc42ae9fd835f772e24e8a8390  pet-next/logs/platform-runs/linux/2026-11-02T10-27-54-720Z-chat-e2e-close-1885211/environment.json
+52bb1ed4a4cfb115abe5dfaef2a67b92a2b86d6fe97afb4e2934d1145daee4b6  pet-next/logs/platform-runs/linux/2026-11-02T10-28-35-352Z-chat-e2e-open-1886272/environment.json
+0af6bcd504b4666cec7caf1b11b60e95a15ad18e60e6e9795983fa224f29b2a2  pet-next/logs/platform-runs/linux/2026-11-02T10-28-35-967Z-chat-e2e-error-1886413/environment.json
+1fb9e7d0c083c2727b0105dd806216bbfd2086fef8da3be0a7bd3cd440c14d15  pet-next/logs/platform-runs/linux/2026-11-02T10-28-36-621Z-chat-e2e-cancel-1886498/environment.json
+bde0223526aa01b7e963ddec9549025699548a7b80e2a0e3b18839ad4e973bb3  pet-next/logs/platform-runs/linux/2026-11-02T10-28-41-257Z-chat-e2e-close-1886670/environment.json
+893a64d1e490b7b7e0a6aba2b0b0df71c0735ee05bb144bf66889a4a8222c0b6  pet-next/logs/platform-runs/linux/2026-11-02T10-28-41-974Z-chat-e2e-gate-1886761/environment.json
+7ae3cff04a7abaf238705358c7579537592575e56d3913456fe5438cdf04a9e4  pet-next/logs/platform-runs/linux/2026-11-02T10-29-35-559Z-chat-e2e-open-1891157/environment.json
+6809a3ead1144055f6720a2fb282cfe0c149c8e70fc98dbdfb45fd61fff369c6  pet-next/logs/platform-runs/linux/2026-11-02T10-29-36-151Z-chat-e2e-error-1891248/environment.json
+03a7ed76937e2a38da86997a62dadd67e576f6c2fb6f234ca4b6d76fb34780b1  pet-next/logs/platform-runs/linux/2026-11-02T10-29-36-793Z-chat-e2e-cancel-1891342/environment.json
+f47457a3a7df02e887a47095a67f247f3bf8406a5f11d6b6e12e9ecded3c6263  pet-next/logs/platform-runs/linux/2026-11-02T10-29-41-460Z-chat-e2e-close-1891515/environment.json
+d0ec72fb05ebb79829ed9198550c584b5d7a6543e6210cbb8264511d476c28da  pet-next/logs/platform-runs/linux/2026-11-02T10-29-42-014Z-chat-e2e-gate-1891605/environment.json
+c020683febba88950180e31a9d48c90ad1805de036ee21bc560cfabf7a496fc5  pet-next/logs/platform-runs/linux/2026-11-02T10-31-26-671Z-electron-idle-1894520/environment.json
+8c107756e6b352265e54dfdab0b8701ece08830f7182f0db7026c1c624a426f5  pet-next/logs/platform-runs/linux/2026-11-02T10-31-31-250Z-electron-missing-media-1894701/environment.json
+ca5f0b0ee65af58fd854ccf060d0d05c0635c2215b3f65aee9371645ac900579  pet-next/logs/platform-runs/linux/2026-11-02T10-32-16-299Z-chat-e2e-open-1898808/environment.json
+0c11eeca3dfd4bfb29f5e58c75f49d0e196165763de8accf7755595a669349a0  pet-next/logs/platform-runs/linux/2026-11-02T10-32-16-872Z-chat-e2e-error-1898907/environment.json
+c662addd3d922f5b76b022cce838f39b1f7b6f855611cbb6b0b8ef769548a9f9  pet-next/logs/platform-runs/linux/2026-11-02T10-32-17-510Z-chat-e2e-cancel-1898997/environment.json
+7b0cfa2bb86369158b312e8c4f7ad09a9b3dc02400163812b8f6dbddf5611dc5  pet-next/logs/platform-runs/linux/2026-11-02T10-32-22-042Z-chat-e2e-close-1899210/environment.json
+157d4fa3cdd26fb244f0af5fe6c36bea368454084675431098d26c880721747d  pet-next/logs/platform-runs/linux/2026-11-02T10-32-22-601Z-chat-e2e-gate-1899298/environment.json
+4e389c3772f33865031e389f4a78870c8cf616aa9a1533de5920fe94212c017f  pet-next/logs/platform-runs/linux/2026-11-02T10-34-07-292Z-electron-idle-1902219/environment.json
+ff6f063c8ccb0d6c917d0996b4166588af3885f86046fca031badf9932c97412  pet-next/logs/platform-runs/linux/2026-11-02T10-34-11-792Z-electron-missing-media-1902349/environment.json
+2182c864c7e7e9bd8510187a433cdcc11c0304c40bb67e7d6dc10ccaf0e865db  pet-next/logs/platform-runs/linux/2026-11-02T11-54-10-217Z-formal-chat-happy-2001306/environment.json
+a96243eddb612feb5bf9ba33a4f669205cec3f2078758f35fc24478cbdf2bf8d  pet-next/logs/platform-runs/linux/2026-11-02T11-54-25-985Z-formal-chat-error-2002319/environment.json
+5586abe9b49d5c54e58d76d0d7fea90a5597913f00e48dc9998491cb074240b6  pet-next/logs/platform-runs/linux/2026-11-02T11-54-40-497Z-formal-chat-cancel-2002940/environment.json
+e7ae6ad5b8387ed51a3f3e95a34078ca140c7b3c0b9c660169b24aa05e7a2f6e  pet-next/logs/platform-runs/linux/2026-11-02T11-54-59-328Z-formal-chat-failure-2003911/environment.json
+da1d235cc208b0d042d132e3220697920855f0391a7ebd83c7013be275147561  pet-next/logs/platform-runs/linux/2026-11-02T11-55-57-120Z-formal-chat-happy-2008509/environment.json
+ae445c1f8bb691c119b492be897e86c605b9a4307fb1302129dcc7dbb04ab027  pet-next/logs/platform-runs/linux/2026-11-02T11-56-11-548Z-formal-chat-error-2009119/environment.json
+a44c2728cd6103cba2f9d0ce321cad7b5aef0c4e3c164262823ea5b16a90852b  pet-next/logs/platform-runs/linux/2026-11-02T11-56-26-443Z-formal-chat-cancel-2009711/environment.json
+0e109bef85e039b02d3755bd592945f4dddea7f59d5739806b913212369e3315  pet-next/logs/platform-runs/linux/2026-11-02T11-56-45-612Z-formal-chat-failure-2010429/environment.json
+7e0520592bb434cb9dc6bf32fe88d0467263feeac1589e1c0dd883b686a4d4a7  pet-next/logs/platform-runs/linux/2026-11-02T11-58-39-710Z-electron-idle-2013747/environment.json
+bab04edd7c84abf6dae790764921d36489dc454f97447e0e3f7ee7ae5588ba01  pet-next/logs/platform-runs/linux/2026-11-02T11-58-44-223Z-electron-missing-media-2013927/environment.json
+3f8f41c7bdeaebb2d1916af4f017bb63a2e80aacfef9983cb0995c507cee756d  pet-next/logs/platform-runs/linux/2026-11-02T12-45-31-557Z-formal-chat-happy-2073947/environment.json
+1ee8867cd97db5dac369340c32b2853831433feaee007f3716e63d8dd70132b5  pet-next/logs/platform-runs/linux/2026-11-02T12-45-46-908Z-formal-chat-error-2074632/environment.json
+df86014d272acd648bbfa99f5c5ad08f5346549af5f59e5c4d683a11f1dd9841  pet-next/logs/platform-runs/linux/2026-11-02T12-46-03-205Z-formal-chat-cancel-2075728/environment.json
+2beb60fdeb4975d01c86283826621b6c8b2663a0162a38fd7aa59a1cf0aaff96  pet-next/logs/platform-runs/linux/2026-11-02T12-46-22-966Z-formal-chat-failure-2076613/environment.json
+842ee70b7502898fe47ed1f7f334faf178aaa53990fd2e07cfa93acc65b53d22  pet-next/logs/platform-runs/linux/2026-11-02T12-47-21-582Z-formal-chat-happy-2081179/environment.json
+ffe7e16847fd9d869f94919b441377ea9d429f605ffd007aaddbab1647334ac2  pet-next/logs/platform-runs/linux/2026-11-02T12-47-37-524Z-formal-chat-error-2082247/environment.json
+589e95e3cb69240f97d438f624444f5786782925c6eca9900c13f93bf24fad63  pet-next/logs/platform-runs/linux/2026-11-02T12-47-53-350Z-formal-chat-cancel-2082967/environment.json
+d36a3f9ba68bc2660e33c01c2945b5381a4e993ac6d64467392940d62bd3b6bd  pet-next/logs/platform-runs/linux/2026-11-02T12-48-13-280Z-formal-chat-failure-2083673/environment.json
+2deaa9e3d01e7442c7ae33b7e3cb51a79e45d83ddf11d2cdeed83b49b5e2c450  pet-next/logs/platform-runs/linux/2026-11-02T12-50-08-347Z-electron-idle-2087483/environment.json
+2121087500442cd78f490fa5dfae909f7ffe4fa90dfc9879c5e88c3cb40d8071  pet-next/logs/platform-runs/linux/2026-11-02T12-50-12-891Z-electron-missing-media-2087766/environment.json
+2c3edb80e96c1b8e2eb5b5367344ab9582e150c1fd98eabef02dd5e5ce59227e  pet-next/logs/platform-runs/linux/2026-11-02T12-59-31-551Z-formal-chat-happy-2104117/environment.json
+692ac08bbeb9d4f7c503aacf931d521b688dc695f02f5c1c1eccdab0a8a6d00c  pet-next/logs/platform-runs/linux/2026-11-02T12-59-49-434Z-formal-chat-error-2104724/environment.json
+03ddfafa48d502d64df09d8995971bf2b7b2b8d8e093a3dea52bb45a17fb472f  pet-next/logs/platform-runs/linux/2026-11-02T13-00-08-134Z-formal-chat-cancel-2105331/environment.json
+2167768f162b1647f3450e51b487b07ade6e38893ee74c3340e80e8651b53ffa  pet-next/logs/platform-runs/linux/2026-11-02T13-00-31-895Z-formal-chat-failure-2105998/environment.json
+528313ea791e401fd034450788ef7632f3141ab6ad954accab2057a3f177ca43  pet-next/logs/platform-runs/linux/2026-11-02T13-02-30-689Z-electron-idle-2108832/environment.json
+fd937627482e9e113a832aaa4fb8e5a6fb52b64379c16efbc6676bcb08c3c54a  pet-next/logs/platform-runs/linux/2026-11-02T13-02-35-706Z-electron-missing-media-2108987/environment.json
+989714a7bbb7833809971f7a556013acb36bed0dcfa837a696c2f55c6a38b7a4  pet-next/logs/platform-runs/linux/2026-11-02T14-26-25-344Z-formal-chat-happy-2191612/environment.json
+206a088d0714b9299573ed9bdb1a2142a4189050a7776a3789a90934c46c39d3  pet-next/logs/platform-runs/linux/2026-11-02T14-26-43-379Z-formal-chat-error-2194410/environment.json
+cd44ffb12a1b442a4f458c4ebd876db96346d817e2350dd4f14cc7df41309be2  pet-next/logs/platform-runs/linux/2026-11-02T14-27-00-321Z-formal-chat-cancel-2195095/environment.json
+8232c6ffa82d2e3a8172469041feee3caa8544b1d4be0ac915d70913642f2491  pet-next/logs/platform-runs/linux/2026-11-02T14-27-21-869Z-formal-chat-failure-2196202/environment.json
+582accdb73857087c943dc0354fdf8c7d398e0f92c9e5ee8064243217dae3b18  pet-next/logs/platform-runs/linux/2026-11-02T14-44-00-384Z-formal-chat-happy-3065840/environment.json
+1164bc01e839bbfe9b342d664eb1f9bed65bc9a3fbf44fab32ed4c86824cfc93  pet-next/logs/platform-runs/linux/2026-11-02T14-44-18-118Z-formal-chat-error-3081568/environment.json
+5bbde27d5d18b61b5750cb7300174977d8933ffdfbfd1bc2749fc27554ca50ff  pet-next/logs/platform-runs/linux/2026-11-02T14-44-35-777Z-formal-chat-cancel-3097266/environment.json
+1738e7d73694cd526d206c386e93b7f39c16aae29bef81057a360a7f0c432755  pet-next/logs/platform-runs/linux/2026-11-02T14-44-57-326Z-formal-chat-failure-3116470/environment.json
+bd7c16d71074f539c6187b73ea7febad7b25629a4679c0f609e6fee9eadfd5a1  pet-next/logs/platform-runs/linux/2026-11-02T14-47-09-685Z-electron-idle-3231883/environment.json
+aedbb5c53e3b034dfeb720cd66633f5f4d7ef81276b72af9c48dcce52afec16a  pet-next/logs/platform-runs/linux/2026-11-02T14-47-14-291Z-electron-missing-media-3235863/environment.json
+2273f4b0ee112ac947437fb0c15d7a578c3cf4d553cdd981fee5ec328bdad7a6  pet-next/logs/platform-runs/linux/2026-11-02T14-50-20-971Z-formal-chat-happy-3401336/environment.json
+1f509444ce9193ef0f9d21a26608fae6ccca82ff317ab7577cc731bc71477889  pet-next/logs/platform-runs/linux/2026-11-02T14-50-39-291Z-formal-chat-error-3417290/environment.json
+a07689f87ee3d127344aa39d3fe5286770cb9ca69c23e9618daa4dd0623e6b6e  pet-next/logs/platform-runs/linux/2026-11-02T14-50-57-911Z-formal-chat-cancel-3433884/environment.json
+b3e822f25e66a8391a8a6e625e64cdbe00188ab0effb835aef0f86a27466c0a2  pet-next/logs/platform-runs/linux/2026-11-02T14-51-20-668Z-formal-chat-failure-3453874/environment.json
+970da69dfaba6c928c89dbf54c7ba964125ce31fc19bf78f62fdba7f909ce44a  pet-next/logs/platform-runs/linux/2026-11-02T14-53-34-789Z-electron-idle-3570988/environment.json
+a0c2f85ba8db0d9cf6ac60410775113f52972a49c07cd445f1f595f4456bd73e  pet-next/logs/platform-runs/linux/2026-11-02T14-53-39-361Z-electron-missing-media-3574875/environment.json
+de3382ea0e25beced3f8f1941c48d255ce6cc3699a772ebe8a4d82ad1e060af6  pet-next/logs/platform-runs/linux/2026-11-02T14-56-33-275Z-formal-chat-happy-3720205/environment.json
+a29e5a0f05f7a9b53ec4ea743223e4dbc716dcb6d3453bd47ebd70ef8cda20c2  pet-next/logs/platform-runs/linux/2026-11-02T14-56-51-663Z-formal-chat-error-3736396/environment.json
+6459128edd34331fe03d707f72229c6daf5b2fcd87c8bc89768e3070838939dc  pet-next/logs/platform-runs/linux/2026-11-02T14-57-09-854Z-formal-chat-cancel-3752254/environment.json
+8ce5b8e766ab7d9a92164e5a629364333df6667ecf73814ce27d19cda71bd087  pet-next/logs/platform-runs/linux/2026-11-02T14-57-32-815Z-formal-chat-failure-3772410/environment.json
+b2dc9d0cf8fb6bc9e1f8449881e5ccd073a3d17ae556475ce6462ff0498fb720  pet-next/logs/platform-runs/linux/2026-11-02T14-59-36-365Z-electron-idle-3880247/environment.json
+569f4718c38b759d03b5735bf4099bd50ddf9913311366736746708541f88067  pet-next/logs/platform-runs/linux/2026-11-02T14-59-40-990Z-electron-missing-media-3884245/environment.json
+5ad6a3663d5b0d4a58b4060a4d5518236dede0e3feb0fe33db2955b48c9ed6d3  pet-next/logs/platform-runs/linux/2026-11-03T03-46-35-325Z-formal-chat-happy-51891/environment.json
+8b081a06062ed5c63eb99595604ebb088e10a7ad378caea5c2a9b1cccf1fab78  pet-next/logs/platform-runs/linux/2026-11-03T03-46-54-421Z-formal-chat-error-52513/environment.json
+56d9d29fa6c3cee80035736f7d42b8c98510da58daeca8cce9230806a832af9c  pet-next/logs/platform-runs/linux/2026-11-03T03-47-12-515Z-formal-chat-cancel-53041/environment.json
+29d1160fa7c7f2233d13980ff76536f280a47cbed89249dd91c697ece118bd41  pet-next/logs/platform-runs/linux/2026-11-03T03-47-31-410Z-formal-chat-failure-53676/environment.json
+ce79907194336aeb6f3108df2e4aea08221257cec9732abb8b1271c22dde99d6  pet-next/logs/platform-runs/linux/2026-11-03T03-49-51-162Z-electron-idle-57982/environment.json
+f036e1137fc608d7d981a12534144d2993d59e12aea915091c27ffa311bdbea9  pet-next/logs/platform-runs/linux/2026-11-03T03-49-51-307Z-electron-missing-media-57983/environment.json
+1b2902c7246504fddcaf76267cf1e629536543325316c1859d7cf0c3a42fa4da  pet-next/logs/platform-runs/linux/2026-11-03T03-54-30-438Z-formal-chat-happy-69169/environment.json
+300324d9e42726ea6723f18a97b7f1cff9cee7bba65890fa74811696e2ea3bd6  pet-next/logs/platform-runs/linux/2026-11-03T03-54-50-031Z-formal-chat-error-69829/environment.json
+501c5f278f28fcb600b299ad030d8c2ca91c417b4469aaac82f8fa55a2a1e384  pet-next/logs/platform-runs/linux/2026-11-03T03-55-10-101Z-formal-chat-cancel-70551/environment.json
+4976555e96d3d6c3112a297f77f3e7f400454e222c6a04d461c74c14f8d0f813  pet-next/logs/platform-runs/linux/2026-11-03T03-55-33-871Z-formal-chat-failure-71356/environment.json
+340bcf836fe20843a4c6194ed53deaf443bd91b812116a622a7383aca2f94c98  pet-next/logs/platform-runs/linux/2026-11-03T03-57-39-254Z-electron-idle-74662/environment.json
+3b0fe12d5f7a3a83ec3c2f076eb115ac9f51ef3117460244a68b36eb0238c053  pet-next/logs/platform-runs/linux/2026-11-03T03-57-43-798Z-electron-missing-media-74830/environment.json
+5bb3863d080e8b099f7a540bb0c0e21027898693ffa2216045f8a44e308ee0a7  pet-next/logs/platform-runs/linux/2026-11-03T07-03-30-034Z-formal-chat-happy-312115/environment.json
+a64ec3c2c7f8a86071f0b6d4db5efc737f3afcaf1f8ddc5797e4ce9633bc9414  pet-next/logs/platform-runs/linux/2026-11-03T07-03-56-728Z-formal-chat-error-312928/environment.json
+cda19b9c871f88facdf358c4de27a7e82d7799fb70568f9b11953a0c48c7ff3e  pet-next/logs/platform-runs/linux/2026-11-03T07-04-23-269Z-formal-chat-cancel-313817/environment.json
+454441baa32de19ebed0781d0e8851145894e988c7d7d99f13030b6452b43bdb  pet-next/logs/platform-runs/linux/2026-11-03T07-04-59-891Z-formal-chat-failure-314819/environment.json
+d3aa13586c7df759264bc31dba0aa8be80edbf5d3bc01414bd538f8783031038  pet-next/logs/platform-runs/linux/2026-11-03T07-07-20-176Z-electron-idle-319027/environment.json
+035af7a3e7b887f0531da2909327eb61de7f54c2ba0d862cac1909e9a6167a51  pet-next/logs/platform-runs/linux/2026-11-03T07-07-24-864Z-electron-missing-media-319150/environment.json
+9bdbe9e14f870583d6b4335612f3c1ef2354053f45d1c3c15ffa48b4680b6f2e  pet-next/logs/platform-runs/linux/2026-11-03T09-15-08-454Z-formal-chat-happy-464007/environment.json
+b6b7f280907cfd07a88e409453795c67cc78bb8e25d7aa3a1dbef2205d7b20dd  pet-next/logs/platform-runs/linux/2026-11-03T09-15-44-349Z-formal-chat-error-465241/environment.json
+4cc0048a5eb6826b1027cb157ec7c706183e80705fe24bb7f1a8f37ebbd4d276  pet-next/logs/platform-runs/linux/2026-11-03T09-16-16-476Z-formal-chat-cancel-466268/environment.json
+312eba6d0f31c14f9e7b3dd96cf2730ef6a792b3323b80ab01305f9c0c5feaf8  pet-next/logs/platform-runs/linux/2026-11-03T09-16-57-474Z-formal-chat-failure-467499/environment.json
+0dd67d91d9fba876eca455c519fc8cd88b02924d858aaa1c5309268eaa91bc8f  pet-next/logs/platform-runs/linux/2026-11-03T09-19-21-182Z-electron-idle-472006/environment.json
+06244c3b827677087e6abb4d9bcd29547c9f26a7da08d0f55311fce04fce1ada  pet-next/logs/platform-runs/linux/2026-11-03T09-19-25-986Z-electron-missing-media-472242/environment.json
+7661a8186718ea518315922194c49c55bf3196c710e27f9860a1d825518bea0b  pet-next/logs/platform-runs/linux/2026-11-03T11-09-30-385Z-formal-chat-happy-621456/environment.json
+47a4596a0b786931cd374d5a91f509f61c7b925730066d04fe56297b2dc0982d  pet-next/logs/platform-runs/linux/2026-11-03T11-10-06-448Z-formal-chat-error-622516/environment.json
+4e1286164fc8c2d9fe7989cd3c46d19047e3d9d25f07340f6769acac6c494901  pet-next/logs/platform-runs/linux/2026-11-03T11-10-38-560Z-formal-chat-cancel-623461/environment.json
+60bd97ad9cd36147d895b1e3ef4a84df5c90586d947f2ef5a0fc0d2af452a763  pet-next/logs/platform-runs/linux/2026-11-03T11-11-19-517Z-formal-chat-failure-624570/environment.json
+20615ab0e073fef6711db9b049751709a15f2f034faf8e52356348ad789bfdaa  pet-next/logs/platform-runs/linux/2026-11-03T11-13-46-605Z-electron-idle-628558/environment.json
+1ce14d38a23d390ad1241bb41e14f6d62d675cfe3fe33ce722598b918aa71557  pet-next/logs/platform-runs/linux/2026-11-03T11-13-52-040Z-electron-missing-media-628743/environment.json
+7b2f3cffa4186497d20ab0058ae75ea3d9d0e3cb722e6dc50488cb8b1e743077  pet-next/logs/platform-runs/linux/2026-11-03T12-07-22-310Z-formal-chat-happy-719582/environment.json
+1f6b42cb9158d6e410a01f1fd57e9c5ca4f14fc82215074b277073d9d00dcb09  pet-next/logs/platform-runs/linux/2026-11-03T12-07-57-913Z-formal-chat-error-720586/environment.json
+d5aa1a0124b69ddc2c2c7c32bd7edca67f10c06c1056b0d6739002837b73bad1  pet-next/logs/platform-runs/linux/2026-11-03T12-13-31-701Z-formal-chat-failure-761325/environment.json
+284f33da3a5fcb78d2fac7769ac6a1883a199384faa187a133e5a6537114f0ad  pet-next/logs/platform-runs/linux/2026-11-03T12-15-55-997Z-electron-idle-765245/environment.json
+6503bce4a62779185b39a7519fe05c9f644945ee13acd87f807ccbc38ce5ae4c  pet-next/logs/platform-runs/linux/2026-11-03T12-16-00-744Z-electron-missing-media-765382/environment.json
+af05b39a6b60a17815240664dbe9a8daa63be8fca1fe432efe671b74d6d5814c  pet-next/logs/platform-runs/linux/2026-11-03T12-18-32-148Z-formal-chat-happy-770929/environment.json
+4d13f325d657b92845ce56699613da6e351a4cd6c9d04b990681bc58235601d9  pet-next/logs/platform-runs/linux/2026-11-03T12-19-12-915Z-formal-chat-error-772795/environment.json
+4de64e35ae482fa0efbfbcb9f9f98bc664a1bed6ec6abbfb60504e81eba76e71  pet-next/logs/platform-runs/linux/2026-11-03T12-19-49-858Z-formal-chat-cancel-773861/environment.json
+85fbb593ce7709012ae375c48ab1292062752027af3c54f61765e9436a7c8026  pet-next/logs/platform-runs/linux/2026-11-03T12-20-30-359Z-formal-chat-failure-776837/environment.json
+8fd6a229c52b328ec969b930b6ceddc12b59cb87e015440c7fe7660183c8a94d  pet-next/logs/platform-runs/linux/2026-11-03T12-28-00-759Z-formal-chat-happy-792192/environment.json
+46eb9b12026751bd4669c48b4a92394b34ced08956454d739acc4d1f1fd94afd  pet-next/logs/platform-runs/linux/2026-11-03T12-28-37-340Z-formal-chat-error-793157/environment.json
+e46a3dcf2a21980b35dc70e50cbfc431a506bf792dfdc8c6730516be44bb6273  pet-next/logs/platform-runs/linux/2026-11-03T12-29-12-858Z-formal-chat-cancel-794216/environment.json
+d0f73b7db11edf314b8e4a39429d508e9a957a49cdcbc93cca9dba1e5eeadd1c  pet-next/logs/platform-runs/linux/2026-11-03T12-29-52-547Z-formal-chat-failure-795204/environment.json
+3bb50e188acda7fd0ff3a77f10d31e288a23f23a4bea7c8584d7304205a29958  pet-next/logs/platform-runs/linux/2026-11-03T12-32-19-514Z-electron-idle-799068/environment.json
+a39ba1074f516337f10a0d686e37c3620b3c19aec38be39fab28f424a310d728  pet-next/logs/platform-runs/linux/2026-11-03T12-32-24-387Z-electron-missing-media-799289/environment.json
