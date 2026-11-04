@@ -25,7 +25,7 @@ export const SRC_INCLUDE = [
   'config/',
   'contracts/', 'core/', 'docs/', 'electron/', 'experiments/', 'scripts/', 'tests/',
   'package.json', 'pnpm-lock.yaml', 'tsconfig.json', 'tsconfig.preload.json',
-  'eslint.config.js', 'README.md',
+  'eslint.config.js', 'README.md', 'LICENSE',
 ];
 
 /** 黑名单模式（对 git 跟踪路径二次过滤；试用车不带任何机器现场与身份材料）。 */

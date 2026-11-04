@@ -41,6 +41,7 @@ test('collectTrialFiles：白名单目录收集、黑名单剔除、非 pet-next
     'pet-next/core/chat/session.ts',
     'pet-next/scripts/chat-trial.mjs',
     'pet-next/package.json',
+    'pet-next/LICENSE',
     'pet-next/logs/chat-evidence/demo.ndjson', // 顶层 logs 整体排除
     'pet-next/bench/context/runner.ts',
     'pet-next/bench/context/runs-x/environment.json',
@@ -56,6 +57,7 @@ test('collectTrialFiles：白名单目录收集、黑名单剔除、非 pet-next
   assert.ok(kept.includes('scripts/chat-trial.mjs'));
   assert.ok(kept.includes('bench/context/runner.ts'));
   assert.ok(kept.includes('bench/feedback/resource.mjs'));
+  assert.ok(kept.includes('LICENSE'), '源码包必须带原始 LICENSE/版权来源');
   assert.ok(!kept.includes('M3-4-TASKS.txt'));
   assert.ok(excluded.includes('bench/context/runs-x/environment.json'));
   assert.ok(excluded.includes('bench/feedback/runs/a/summary.json'));

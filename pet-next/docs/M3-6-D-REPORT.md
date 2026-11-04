@@ -20,6 +20,9 @@
 | 提示自动隐藏 | — | 4110 ms |
 | 推理 POST | 1 | 1（不增加） |
 
+**口径（R1 校正）**：57ms/1568ms 是「CDP 操作发出 → 40ms 轮询读到 DOM」的**单例**观测，
+不是物理首帧，也不是 P50；它证明先后顺序与端到端可用性，不构成呈帧性能指标。
+
 证据：`tests/chat-evidence/feedback/companion-success/{log.txt,react.png,requests.ndjson}`；
 对照 `control-off/log.txt`（`reactions=0`）。
 
@@ -27,13 +30,14 @@
 
 `bench/feedback/resource.mjs`，`/proc` 进程树每秒采样 60 点，产物 `bench/feedback/runs/2026-11-04T08-35-48-160Z/`：
 
-| 臂 | RSS p50 / max | CPU avg | 自发 POST |
+| 臂 | RSS 中位数（字节） | CPU avg | 自发 POST |
 |---|---|---|---|
-| 对照 | 624 / 625 MB | 5.03 % | 0 |
-| companion | 624 / 624 MB | 5.51 % | 0 |
+| 对照 | 654 049 280（≈624 MiB，启动链 10 进程） | 5.0341 % | 0 |
+| companion | 654 356 480（≈624 MiB，启动链 10 进程） | 5.5080 % | 0 |
 
-**结论**：待机 RSS 无可测差异（0 MB），CPU 差 +0.47 个百分点在测量波动内（单次 60 点、同机），
-不宣称显著性；联动本身零额外推理请求。工程代价：新增 `core/feedback` 纯模块与
+**结论（R1 校正口径）**：RSS 为启动链进程树合计约 624 MiB，两臂**精确差 307 200 字节（0.293 MiB）**；
+CPU 差 **+0.4739 个百分点**。这是单次顺序两臂采样，不能归因为功能开销或噪声，也不宣称统计显著性；
+能确定的是联动本身零额外推理请求。工程代价：新增 `core/feedback` 纯模块与
 `tests/feedback/companion.e2e.test.ts`（750 行）＋ `bench/feedback/resource.mjs`（约 324 行），
 不改聊天内核与媒体播放器。
 
