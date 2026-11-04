@@ -32,6 +32,8 @@ M3-6 接口冻结（负责人，基线 edad129，分支 codex/pet-next-m3-compan
     deadlineAtMs: number | null;
     /** 该成功是否已消耗过回应（去重：每 token 至多一次 react）。 */
     reacted: boolean;
+    /** dispose 之后任何事件零效果（负责人补充字段，B 已实现）。 */
+    disposed: boolean;
   }
   export type FeedbackEvent =
     | { type: 'submit' }                                  // 有效提交开始（新 token）
