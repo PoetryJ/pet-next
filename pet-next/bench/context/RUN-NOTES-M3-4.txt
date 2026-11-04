@@ -1,0 +1,46 @@
+M3-4 真实上下文对照 —— 运行记录（集成人持）
+基线 389b0e9 → 集成合并 e32ddf5 → B 脚本 a5de9c4
+分支 codex/pet-next-m3-live-eval（PR base=codex/pet-next-m3-context，不合并 main）
+worker：A=m3l-a(208e48f) C=m3l-c(a460b1e) D=m3l-d(1b9b202，含 C cherry-pick)
+
+一、分工执行
+------------------------------------------------
+A 测试证据收尾：heldFetch 按请求保留 resolver（旧请求可独立迟到完成并断言 HTTP 确实完成，
+  修复单槽位释放是 no-op 的夹具缺陷）；E2E 请求 NDJSON 落持久目录 tests/chat-evidence/context-live/；
+  Windows 复跑入口 scripts/win-context-recheck.mjs（生成 tests/independent-context-windows.check.ts，
+  含 T3 在途清空重发；文件名不带 .test.ts 避免混入 verify 收集）。
+C 18 次对照 runner：bench/context/{fixtures,runner}.ts + 自测 5 条。经真实
+  createChatSession/createChatHistory/createQwenChatProvider；先记账后发送（attempt 行 append-only）；
+  重启续账跳过已消费 seq；maxPosts 默认 18（冻结值断言）；live 预检 GET /models 含
+  qwen3.8-27b 否则拒跑（零消费）；S3 两臂第三问前同一 reset；fixture 假回复按请求内容回显
+  （只让管道产物可评，不代表模型能力）。
+D 评分与试用：bench/context/review/{RUBRIC.md,workbook.ts(+3 测),WINDOWS-TRIAL.txt}。
+  五判定 hit/miss/leak/truncated/error；盲看原则；小样本不称统计显著；fake 产物不进真实结论。
+B 服务恢复：scripts/qwen-recover.mjs --status/--wait-start/--stop。
+  等卡条件＝整卡无任何 compute-apps 进程（uuid 精确匹配）；三重身份校验（boot_id+starttime+cmdline）
+  才停；健康探测仅 GET /models（零 POST 不热身）；runtime/qwen38/ 独立 PID/日志/身份。
+
+二、GPU 等待（B）
+------------------------------------------------
+19:38 起 project_revol/llama-factory（eval100-v83-draw8-r01，后重启为 world 27 rank8-11）
+占满 4×H20（各 ~19GB）。B 于 20:0x 进入 ready_waiting_gpu（60s 轮询，日志
+runtime/qwen38/wait-start.log）。期间 A/C/D 离线推进，互不阻塞。
+（进行中：轮询未停，未见整卡空闲；不抢占、不与共享任务共卡。）
+
+三、完整 verify
+------------------------------------------------
+2026-11-03 夜两轮：
+  #1 logs/chat-evidence/verify-m3live.log —— unit 438/438、cleanup 22/22、
+     integration 5/5、e2e 21/22（chat.e2e T3 [slow] 300s 超时：高负载下 fake
+     node:net 报错入口退 1；M3-4 未触碰该文件）。
+     单独复跑 tests/chat.e2e.test.ts 4/4（T3 40.5s 正常）→ 判定环境 flake 非回归。
+  #2 logs/chat-evidence/verify-m3live-2.log —— 全绿：438/438、22/22、5/5、22/22，
+     0 fail（唯一 ELIFECYCLE 为 chat-remote T4 预期失败路径用例自带 ✔）。
+
+四、真实 18 次对照
+------------------------------------------------
+（待填：B 就绪时点、runner --live 输出、summary 计数）
+
+五、D 复核与账本
+------------------------------------------------
+（待填：review-sheet、逐例判定、usage/延迟/字节、账本对账 18/18）

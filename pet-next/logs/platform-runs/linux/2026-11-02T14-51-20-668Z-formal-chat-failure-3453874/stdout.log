@@ -1,0 +1,27 @@
+
+> pet-next@0.1.0 chat:preview /data3/DATA/project/project_meishijiang/dsh-pet/pet-next
+> pnpm build && node scripts/chat-demo.mjs
+
+
+> pet-next@0.1.0 build /data3/DATA/project/project_meishijiang/dsh-pet/pet-next
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+
+[fake-stderr] node:net:1948
+[fake-stderr] const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+[fake-stderr] ^
+[fake-stderr] Error: listen EADDRINUSE: address already in use 127.0.0.1:38169
+[fake-stderr] at Server.setupListenHandle [as _listen2] (node:net:1948:16)
+[fake-stderr] at listenInCluster (node:net:2005:12)
+[fake-stderr] at node:net:2214:7
+[fake-stderr] at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+[fake-stderr] code: 'EADDRINUSE',
+[fake-stderr] errno: -98,
+[fake-stderr] syscall: 'listen',
+[fake-stderr] address: '127.0.0.1',
+[fake-stderr] port: 38169
+[fake-stderr] }
+[fake-stderr] Node.js v24.14.0
+{"event":"fake-chat-server-exit","code":1,"signal":null}
+{"event":"chat-demo-failed","reason":"fake-exit","exit":1,"code":1,"signal":null}
+{"event":"chat-demo-done","offline_ready":false,"exit":1,"fakeUrl":null,"electronStarted":false}
+ ELIFECYCLE  Command failed with exit code 1.

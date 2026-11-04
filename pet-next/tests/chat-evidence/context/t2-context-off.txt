@@ -1,7 +1,7 @@
 # M3-3 E2E t2-context-off
-# 2026-11-03T11:06:25.701Z
+# 2026-11-03T12:25:02.588Z
 
-cmd: DISPLAY=:94 PET_NEXT_QWEN_BASE_URL=http://127.0.0.1:32905/v1 PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:local
+cmd: DISPLAY=:94 PET_NEXT_QWEN_BASE_URL=http://127.0.0.1:33551/v1 PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:local
 panel mounted: phase=closed context=off
 panel open: context=off hasReset=false
 send: 第一句话

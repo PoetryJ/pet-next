@@ -1,0 +1,17 @@
+
+> pet-next@0.1.0 chat:preview /data3/DATA/project/project_meishijiang/dsh-pet/pet-next
+> pnpm build && node scripts/chat-demo.mjs
+
+
+> pet-next@0.1.0 build /data3/DATA/project/project_meishijiang/dsh-pet/pet-next
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+
+{"event":"fake-chat-server-ready","port":37913,"url":"http://127.0.0.1:37913"}
+{"event":"fake-chat-health","status":"offline_ready","url":"http://127.0.0.1:37913"}
+{"event":"chat-demo-electron-config","debugPort":34249,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=34249","/data3/DATA/project/project_meishijiang/dsh-pet/pet-next/dist/electron/main.js"],"userData":"/tmp/pet-next-formal-e2e-UwBR6r"}
+[electron-stderr] /data3/DATA/project/project_meishijiang/dsh-pet/pet-next/node_modules/.pnpm/electron@43.3.0/node_modules/electron/dist/electron: error while loading shared libraries: libnspr4.so: cannot open shared object file: No such file or directory
+{"event":"electron-exit","code":127,"signal":null}
+{"event":"chat-demo-failed","reason":"electron-exit","exit":1,"code":127,"signal":null}
+{"event":"fake-chat-server-exit","code":0,"signal":null}
+{"event":"chat-demo-done","offline_ready":false,"exit":1,"fakeUrl":"http://127.0.0.1:37913","electronStarted":true}
+ ELIFECYCLE  Command failed with exit code 1.
