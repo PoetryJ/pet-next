@@ -21,7 +21,8 @@ const REPO_ROOT = path.resolve(PET_ROOT, '..');
 
 /** 白名单（相对 pet-next/ 的顶层路径；目录=整目录收集跟踪文件）。 */
 export const SRC_INCLUDE = [
-  'adapters/', 'app/', 'assets/', 'assets-pipeline/', 'bench/context/', 'config/',
+  'adapters/', 'app/', 'assets/', 'assets-pipeline/', 'bench/context/', 'bench/feedback/',
+  'config/',
   'contracts/', 'core/', 'docs/', 'electron/', 'experiments/', 'scripts/', 'tests/',
   'package.json', 'pnpm-lock.yaml', 'tsconfig.json', 'tsconfig.preload.json',
   'eslint.config.js', 'README.md',
@@ -34,6 +35,7 @@ export const FORBIDDEN_PATTERNS = [
   /(^|\/)logs\//,
   /(^|\/)runtime\//,
   /(^|\/)bench\/runs[^/]+\//,
+  /(^|\/)bench\/feedback\/runs\//,
   /^tests\/chat-evidence\//,
   /^tests\/independent-.*\.check\.ts$/,
   /(^|\/)userdata\//,

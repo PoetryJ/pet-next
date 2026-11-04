@@ -23,6 +23,8 @@ test('isForbidden：运行现场/密钥/env 快照全命中；源码文件不命
   assert.ok(isForbidden('dist/electron/main.js'));
   assert.ok(isForbidden('logs/chat-evidence/a/userdata/Cache/1'));
   assert.ok(isForbidden('bench/runs-click-123/environment.json'));
+  assert.ok(isForbidden('bench/feedback/runs/2026-11-04T08-35-48-160Z/summary.json'));
+  assert.ok(!isForbidden('bench/feedback/resource.mjs'));
   assert.ok(isForbidden('tests/chat-evidence/trial/a.ndjson'));
   assert.ok(isForbidden('tests/independent-trial-windows.check.ts'));
   assert.ok(isForbidden('config/id_rsa'));
@@ -42,6 +44,8 @@ test('collectTrialFiles：白名单目录收集、黑名单剔除、非 pet-next
     'pet-next/logs/chat-evidence/demo.ndjson', // 顶层 logs 整体排除
     'pet-next/bench/context/runner.ts',
     'pet-next/bench/context/runs-x/environment.json',
+    'pet-next/bench/feedback/resource.mjs',
+    'pet-next/bench/feedback/runs/a/summary.json',
     'pet-next/bench/runs-x/environment.json',
     'pet-next/tests/chat-context.test.ts',
     'pet-next/M3-4-TASKS.txt', // 不在白名单
@@ -51,8 +55,10 @@ test('collectTrialFiles：白名单目录收集、黑名单剔除、非 pet-next
   assert.ok(kept.includes('core/chat/session.ts'));
   assert.ok(kept.includes('scripts/chat-trial.mjs'));
   assert.ok(kept.includes('bench/context/runner.ts'));
+  assert.ok(kept.includes('bench/feedback/resource.mjs'));
   assert.ok(!kept.includes('M3-4-TASKS.txt'));
   assert.ok(excluded.includes('bench/context/runs-x/environment.json'));
+  assert.ok(excluded.includes('bench/feedback/runs/a/summary.json'));
   // logs/ 不在白名单 → 直接跳过（既不收集也不算排除），环境快照另有黑名单兜底
   assert.ok(!kept.includes('logs/chat-evidence/demo.ndjson'));
 });
