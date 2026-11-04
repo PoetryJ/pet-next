@@ -208,6 +208,84 @@ describe('feedback controller', () => {
     assert.equal(h.scheduler.count, 0);
   });
 
+  test('慢回复：等待提示到期后成功仍提示且回应恰一次（2s 延迟）', async () => {
+    const h = harness();
+    const pending = h.controller.client.send(request('你好'));
+    h.clock.now += 500;
+    h.scheduler.fireAll();
+    assert.deepEqual(h.view.kinds(), ['show:waiting', 'hint-hide']);
+    assert.equal(h.scheduler.count, 0, '等待到期后不保留定时器');
+    h.clock.now += 1500;
+    h.inner.deferreds[0]?.resolve(okResult('慢回复'));
+    await pending;
+    assert.deepEqual(h.view.kinds(), ['show:waiting', 'hint-hide', 'show:success', 'react']);
+    assert.deepEqual(h.reacts, [1]);
+    assert.equal(h.inner.calls.send, 1);
+    assert.equal(h.scheduler.count, 1, '成功提示重新挂终态定时器');
+  });
+
+  test('慢回复：等待到期后迟到 error/cancel 只提示不回应', async () => {
+    const lateError = harness();
+    const p1 = lateError.controller.client.send(request('你好'));
+    lateError.clock.now += 500;
+    lateError.scheduler.fireAll();
+    lateError.clock.now += 1500;
+    lateError.inner.deferreds[0]?.resolve(errorResult());
+    await p1;
+    assert.deepEqual(lateError.view.kinds(), ['show:waiting', 'hint-hide', 'show:error']);
+    assert.deepEqual(lateError.reacts, []);
+
+    const lateCancel = harness();
+    const p2 = lateCancel.controller.client.send(request('你好'));
+    lateCancel.clock.now += 500;
+    lateCancel.scheduler.fireAll();
+    lateCancel.clock.now += 1500;
+    lateCancel.inner.deferreds[0]?.resolve(cancelledResult());
+    await p2;
+    assert.deepEqual(lateCancel.view.kinds(), ['show:waiting', 'hint-hide', 'show:cancelled']);
+    assert.deepEqual(lateCancel.reacts, []);
+  });
+
+  test('慢回复：等待到期后 reset，迟到 ok 零动作', async () => {
+    const h = harness();
+    const pending = h.controller.client.send(request('你好'));
+    h.clock.now += 500;
+    h.scheduler.fireAll();
+    h.controller.client.reset();
+    h.clock.now += 1500;
+    h.inner.deferreds[0]?.resolve(okResult('迟到'));
+    await pending;
+    assert.deepEqual(h.view.kinds(), ['show:waiting', 'hint-hide', 'hint-hide']);
+    assert.deepEqual(h.reacts, []);
+  });
+
+  test('慢回复：等待到期后取消与迟到成功并存，先到终态为准且不回应', async () => {
+    const h = harness();
+    const pending = h.controller.client.send(request('你好'));
+    h.clock.now += 500;
+    h.scheduler.fireAll();
+    h.controller.client.cancel('chat-p1');
+    h.clock.now += 1500;
+    h.inner.deferreds[0]?.resolve(okResult('迟到成功'));
+    await pending;
+    assert.deepEqual(h.view.kinds(), ['show:waiting', 'hint-hide', 'show:cancelled']);
+    assert.deepEqual(h.reacts, []);
+  });
+
+  test('慢回复：拖动中等待到期后完成，只提示不补播回应', async () => {
+    const h = harness();
+    h.controller.drag(true);
+    const pending = h.controller.client.send(request('你好'));
+    h.clock.now += 500;
+    h.scheduler.fireAll();
+    h.clock.now += 1500;
+    h.inner.deferreds[0]?.resolve(okResult('慢回复'));
+    await pending;
+    h.controller.drag(false);
+    assert.deepEqual(h.view.kinds(), ['show:waiting', 'hint-hide', 'show:success']);
+    assert.deepEqual(h.reacts, []);
+  });
+
   test('dispose 释放视图与定时器，之后不再产生提示', async () => {
     const h = harness();
     const pending = h.controller.client.send(request('你好'));

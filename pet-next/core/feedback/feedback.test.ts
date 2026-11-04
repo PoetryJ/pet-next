@@ -142,9 +142,87 @@ describe('feedback reduce', () => {
     const due = run([{ type: 'submit' }, { type: 'expire', token: 1 }], {
       now: (index) => (index === 0 ? T0 : T0 + FEEDBACK_HIDE_MS + 1),
     });
+    // 等待提示到期只隐藏提示：请求仍在途，phase 保持 waiting 以便迟到终态仍可归约。
     assert.deepEqual(kinds(due.effects), ['show:waiting', 'hint-hide']);
-    assert.equal(due.state.phase, 'idle');
+    assert.equal(due.state.phase, 'waiting');
+    assert.equal(due.state.token, 1);
     assert.equal(due.state.deadlineAtMs, null);
+  });
+
+  test('慢回复：等待提示到期后 2s 成功仍有 success 提示与恰一次回应', () => {
+    const { state, effects } = run(
+      [{ type: 'submit' }, { type: 'expire', token: 1 }, { type: 'ok', token: 1 }],
+      { now: (index) => (index === 0 ? T0 : index === 1 ? T0 + FEEDBACK_HIDE_MS : T0 + 2_000) },
+    );
+    assert.deepEqual(kinds(effects), ['show:waiting', 'hint-hide', 'show:success', 'react']);
+    assert.equal(state.phase, 'hint');
+    assert.equal(state.reacted, true);
+    assert.equal(state.deadlineAtMs, T0 + 2_000 + FEEDBACK_HIDE_MS);
+  });
+
+  test('慢回复：等待提示到期后迟到 error/cancel 只提示不回应', () => {
+    const lateError = run(
+      [{ type: 'submit' }, { type: 'expire', token: 1 }, { type: 'error', token: 1 }],
+      { now: (index) => (index === 0 ? T0 : index === 1 ? T0 + FEEDBACK_HIDE_MS : T0 + 2_000) },
+    );
+    assert.deepEqual(kinds(lateError.effects), ['show:waiting', 'hint-hide', 'show:error']);
+    assert.equal(lateError.state.reacted, false);
+
+    const lateCancel = run(
+      [{ type: 'submit' }, { type: 'expire', token: 1 }, { type: 'cancel', token: 1 }],
+      { now: (index) => (index === 0 ? T0 : index === 1 ? T0 + FEEDBACK_HIDE_MS : T0 + 2_000) },
+    );
+    assert.deepEqual(kinds(lateCancel.effects), ['show:waiting', 'hint-hide', 'show:cancelled']);
+    assert.equal(lateCancel.state.reacted, false);
+  });
+
+  test('慢回复：等待到期后 reset，迟到 ok 零动作', () => {
+    const { state, effects } = run(
+      [{ type: 'submit' }, { type: 'expire', token: 1 }, { type: 'reset' }, { type: 'ok', token: 1 }],
+      { now: (index) => (index === 0 ? T0 : index === 1 ? T0 + FEEDBACK_HIDE_MS : T0 + 2_000) },
+    );
+    assert.deepEqual(kinds(effects), ['show:waiting', 'hint-hide', 'hint-hide']);
+    assert.equal(state.phase, 'idle');
+    assert.equal(effects.some((effect) => effect.type === 'react'), false);
+  });
+
+  test('慢回复：等待到期后重复终态仍只回应一次', () => {
+    const { effects } = run(
+      [
+        { type: 'submit' },
+        { type: 'expire', token: 1 },
+        { type: 'ok', token: 1 },
+        { type: 'ok', token: 1 },
+        { type: 'error', token: 1 },
+      ],
+      { now: (index) => (index === 0 ? T0 : index === 1 ? T0 + FEEDBACK_HIDE_MS : T0 + 2_000) },
+    );
+    assert.deepEqual(kinds(effects), ['show:waiting', 'hint-hide', 'show:success', 'react']);
+  });
+
+  test('慢回复：拖动中等待到期后完成，只提示成功不补播回应', () => {
+    const { effects } = run(
+      [
+        { type: 'submit' },
+        { type: 'drag-start' },
+        { type: 'expire', token: 1 },
+        { type: 'ok', token: 1 },
+        { type: 'drag-end' },
+      ],
+      { now: (index) => (index === 0 ? T0 : index === 2 ? T0 + FEEDBACK_HIDE_MS : T0 + 2_000) },
+    );
+    assert.deepEqual(kinds(effects), ['show:waiting', 'hint-hide', 'show:success']);
+    assert.equal(effects.some((effect) => effect.type === 'react'), false);
+  });
+
+  test('终态提示到期才回 idle（success 隐藏后 token 失效）', () => {
+    const { state, effects } = run(
+      [{ type: 'submit' }, { type: 'ok', token: 1 }, { type: 'expire', token: 1 }, { type: 'ok', token: 1 }],
+      { now: (index) => (index === 0 ? T0 : index === 1 ? T0 + 100 : T0 + 100 + FEEDBACK_HIDE_MS) },
+    );
+    assert.deepEqual(kinds(effects), ['show:waiting', 'show:success', 'react', 'hint-hide']);
+    assert.equal(state.phase, 'idle');
+    assert.equal(state.deadlineAtMs, null);
   });
 
   test('任意时刻至多一个 deadline（状态只有一个字段，后续提示覆盖旧期限）', () => {

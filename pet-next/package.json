@@ -21,7 +21,7 @@
     "preflight": "node scripts/preflight.mjs",
     "record:platform": "node scripts/record-platform-run.mjs",
     "verify": "node scripts/preflight.mjs --require=unit,integration,cleanup,e2e && pnpm typecheck && pnpm lint && pnpm test && pnpm test:cleanup && pnpm test:integration && pnpm build && pnpm test:e2e",
-    "verify:windows": "powershell -File tests/platform/verify-windows.ps1",
+    "verify:windows": "node scripts/verify-windows.mjs",
     "assets:check": "node --experimental-strip-types assets-pipeline/cli.ts",
     "assets:short": "node --experimental-strip-types assets-pipeline/short-clip.ts",
     "demo": "pnpm build && node scripts/demo.mjs",

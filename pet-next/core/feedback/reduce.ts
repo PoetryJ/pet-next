@@ -115,6 +115,12 @@ export function reduceFeedback(
     case 'expire': {
       if (event.token !== state.token) return { state, effects: [] };
       if (state.deadlineAtMs === null || nowMs < state.deadlineAtMs) return { state, effects: [] };
+      if (state.phase === 'waiting') {
+        // 等待提示到期只隐藏提示：请求仍在途，保留 waiting 与 token，
+        // 迟到的有效终态仍可归约（成功提示 + 一次回应），不因提示超时而丢结果。
+        return { state: { ...state, deadlineAtMs: null }, effects: [{ type: 'hint-hide', reason: 'expire' }] };
+      }
+      // 终态结果提示（success/error/cancelled）到期才回 idle。
       return { state: idle(state), effects: [{ type: 'hint-hide', reason: 'expire' }] };
     }
     default: {

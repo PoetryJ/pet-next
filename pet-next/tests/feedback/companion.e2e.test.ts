@@ -11,7 +11,7 @@
  */
 import assert from 'node:assert/strict';
 import { type ChildProcess, execFileSync, spawn } from 'node:child_process';
-import { existsSync, readFileSync } from 'node:fs';
+import { existsSync, readFileSync, readdirSync } from 'node:fs';
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import net from 'node:net';
 import { tmpdir } from 'node:os';
@@ -25,6 +25,8 @@ const display = process.env.PET_NEXT_E2E_DISPLAY ?? ':94';
 const displaySocket = `/tmp/.X11-unix/X${display.startsWith(':') ? display.slice(1) : display}`;
 const sshBin = path.join(petRoot, 'tests/support/fake-ssh.mjs');
 const FAKE_DELAY_MS = 1500;
+/** 慢回复两臂验收：2.5s 明显超过等待提示 1.6s TTL。 */
+const SLOW_DELAY_MS = 2500;
 /** 两臂共用：short 素材 + behavior 行为，唯一差异是 PET_NEXT_EXPERIENCE。 */
 const SHARED_PREVIEW = 'short,behavior';
 
@@ -283,6 +285,8 @@ interface Arm {
   env?: Record<string, string>;
   /** 只作用于 fake 模型服务，不传给入口。 */
   fakeMode?: 'ok' | 'error';
+  /** 只作用于 fake 模型服务：慢回复验收用 2.5s。 */
+  fakeDelayMs?: number;
 }
 
 interface Handle {
@@ -290,6 +294,11 @@ interface Handle {
   logFile: string;
   /** userData 目录名片段：用于兜底清理本实例的 Electron 孙进程。 */
   instanceTag: string;
+  /** 本实例 CDP 调试端口：退出后必须关闭。 */
+  debugPort: number;
+  caseName: string;
+  /** fake 模型服务 PID：其日志路径含实例标签，但属于测试装置，不参与入口残留断言。 */
+  fakePid: number;
   child: ChildProcess;
   output: () => string;
   stop(): Promise<void>;
@@ -306,7 +315,7 @@ async function launch(arm: Arm, caseName: string): Promise<Handle> {
     env: {
       ...process.env,
       FAKE_MODEL_LOG: logFile,
-      FAKE_MODEL_DELAY_MS: String(FAKE_DELAY_MS),
+      FAKE_MODEL_DELAY_MS: String(arm.fakeDelayMs ?? FAKE_DELAY_MS),
       FAKE_MODEL_MODE: arm.fakeMode ?? 'ok',
     },
   });
@@ -370,6 +379,9 @@ async function launch(arm: Arm, caseName: string): Promise<Handle> {
     cdp,
     logFile,
     instanceTag,
+    debugPort,
+    caseName,
+    fakePid: fake.pid ?? -1,
     child,
     output: () => out,
     stop: async () => {
@@ -399,21 +411,201 @@ async function openPanel(handle: Handle): Promise<DomState> {
   return opened.state;
 }
 
-async function closeWindow(handle: Handle): Promise<number | null> {
-  void handle.cdp.send('Browser.close', {}).catch(() => undefined);
-  const code = await new Promise<number | null>((resolve) => {
-    const timer = setTimeout(() => resolve(null), 60000);
-    handle.child.once('exit', (exitCode) => {
+function waitExit(child: ChildProcess, timeoutMs: number): Promise<number | null> {
+  return new Promise((resolve) => {
+    if (child.exitCode !== null) {
+      resolve(child.exitCode);
+      return;
+    }
+    const timer = setTimeout(() => resolve(null), timeoutMs);
+    child.once('exit', (exitCode) => {
       clearTimeout(timer);
       resolve(exitCode);
     });
   });
-  // pnpm 退出 0 不代表 Electron 孙进程已死（实测会残留并遮挡后续 xdotool 事件）。
-  try {
-    execFileSync('pkill', ['-f', handle.instanceTag], { stdio: 'ignore' });
-  } catch {
-    /* 无匹配 = 已正常退出 */
+}
+
+/** 本次入口进程树的后代（Linux /proc；Windows 经 CIM）。只用于断言残留，不用于杀进程。 */
+function descendants(rootPid: number): number[] {
+  if (rootPid <= 0) return [];
+  if (process.platform === 'win32') {
+    try {
+      const script =
+        'Get-CimInstance Win32_Process | Select-Object ProcessId,ParentProcessId | ConvertTo-Json -Compress';
+      const out = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], {
+        encoding: 'utf8',
+      });
+      const rows = JSON.parse(out) as Array<{ ProcessId: number; ParentProcessId: number }>;
+      const list = Array.isArray(rows) ? rows : [rows];
+      const pids: number[] = [];
+      for (const row of list) {
+        let cursor = row.ProcessId;
+        for (let guard = 0; guard < 16; guard += 1) {
+          const parent = list.find((item) => item.ProcessId === cursor)?.ParentProcessId;
+          if (parent === undefined) break;
+          if (parent === rootPid) {
+            pids.push(row.ProcessId);
+            break;
+          }
+          cursor = parent;
+        }
+      }
+      return pids;
+    } catch {
+      return [];
+    }
   }
+  const pids: number[] = [];
+  let entries: string[];
+  try {
+    entries = readdirSync('/proc');
+  } catch {
+    return pids;
+  }
+  const parent = new Map<number, number>();
+  for (const entry of entries) {
+    if (!/^\d+$/.test(entry)) continue;
+    try {
+      const text = readFileSync(`/proc/${entry}/stat`, 'utf8');
+      const close = text.lastIndexOf(')');
+      parent.set(Number(entry), Number(text.slice(close + 2).split(' ')[1]));
+    } catch {
+      /* 进程已消失 */
+    }
+  }
+  for (const pid of parent.keys()) {
+    let cursor = pid;
+    for (let guard = 0; guard < 16; guard += 1) {
+      const up = parent.get(cursor);
+      if (up === undefined) break;
+      if (up === rootPid) {
+        pids.push(pid);
+        break;
+      }
+      cursor = up;
+    }
+  }
+  return pids;
+}
+
+/** 按实例标签找进程：Linux 读 /proc/<pid>/environ（孙进程重挂父后仍可识别）；Windows 用 CommandLine 过滤。 */
+function pidsByEnvTag(tag: string): number[] {
+  if (process.platform === 'win32') {
+    try {
+      const script = `Get-CimInstance Win32_Process | Where-Object { $_.CommandLine -like '*${tag}*' } | Select-Object -ExpandProperty ProcessId`;
+      const out = execFileSync('powershell', ['-NoProfile', '-NonInteractive', '-Command', script], {
+        encoding: 'utf8',
+      });
+      return out
+        .split(/\s+/)
+        .map(Number)
+        .filter((pid) => Number.isInteger(pid) && pid > 0);
+    } catch {
+      return [];
+    }
+  }
+  const pids: number[] = [];
+  let entries: string[];
+  try {
+    entries = readdirSync('/proc');
+  } catch {
+    return pids;
+  }
+  for (const entry of entries) {
+    if (!/^\d+$/.test(entry)) continue;
+    try {
+      if (readFileSync(`/proc/${entry}/environ`, 'utf8').includes(tag)) pids.push(Number(entry));
+    } catch {
+      /* 无权限或已退出 */
+    }
+  }
+  return pids;
+}
+
+function processAlive(pid: number): boolean {
+  if (pid <= 0) return false;
+  if (process.platform === 'win32') {
+    try {
+      const out = execFileSync('tasklist', ['/FI', `PID eq ${pid}`, '/NH'], { encoding: 'utf8' });
+      return out.includes(String(pid));
+    } catch {
+      return false;
+    }
+  }
+  try {
+    process.kill(pid, 0);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function portOpen(port: number, timeoutMs = 500): Promise<boolean> {
+  return new Promise((resolve) => {
+    const socket = net.connect({ host: '127.0.0.1', port });
+    const done = (open: boolean): void => {
+      socket.destroy();
+      resolve(open);
+    };
+    socket.setTimeout(timeoutMs);
+    socket.once('connect', () => done(true));
+    socket.once('timeout', () => done(false));
+    socket.once('error', () => done(false));
+  });
+}
+
+interface Residue {
+  pids: number[];
+  portOpen: boolean;
+  waitedMs: number;
+}
+
+async function waitResidueGone(handle: Handle, pids: number[], timeoutMs: number): Promise<Residue> {
+  const started = Date.now();
+  let alive = pids;
+  let open = true;
+  while (Date.now() - started < timeoutMs) {
+    alive = pids.filter(processAlive);
+    open = await portOpen(handle.debugPort);
+    if (alive.length === 0 && !open) break;
+    await delay(200);
+  }
+  return { pids: alive, portOpen: open, waitedMs: Date.now() - started };
+}
+
+/**
+ * 正式退出：Browser.close → 等待入口结束 → 断言本次 PID 树与调试端口消失。
+ * 断言先于 finally 清理；兜底清理只发生在 finally，不能把失败变成通过。
+ * pnpm 退出 0 不代表 Electron 孙进程已死（实测会残留并遮挡后续 xdotool 事件）。
+ */
+async function closeWindow(handle: Handle): Promise<number | null> {
+  const before = [
+    ...new Set([
+      handle.child.pid ?? 0,
+      ...descendants(handle.child.pid ?? 0),
+      ...pidsByEnvTag(handle.instanceTag),
+    ]),
+  ].filter((pid) => pid > 0 && pid !== handle.fakePid);
+  void handle.cdp.send('Browser.close', {}).catch(() => undefined);
+  const code = await waitExit(handle.child, 90000);
+  const after = await waitResidueGone(handle, before, 20000);
+  const dir = path.join(evidenceRoot, handle.caseName);
+  await mkdir(dir, { recursive: true }).catch(() => undefined);
+  await writeFile(
+    path.join(dir, 'exit.txt'),
+    [
+      `code=${String(code)}`,
+      `pids_before=${before.join(',')}`,
+      `pids_alive_after=${after.pids.join(',')}`,
+      `debug_port=${handle.debugPort} open_after=${String(after.portOpen)}`,
+      `wait_ms=${after.waitedMs}`,
+      `output_tail=${handle.output().slice(-600)}`,
+      '',
+    ].join('\n'),
+  ).catch(() => undefined);
+  assert.equal(code, 0, `关窗退出码必须 0；stdout=${handle.output().slice(-800)}`);
+  assert.deepEqual(after.pids, [], `正式退出后不得残留本次进程：${after.pids.join(',')}`);
+  assert.equal(after.portOpen, false, `正式退出后调试端口 ${handle.debugPort} 必须关闭`);
   return code;
 }
 
@@ -441,6 +633,28 @@ async function flushLog(log: Log, caseName: string): Promise<void> {
 
 const CONTROL: Arm = { name: 'control', args: [] };
 const COMPANION: Arm = { name: 'companion', args: ['--experience=companion'] };
+
+/** 与本次验收无关的哨兵进程：退出清理不得误杀树外进程。 */
+interface Sentinel {
+  pid: number;
+  alive(): boolean;
+  kill(): void;
+}
+
+function startSentinel(): Sentinel {
+  const child = spawn(process.execPath, ['-e', 'setTimeout(() => {}, 120000)'], { stdio: 'ignore' });
+  return {
+    pid: child.pid ?? -1,
+    alive: () => child.exitCode === null && processAlive(child.pid ?? -1),
+    kill: () => {
+      try {
+        child.kill('SIGKILL');
+      } catch {
+        /* 已退出 */
+      }
+    },
+  };
+}
 
 /** 采集 visual/requestId 变化序列：用于"回应至多一次"与"拖动/点击优先"的可判定证据。 */
 async function observe(cdp: Cdp, ms: number): Promise<Array<{ visual: string; requestId: string; atMs: number }>> {
@@ -746,5 +960,147 @@ test('companion · 素材失败：回应走既有占位、不崩溃、POST=1', {
   } finally {
     if (handle) await handle.stop();
     await flushLog(log, 'companion-missing-media');
+  }
+});
+
+test('对照臂 · 慢回复 2.5s：无提示无回应、POST=1、自然退出零残留', { timeout: 300000 }, async (t) => {
+  if (!displayReady) return t.skip('not-run: 无显示环境');
+  const log = createLog();
+  let handle: Handle | undefined;
+  try {
+    handle = await launch({ ...CONTROL, fakeDelayMs: SLOW_DELAY_MS }, 'control-slow');
+    const opened = await openPanel(handle);
+    assert.equal(opened.feedbackKind, 'absent', '对照臂不得出现反馈节点');
+    const submittedAt = await typeAndSend(handle.cdp, '慢回复对照');
+    const reply = await waitDom(
+      handle.cdp,
+      '慢回复未显示',
+      (s) => s.assistantMsgs.some((m) => m.includes('隧道回复：慢回复对照')),
+      40000,
+      'control-slow',
+    );
+    const seq = await observe(handle.cdp, 2200);
+    assert.deepEqual(reactionsIn(seq), [], '对照臂慢回复也不得触发回应');
+    assert.equal(readRequests(handle.logFile).length, 1, '两臂各 1 POST');
+    log.log(`submit=${submittedAt} reply_ms=${reply.atMs - submittedAt} POST=1 reactions=0`);
+    await closeWindow(handle);
+    log.log('PASS control-slow');
+  } catch (error) {
+    log.log(`FAIL: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
+    throw error;
+  } finally {
+    if (handle) await handle.stop();
+    await flushLog(log, 'control-slow');
+  }
+});
+
+test('companion · 慢回复 2.5s：等待提示到期后成功仍提示并回应恰一次', { timeout: 300000 }, async (t) => {
+  if (!displayReady) return t.skip('not-run: 无显示环境');
+  const log = createLog();
+  let handle: Handle | undefined;
+  try {
+    handle = await launch({ ...COMPANION, fakeDelayMs: SLOW_DELAY_MS }, 'companion-slow');
+    await openPanel(handle);
+    const submittedAt = await typeAndSend(handle.cdp, '慢回复一句');
+    const waiting = await waitDom(handle.cdp, '等待反馈未出现', (s) => s.feedbackKind === 'waiting', 8000, 'slow');
+    // 等待提示 1.6s 到期先隐藏，而请求仍在途（2.5s 后才成功）。
+    const hidden = await waitDom(handle.cdp, '等待提示未按期隐藏', (s) => s.feedbackKind === 'hidden', 8000, 'slow');
+    assert.ok(waiting.atMs <= hidden.atMs, '等待提示必须先可见再到期隐藏');
+    assert.ok(hidden.atMs - submittedAt < SLOW_DELAY_MS, '等待提示必须在慢回复到达前到期隐藏');
+    const reply = await waitDom(
+      handle.cdp,
+      '慢回复未显示',
+      (s) => s.assistantMsgs.some((m) => m.includes('隧道回复：慢回复一句')),
+      40000,
+      'slow',
+    );
+    const success = await waitDom(handle.cdp, '慢回复成功后无提示（旧缺陷）', (s) => s.feedbackKind === 'success', 8000, 'slow');
+    const react = await waitDom(handle.cdp, '慢回复成功后无回应（旧缺陷）', (s) => s.visual === 'auto', 8000, 'slow');
+    const seq = await observe(handle.cdp, 2500);
+    const reactions = reactionsIn(seq);
+    assert.equal(reactions.length, 1, `慢回复成功必须恰好一次回应；seq=${JSON.stringify(seq)}`);
+    assert.equal(readRequests(handle.logFile).length, 1, '慢回复不得增加 POST');
+    log.log(
+      `submit=${submittedAt} waiting_hidden_ms=${hidden.atMs - submittedAt} reply_ms=${reply.atMs - submittedAt} success_ms=${success.atMs - submittedAt} react_ms=${react.atMs - submittedAt} reaction=${reactions[0]} POST=1`,
+    );
+    await closeWindow(handle);
+    log.log('PASS companion-slow');
+  } catch (error) {
+    log.log(`FAIL: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
+    throw error;
+  } finally {
+    if (handle) await handle.stop();
+    await flushLog(log, 'companion-slow');
+  }
+});
+
+test('companion · 取消/重置后迟到：零回应、POST=2', { timeout: 300000 }, async (t) => {
+  if (!displayReady) return t.skip('not-run: 无显示环境');
+  const log = createLog();
+  let handle: Handle | undefined;
+  try {
+    // 新对话按钮只在 --context=on 时存在（历史在主进程）。
+    handle = await launch(
+      { ...COMPANION, fakeDelayMs: SLOW_DELAY_MS, args: ['--experience=companion', '--context=on'] },
+      'companion-late-drop',
+    );
+    await openPanel(handle);
+    // 取消：慢请求被取消后，迟到结果不得触发回应或上屏。
+    await typeAndSend(handle.cdp, '迟到甲');
+    const pending = await waitDom(handle.cdp, '未进入发送中', (s) => s.phase === 'pending' && s.rects.cancel.visible, 8000, 'late');
+    await clickRect(handle.cdp, pending.state.rects.cancel);
+    await waitDom(handle.cdp, '取消提示未出现', (s) => s.feedbackKind === 'cancelled', 8000, 'late');
+    await delay(3200);
+    const afterCancel = await readDom(handle.cdp);
+    assert.ok(!afterCancel.assistantMsgs.join('').includes('迟到甲'), '取消后的迟到回复不得上屏');
+    const seqAfterCancel = await observe(handle.cdp, 1200);
+    assert.deepEqual(reactionsIn(seqAfterCancel), [], '取消后的迟到结果不得触发回应');
+
+    // 重置：等待中 reset 让在途 token 失效，迟到成功同样零回应。
+    await typeAndSend(handle.cdp, '迟到乙');
+    const resettable = await waitDom(handle.cdp, '新对话按钮未就绪', (s) => s.rects.reset.visible, 8000, 'late');
+    const resetAt = await clickRect(handle.cdp, resettable.state.rects.reset);
+    await waitDom(handle.cdp, 'reset 未清空展示', (s) => s.userMsgs.length === 0, 8000, 'late');
+    await delay(3200);
+    const afterReset = await readDom(handle.cdp);
+    assert.equal(afterReset.assistantMsgs.length, 0, 'reset 后的迟到回复不得上屏');
+    const seqAfterReset = await observe(handle.cdp, 1200);
+    assert.deepEqual(reactionsIn(seqAfterReset), [], 'reset 后的迟到结果不得触发回应');
+    const requests = readRequests(handle.logFile);
+    assert.equal(requests.length, 2, `取消 1 + 重置 1，实际 ${requests.length}`);
+    log.log(`reset_at=${resetAt} POST=${requests.length} late_cancel_reactions=0 late_reset_reactions=0`);
+    await closeWindow(handle);
+    log.log('PASS companion-late-drop');
+  } catch (error) {
+    log.log(`FAIL: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
+    throw error;
+  } finally {
+    if (handle) await handle.stop();
+    await flushLog(log, 'companion-late-drop');
+  }
+});
+
+test('入口冒烟（Linux/Windows 同源）：正式退出零残留、无关哨兵存活', { timeout: 300000 }, async (t) => {
+  if (!displayReady) return t.skip('not-run: 无显示环境');
+  const log = createLog();
+  let handle: Handle | undefined;
+  let sentinel: Sentinel | undefined;
+  try {
+    handle = await launch(COMPANION, 'companion-exit-smoke');
+    await openPanel(handle);
+    sentinel = startSentinel();
+    assert.equal(sentinel.alive(), true, '哨兵进程应先在跑');
+    // closeWindow 内部断言：退出码 0、本次 PID 树全部消失、调试端口关闭；失败在 finally 清理前抛出。
+    await closeWindow(handle);
+    assert.equal(sentinel.alive(), true, '退出清理不得误杀无关哨兵进程');
+    log.log(`exit natural ok; debug_port=${handle.debugPort} closed; sentinel_pid=${sentinel.pid} alive`);
+    log.log('PASS companion-exit-smoke');
+  } catch (error) {
+    log.log(`FAIL: ${error instanceof Error ? (error.stack ?? error.message) : String(error)}`);
+    throw error;
+  } finally {
+    sentinel?.kill();
+    if (handle) await handle.stop();
+    await flushLog(log, 'companion-exit-smoke');
   }
 });

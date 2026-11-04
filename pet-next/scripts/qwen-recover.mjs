@@ -46,6 +46,21 @@ function sh(command, args) {
 }
 
 /**
+ * 注入的 JS 夹具用显式 Node 解释器（Windows 不能直接执行 shebang 脚本）；
+ * 生产命令（nvidia-smi / vllm）路径不以 .js/.cjs/.mjs 结尾，原样执行，不改变真实启动链。
+ */
+function launchSpec(bin, args) {
+  if (/\.(?:c|m)?js$/i.test(bin)) return { command: process.execPath, args: [bin, ...args] };
+  return { command: bin, args };
+}
+
+/** 执行注入的 GPU 查询命令（JS 夹具经 Node，生产命令原样）。 */
+function shBin(bin, args) {
+  const spec = launchSpec(bin, args);
+  return sh(spec.command, spec.args);
+}
+
+/**
  * M3-5 A：GPU 查询 fail-closed。
  * 所有 nvidia-smi 查询失败/超时/解析失败/无有效 GPU 条目 → 状态 unknown，
  * 绝不回落到"空列表=全空闲"（旧缺陷：查询失败误选 GPU0 启动）。
@@ -83,11 +98,11 @@ export function parseGpuList(text) {
 }
 
 function gpuSnapshot() {
-  const appsQuery = sh(SMI_BIN, ['--query-compute-apps=gpu_uuid,pid,used_memory', '--format=csv,noheader']);
+  const appsQuery = shBin(SMI_BIN, ['--query-compute-apps=gpu_uuid,pid,used_memory', '--format=csv,noheader']);
   if (!appsQuery.ok) return { ok: false, reason: 'compute-apps 查询失败（nvidia-smi 非零/超时/不可执行）' };
   const apps = parseComputeApps(appsQuery.out);
   if (!apps.ok) return apps;
-  const listQuery = sh(SMI_BIN, ['--query-gpu=index,uuid', '--format=csv,noheader']);
+  const listQuery = shBin(SMI_BIN, ['--query-gpu=index,uuid', '--format=csv,noheader']);
   if (!listQuery.ok) return { ok: false, reason: 'gpu 列表查询失败（nvidia-smi 非零/超时/不可执行）' };
   const list = parseGpuList(listQuery.out);
   if (!list.ok) return list;
@@ -257,7 +272,8 @@ async function waitAndStart() {
     VLLM_USE_FLASHINFER_SAMPLER: '0',
   };
   const bootFd = openSync(BOOT_LOG, 'a');
-  const child = spawn(VLLM_BIN, args, { env, detached: true, stdio: ['ignore', bootFd, bootFd] });
+  const launch = launchSpec(VLLM_BIN, args);
+  const child = spawn(launch.command, launch.args, { env, detached: true, stdio: ['ignore', bootFd, bootFd] });
   child.unref();
   const stat = procStat(child.pid ?? -1);
   writeFileSync(IDENTITY, `${JSON.stringify({
@@ -267,7 +283,7 @@ async function waitAndStart() {
     starttime: stat?.starttime ?? -1,
     gpu,
     startedAt: new Date().toISOString(),
-    cmdline: `${VLLM_BIN} ${args.join(' ')}`,
+    cmdline: `${launch.command} ${launch.args.join(' ')}`,
     env: { CUDA_VISIBLE_DEVICES: String(gpu), VLLM_USE_FLASHINFER_SAMPLER: '0' },
   }, null, 2)}\n`);
   console.log(`[qwen-recover] 已启动 pid=${child.pid} gpu=${gpu}；日志：${BOOT_LOG}`);

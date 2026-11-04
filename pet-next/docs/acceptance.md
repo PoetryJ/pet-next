@@ -12,7 +12,7 @@ pnpm verify
 
 `pnpm verify` 依次做类型检查、lint、`pnpm test`、构建和串行 Electron 实测。不设置 `PET_NEXT_PREVIEW` 时，`pnpm start` 走已验收路径。开关说明见 [preview.md](preview.md)。
 
-`pnpm verify:windows` 指向 `tests/platform/verify-windows.ps1`。当前没有 Windows 执行器，该脚本在非 Windows 上以退出码 2 结束，矩阵里的 win32 与 system-* 保持 **not-run**，不能写成通过。Linux 平台证据在 `tests/platform/evidence/matrix.json`。
+`pnpm verify:windows` 走 Node 入口 `scripts/verify-windows.mjs`，再调用 `tests/platform/verify-windows.ps1`。入口要求 PowerShell 7+（`pwsh`）并先做版本预检；缺失或低于 7、以及非 Windows 主机，都以退出码 2 结束（矩阵 win32 与 system-* 保持 **not-run**，不能写成通过）。`-ExecutionPolicy Bypass` 只作用于本次子进程，不改系统 ExecutionPolicy；脚本路径以单个 argv 传递，支持中文与含空格路径。Linux 平台证据在 `tests/platform/evidence/matrix.json`。
 
 `pnpm test` 运行 `scripts/unit-tests.mjs`。它走进 `core/`、`adapters/`、`app/`、`tests/`、`experiments/` 和 `bench/` 的子目录，跳过 `*.e2e.test.ts`。`bench/` 还没有测试时不会把空 glob 交给运行器。`assets-pipeline/*.test.ts` 仍由 `tests/assets/unit-suite.test.ts` 以子进程执行，产品测试不直接 import 流水线。`pnpm experiment:arbiter`、`pnpm experiment:arbiter:check`、`pnpm experiment:arbiter:demo` 和 `pnpm assets:check` 不写进 `verify` 的脚本字符串。
 
@@ -42,7 +42,7 @@ pnpm verify
 
 Linux 上保存 `PlatformMatrixEntry`：环境覆盖、命令、退出码、stdout、stderr。用例覆盖 `REQUIRED_PROCESS_CASES`。`foreign-pid-survives` 证明结束信号没有打到树外进程。
 
-Windows 有执行器时运行 `pnpm verify:windows`，并保存同一矩阵。没有执行器时，矩阵四行都是 `win32` / `not-run`，`evidencePath` 为 `scripts/verify-windows.ps1`。脚本要能在 Windows 上一条命令跑完本目录验证；占位退出码 2 只表示还没替换，不能写进 `passed`。
+Windows 有执行器时运行 `pnpm verify:windows`（需要 PowerShell 7+），并保存同一矩阵。没有执行器时，矩阵四行都是 `win32` / `not-run`，`evidencePath` 为 `scripts/verify-windows.ps1`。脚本要能在 Windows 上一条命令跑完本目录验证；入口在缺少 pwsh7 或非 Windows 上以退出码 2 结束，只表示未运行，不能写进 `passed`。
 
 清理实现符合 [product-contract.md](product-contract.md)。替换 `electronPids` 和负 pid 信号之后，现有点击、拖动、缺素材和退出断言仍然通过。
 
