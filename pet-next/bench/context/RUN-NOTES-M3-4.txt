@@ -1,7 +1,9 @@
 M3-4 真实上下文对照 —— 运行记录（集成人持）
 基线 389b0e9 → 集成合并 e32ddf5 → B 脚本 a5de9c4
 分支 codex/pet-next-m3-live-eval（PR base=codex/pet-next-m3-context，不合并 main）
-worker：A=m3l-a(208e48f) C=m3l-c(a460b1e) D=m3l-d(1b9b202，含 C cherry-pick)
+worker：A=m3l-a(208e48f) C=m3l-c(a460b1e) D=m3l-d(1b9b202，含 C cherry-pick 副本 61cfd0a)
+历史备注：集成后 C 的改动在 log 中出现两次（a460b1e 与 61cfd0a，内容等价，最终树唯一）；
+merge 不做 patch-id 去重，属可接受的冗余，未改写历史。
 
 一、分工执行
 ------------------------------------------------
