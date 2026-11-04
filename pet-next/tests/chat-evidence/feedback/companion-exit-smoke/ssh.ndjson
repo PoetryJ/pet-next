@@ -1,0 +1,3 @@
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:36541:127.0.0.1:18872","-p","10977","tester@fake.example.invalid"],"mode":"ok","targetPort":38977,"pid":2606549,"ts":1793795385912}
+{"event":"fake-ssh-listening","port":36541,"targetPort":18872,"pid":2606549,"ts":1793795385916}
+{"event":"fake-ssh-stopped","port":36541,"pid":2606549,"ts":1793795386641}

@@ -1,0 +1,2 @@
+reset_at=1793795371480 POST=2 late_cancel_reactions=0 late_reset_reactions=0
+PASS companion-late-drop

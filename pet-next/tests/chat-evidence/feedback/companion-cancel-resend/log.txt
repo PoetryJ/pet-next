@@ -1,2 +1,2 @@
-cancel_hint_ms=-31 resend_reply_ms=1544 POST=2
+cancel_hint_ms=-32 resend_reply_ms=1544 POST=2
 PASS companion-cancel-resend

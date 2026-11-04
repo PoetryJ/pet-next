@@ -1,0 +1,8 @@
+{
+  "executable": "/root/.workbuddy/binaries/node/versions/24.14.0/bin/pnpm",
+  "args": [
+    "chat:preview"
+  ],
+  "cwd": "/data3/DATA/project/project_meishijiang/pet-next/pet-next",
+  "platform": "linux"
+}
