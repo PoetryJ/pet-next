@@ -6,12 +6,13 @@ import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 import { runEvaluation } from '../runner.ts';
 import { buildWorkbook } from './workbook.ts';
 
 const scratch = mkdtempSync(path.join(tmpdir(), 'm3d4-workbook-test-'));
 // workbook 支持注入 runsDir；runner 的 RUNS_DIR 是仓库内常量，此处复用它产 fixture run，跑完清理。
-const RUNS_DIR = path.resolve(path.dirname(new URL(import.meta.url).pathname), '../runs');
+const RUNS_DIR = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../runs');
 const createdRuns: string[] = [];
 after(() => {
   for (const runId of createdRuns) rmSync(path.join(RUNS_DIR, runId), { recursive: true, force: true });

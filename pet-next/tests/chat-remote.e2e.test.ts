@@ -12,8 +12,10 @@ import net from 'node:net';
 import os from 'node:os';
 import path from 'node:path';
 import { after, before, describe, test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const petRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+// 含空格/中文的路径必须走 fileURLToPath；URL.pathname 会给出百分号编码路径。
+const petRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const display = process.env.PET_NEXT_E2E_DISPLAY ?? ':94';
 const sshBin = path.join(petRoot, 'tests/support/fake-ssh-bin.sh');
 const sleep = (ms: number) => new Promise((r) => setTimeout(r, ms));

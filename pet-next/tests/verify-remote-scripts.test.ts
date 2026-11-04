@@ -11,8 +11,10 @@ import { mkdtemp, readFile, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { test } from 'node:test';
+import { fileURLToPath } from 'node:url';
 
-const petRoot = path.resolve(path.dirname(new URL(import.meta.url).pathname), '..');
+// 不能用 URL.pathname：含空格/中文的路径会被百分号编码，导致 cwd 不存在。
+const petRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const skip = process.platform !== 'linux' ? '验收脚本自测仅在 Linux 运行（Windows 由 ps1 执行）' : false;
 
 test(
