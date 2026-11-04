@@ -44,3 +44,12 @@
 ## 4. 打包记录
 
 （由 `--record` 追加；集成后填）
+
+## 打包记录（作废重打说明）
+
+- 首次实打发现包内路径携带宿主绝对路径前缀（archiveWith 未以 base 为 cwd），已修复后重打；旧包作废。
+
+## 打包记录 2026-11-04T06:35:30.621Z
+
+- 源码包：pet-next-trial-src-db9545b.zip（zip(python3)，302 文件，3.24 MiB，SHA256 50027d023da16a37f48198c647fefd54ee8a9b7238fd1588fe9a22b01cd674c7）
+- 证据包：pet-next-trial-evidence-2026-11-04.zip（zip(python3)，16 文件，10.0 KiB，SHA256 616fe391a99e05d0d6be058125d2dcf3b03e676035de7cf5c31fe0d6b5e474c5）

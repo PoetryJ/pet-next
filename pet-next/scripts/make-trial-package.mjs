@@ -12,7 +12,7 @@
  */
 import { spawnSync } from 'node:child_process';
 import { createHash } from 'node:crypto';
-import { appendFileSync, existsSync, readFileSync, statSync } from 'node:fs';
+import { appendFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
@@ -98,7 +98,8 @@ function gitLsFiles() {
   return result.out;
 }
 
-/** 压缩：zip → python3 zipfile → tar.gz（返回实际后缀与命令，如实记录）。 */
+/** 压缩：zip → python3 zipfile → tar.gz（返回实际后缀与命令，如实记录）。
+ * 三个后端统一 cwd=base + 相对路径：包内路径不得携带宿主机器目录前缀（解压即得仓库根）。 */
 export function archiveWith(base, archivePathBase, files, injectables = {}) {
   const zip = injectables.zip ?? 'zip';
   const python3 = injectables.python3 ?? 'python3';
@@ -109,18 +110,18 @@ export function archiveWith(base, archivePathBase, files, injectables = {}) {
 
   if (zipProbe()) {
     const out = `${archivePathBase}.zip`;
-    const run = sh(zip, ['-q', out, ...files.map((file) => path.join(base, file))]);
+    const run = sh(zip, ['-q', out, ...files], { cwd: base });
     if (run.ok) return { file: out, format: 'zip' };
   }
   if (pyProbe()) {
     const out = `${archivePathBase}.zip`;
-    const script = 'import sys, zipfile\nwith zipfile.ZipFile(sys.argv[-1], "w", zipfile.ZIP_DEFLATED) as z:\n  for name in sys.argv[1:-1]: z.write(name)\n';
-    const run = sh(python3, ['-c', script, ...files.map((file) => path.join(base, file)), out], { maxBuffer: 64 * 1024 * 1024 });
+    const script = 'import sys, zipfile\nwith zipfile.ZipFile(sys.argv[1], "w", zipfile.ZIP_DEFLATED) as z:\n  for name in sys.argv[2:]: z.write(name, arcname=name)\n';
+    const run = sh(python3, ['-c', script, out, ...files], { cwd: base, maxBuffer: 64 * 1024 * 1024 });
     if (run.ok) return { file: out, format: 'zip(python3)' };
   }
   if (tarProbe()) {
     const out = `${archivePathBase}.tar.gz`;
-    const run = sh(tar, ['-czf', out, ...files.map((file) => path.join(base, file))]);
+    const run = sh(tar, ['-czf', out, ...files], { cwd: base });
     if (run.ok) return { file: out, format: 'tar.gz' };
   }
   throw new Error('无可用压缩后端（zip / python3 zipfile / tar 均不可用）');
@@ -169,16 +170,32 @@ function makeEvidencePackage(options) {
   const missing = paths.filter((rel) => !existsSync(path.join(PET_ROOT, rel)));
   if (missing.length > 0) throw new Error(`证据缺失，拒绝打包：${missing.join(', ')}`);
   if (paths.length === 0) throw new Error('证据清单为空——用 --evidence PATH 指定');
+  const expanded = expandDirs(paths);
   const base = `${options.out}/pet-next-trial-evidence-${today()}`;
-  console.log(`[trial-package] 证据：${paths.length} 个文件`);
+  console.log(`[trial-package] 证据：${expanded.length} 个文件`);
   if (options.dryRun) {
-    console.log(paths.map((file) => `  + ${file}`).join('\n'));
-    return { kept: paths, archive: null };
+    console.log(expanded.map((file) => `  + ${file}`).join('\n'));
+    return { kept: expanded, archive: null };
   }
-  const archive = archiveWith(PET_ROOT, base, paths);
+  const archive = archiveWith(PET_ROOT, base, expanded);
   const size = statSync(archive.file).size;
   console.log(`[trial-package] ${archive.file}（${archive.format}，${sizeLabel(size)}，SHA256 ${sha256File(archive.file).slice(0, 16)}…）`);
-  return { kept: paths, archive: { ...archive, size, sha256: sha256File(archive.file) } };
+  return { kept: expanded, archive: { ...archive, size, sha256: sha256File(archive.file) } };
+}
+
+/** 证据条目若为目录则递归展开为文件相对路径（打包保持 --evidence 目录语义）。 */
+function expandDirs(paths) {
+  const out = [];
+  const walk = (rel) => {
+    const abs = path.join(PET_ROOT, rel);
+    if (!statSync(abs).isDirectory()) {
+      out.push(rel);
+      return;
+    }
+    for (const name of readdirSync(abs).sort()) walk(path.join(rel, name));
+  };
+  for (const rel of paths) walk(rel);
+  return out;
 }
 
 async function main() {
@@ -188,6 +205,8 @@ async function main() {
     process.exit(2);
   }
   options.out = options.out ?? REPO_ROOT;
+  // 输出目录必须先建好：否则三个压缩后端写输出文件全部失败，误报"无可用压缩后端"。
+  mkdirSync(options.out, { recursive: true });
   const results = {};
   if (!options.onlyEvidence) results.src = makeSrcPackage(options);
   if (!options.onlySrc) results.evidence = makeEvidencePackage(options);
