@@ -7,7 +7,7 @@
  * 执行 runRemote 并 process.exit；Electron 子进程的 env 由该链 spread 透传。
  * @module pet-next/scripts/chat-trial
  */
-import { buildTrialEnv, OFF_LOG, ON_LOG, parseTrialArgs, TRIAL_USAGE } from './chat-trial-args.mjs';
+import { buildTrialEnv, OFF_LOG, ON_LOG, parseTrialArgs } from './chat-trial-args.mjs';
 
 const parsed = parseTrialArgs(process.argv.slice(2));
 if (!parsed.ok) {
