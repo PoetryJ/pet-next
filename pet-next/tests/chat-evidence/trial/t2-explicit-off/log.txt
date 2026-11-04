@@ -1,0 +1,12 @@
+# M3-5 D trial e2e t2-explicit-off
+# 2026-11-04T05:41:28.978Z
+
+cmd: PET_NEXT_CHAT_CONTEXT=1 pnpm chat:trial --context=off
+isolated: userData=/tmp/pet-next-trial-e2e-OU8IPG tunnelPort=41073 debugPort=34253 fakeModel=33833
+panel mounted: mode=local context=off note=null
+panel open: context=off hasReset=false
+send: 第一句话
+send: 第二句话
+explicit-off PASS: both [system,user] bytes=373/373
+entry exit: code=0 signal=null
+PASS

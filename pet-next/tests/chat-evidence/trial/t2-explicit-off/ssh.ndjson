@@ -1,0 +1,3 @@
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:41073:127.0.0.1:18872","-p","10977","tester@fake.example.invalid"],"mode":"ok","targetPort":33833,"pid":1937386,"ts":1793770887389}
+{"event":"fake-ssh-listening","port":41073,"targetPort":18872,"pid":1937386,"ts":1793770887393}
+{"event":"fake-ssh-stopped","port":41073,"pid":1937386,"ts":1793770888886}

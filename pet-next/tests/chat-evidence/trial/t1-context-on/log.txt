@@ -1,0 +1,15 @@
+# M3-5 D trial e2e t1-context-on
+# 2026-11-04T05:40:55.209Z
+
+cmd: PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:trial --context=on
+isolated: userData=/tmp/pet-next-trial-e2e-mEqzPl tunnelPort=44945 debugPort=35327 fakeModel=35981
+panel mounted: mode=local context=on note=只记住当前会话内最近几轮，重启不保留。
+panel open: context=on hasReset=true
+send: 我叫小林
+send: 我叫什么名字
+request bodies: roles=["system","user","assistant","user"] bytes=373->481
+reset ok: status=["已开启新对话（此前内容不再带入）"]
+send: 新话题
+on-arm PASS: history injected then reset to single-turn
+entry exit: code=0 signal=null
+PASS
