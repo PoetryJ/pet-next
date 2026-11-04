@@ -1,6 +1,6 @@
 # M3-6 D 一页交付：聊天/宠物反馈联动预览验收
 
-基线 `edad129` · 分支 `codex/pet-next-m3-companion-preview` · HEAD `ad93e47e045d50779cd492b2504ff03b8ef18636`
+基线 `edad129` · 分支 `codex/pet-next-m3-companion-preview` · 源码包基线 HEAD `ad93e47e045d50779cd492b2504ff03b8ef18636`（报告随 `bd40127` 提交）
 
 ## 1. 问题 / 原理 / 方案
 
