@@ -49,7 +49,7 @@
 
 - 首次实打发现包内路径携带宿主绝对路径前缀（archiveWith 未以 base 为 cwd），已修复后重打；旧包作废。
 
-## 打包记录 2026-11-04T06:35:30.621Z
+## 打包记录 2026-11-04T06:43:06.623Z
 
-- 源码包：pet-next-trial-src-db9545b.zip（zip(python3)，302 文件，3.24 MiB，SHA256 50027d023da16a37f48198c647fefd54ee8a9b7238fd1588fe9a22b01cd674c7）
-- 证据包：pet-next-trial-evidence-2026-11-04.zip（zip(python3)，16 文件，10.0 KiB，SHA256 616fe391a99e05d0d6be058125d2dcf3b03e676035de7cf5c31fe0d6b5e474c5）
+- 源码包：pet-next-trial-src-3fc4d52.zip（zip(python3)，302 文件，3.24 MiB，SHA256 fa3973424cee7a1609192d3c0b9c7a87d6a2e1e126df72f21b7f4b2a8c62868d）
+- 证据包：pet-next-trial-evidence-2026-11-04.zip（zip(python3)，16 文件，9.9 KiB，SHA256 eb1d26a5d0f9560da307f19d0f5962ec6b455d9d947353bca5c8545747622de7）
