@@ -149,6 +149,115 @@ function readLedgerAttempts(ledgerPath: string): Set<number> {
   return done;
 }
 
+/**
+ * M3-5 A：已有 run 的只读判定（fail-closed）。
+ * - new：目录不存在，正常开新 run；
+ * - complete：账本/cases/summary 一一对应且 settled 数已达上限 → 只读复核（零新增 POST、零覆盖）；
+ * - partial：一致但未达上限（中断）→ 拒绝续跑；
+ * - inconsistent：任何行不可解析 / 计数不对应 / 缺关键文件 → 拒绝续跑。
+ * 不做 checkpoint 恢复、不静默跳过坏行、不另开新 run 自动重试。
+ */
+export type ExistingRunVerdict =
+  | { kind: 'new' }
+  | { kind: 'complete'; summary: RunSummary }
+  | { kind: 'partial'; attempted: number; settled: number }
+  | { kind: 'inconsistent'; reasons: string[] };
+
+export function reviewExistingRun(runDir: string, maxPosts: number): ExistingRunVerdict {
+  if (!existsSync(runDir)) return { kind: 'new' };
+  const reasons: string[] = [];
+  const ledgerPath = path.join(runDir, 'ledger.ndjson');
+  const casesPath = path.join(runDir, 'cases.ndjson');
+  const summaryPath = path.join(runDir, 'summary.json');
+  if (!existsSync(ledgerPath)) {
+    return { kind: 'inconsistent', reasons: ['run 目录已存在但缺 ledger.ndjson——无法判断已消费额度'] };
+  }
+
+  const attemptSeqs = new Set<number>();
+  const settledBySeq = new Map<number, string>();
+  const ledgerLines = readFileSync(ledgerPath, 'utf8').split('\n');
+  for (let i = 0; i < ledgerLines.length; i += 1) {
+    const line = ledgerLines[i];
+    if (line.trim() === '') continue;
+    let event: LedgerEvent;
+    try {
+      event = JSON.parse(line) as LedgerEvent;
+    } catch {
+      return { kind: 'inconsistent', reasons: [`ledger 第 ${i + 1} 行不可解析——fail-closed 拒绝`] };
+    }
+    if (event.kind === 'attempt') {
+      if (attemptSeqs.has(event.seq)) reasons.push(`attempt seq=${event.seq} 重复`);
+      attemptSeqs.add(event.seq);
+    } else if (event.kind === 'settled') {
+      if (settledBySeq.has(event.seq)) reasons.push(`settled seq=${event.seq} 重复`);
+      settledBySeq.set(event.seq, event.status ?? 'unknown');
+    }
+  }
+  for (const seq of attemptSeqs) {
+    if (!settledBySeq.has(seq)) reasons.push(`seq=${seq} 有 attempt 无 settled（中断在途）`);
+  }
+  for (const seq of settledBySeq.keys()) {
+    if (!attemptSeqs.has(seq)) reasons.push(`seq=${seq} 有 settled 无 attempt（账本损坏）`);
+  }
+
+  const caseSeqs = new Set<number>();
+  if (existsSync(casesPath)) {
+    const caseLines = readFileSync(casesPath, 'utf8').split('\n');
+    for (let i = 0; i < caseLines.length; i += 1) {
+      const line = caseLines[i];
+      if (line.trim() === '') continue;
+      let record: { seq?: unknown };
+      try {
+        record = JSON.parse(line) as { seq?: unknown };
+      } catch {
+        return { kind: 'inconsistent', reasons: [`cases 第 ${i + 1} 行不可解析——fail-closed 拒绝`] };
+      }
+      if (typeof record.seq === 'number') {
+        if (caseSeqs.has(record.seq)) reasons.push(`cases seq=${record.seq} 重复`);
+        caseSeqs.add(record.seq);
+      }
+    }
+    for (const seq of settledBySeq.keys()) {
+      if (!caseSeqs.has(seq)) reasons.push(`seq=${seq} 有 settled 无 cases 记录`);
+    }
+    for (const seq of caseSeqs) {
+      if (!settledBySeq.has(seq)) reasons.push(`cases seq=${seq} 无对应 settled`);
+    }
+  } else {
+    reasons.push('缺 cases.ndjson');
+  }
+
+  let summary: RunSummary | null = null;
+  if (existsSync(summaryPath)) {
+    try {
+      const parsed = JSON.parse(readFileSync(summaryPath, 'utf8')) as RunSummary;
+      summary = parsed;
+      if (parsed.attempts !== attemptSeqs.size) {
+        reasons.push(`summary.attempts=${parsed.attempts} ≠ 账本 attempt 数 ${attemptSeqs.size}`);
+      }
+      const expected = { ok: 0, error: 0, cancelled: 0, other: 0 };
+      for (const status of settledBySeq.values()) {
+        if (status === 'ok' || status === 'error' || status === 'cancelled') expected[status] += 1;
+        else expected.other += 1;
+      }
+      for (const key of Object.keys(expected) as Array<keyof typeof expected>) {
+        if (parsed.settled[key] !== expected[key]) {
+          reasons.push(`summary.settled.${key}=${parsed.settled[key]} ≠ 账本 ${expected[key]}`);
+        }
+      }
+    } catch {
+      reasons.push('summary.json 不可解析');
+    }
+  } else {
+    reasons.push('缺 summary.json');
+  }
+
+  if (reasons.length > 0) return { kind: 'inconsistent', reasons };
+  const settledTotal = settledBySeq.size;
+  if (settledTotal >= maxPosts && summary !== null) return { kind: 'complete', summary };
+  return { kind: 'partial', attempted: attemptSeqs.size, settled: settledTotal };
+}
+
 function gitHead(): string {
   const result = spawnSync('git', ['-C', PET_ROOT, 'rev-parse', 'HEAD'], { encoding: 'utf8' });
   return (result.stdout ?? '').trim() || 'unknown';
@@ -172,6 +281,22 @@ async function healthCheck(fetchImpl: FetchLike): Promise<void> {
 
 export async function runEvaluation(options: RunOptions): Promise<RunSummary> {
   const maxPosts = options.maxPosts ?? BUDGET_POSTS;
+  // M3-5 A：fail-closed 先于一切（含 live 预检）——本地只读判定，零消费、零覆盖。
+  const verdict = reviewExistingRun(path.join(RUNS_DIR, options.runId), maxPosts);
+  if (verdict.kind === 'complete') {
+    console.log(
+      `[context-runner] run=${options.runId} 已完整（attempts=${verdict.summary.attempts}，settled=${JSON.stringify(verdict.summary.settled)}）——只读复核：不新增 POST、不覆盖任何文件`,
+    );
+    return verdict.summary;
+  }
+  if (verdict.kind === 'partial') {
+    throw new Error(
+      `run=${options.runId} 不完整（attempt ${verdict.attempted} / settled ${verdict.settled}，上限 ${maxPosts}）——拒绝续跑（fail-closed）：不静默跳过、不覆盖、不自动另开 run；请人工核对后换新 runId`,
+    );
+  }
+  if (verdict.kind === 'inconsistent') {
+    throw new Error(`run=${options.runId} 账本不一致——拒绝续跑（fail-closed）：\n- ${verdict.reasons.join('\n- ')}`);
+  }
   // fixture 模式默认假 fetch（零真实调用）；live 模式默认全局 fetch（真实网络）。
   const realFetch: FetchLike = options.fetchImpl ?? (options.mode === 'fixture' ? fixtureFetch() : (url, init) => fetch(url, init));
   const runDir = path.join(RUNS_DIR, options.runId);

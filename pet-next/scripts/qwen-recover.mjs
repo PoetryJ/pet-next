@@ -24,14 +24,15 @@ import { spawn, spawnSync } from 'node:child_process';
 import { existsSync, mkdirSync, openSync, readFileSync, writeFileSync, appendFileSync } from 'node:fs';
 import http from 'node:http';
 import path from 'node:path';
-import { fileURLToPath } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 const PET_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
-const RUNTIME_DIR = path.join(PET_ROOT, 'runtime/qwen38');
+// 测试注入点：假 nvidia-smi / 假 vllm / 隔离 runtime 目录（生产默认不变）。
+const RUNTIME_DIR = process.env.PET_NEXT_QWEN_RUNTIME_DIR ?? path.join(PET_ROOT, 'runtime/qwen38');
 const IDENTITY = path.join(RUNTIME_DIR, 'identity.json');
 const BOOT_LOG = path.join(RUNTIME_DIR, 'boot.log');
 const HEALTH_LOG = path.join(RUNTIME_DIR, 'health.log');
-const VLLM_BIN = '/data/social-agent-lab/server/venv-vllm032/bin/vllm';
+const VLLM_BIN = process.env.PET_NEXT_QWEN_VLLM_BIN ?? '/data/social-agent-lab/server/venv-vllm032/bin/vllm';
 const WEIGHTS = '/data2/model_weights/Qwen3.8-27B';
 const HOST = '127.0.0.1';
 const PORT = 18872;
@@ -40,30 +41,83 @@ const READY_TIMEOUT_MS = 20 * 60 * 1000;
 const POLL_INTERVAL_MS = 60 * 1000;
 
 function sh(command, args) {
-  const result = spawnSync(command, args, { encoding: 'utf8' });
-  return { ok: result.status === 0, out: (result.stdout ?? '').trim() };
+  const result = spawnSync(command, args, { encoding: 'utf8', timeout: 15_000 });
+  return { ok: result.status === 0 && !result.error, out: (result.stdout ?? '').trim() };
 }
 
-/** compute-apps：[{gpuIndex, pid, memMiB}]；空数组=四卡全无计算进程。 */
-function gpuComputeApps() {
-  const query = sh('nvidia-smi', ['--query-compute-apps=gpu_uuid,pid,used_memory', '--format=csv,noheader']);
-  if (!query.ok) return [];
-  return query.out
-    .split('\n')
-    .filter((line) => line.trim() !== '')
-    .map((line) => {
-      const [uuid, pid, mem] = line.split(',').map((part) => part.trim());
-      return { uuid, pid: Number(pid), memMiB: Number((mem ?? '0').replace(/[^\d]/g, '')) };
-    });
-}
+/**
+ * M3-5 A：GPU 查询 fail-closed。
+ * 所有 nvidia-smi 查询失败/超时/解析失败/无有效 GPU 条目 → 状态 unknown，
+ * 绝不回落到"空列表=全空闲"（旧缺陷：查询失败误选 GPU0 启动）。
+ * 命令可注入：PET_NEXT_QWEN_SMI_BIN（测试用假 nvidia-smi，零真实 GPU/GPU0 误启）。
+ */
+const SMI_BIN = process.env.PET_NEXT_QWEN_SMI_BIN ?? 'nvidia-smi';
 
-function gpuIndexOf(uuid) {
-  const map = sh('nvidia-smi', ['--query-gpu=index,uuid', '--format=csv,noheader']);
-  for (const line of map.out.split('\n')) {
-    const [index, gpuUuid] = line.split(',').map((part) => part.trim());
-    if (gpuUuid === uuid) return Number(index);
+/** 纯解析（可单测）：compute-apps CSV → {ok:true,apps} | {ok:false,reason}。 */
+export function parseComputeApps(text) {
+  const apps = [];
+  for (const line of text.split('\n')) {
+    if (line.trim() === '') continue;
+    const parts = line.split(',').map((part) => part.trim());
+    if (parts.length < 3 || !/^\d+$/.test(parts[1] ?? '') || parts[0] === '') {
+      return { ok: false, reason: `compute-apps 行无法解析：${JSON.stringify(line)}` };
+    }
+    apps.push({ uuid: parts[0], pid: Number(parts[1]), memMiB: Number((parts[2] ?? '0').replace(/[^\d]/g, '')) });
   }
-  return null;
+  return { ok: true, apps };
+}
+
+/** 纯解析（可单测）：index,uuid CSV → {ok:true,gpus} | {ok:false,reason}；0 条目视为无有效 GPU。 */
+export function parseGpuList(text) {
+  const gpus = [];
+  for (const line of text.split('\n')) {
+    if (line.trim() === '') continue;
+    const parts = line.split(',').map((part) => part.trim());
+    if (parts.length < 2 || !/^\d+$/.test(parts[0] ?? '') || parts[1] === '') {
+      return { ok: false, reason: `gpu 列表行无法解析：${JSON.stringify(line)}` };
+    }
+    gpus.push({ index: Number(parts[0]), uuid: parts[1] });
+  }
+  if (gpus.length === 0) return { ok: false, reason: 'gpu 列表为空——无有效 GPU 条目，拒绝判定（fail-closed）' };
+  return { ok: true, gpus };
+}
+
+function gpuSnapshot() {
+  const appsQuery = sh(SMI_BIN, ['--query-compute-apps=gpu_uuid,pid,used_memory', '--format=csv,noheader']);
+  if (!appsQuery.ok) return { ok: false, reason: 'compute-apps 查询失败（nvidia-smi 非零/超时/不可执行）' };
+  const apps = parseComputeApps(appsQuery.out);
+  if (!apps.ok) return apps;
+  const listQuery = sh(SMI_BIN, ['--query-gpu=index,uuid', '--format=csv,noheader']);
+  if (!listQuery.ok) return { ok: false, reason: 'gpu 列表查询失败（nvidia-smi 非零/超时/不可执行）' };
+  const list = parseGpuList(listQuery.out);
+  if (!list.ok) return list;
+  return { ok: true, apps: apps.apps, gpus: list.gpus };
+}
+
+/**
+ * 纯判定（可单测）：两份**有效**快照都证明同一批卡无其他 compute 进程才可判空闲。
+ * 任一无效 → {ok:false}（unknown，拒启动）；全忙 → {ok:true,gpu:null}（继续等）。
+ * busy 集合取两份快照之并（保守：任一时刻见过进程即算忙）。
+ */
+export function selectFreeGpuFromSnapshots(first, second) {
+  if (!first.ok) return { ok: false, reason: `第一次查询无效：${first.reason}` };
+  if (!second.ok) return { ok: false, reason: `第二次查询无效：${second.reason}` };
+  const key = (snapshot) => snapshot.gpus.map((gpu) => `${gpu.index}:${gpu.uuid}`).sort().join('|');
+  if (key(first) !== key(second)) {
+    return { ok: false, reason: '两次 GPU 查询结果矛盾（列表不一致）——状态 unknown，拒绝启动' };
+  }
+  const busy = new Set([...first.apps, ...second.apps].map((app) => app.uuid));
+  for (const gpu of first.gpus.sort((a, b) => a.index - b.index)) {
+    if (!busy.has(gpu.uuid)) return { ok: true, gpu: gpu.index };
+  }
+  return { ok: true, gpu: null };
+}
+
+async function findFreeGpu() {
+  const first = gpuSnapshot();
+  await new Promise((resolve) => setTimeout(resolve, 2000)); // 两次独立查询
+  const second = gpuSnapshot();
+  return selectFreeGpuFromSnapshots(first, second);
 }
 
 function portListening() {
@@ -134,38 +188,31 @@ function logHealth(line) {
 }
 
 function statusReport() {
-  const apps = gpuComputeApps();
+  const snapshot = gpuSnapshot();
   const identity = readIdentity();
-  const busy = apps.length > 0 ? `${apps.length} 个计算进程` : '无计算进程（四卡空闲）';
+  if (!snapshot.ok) {
+    console.log(`GPU compute-apps：查询失败——状态 unknown（fail-closed：${snapshot.reason}）`);
+    process.exitCode = 1;
+  } else {
+    const busy = snapshot.apps.length > 0 ? `${snapshot.apps.length} 个计算进程` : '无计算进程（四卡空闲）';
+    console.log(`GPU compute-apps：${busy}`);
+    if (snapshot.apps.length > 0) {
+      const byIndex = new Map(snapshot.gpus.map((gpu) => [gpu.uuid, gpu.index]));
+      const byPid = new Map();
+      for (const app of snapshot.apps) {
+        const gpu = byIndex.get(app.uuid);
+        const cmd = sh('cat', [`/proc/${app.pid}/cmdline`]).out.replace(/\0/g, ' ').slice(0, 80);
+        byPid.set(app.pid, `gpu${gpu ?? '?'} pid=${app.pid} mem=${app.memMiB}MiB ${cmd || '(已退出，陈旧条目)'}`);
+      }
+      for (const line of byPid.values()) console.log(`  ${line}`);
+    }
+  }
   const identityLine = identity
     ? `identity: pid=${identity.pid} gpu=${identity.gpu} alive=${String(identityAlive(identity))} startedAt=${identity.startedAt}`
     : 'identity: 无（未由本脚本启动）';
   console.log(`端口 ${PORT}：${portListening() ? '监听中' : '未监听'}`);
-  console.log(`GPU compute-apps：${busy}`);
-  if (apps.length > 0) {
-    const byPid = new Map();
-    for (const app of apps) {
-      const gpu = gpuIndexOf(app.uuid);
-      const cmd = sh('cat', [`/proc/${app.pid}/cmdline`]).out.replace(/\0/g, ' ').slice(0, 80);
-      byPid.set(app.pid, `gpu${gpu ?? '?'} pid=${app.pid} mem=${app.memMiB}MiB ${cmd || '(已退出，陈旧条目)'}`);
-    }
-    for (const line of byPid.values()) console.log(`  ${line}`);
-  }
   console.log(identityLine);
   void serviceReady().then((ready) => console.log(`健康 GET /v1/models 含 ${MODEL_ID}：${ready ? '是（服务可用）' : '否'}`));
-}
-
-/** 等待出现“整卡无任何计算进程”的 GPU，返回其 index。 */
-function findFreeGpu() {
-  const apps = gpuComputeApps();
-  if (apps.length === 0) return 0;
-  const busyUuids = new Set(apps.map((app) => app.uuid));
-  const map = sh('nvidia-smi', ['--query-gpu=index,uuid', '--format=csv,noheader']);
-  for (const line of map.out.split('\n')) {
-    const [indexRaw, uuid] = line.split(',').map((part) => part.trim());
-    if (!busyUuids.has(uuid)) return Number(indexRaw);
-  }
-  return null;
 }
 
 async function waitAndStart() {
@@ -180,13 +227,19 @@ async function waitAndStart() {
     return;
   }
   console.log('[qwen-recover] ready_waiting_gpu：每 60s 检查，等一张无其他计算进程的 H20（不抢占）。');
-  let gpu = null;
-  while (gpu === null) {
-    gpu = findFreeGpu();
-    if (gpu !== null) break;
-    process.stdout.write('.');
-    await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
-  }
+  const waitForFreeGpu = async () => {
+    for (;;) {
+      const probe = await findFreeGpu();
+      if (!probe.ok) {
+        console.error(`[qwen-recover] GPU 查询失败——状态 unknown，拒绝启动（fail-closed）：${probe.reason}`);
+        process.exit(1); // 绝不在 unknown 时选卡启动（含不误选 GPU0）
+      }
+      if (probe.gpu !== null) return probe.gpu;
+      process.stdout.write('.');
+      await new Promise((resolve) => setTimeout(resolve, POLL_INTERVAL_MS));
+    }
+  };
+  const gpu = await waitForFreeGpu();
   console.log(`\n[qwen-recover] GPU ${gpu} 空闲，启动 vLLM（端口 ${PORT}，仅本机）。`);
   const args = [
     'serve', WEIGHTS,
@@ -270,11 +323,18 @@ async function stop() {
   console.log('[qwen-recover] 已停止，GPU 释放。');
 }
 
-const mode = process.argv[2] ?? '--status';
-if (mode === '--status') statusReport();
-else if (mode === '--wait-start') await waitAndStart();
-else if (mode === '--stop') await stop();
-else {
-  console.error('用法：qwen-recover.mjs --status | --wait-start | --stop');
-  process.exitCode = 1;
+/** CLI 壳：仅直接执行时生效（测试 import 本模块不触发任何模式）。 */
+async function main() {
+  const mode = process.argv[2] ?? '--status';
+  if (mode === '--status') statusReport();
+  else if (mode === '--wait-start') await waitAndStart();
+  else if (mode === '--stop') await stop();
+  else {
+    console.error('用法：qwen-recover.mjs --status | --wait-start | --stop');
+    process.exitCode = 1;
+  }
 }
+
+const invokedDirectly =
+  process.argv[1] !== undefined && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href;
+if (invokedDirectly) await main();

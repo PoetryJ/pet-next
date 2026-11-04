@@ -3,7 +3,8 @@
  * 覆盖：18 次全链路两臂语义、续账不重发、预算封顶、live 预检拒绝时不消费额度。
  */
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { createHash } from 'node:crypto';
+import { existsSync, mkdtempSync, readFileSync, readdirSync, rmSync, statSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
@@ -17,6 +18,19 @@ after(() => {
   for (const runId of testRunIds) rmSync(path.join(RUNS_DIR, runId), { recursive: true, force: true });
   rmSync(scratch, { recursive: true, force: true });
 });
+
+/** 目录内全部文件的相对路径 → (mtimeMs, sha256) 快照，用于断言"零覆盖"。 */
+function dirFingerprint(runId: string): Map<string, string> {
+  const root = path.join(RUNS_DIR, runId);
+  const map = new Map<string, string>();
+  for (const name of readdirSync(root).sort()) {
+    const full = path.join(root, name);
+    if (statSync(full).isFile()) {
+      map.set(name, `${statSync(full).mtimeMs}:${createHash('sha256').update(readFileSync(full)).digest('hex')}`);
+    }
+  }
+  return map;
+}
 
 function uniqueRunId(label: string): string {
   const runId = `selftest-${label}-${Date.now()}-${Math.floor(Math.random() * 1000)}`;
@@ -72,15 +86,51 @@ test('fixture 全链路：18 次两臂，on 臂第三问带历史、off 臂单�
   assert.ok(s1onBytes[2] > s1onBytes[1] && s1onBytes[1] > s1onBytes[0], `on 臂请求字节逐轮增长：${s1onBytes.join(' → ')}`);
 });
 
-test('续账：同一 runId 二次运行不重发（0 次 POST、18 行 skip-replay）', async () => {
+test('M3-5 完整 run 重入：只读复核（零新增 POST、既有文件 hash 与 mtime 不变）', async () => {
   const runId = uniqueRunId('replay');
   const first = await runEvaluation({ mode: 'fixture', runId });
   assert.equal(first.attempts, 18);
   const before = attemptCount(runId);
+  const fingerprintBefore = dirFingerprint(runId);
   const second = await runEvaluation({ mode: 'fixture', runId });
-  assert.equal(second.attempts, 0, '续账绝不重发');
-  assert.equal(second.skippedReplay, 18);
-  assert.equal(attemptCount(runId), before, 'attempt 行数不变（额度未重复消费）');
+  assert.equal(second.attempts, first.attempts, '读回原 summary');
+  assert.equal(second.settled.ok, first.settled.ok);
+  assert.equal(attemptCount(runId), before, '账本 attempt 行数不变');
+  assert.deepEqual(dirFingerprint(runId), fingerprintBefore, '任何既有文件不得被覆盖（mtime 也不变）');
+});
+
+test('M3-5 中断 run 重入：非零拒绝（不静默续跑、不覆盖、不另开 run）', async () => {
+  const runId = uniqueRunId('partial');
+  // 用 maxPosts=3 先生成一个"额度上限 3 的完整 run"，再以默认上限 18 重入——
+  // 该 run settled=3 < 18 且账本一致，构成"中断 run"。
+  await runEvaluation({ mode: 'fixture', runId, maxPosts: 3 });
+  const fingerprintBefore = dirFingerprint(runId);
+  await assert.rejects(
+    () => runEvaluation({ mode: 'fixture', runId }),
+    /不完整（attempt 3 \/ settled 3，上限 18）——拒绝续跑/,
+  );
+  assert.deepEqual(dirFingerprint(runId), fingerprintBefore, '拒绝路径不得改写任何文件');
+});
+
+test('M3-5 坏账本：行不可解析 → 非零拒绝且文件不变', async () => {
+  const runId = uniqueRunId('badledger');
+  await runEvaluation({ mode: 'fixture', runId, maxPosts: 3 });
+  const ledgerPath = path.join(RUNS_DIR, runId, 'ledger.ndjson');
+  const lines = readFileSync(ledgerPath, 'utf8').split('\n');
+  writeFileSync(ledgerPath, `${lines.slice(0, 2).join('\n')}\n{broken\n`, 'utf8');
+  const fingerprintBefore = dirFingerprint(runId);
+  await assert.rejects(() => runEvaluation({ mode: 'fixture', runId }), /不可解析——fail-closed 拒绝/);
+  assert.deepEqual(dirFingerprint(runId), fingerprintBefore);
+});
+
+test('M3-5 账本与 summary 计数不一致 → 非零拒绝', async () => {
+  const runId = uniqueRunId('mismatch');
+  await runEvaluation({ mode: 'fixture', runId, maxPosts: 3 });
+  const summaryPath = path.join(RUNS_DIR, runId, 'summary.json');
+  const summary = JSON.parse(readFileSync(summaryPath, 'utf8')) as { attempts: number };
+  summary.attempts = 99;
+  writeFileSync(summaryPath, JSON.stringify(summary), 'utf8');
+  await assert.rejects(() => runEvaluation({ mode: 'fixture', runId }), /summary\.attempts=99 ≠ 账本 attempt 数 3/);
 });
 
 test('预算封顶：maxPosts 耗尽即停，不超发', async () => {
