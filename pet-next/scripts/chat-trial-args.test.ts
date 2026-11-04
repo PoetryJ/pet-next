@@ -25,12 +25,12 @@ const petRoot = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..')
 const entryPath = path.join(petRoot, 'scripts/chat-trial.mjs');
 
 test('parseTrialArgs：无参数缺省 off', () => {
-  assert.deepEqual(parseTrialArgs([]), { ok: true, context: 'off' });
+  assert.deepEqual(parseTrialArgs([]), { ok: true, context: 'off', experience: 'none' });
 });
 
 test('parseTrialArgs：--context=on / --context=off', () => {
-  assert.deepEqual(parseTrialArgs(['--context=on']), { ok: true, context: 'on' });
-  assert.deepEqual(parseTrialArgs(['--context=off']), { ok: true, context: 'off' });
+  assert.deepEqual(parseTrialArgs(['--context=on']), { ok: true, context: 'on', experience: 'none' });
+  assert.deepEqual(parseTrialArgs(['--context=off']), { ok: true, context: 'off', experience: 'none' });
 });
 
 test('parseTrialArgs：非法值/不带值/未知参数/位置参数 → exit 2', () => {
@@ -159,4 +159,57 @@ test('入口子进程：状态行与复用链（坏配置 exit 1）；父残留 
   const none = await runEntry([], { env, cwd: spaced });
   assert.ok(none.stdout.includes(OFF_LOG), none.stdout);
   assert.equal(none.code, 1);
+});
+
+// M3-6：--experience=companion 与 --context 正交；缺省 none；非法/重复 exit 2。
+test('parseTrialArgs：--experience=companion 与 context 独立', () => {
+  assert.deepEqual(parseTrialArgs(['--experience=companion']), {
+    ok: true,
+    context: 'off',
+    experience: 'companion',
+  });
+  assert.deepEqual(parseTrialArgs(['--context=on', '--experience=companion']), {
+    ok: true,
+    context: 'on',
+    experience: 'companion',
+  });
+  assert.deepEqual(parseTrialArgs(['--experience=companion', '--context=off']), {
+    ok: true,
+    context: 'off',
+    experience: 'companion',
+  });
+});
+
+test('parseTrialArgs：experience 非法值/重复 → exit 2 且带用法', () => {
+  for (const argv of [['--experience=on'], ['--experience='], ['--experience=shop']]) {
+    const result = parseTrialArgs(argv);
+    assert.equal(result.ok, false, JSON.stringify(argv));
+    assert.equal(result.exitCode, 2);
+    assert.match(result.error, /--experience|companion/);
+    assert.ok(result.error.includes(TRIAL_USAGE), JSON.stringify(argv));
+  }
+  const dup = parseTrialArgs(['--experience=companion', '--experience=companion']);
+  assert.equal(dup.ok, false);
+  assert.match(dup.error, /重复 --experience/);
+});
+
+test('buildTrialEnv：companion 设体验与 short+behavior；none 清除父残留；显式 preview 不被覆盖', () => {
+  const companion = buildTrialEnv({}, 'off', 'companion');
+  assert.equal(companion.PET_NEXT_EXPERIENCE, 'companion');
+  assert.equal(companion.PET_NEXT_PREVIEW, 'short+behavior');
+  assert.ok(!(TRIAL_CONTEXT_ENV in companion), 'companion 不禁用 context 缺省 off');
+
+  // 父壳残留必须被清除（显式选择优先）。
+  const cleared = buildTrialEnv({ PET_NEXT_EXPERIENCE: 'companion', PET_NEXT_PREVIEW: 'short+behavior' }, 'off', 'none');
+  assert.ok(!('PET_NEXT_EXPERIENCE' in cleared));
+  assert.equal(cleared.PET_NEXT_PREVIEW, 'short+behavior', 'none 不动用户的 preview 选择');
+
+  // 用户显式给的 preview 优先。
+  const explicit = buildTrialEnv({ PET_NEXT_PREVIEW: 'behavior-demo' }, 'off', 'companion');
+  assert.equal(explicit.PET_NEXT_PREVIEW, 'behavior-demo');
+
+  // 父值被本次选择重建。
+  const rebuilt = buildTrialEnv({ PET_NEXT_EXPERIENCE: 'companion' }, 'off', 'none');
+  assert.ok(!('PET_NEXT_EXPERIENCE' in rebuilt));
+  assert.throws(() => buildTrialEnv({}, 'off', 'shop'), TypeError);
 });

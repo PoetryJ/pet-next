@@ -159,6 +159,8 @@ export function resolveViewportHeight(explicit?: number): number | null {
 /** 挂载选项：视口高度可注入（单测/嵌入场景），缺省读真实 innerHeight。 */
 export interface ChatPanelMountOptions {
   viewportHeight?: number;
+  /** M3-6：反馈提示节点（由页面创建）。存在时插在日志区之前，不覆盖输入与拖动区。 */
+  feedbackElement?: HTMLElement;
 }
 
 /** 请求 id：满足 CHAT_ID_PATTERN（chat-[a-z0-9-]{1,48}）。 */
@@ -294,6 +296,8 @@ export function mountChatPanel(
     memoryNote.textContent = CHAT_MEMORY_NOTE;
     panel.appendChild(memoryNote);
   }
+  // M3-6：反馈提示在日志区之前、头部之后——不覆盖输入框与拖动区。
+  if (options.feedbackElement !== undefined) panel.appendChild(options.feedbackElement);
   panel.appendChild(log);
   panel.appendChild(composer);
   panelRoot.appendChild(toggle);

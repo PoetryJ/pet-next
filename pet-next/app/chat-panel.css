@@ -318,6 +318,33 @@
   background: #fafafa;
 }
 
+/* M3-6：聊天反馈提示（等待/成功/错误/取消）。位于头部与日志区之间，不覆盖输入与拖动区。 */
+.chat-feedback {
+  flex: none;
+  margin: 0 10px 6px;
+  padding: 2px 8px;
+  border-radius: 8px;
+  font-size: 11px;
+  line-height: 16px;
+  color: #444;
+  background: rgba(0, 0, 0, 0.06);
+}
+.chat-feedback[hidden] {
+  display: none;
+}
+.chat-feedback[data-kind='waiting'] {
+  color: #8a6d00;
+}
+.chat-feedback[data-kind='success'] {
+  color: #1f7a1f;
+}
+.chat-feedback[data-kind='error'] {
+  color: #b3261e;
+}
+.chat-feedback[data-kind='cancelled'] {
+  color: #555;
+}
+
 /*
  * 类名清单（接线 page.html 用）：
  * 容器与入口：chat-panel-root（含 data-state、data-mode ∈ demo|local、data-transport ∈ direct|tunnel、data-context ∈ on|off、is-open）、chat-toggle
@@ -325,4 +352,5 @@
  * 消息：chat-log（唯一滚动容器）、chat-entry（chat-entry-user/bot/status/error）、
  *       chat-demo-tag（demo「演示回复」）、chat-model-tag（local「Qwen · 服务器模型」，隧道加 --tunnel）、chat-entry-text
  * 输入：chat-composer、chat-input、chat-hint、chat-actions、chat-send、chat-cancel
+ * M3-6：chat-feedback（data-kind ∈ waiting|success|error|cancelled；hidden 表示无提示）
  */

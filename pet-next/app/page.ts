@@ -17,6 +17,8 @@ import {
 import { createBehaviorPet, type BehaviorPet } from './behavior-pet.ts';
 import './bridge.ts';
 import { mountChatPanel } from './chat-panel.ts';
+import { createFeedbackController, type FeedbackController } from './feedback.ts';
+import { createFeedbackView } from './feedback-view.ts';
 import { attachPetMedia, type PetMedia } from './pet-media.ts';
 import { previewDataset } from './preview-gate.ts';
 import { createPetController, parseClipRequest, type PetController } from './wire.ts';
@@ -51,6 +53,9 @@ if (previewMark !== null) {
   document.documentElement.dataset.previewActive = previewMark.previewActive;
 }
 
+// M3-6：反馈控制器必须能被拖动回调与聊天面板共用，故提前声明。
+const holder: { controller?: PetController; behavior?: BehaviorPet; feedback?: FeedbackController } = {};
+
 // M3-0/M3-1：仅在聊天令牌（preview=demo / local=真实模型）下挂载面板；普通桌宠入口保持既有行为。
 const chatMode = params.get(CHAT_PREVIEW_QUERY);
 if (chatMode === CHAT_PREVIEW_TOKEN || chatMode === CHAT_LOCAL_TOKEN) {
@@ -73,10 +78,23 @@ if (chatMode === CHAT_PREVIEW_TOKEN || chatMode === CHAT_LOCAL_TOKEN) {
         () => ({ mode: 'demo' }),
       )
     : Promise.resolve({ mode: 'demo' });
-  void infoPromise.then((info) => mountChatPanel(document.body, bridge, info));
+  void infoPromise.then((info) => {
+    // M3-6：仅 experience=companion 时创建反馈对象；关闭时原路径零对象。
+    if (info.experience !== 'companion') {
+      mountChatPanel(document.body, bridge, info);
+      return;
+    }
+    const view = createFeedbackView();
+    const feedback = createFeedbackController({
+      inner: bridge,
+      view,
+      // 回应只经唯一 behavior 入口（app/behavior-pet.ts 的 reaction）；未开行为时自然空转。
+      onReact: () => holder.behavior?.reaction(),
+    });
+    holder.feedback = feedback;
+    mountChatPanel(document.body, feedback.client, info, { feedbackElement: view.element });
+  });
 }
-
-const holder: { controller?: PetController; behavior?: BehaviorPet } = {};
 
 /** bench-observe 打点：单行 JSON，时间戳统一 performance.now() 域。 */
 function benchLog(payload: Record<string, unknown>): void {
@@ -128,6 +146,8 @@ const surface = {
   },
   setDragging(dragging: boolean) {
     document.body.classList.toggle('dragging', dragging);
+    // M3-6：拖动优先——拖中完成只给结果提示，不排回应。
+    holder.feedback?.drag(dragging);
   },
 };
 

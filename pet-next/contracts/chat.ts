@@ -72,7 +72,16 @@ export interface ChatDisplayInfo {
   transport?: ChatTransport;
   /** M3-3：上下文预览是否开启（主进程决定，页面只读；缺省 false 不显示“新对话”）。 */
   context?: boolean;
+  /** M3-6：显式体验预览（页面只读；缺省不出现 = 关闭，原路径零对象）。 */
+  experience?: ChatExperience;
 }
+
+/** M3-6：主进程环境变量——`companion` 时打开等待提示与一次回应预览。 */
+export const CHAT_EXPERIENCE_ENV = 'PET_NEXT_EXPERIENCE';
+/** M3-6：唯一的体验预览令牌。 */
+export const COMPANION_EXPERIENCE = 'companion';
+export const CHAT_EXPERIENCES = [COMPANION_EXPERIENCE] as const;
+export type ChatExperience = (typeof CHAT_EXPERIENCES)[number];
 
 /** 真实服务配置环境变量（主进程读取）。 */
 export const QWEN_BASE_URL_ENV = 'PET_NEXT_QWEN_BASE_URL';

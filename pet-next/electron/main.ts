@@ -13,6 +13,7 @@ import { createChatHistory } from '../core/chat/history.ts';
 import { createChatSession } from '../core/chat/session.ts';
 import {
   CHAT_CONTEXT_ENV,
+  CHAT_EXPERIENCE_ENV,
   CHAT_FAKE_URL_ENV,
   CHAT_INFO_CHANNEL,
   CHAT_LOCAL_ENV,
@@ -21,7 +22,9 @@ import {
   CHAT_PREVIEW_QUERY,
   CHAT_PREVIEW_TOKEN,
   CHAT_TRANSPORT_ENV,
+  COMPANION_EXPERIENCE,
   type ChatDisplayInfo,
+  type ChatExperience,
   type ChatTransport,
 } from '../contracts/chat.ts';
 import { PREVIEW_ENV, PREVIEW_QUERY } from '../contracts/preview.ts';
@@ -132,6 +135,9 @@ function createWindow(): void {
   if (process.env.PET_NEXT_REACTION_URL) query.reaction = process.env.PET_NEXT_REACTION_URL;
   const preview = process.env[PREVIEW_ENV];
   if (preview !== undefined && preview !== '') query[PREVIEW_QUERY] = preview;
+  // M3-6：体验预览只由 env 决定；缺省 undefined（页面不创建反馈对象，原路径不变）。
+  const experience: ChatExperience | undefined =
+    process.env[CHAT_EXPERIENCE_ENV] === COMPANION_EXPERIENCE ? COMPANION_EXPERIENCE : undefined;
   const chatLocal = process.env[CHAT_LOCAL_ENV];
   const chatPreview = process.env[CHAT_PREVIEW_ENV];
   const localMode = chatLocal !== undefined && chatLocal !== '';
@@ -163,10 +169,23 @@ function createWindow(): void {
       : undefined;
     // M3-2：chat:remote 编排会设置 transport=tunnel；页面只读展示，拿不到 SSH 配置。
     const transport: ChatTransport = process.env[CHAT_TRANSPORT_ENV] === 'tunnel' ? 'tunnel' : 'direct';
-    const info: ChatDisplayInfo = { mode: 'local', model: resolved.config.model, transport, context: contextEnabled };
+    const info: ChatDisplayInfo = {
+      mode: 'local',
+      model: resolved.config.model,
+      transport,
+      context: contextEnabled,
+      ...(experience ? { experience } : {}),
+    };
     ipcMain.handle(CHAT_INFO_CHANNEL, () => info);
     console.log(
-      JSON.stringify({ event: 'chat-mode', mode: 'local', model: resolved.config.model, transport, context: contextEnabled }),
+      JSON.stringify({
+        event: 'chat-mode',
+        mode: 'local',
+        model: resolved.config.model,
+        transport,
+        context: contextEnabled,
+        ...(experience ? { experience } : {}),
+      }),
     );
     void registerChatService({
       getWindow: () => win,
@@ -179,9 +198,9 @@ function createWindow(): void {
     });
   } else if (chatPreview !== undefined && chatPreview !== '') {
     query[CHAT_PREVIEW_QUERY] = CHAT_PREVIEW_TOKEN;
-    const info: ChatDisplayInfo = { mode: 'demo' };
+    const info: ChatDisplayInfo = { mode: 'demo', ...(experience ? { experience } : {}) };
     ipcMain.handle(CHAT_INFO_CHANNEL, () => info);
-    console.log(JSON.stringify({ event: 'chat-mode', mode: 'demo' }));
+    console.log(JSON.stringify({ event: 'chat-mode', mode: 'demo', ...(experience ? { experience } : {}) }));
     // M3-0：聊天预览开启时注册受限聊天服务；服务地址只留在主进程，页面只拿到 send/cancel。
     void registerChatService({
       getWindow: () => win,

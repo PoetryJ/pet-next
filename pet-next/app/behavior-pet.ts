@@ -25,6 +25,12 @@ export interface BehaviorPet {
   boot(): void;
   pointer(event: GestureEvent): void;
   onMedia(status: PetMediaStatus): void;
+  /**
+   * M3-6：请求一次短回应（聊天成功后的反馈）。
+   * 只走既有候选动作路径（auto 输入 → 播放器），仅待机且非拖动时接受；
+   * 忙/拖中直接丢弃、不排队，也不抢占 media.begin。
+   */
+  reaction(): void;
   failNext(): void;
   quit(): void;
 }
@@ -207,6 +213,18 @@ export function createBehaviorPet(options: {
       const wasActive = behavior.activeRequestId === status.requestId;
       behavior.settled(status.requestId, status.status === 'ended');
       if (wasActive) rearmNextAuto();
+    },
+    reaction() {
+      if (disposed) return;
+      // 仅待机且非拖动接受：忙/拖中丢弃，不排队、不改冷却定时器。
+      if (behavior.phase !== 'idle' || behavior.dragging) return;
+      const now = nowMs();
+      const candidate: AutoCandidate = {
+        requestId: nextId('reaction'),
+        readyAtMs: now,
+        expiresAtMs: now + AUTO_TTL_MS,
+      };
+      behavior.considerAuto([candidate]);
     },
     failNext() {
       failArmed = true;

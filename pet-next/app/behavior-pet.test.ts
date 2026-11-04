@@ -311,3 +311,50 @@ test('拖动结束回待机重挂冷却：冷却从松手起算，期间定时�
   h.clock.fireOldest();
   assert.equal(h.plays.at(-1)?.clip, 'auto');
 });
+
+// M3-6：聊天成功后的短回应入口——只走既有 auto 候选路径，忙/拖中丢弃不排队。
+test('reaction 待机时播一次候选短片', () => {
+  const h = createHarness(DEMO_CADENCE);
+  h.pet.boot();
+  const before = h.plays.length;
+  h.pet.reaction();
+  assert.equal(h.plays.length, before + 1);
+  const play = h.plays.at(-1);
+  assert.equal(play?.clip, 'auto');
+  assert.equal(play?.url, 'react.webm');
+  assert.equal(play?.once, true);
+});
+
+test('reaction 忙时丢弃：不打断在播动作，也不排队', () => {
+  const h = createHarness(DEMO_CADENCE);
+  h.pet.boot();
+  clickOnce(h.pet);
+  const clickId = h.plays.at(-1)?.requestId;
+  const before = h.plays.length;
+  h.pet.reaction();
+  assert.equal(h.plays.length, before, '忙时零新播放');
+  assert.equal(h.plays.at(-1)?.requestId, clickId);
+});
+
+test('reaction 拖动中丢弃；松手回待机后可再次接受', () => {
+  const h = createHarness(DEMO_CADENCE);
+  h.pet.boot();
+  h.pet.pointer({ type: 'pointerdown', pointerId: 1, x: 0, y: 0 });
+  h.pet.pointer({ type: 'pointermove', pointerId: 1, x: 12, y: 4 });
+  const before = h.plays.length;
+  h.pet.reaction();
+  assert.equal(h.plays.length, before, '拖动中零新播放');
+  h.pet.pointer({ type: 'pointerup', pointerId: 1, x: 12, y: 4 });
+  h.pet.reaction();
+  assert.equal(h.plays.at(-1)?.clip, 'auto');
+  assert.equal(h.plays.at(-1)?.url, 'react.webm');
+});
+
+test('reaction 在 quit 后忽略', () => {
+  const h = createHarness(DEMO_CADENCE);
+  h.pet.boot();
+  h.pet.quit();
+  const before = h.plays.length;
+  h.pet.reaction();
+  assert.equal(h.plays.length, before);
+});
