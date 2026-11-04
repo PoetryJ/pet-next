@@ -1,0 +1,125 @@
+M3-6 接口冻结（负责人，基线 edad129，分支 codex/pet-next-m3-companion-preview）
+============================================================
+目的：用户发消息后宠物立即显示等待；成功回复有一次回应；取消/新对话/迟到结果不乱动。
+普通默认不变：新能力仅在 --experience=companion 显式打开时存在。
+
+一、入口与公共接线（负责人统一合入，agent 勿动）
+------------------------------------------------------------
+1) scripts/chat-trial-args.mjs
+   - 新增 `--experience=companion`（可缺省；与 --context=on|off 正交独立；缺省 none=现行为）
+   - 非法值/重复 → exit 2；状态行追加 `[chat-trial] 体验=companion（等待提示+回应预览）`
+   - buildTrialEnv：companion → PET_NEXT_EXPERIENCE='companion'；缺省/off → 删除该键
+2) contracts/chat.ts
+   - ChatDisplayInfo 增可选字段：`experience?: 'companion'`（缺省不出现 = 关闭）
+3) electron/main.ts（两处 info 构造，约 166 行 local / 182 行 demo）
+   - 读 PET_NEXT_EXPERIENCE 非空且等于 'companion' → info.experience='companion'
+4) app/page.ts（约 76 行 mountChatPanel 调用、152 行 createBehaviorPet）
+   - info.experience==='companion' 时：包一层 client → 反馈控制器；创建反馈视图；把 reaction 接到 behavior
+   - 关闭时零对象创建（原路径不变）
+5) app/preview-gate.ts / contracts/preview.ts：本轮不改（env 通道足够，不新增 query 令牌）
+
+二、B 冻结契约：core/feedback/（纯函数，无 DOM/Electron/网络/真实时钟）
+------------------------------------------------------------
+新增 core/feedback/types.ts、reduce.ts（或 index.ts 汇总），只导出：
+
+  export type FeedbackPhase = 'idle' | 'waiting' | 'hint';
+  export interface FeedbackState {
+    epoch: number;            // reset 递增；旧 epoch 事件一律无效
+    token: number;            // 内部递增，只在 reduce 内产生；对外不暴露
+    phase: FeedbackPhase;
+    drag: boolean;            // 拖动优先
+    /** 当前提示的隐藏期限（注入时钟）；无提示为 null。任意时刻至多一个定时器。 */
+    deadlineAtMs: number | null;
+    /** 该成功是否已消耗过回应（去重：每 token 至多一次 react）。 */
+    reacted: boolean;
+  }
+  export type FeedbackEvent =
+    | { type: 'submit' }                                  // 有效提交开始（新 token）
+    | { type: 'ok'; token: number }
+    | { type: 'error'; token: number }
+    | { type: 'cancel'; token: number }
+    | { type: 'reset' }                                   // 新对话：清展示+旧 token 全体失效
+    | { type: 'dispose' }
+    | { type: 'drag-start' } | { type: 'drag-end' }
+    | { type: 'expire'; token: number };                   // 调用方定时器到期回灌
+  export type FeedbackEffect =
+    | { type: 'hint-show'; kind: 'waiting' | 'success' | 'error' | 'cancelled' }
+    | { type: 'hint-hide'; reason: 'expire' | 'reset' | 'dispose' }
+    | { type: 'react'; token: number };                    // 请求一次回应（走 behavior）
+  export function initialFeedbackState(): FeedbackState;
+  export function reduceFeedback(
+    state: FeedbackState,
+    event: FeedbackEvent,
+    options: { nowMs: number; hideAfterMs: number },
+  ): { state: FeedbackState; effects: FeedbackEffect[] };
+
+语义硬约束（逐条有单测）：
+  - submit → 新 token、waiting 提示、deadline=now+hideAfterMs
+  - ok(当前 token)：hint-show 'success'；≤1 次 react；reacted=true。非当前 token（迟到/被 reset/被 cancel）→ 零 effects
+  - error(当前 token)：hint-show 'error'（不 react、不假成功）；非当前 token → 零 effects
+  - cancel(当前 token)：hint-show 'cancelled'；非当前 → 零 effects
+  - 重复终态（同 token 二次 ok/error/cancel）→ 零 effects
+  - reset：epoch++、token 失效、phase→idle、deadline→null；effects=[hint-hide(reset)]
+  - dispose：同上 + hint-hide(dispose)；之后任何事件零 effects
+  - drag-start：drag=true；如当前有 waiting/hint → 保留 waiting 但挂起 react 资格（不排长队）
+  - drag 中 ok：hint-show 'success'，不 react（丢弃动作，保留结果提示）
+  - drag-end：drag=false；不补发被丢弃的 react
+  - expire(当前 token 且 nowMs>=deadline)：hint-hide(expire)；否则零 effects
+  - 连续 submit：旧 token 立即失效（其终态零 effects）
+
+三、C 冻结契约：app/feedback*.ts（薄接线，不改 chat-panel 内核）
+------------------------------------------------------------
+  // app/feedback-view.ts
+  export interface FeedbackView { apply(effect: FeedbackEffect): void; dispose(): void; }
+  export function createFeedbackView(root: HTMLElement): FeedbackView;
+  // DOM 契约（e2e 只读）：[data-testid="chat-feedback"]（单节点，textContent=提示文案）、
+  //   [data-testid="chat-feedback"][data-kind="waiting|success|error|cancelled"]
+  // 视口 320×240：嵌入面板内、不覆盖输入框与拖动区；不用 setInterval/轮询
+
+  // app/feedback.ts（控制器；包装既有 ChatPanelClient 三方法）
+  export interface FeedbackController {
+    client: ChatPanelClient;      // 包好的 client，交 mountChatPanel
+    dispose(): void;              // 释放监听与定时器
+  }
+  export function createFeedbackController(options: {
+    inner: ChatPanelClient;
+    view: FeedbackView;
+    onReact(token: number): void;       // 负责人接到 behavior.reaction
+    nowMs?: () => number;
+    schedule?: (delayMs: number, tick: () => void) => () => void;   // 注入，替身测试不用真 sleep
+    hideAfterMs?: number;
+  }): FeedbackController;
+
+  必须：send 前发 submit（不新增 POST）；cancel/reset 透传并发生命周期事件；
+  ok 时 token 取值来自内部（不接受外部 id 判归属）；dispose 后停止一切。
+
+四、behavior 回应入口（C 在页面侧实现，负责人合 page.ts）
+------------------------------------------------------------
+  - 唯一入口：app/behavior-pet.ts 的 BehaviorPet 增 `reaction(): void`（或等价 requestReaction）
+  - 仅 idle 接收（内部经既有 desktop/调度器 propose 路径，不抢 media.begin、不冒充 pointer、不改播放器/多槽）
+  - busy/拖中：调用方（反馈控制器）不发；若发出则会话内丢弃且不排队
+  - 复用已验收 short 素材与既有候选动作路径（C 只接线，不改素材）
+
+五、文件分配（禁改他人文件）
+------------------------------------------------------------
+A: scripts/** 测试与生成器、tests/platform/**（勿改聊天内核 app/core）
+B: core/feedback/**（新增；不改 core/behavior、core/chat）
+C: app/feedback*.ts + app/feedback*.test.ts（不改 app/page.ts、app/chat-panel.ts、app/behavior-pet.ts*
+   —— 需加 reaction 时由负责人落笔，C 在报告中给出精确 diff 建议）
+D: tests/feedback/**、bench/feedback/**、tests/chat-evidence/feedback*/**（新增；不改 B/C 实现）
+
+六、验收与命令（各模块自测 → 负责人全量）
+------------------------------------------------------------
+- 单文件：node --experimental-strip-types --test --test-concurrency=1 <file>
+- 模块：pnpm exec eslint <files> && pnpm build（含 tsc）
+- 负责人最终：env -u NODE_OPTIONS DISPLAY=:94 pnpm verify（本机需清 NODE_OPTIONS 注入）
+- 正式入口臂（D）：pnpm chat:trial --experience=companion（对照：不带 --experience）
+  两臂同 short+behavior（PET_NEXT_EXPERIENCE 仅控制 feedback 开关时，D 用 env 组合控制：
+  companion 臂 = --experience=companion；对照臂 = 无该参数）
+- 零真实推理：PET_NEXT_SSH_BIN=tests/support/fake-ssh.mjs + tests/support/fake-model-service.mjs
+- Windows 未跑 → not-run + 一条复跑命令
+
+七、提交规则
+------------------------------------------------------------
+- A 一笔独立收尾提交；B/C/D 各自预览提交；不改版本号、不合 main、不改默认
+- 不启停共享模型；不新增长期记忆/流式/语音/LLM 动作分类/全套 AIRI 或 REA 运行依赖
