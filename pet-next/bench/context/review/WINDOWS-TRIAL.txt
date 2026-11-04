@@ -14,7 +14,8 @@ T3 连发后点“新对话”立即重发（旧内容不上屏）。证据：te
 ----------------------------------------
   PowerShell：
     $env:PET_NEXT_CHAT_CONTEXT='1'; pnpm chat:local     # 上下文开（按钮出现即生效）
-    pnpm chat:local                                     # 默认关（完全旧行为）
+    Remove-Item Env:PET_NEXT_CHAT_CONTEXT; pnpm chat:local   # 注意：$env: 设置在同一会话持续存在，必须显式清除才是 off
+    # M3-5 起推荐改用正式入口（根治继承值）：pnpm chat:trial --context=off
   退出：点窗口“新对话”清空当前会话；关窗即退出（退出码 0）。
   模式标签：面板角标显示 local；回复前的模型名 qwen3.8-27b。
 

@@ -7,7 +7,8 @@
  * 编排逻辑在 scripts/chat-local-core.mjs（可单测）；这里只注入真实 IO。
  *
  * 可选环境变量：
- *   PET_NEXT_QWEN_BASE_URL / PET_NEXT_QWEN_MODEL  覆盖服务地址与模型（默认 127.0.0.1:18872/v1）
+ *   PET_NEXT_QWEN_BASE_URL / PET_NEXT_QWEN_MODEL  覆盖服务地址与模型（默认 127.0.0.1:18872/v1，
+ *   本机地址；远程环境请用 chat:remote / chat:trial 的 SSH 委托链，本机无服务即失败）
  *   PET_NEXT_CHAT_DEBUG_PORT=<port>               合法端口时给 Electron 传 --remote-debugging-port
  *   PET_NEXT_USER_DATA=<dir>                      原样透传（main.ts 用独立 userData）
  *   PET_NEXT_TEST=<0|1>                           原样透传（未设置时按 1 传，与 chat:preview 一致）
