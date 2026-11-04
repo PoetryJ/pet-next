@@ -39,8 +39,24 @@ runtime/qwen38/wait-start.log）。期间 A/C/D 离线推进，互不阻塞。
 
 四、真实 18 次对照
 ------------------------------------------------
-（待填：B 就绪时点、runner --live 输出、summary 计数）
+2026-11-04 10:56 现场：端口 18872 上已有同参数 vLLM（pid 716425，11-03 20:05 由
+FrostEcho G08 closeout 按负责人授权启动：TP4/每卡 0.25/8192/max-num-seqs1/qwen3.8-27b；
+该 closeout 已交付完成、14 小时无推理请求，仅健康探测）。按“复用已找到的原权重和
+vLLM 环境/只管理本次进程/不抢占”原则：**不新建、不停止他项目进程，直接复用该服务**
+（身份与决定记录 runtime/qwen38/service-reuse.txt）；B 轮询因容器内 ss 不可靠已停
+（避免空卡误启第二实例）。llama-factory 新一轮 eval 同期在跑（GPU 53-58%），共享
+算力；vLLM 静态显存不冲突。
+runner：PET_NEXT_LIVE_RUN_ID=m3-4-live-eval node --experimental-strip-types
+bench/context/runner.ts --live → attempts=18 skippedReplay=0 settled ok=18
+error=0 cancelled=0；账本 18 行 attempt 与 18 例一一对应；usage 全部已知
+（prompt 1353 / completion 386 / total 1739）。
 
 五、D 复核与账本
 ------------------------------------------------
-（待填：review-sheet、逐例判定、usage/延迟/字节、账本对账 18/18）
+review-sheet：bench/context/runs/m3-4-live-eval/review-sheet.md
+逐例判定：bench/context/review/VERDICTS-m3-4-live-eval.md（RUBRIC 盲看）
+- S1 on R3 “你是林小满呀” hit；off 未泄漏（394B/57tok vs on 829B/154tok）
+- S2 on R3 “橙色呀” hit 且无误记绿色；off 未泄漏（400B/56tok vs 730B/123tok）
+- S3 两臂 reset 后 messages 均回落 system>user、回复零“豆包”泄漏（394B/57tok 一致）
+- 延迟 985–9888ms（均值 3213ms，共享 GPU 环境下不作性能结论）
+未证明：单次重复不构成统计显著；未做长会话/并发压测；Windows 未执行。

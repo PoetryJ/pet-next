@@ -1,0 +1,9 @@
+service: FrostEcho G08 closeout 遗留（pid 716425, 11-03 20:05 起, 14h 无推理请求）
+argv: TP4/0.25/8192/max-num-seqs1/18872/qwen3.8-27b (与 M3-2 恢复说明一致)
+复用决定：不新建进程、不停止他项目进程；仅发 18 次新批请求
+Wed Nov  4 10:56:58 CST 2026
+{"object":"list","data":[{"id":"qwen3.8-27b","object":"model","created":1793761018,"owned_by":"vllm","root":"/data2/mode
+0, 53 %, 42991 MiB
+1, 56 %, 43351 MiB
+2, 53 %, 42799 MiB
+3, 54 %, 42581 MiB

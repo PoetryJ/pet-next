@@ -1,0 +1,302 @@
+{
+  "runId": "m3-4-live-eval",
+  "mode": "live",
+  "attempts": 18,
+  "skippedReplay": 0,
+  "settled": {
+    "ok": 18,
+    "error": 0,
+    "cancelled": 0,
+    "other": 0
+  },
+  "cases": [
+    {
+      "seq": 1,
+      "case": "S1",
+      "arm": "off",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "你好呀，林小满！很高兴认识你。我会记住这个名字的，以后有什么想聊的随时找我哦。"
+      },
+      "bytes": 412,
+      "usage": {
+        "prompt_tokens": 62,
+        "completion_tokens": 26,
+        "total_tokens": 88
+      }
+    },
+    {
+      "seq": 2,
+      "case": "S1",
+      "arm": "off",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "八千步真的不少呢，辛苦啦！快找个舒服的地方坐下，喝口水放松一下，好好犒劳一下自己吧。"
+      },
+      "bytes": 400,
+      "usage": {
+        "prompt_tokens": 60,
+        "completion_tokens": 30,
+        "total_tokens": 90
+      }
+    },
+    {
+      "seq": 3,
+      "case": "S1",
+      "arm": "off",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "哎呀，我还没记住你的名字呢。快告诉我吧，这样我下次就能亲切地叫你啦！"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 57,
+        "completion_tokens": 22,
+        "total_tokens": 79
+      }
+    },
+    {
+      "seq": 4,
+      "case": "S1",
+      "arm": "on",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "你好呀，林小满！很高兴认识你。我会记住这个名字的，以后有什么想聊的随时找我哦。"
+      },
+      "bytes": 412,
+      "usage": {
+        "prompt_tokens": 62,
+        "completion_tokens": 26,
+        "total_tokens": 88
+      }
+    },
+    {
+      "seq": 5,
+      "case": "S1",
+      "arm": "on",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "哇，八千步真不少，辛苦啦！快找个舒服的地方坐下歇歇，喝口水放松一下。"
+      },
+      "bytes": 631,
+      "usage": {
+        "prompt_tokens": 110,
+        "completion_tokens": 25,
+        "total_tokens": 135
+      }
+    },
+    {
+      "seq": 6,
+      "case": "S1",
+      "arm": "on",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "当然记得，你是林小满呀。"
+      },
+      "bytes": 829,
+      "usage": {
+        "prompt_tokens": 154,
+        "completion_tokens": 10,
+        "total_tokens": 164
+      }
+    },
+    {
+      "seq": 7,
+      "case": "S2",
+      "arm": "off",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "绿色真清新，看着就让人心情放松呢！"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 57,
+        "completion_tokens": 12,
+        "total_tokens": 69
+      }
+    },
+    {
+      "seq": 8,
+      "case": "S2",
+      "arm": "off",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "没关系，橙色也很温暖明亮呢！看来你的喜好更偏向活力满满的颜色，我记住啦。"
+      },
+      "bytes": 427,
+      "usage": {
+        "prompt_tokens": 63,
+        "completion_tokens": 22,
+        "total_tokens": 85
+      }
+    },
+    {
+      "seq": 9,
+      "case": "S2",
+      "arm": "off",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "哎呀，我还没记住呢！快告诉我吧，这样我下次就能用你最喜欢的颜色来装饰心情啦～"
+      },
+      "bytes": 400,
+      "usage": {
+        "prompt_tokens": 56,
+        "completion_tokens": 25,
+        "total_tokens": 81
+      }
+    },
+    {
+      "seq": 10,
+      "case": "S2",
+      "arm": "on",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "绿色真清新，看着就让人心情舒畅！"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 57,
+        "completion_tokens": 11,
+        "total_tokens": 68
+      }
+    },
+    {
+      "seq": 11,
+      "case": "S2",
+      "arm": "on",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "没关系，橙色也很温暖活泼，像阳光一样！"
+      },
+      "bytes": 571,
+      "usage": {
+        "prompt_tokens": 93,
+        "completion_tokens": 12,
+        "total_tokens": 105
+      }
+    },
+    {
+      "seq": 12,
+      "case": "S2",
+      "arm": "on",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "你刚才说最喜欢的是橙色呀！"
+      },
+      "bytes": 730,
+      "usage": {
+        "prompt_tokens": 123,
+        "completion_tokens": 9,
+        "total_tokens": 132
+      }
+    },
+    {
+      "seq": 13,
+      "case": "S3",
+      "arm": "off",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "哇，豆包这个名字听起来就软萌可爱！它平时喜欢在你身边打呼噜，还是喜欢调皮捣蛋呢？"
+      },
+      "bytes": 400,
+      "usage": {
+        "prompt_tokens": 60,
+        "completion_tokens": 28,
+        "total_tokens": 88
+      }
+    },
+    {
+      "seq": 14,
+      "case": "S3",
+      "arm": "off",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "哇，三岁了呀！时间过得真快。祝你生日快乐，新的一岁要更聪明、更可爱哦！🎂"
+      },
+      "bytes": 385,
+      "usage": {
+        "prompt_tokens": 57,
+        "completion_tokens": 28,
+        "total_tokens": 85
+      }
+    },
+    {
+      "seq": 15,
+      "case": "S3",
+      "arm": "off",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "哎呀，我还没记住你的名字呢！快告诉我吧，这样我就能亲切地称呼你啦～"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 57,
+        "completion_tokens": 22,
+        "total_tokens": 79
+      }
+    },
+    {
+      "seq": 16,
+      "case": "S3",
+      "arm": "on",
+      "round": 1,
+      "result": {
+        "status": "ok",
+        "text": "哇，豆包这个名字听起来就软萌可爱！它平时喜欢在你身边打呼噜，还是喜欢调皮地抓沙发呀？"
+      },
+      "bytes": 400,
+      "usage": {
+        "prompt_tokens": 60,
+        "completion_tokens": 29,
+        "total_tokens": 89
+      }
+    },
+    {
+      "seq": 17,
+      "case": "S3",
+      "arm": "on",
+      "round": 2,
+      "result": {
+        "status": "ok",
+        "text": "三岁正是猫咪最活泼的年纪呢！它现在是不是已经成了家里的小霸王，或者特别粘人的小暖男？"
+      },
+      "bytes": 613,
+      "usage": {
+        "prompt_tokens": 108,
+        "completion_tokens": 27,
+        "total_tokens": 135
+      }
+    },
+    {
+      "seq": 18,
+      "case": "S3",
+      "arm": "on",
+      "round": 3,
+      "result": {
+        "status": "ok",
+        "text": "哎呀，我还没听到你告诉我呢！快给我起个好听的名字吧，我超期待的～"
+      },
+      "bytes": 394,
+      "usage": {
+        "prompt_tokens": 57,
+        "completion_tokens": 22,
+        "total_tokens": 79
+      }
+    }
+  ]
+}
