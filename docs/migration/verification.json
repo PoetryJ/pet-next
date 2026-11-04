@@ -1,0 +1,33 @@
+{
+  "source_repository": "https://github.com/PoetryJ/dsh-pet",
+  "upstream": "https://github.com/PC2005-cloud/dsh-pet",
+  "source_commit": "edad129d74c027ebd8d33c2fa6248b4d8c254dec",
+  "mapped_commit": "e2c154a06723d2e4ec07237bda62335ad87047d9",
+  "historical_commits_checked": 517,
+  "main_baseline_commit_count": 513,
+  "author_committer_dates_preserved": true,
+  "pet_next_tree_unchanged": true,
+  "license_unchanged": true,
+  "filtered_artifact_paths": [
+    "pet-next-m3-full-16a84e4.bundle",
+    "pet-next-m3-chat-fc75777-16a84e4.bundle"
+  ],
+  "legacy_paths_removed_from_current_tree_only": [
+    ".agents",
+    "API.md",
+    "CONFIG.md",
+    "CORDIS-API.md",
+    "CORDIS.md",
+    "FEATURES.md",
+    "INSTALL.md",
+    "MAKE-YOUR-OWN-PET.md",
+    "README.md",
+    "assets",
+    "dsh-pet",
+    "openapi.yaml",
+    "prompts",
+    "scripts",
+    "tools",
+    "video"
+  ]
+}
