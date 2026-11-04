@@ -1,0 +1,10 @@
+{
+  "kind": "exit",
+  "exitCode": 0,
+  "signal": null,
+  "recordDir": "/workspace/pet-next/logs/platform-runs/linux/2026-10-29T16-13-34-950Z-platform-exit-5219",
+  "treeGone": true,
+  "decoyAlive": true,
+  "decoyTracked": false,
+  "detail": "kind=exit exit=0 signal=null treeGone=true decoyAlive=true decoyTracked=false"
+}

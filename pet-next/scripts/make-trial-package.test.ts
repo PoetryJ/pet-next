@@ -97,9 +97,19 @@ test('archiveWith：后端回退（zip 不可用→python3 不可用→tar 可�
 });
 
 test('CLI --dry-run --only-src：打印清单、退出 0、不产出压缩包', async () => {
+  // 解压包内没有 .git：注入清单（任务书 A：打包 CLI 测试不能依赖包外 .git）。
+  const dir = mkdtempSync(path.join(tmpdir(), 'm35-pkg-dry-'));
+  after(() => rmSync(dir, { recursive: true, force: true }));
+  const listFile = path.join(dir, 'ls-files.txt');
+  writeFileSync(
+    listFile,
+    ['pet-next/README.md', 'pet-next/core/chat/session.ts', 'pet-next/logs/x.log', 'pet-next/tests/chat-evidence/a.ndjson'].join('\n'),
+    'utf8',
+  );
   const run = await new Promise<{ code: number | null; stdout: string; stderr: string }>((resolve, reject) => {
     const child = spawn(process.execPath, [path.join(petRoot, 'scripts/make-trial-package.mjs'), '--dry-run', '--only-src'], {
-      cwd: petRoot,
+      cwd: dir,
+      env: { ...process.env, PET_NEXT_TRIAL_FILE_LIST: listFile },
       stdio: ['ignore', 'pipe', 'pipe'],
     });
     let stdout = '';

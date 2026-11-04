@@ -18,6 +18,23 @@ import {
 
 const petRoot = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 
+/** 证据存在性：仓库内有 logs/ 就查原路径；源码包排除 logs/，改查自含副本（tests/platform/evidence/runs/）。 */
+async function evidenceExists(evidencePath: string): Promise<boolean> {
+  const candidates = [
+    path.join(petRoot, evidencePath),
+    path.join(petRoot, 'tests/platform/evidence/runs', path.basename(evidencePath)),
+  ];
+  for (const candidate of candidates) {
+    try {
+      await access(candidate);
+      return true;
+    } catch {
+      /* 试下一个 */
+    }
+  }
+  return false;
+}
+
 test('失败优先于未跑，未跑不是通过', () => {
   assert.equal(verdictOf(['passed', 'passed']), 'passed');
   assert.equal(verdictOf(['passed', 'not-run']), 'incomplete');
@@ -123,13 +140,19 @@ test('已提交的矩阵没有把未跑写成通过', async () => {
       assert.equal(row.observedScaleFactor, null);
     }
     if (row.origin === 'simulated' && row.status === 'passed') assert.equal(row.scaleSource, 'simulated-chromium-flag');
-    if (row.status === 'passed' && row.evidencePath) await access(path.join(petRoot, row.evidencePath));
+    if (row.status === 'passed' && row.evidencePath) {
+      assert.equal(await evidenceExists(row.evidencePath), true, `缩放证据缺失：${row.evidencePath}`);
+    }
   }
   for (const row of body.flows) {
-    if (row.status === 'passed' && row.evidencePath) await access(path.join(petRoot, row.evidencePath));
+    if (row.status === 'passed' && row.evidencePath) {
+      assert.equal(await evidenceExists(row.evidencePath), true, `流程证据缺失：${row.evidencePath}`);
+    }
   }
   for (const row of body.processes) {
-    if (row.status === 'passed') await access(path.join(petRoot, row.evidencePath));
+    if (row.status === 'passed') {
+      assert.equal(await evidenceExists(row.evidencePath), true, `进程证据缺失：${row.evidencePath}`);
+    }
   }
   assert.equal(body.scales.length, REQUIRED_SCALE_CASES.length);
 });

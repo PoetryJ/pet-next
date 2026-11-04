@@ -1,0 +1,100 @@
+{
+  "transparent": {
+    "ok": true,
+    "reason": null,
+    "cssBackground": "rgba(0, 0, 0, 0)",
+    "reportedBackground": "#000000",
+    "depth": 32,
+    "screenshot": {
+      "colorType": 6,
+      "samples": [
+        {
+          "x": 0,
+          "y": 0,
+          "alpha": 0
+        },
+        {
+          "x": 323,
+          "y": 0,
+          "alpha": 0
+        },
+        {
+          "x": 0,
+          "y": 246,
+          "alpha": 0
+        },
+        {
+          "x": 323,
+          "y": 246,
+          "alpha": 0
+        },
+        {
+          "x": 162,
+          "y": 123,
+          "alpha": 255
+        }
+      ]
+    }
+  },
+  "click": {
+    "ok": true,
+    "reason": null,
+    "trace": "idle:1,reaction:2,idle:3"
+  },
+  "drag": {
+    "ok": true,
+    "reason": null,
+    "screenDelta": {
+      "x": 48.142852783203125,
+      "y": 24.079360961914062
+    },
+    "requested": {
+      "x": 126,
+      "y": 131
+    },
+    "readback": {
+      "x": 125,
+      "y": 130,
+      "width": 337,
+      "height": 260
+    },
+    "devicePixelRatio": 0.984375,
+    "trace": "idle:1,reaction:2,idle:3"
+  },
+  "clamp": {
+    "ok": true,
+    "reason": null
+  },
+  "quit": {
+    "exitCode": 0,
+    "reason": null,
+    "cleanupOk": true,
+    "cleanupReason": null
+  },
+  "ready": {
+    "alwaysOnTop": true,
+    "transparent": true,
+    "requestedBackground": "#00000000",
+    "background": "#000000",
+    "bounds": {
+      "x": 78,
+      "y": 107,
+      "width": 328,
+      "height": 248
+    },
+    "workArea": {
+      "x": 0,
+      "y": 29,
+      "width": 1951,
+      "height": 1191
+    },
+    "scaleFactor": 0.984375,
+    "forcedDeviceScaleFactor": null,
+    "scaleSource": "os",
+    "displayCount": 1,
+    "physical": {
+      "x": 76,
+      "y": 105
+    }
+  }
+}

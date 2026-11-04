@@ -1,0 +1,10 @@
+{
+  "kind": "timeout",
+  "exitCode": null,
+  "signal": "SIGKILL",
+  "recordDir": "/workspace/pet-next/logs/platform-runs/linux/2026-10-29T16-13-34-148Z-platform-hang-5203",
+  "treeGone": true,
+  "decoyAlive": true,
+  "decoyTracked": false,
+  "detail": "kind=timeout exit=null signal=SIGKILL treeGone=true decoyAlive=true decoyTracked=false"
+}

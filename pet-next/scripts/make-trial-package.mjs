@@ -95,6 +95,9 @@ function sh(command, args, options = {}) {
 }
 
 function gitLsFiles() {
+  // 解压包内没有 .git：允许注入清单（测试用临时文件），CLI 行为不变。
+  const injected = process.env.PET_NEXT_TRIAL_FILE_LIST;
+  if (injected) return readFileSync(injected, 'utf8');
   const result = sh('git', ['ls-files'], { cwd: REPO_ROOT });
   if (!result.ok) throw new Error(`git ls-files 失败：${String(result.error)}`);
   return result.out;
@@ -155,12 +158,12 @@ function makeSrcPackage(options) {
   if (excluded.some((file) => file.includes('id_rsa') || file.endsWith('.pem'))) {
     throw new Error('清单包含密钥类文件——拒绝打包（fail-closed）');
   }
-  const base = `${options.out}/pet-next-trial-src-${shortSha()}`;
   console.log(`[trial-package] 源码：收集 ${kept.length} 个文件（黑名单排除 ${excluded.length} 个）`);
   if (options.dryRun) {
     console.log(kept.slice(0, 10).map((file) => `  + ${file}`).join('\n'));
     return { kept, excluded, archive: null };
   }
+  const base = `${options.out}/pet-next-trial-src-${shortSha()}`;
   const archive = archiveWith(PET_ROOT, base, kept);
   const size = statSync(archive.file).size;
   console.log(`[trial-package] ${archive.file}（${archive.format}，${sizeLabel(size)}，SHA256 ${sha256File(archive.file).slice(0, 16)}…）`);
