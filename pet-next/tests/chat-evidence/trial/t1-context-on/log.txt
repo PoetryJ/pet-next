@@ -1,8 +1,8 @@
 # M3-5 D trial e2e t1-context-on
-# 2026-11-04T12:23:14.727Z
+# 2026-11-04T12:59:03.140Z
 
 cmd: PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:trial --context=on
-isolated: userData=/tmp/pet-next-trial-e2e-aCvDL2 tunnelPort=43455 debugPort=44807 fakeModel=38259
+isolated: userData=/tmp/pet-next-trial-e2e-6yzYoZ tunnelPort=39657 debugPort=37893 fakeModel=36989
 panel mounted: mode=local context=on note=只记住当前会话内最近几轮，重启不保留。
 panel open: context=on hasReset=true
 send: 我叫小林
