@@ -15,10 +15,10 @@ export const OFF_LOG = '[chat-trial] 上下文=off（单轮，与 M3-1 行为一
 /** M3-6：体验预览令牌（唯一值 companion）。 */
 export const COMPANION_EXPERIENCE = 'companion';
 export const TRIAL_EXPERIENCE_ENV = 'PET_NEXT_EXPERIENCE';
-export const TRIAL_EXPERIENCE_LOG = '[chat-trial] 体验=companion（等待提示+回应预览，short+behavior 同启）';
+export const TRIAL_EXPERIENCE_LOG = '[chat-trial] 体验=companion（等待提示+回应预览，short,behavior 同启）';
 /** companion 需要 short 与 behavior 同时打开；只在父 env 未显式给 preview 时注入。 */
 export const TRIAL_PREVIEW_ENV = 'PET_NEXT_PREVIEW';
-export const COMPANION_PREVIEW = 'short+behavior';
+export const COMPANION_PREVIEW = 'short,behavior';
 
 /**
  * @param argv {string[]} 进程参数（不含 node 与脚本路径）

@@ -193,16 +193,16 @@ test('parseTrialArgs：experience 非法值/重复 → exit 2 且带用法', () 
   assert.match(dup.error, /重复 --experience/);
 });
 
-test('buildTrialEnv：companion 设体验与 short+behavior；none 清除父残留；显式 preview 不被覆盖', () => {
+test('buildTrialEnv：companion 设体验与 short,behavior；none 清除父残留；显式 preview 不被覆盖', () => {
   const companion = buildTrialEnv({}, 'off', 'companion');
   assert.equal(companion.PET_NEXT_EXPERIENCE, 'companion');
-  assert.equal(companion.PET_NEXT_PREVIEW, 'short+behavior');
+  assert.equal(companion.PET_NEXT_PREVIEW, 'short,behavior');
   assert.ok(!(TRIAL_CONTEXT_ENV in companion), 'companion 不禁用 context 缺省 off');
 
   // 父壳残留必须被清除（显式选择优先）。
-  const cleared = buildTrialEnv({ PET_NEXT_EXPERIENCE: 'companion', PET_NEXT_PREVIEW: 'short+behavior' }, 'off', 'none');
+  const cleared = buildTrialEnv({ PET_NEXT_EXPERIENCE: 'companion', PET_NEXT_PREVIEW: 'short,behavior' }, 'off', 'none');
   assert.ok(!('PET_NEXT_EXPERIENCE' in cleared));
-  assert.equal(cleared.PET_NEXT_PREVIEW, 'short+behavior', 'none 不动用户的 preview 选择');
+  assert.equal(cleared.PET_NEXT_PREVIEW, 'short,behavior', 'none 不动用户的 preview 选择');
 
   // 用户显式给的 preview 优先。
   const explicit = buildTrialEnv({ PET_NEXT_PREVIEW: 'behavior-demo' }, 'off', 'companion');

@@ -3,6 +3,7 @@
  */
 import assert from 'node:assert/strict';
 import { createHash } from 'node:crypto';
+import type { Dirent } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 import { describe, test } from 'node:test';
@@ -57,7 +58,14 @@ export function coreSpecifierAllowed(specifier: string, isTest: boolean): boolea
 const runtimeWord = /\b(document|window|XMLHttpRequest|localStorage|fetch|process|require)\s*[(.]/;
 
 async function sourceFiles(dir: string): Promise<string[]> {
-  const entries = await readdir(dir, { withFileTypes: true });
+  let entries: Dirent[];
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (error) {
+    // 运行产物目录（bench/*/runs 等）可能与扫描并发清理；消失只说明没有源码可扫。
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return [];
+    throw error;
+  }
   const files: string[] = [];
   for (const entry of entries) {
     if (entry.name === 'node_modules' || entry.name === 'dist') continue;
@@ -202,7 +210,7 @@ describe('integration contracts', () => {
     assert.equal(unitTests.includes('.e2e.test.ts'), true);
     assert.equal(
       scripts.scripts['test:e2e'],
-      'node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts',
+      'node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts tests/feedback/*.e2e.test.ts',
     );
     assert.equal(scripts.scripts['verify:windows'], 'powershell -File tests/platform/verify-windows.ps1');
     assert.equal(scripts.scripts['assets:check'], 'node --experimental-strip-types assets-pipeline/cli.ts');

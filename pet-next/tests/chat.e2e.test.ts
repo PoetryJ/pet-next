@@ -258,6 +258,12 @@ async function connectCdp(url: string): Promise<Cdp> {
     if (message.error) waiter.reject(new Error(message.error.message ?? 'cdp error'));
     else waiter.resolve(message.result);
   });
+  // 关窗时渲染进程先于回复销毁：不 reject pending 会让 evaluate 永久悬挂（240s 超时假象）。
+  ws.addEventListener('close', () => {
+    const error = new Error('cdp closed');
+    for (const waiter of pending.values()) waiter.reject(error);
+    pending.clear();
+  });
   return {
     send(method, params) {
       const id = next + 1;
@@ -665,7 +671,12 @@ function waitForChildExit(
 
 async function quitByApi(run: EntryRun, note: string): Promise<void> {
   run.evidence.log(`关窗: ${note}（Runtime.evaluate window.pet.quit()）`);
-  await evaluate(run.cdp, 'window.pet.quit()');
+  try {
+    await evaluate(run.cdp, 'window.pet.quit()');
+  } catch (error) {
+    // 窗口在求值返回前销毁时连接先断，属正常关窗；退出码与残留仍由 waitForChildExit/assertNoLeftovers 严判。
+    if (!(error instanceof Error && error.message.includes('cdp closed'))) throw error;
+  }
 }
 function readCmdline(pid: number): string {
   try {

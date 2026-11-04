@@ -3,6 +3,7 @@
  * 不修改 `scripts/unit-tests.mjs`。漏掉的路径交给集成。
  * @module pet-next/tests/contracts/verify-reach
  */
+import type { Dirent } from 'node:fs';
 import { readdir, readFile } from 'node:fs/promises';
 import path from 'node:path';
 
@@ -65,7 +66,14 @@ function escapeRegex(text: string): string {
 }
 
 async function walk(dir: string, root: string, out: string[]): Promise<void> {
-  const entries = await readdir(dir, { withFileTypes: true });
+  let entries: Dirent[];
+  try {
+    entries = await readdir(dir, { withFileTypes: true });
+  } catch (error) {
+    // 运行产物目录（bench/*/runs）会被其他测试并发清理；消失只说明没有测试文件可收。
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return;
+    throw error;
+  }
   for (const entry of entries) {
     if (skipDirs.has(entry.name)) continue;
     const full = path.join(dir, entry.name);

@@ -92,6 +92,8 @@ if (chatMode === CHAT_PREVIEW_TOKEN || chatMode === CHAT_LOCAL_TOKEN) {
       onReact: () => holder.behavior?.reaction(),
     });
     holder.feedback = feedback;
+    // 模式状态明确：页面根标记体验口径，供人工/E2E 只读判定（关闭时不写）。
+    document.documentElement.dataset.experience = info.experience;
     mountChatPanel(document.body, feedback.client, info, { feedbackElement: view.element });
   });
 }

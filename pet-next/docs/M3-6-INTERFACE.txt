@@ -116,7 +116,7 @@ D: tests/feedback/**、bench/feedback/**、tests/chat-evidence/feedback*/**（�
 - 模块：pnpm exec eslint <files> && pnpm build（含 tsc）
 - 负责人最终：env -u NODE_OPTIONS DISPLAY=:94 pnpm verify（本机需清 NODE_OPTIONS 注入）
 - 正式入口臂（D）：pnpm chat:trial --experience=companion（对照：不带 --experience）
-  两臂同 short+behavior（PET_NEXT_EXPERIENCE 仅控制 feedback 开关时，D 用 env 组合控制：
+  两臂同 short,behavior（预览令牌以逗号分隔；PET_NEXT_EXPERIENCE 仅控制 feedback 开关时，D 用 env 组合控制：
   companion 臂 = --experience=companion；对照臂 = 无该参数）
 - 零真实推理：PET_NEXT_SSH_BIN=tests/support/fake-ssh.mjs + tests/support/fake-model-service.mjs
 - Windows 未跑 → not-run + 一条复跑命令
