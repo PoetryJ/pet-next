@@ -51,3 +51,8 @@ dsh-pet/dist-app/
 .DS_Store
 Thumbs.db
 desktop.ini
+
+# ── M3-5：运行缓存/自动产物不再入库（历史保全见 docs/M3-5-UNTRACKED-SHA256.txt）──
+pet-next/logs/**/userdata/
+pet-next/bench/runs*/**/environment.json
+pet-next/logs/platform-runs/**/environment.json
