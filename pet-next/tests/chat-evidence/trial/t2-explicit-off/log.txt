@@ -1,8 +1,8 @@
 # M3-5 D trial e2e t2-explicit-off
-# 2026-11-04T06:39:14.362Z
+# 2026-11-04T09:21:37.180Z
 
 cmd: PET_NEXT_CHAT_CONTEXT=1 pnpm chat:trial --context=off
-isolated: userData=/tmp/pet-next-trial-e2e-CcSfDm tunnelPort=46743 debugPort=32769 fakeModel=34571
+isolated: userData=/tmp/pet-next-trial-e2e-6nH7xM tunnelPort=41937 debugPort=33147 fakeModel=41479
 panel mounted: mode=local context=off note=null
 panel open: context=off hasReset=false
 send: 第一句话

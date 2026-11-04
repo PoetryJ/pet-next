@@ -1,0 +1,58 @@
+{
+  "generatedAt": "2026-11-04T08:38:28.031Z",
+  "seconds": 60,
+  "warmupSec": 8,
+  "display": ":94",
+  "feedbackVisibleEvidence": "tests/chat-evidence/feedback/companion-success/（e2e 发送→等待→成功提示时间戳；待机无发送无反馈）",
+  "arms": {
+    "control": {
+      "arm": "control",
+      "trialArgs": [],
+      "experience": "",
+      "preview": "short,behavior",
+      "seconds": 60,
+      "warmupSec": 8,
+      "host": "linux 5.4.119-19.0009.28",
+      "pageAtMs": 11069,
+      "posts": 0,
+      "rssP50": 654049280,
+      "rssMax": 654872576,
+      "cpuAvg": 5.034125288059777,
+      "cpuMax": 6.9721115537848615,
+      "procsP50": 10,
+      "sampleCount": 60,
+      "failure": "",
+      "command": "cd pet-next\nenv -u NODE_OPTIONS DISPLAY=:94 node bench/feedback/resource.mjs --seconds=60",
+      "rssP50MB": 624,
+      "rssMaxMB": 625
+    },
+    "companion": {
+      "arm": "companion",
+      "trialArgs": [
+        "--experience=companion"
+      ],
+      "experience": "companion",
+      "preview": "short,behavior",
+      "seconds": 60,
+      "warmupSec": 8,
+      "host": "linux 5.4.119-19.0009.28",
+      "pageAtMs": 11041,
+      "posts": 0,
+      "rssP50": 654356480,
+      "rssMax": 654696448,
+      "cpuAvg": 5.507989298770437,
+      "cpuMax": 8.97308075772682,
+      "procsP50": 10,
+      "sampleCount": 60,
+      "failure": "",
+      "command": "cd pet-next\nenv -u NODE_OPTIONS DISPLAY=:94 node bench/feedback/resource.mjs --seconds=60",
+      "rssP50MB": 624,
+      "rssMaxMB": 624
+    }
+  },
+  "delta": {
+    "rssP50MB": 0,
+    "cpuAvg": 0.47,
+    "posts": 0
+  }
+}

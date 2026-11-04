@@ -1,0 +1,21 @@
+{
+  "arm": "companion",
+  "trialArgs": [
+    "--experience=companion"
+  ],
+  "experience": "companion",
+  "preview": "short,behavior",
+  "seconds": 3,
+  "warmupSec": 4,
+  "host": "linux 5.4.119-19.0009.28",
+  "pageAtMs": 11055,
+  "posts": 0,
+  "rssP50": 654860288,
+  "rssMax": 655085568,
+  "cpuAvg": 4.985044865403789,
+  "cpuMax": 4.985044865403789,
+  "procsP50": 10,
+  "sampleCount": 3,
+  "failure": "",
+  "command": "cd pet-next\nenv -u NODE_OPTIONS DISPLAY=:94 node bench/feedback/resource.mjs --seconds=3"
+}

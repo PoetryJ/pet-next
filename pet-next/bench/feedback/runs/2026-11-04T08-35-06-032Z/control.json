@@ -1,0 +1,19 @@
+{
+  "arm": "control",
+  "trialArgs": [],
+  "experience": "",
+  "preview": "short,behavior",
+  "seconds": 3,
+  "warmupSec": 4,
+  "host": "linux 5.4.119-19.0009.28",
+  "pageAtMs": 12075,
+  "posts": 0,
+  "rssP50": 653873152,
+  "rssMax": 653971456,
+  "cpuAvg": 4.9771064993756315,
+  "cpuMax": 5.970149253731344,
+  "procsP50": 10,
+  "sampleCount": 3,
+  "failure": "",
+  "command": "cd pet-next\nenv -u NODE_OPTIONS DISPLAY=:94 node bench/feedback/resource.mjs --seconds=3"
+}

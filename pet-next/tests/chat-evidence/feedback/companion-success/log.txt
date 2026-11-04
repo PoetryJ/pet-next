@@ -1,0 +1,4 @@
+submit=1793784323373 waiting_ms=54 reply_ms=1564 success_ms=1565 react_ms=1565 reaction=reaction-2
+screenshot=/data3/DATA/project/project_meishijiang/dsh-pet/pet-next/tests/chat-evidence/feedback/companion-success/react.png
+hint_hidden_ms=4108
+PASS companion-success

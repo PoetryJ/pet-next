@@ -1,0 +1,23 @@
+{
+  "pageAtMs": 11055,
+  "samples": [
+    {
+      "t": 1,
+      "rssBytes": 655085568,
+      "cpuPercent": null,
+      "procs": 10
+    },
+    {
+      "t": 2,
+      "rssBytes": 654860288,
+      "cpuPercent": 4.985044865403789,
+      "procs": 10
+    },
+    {
+      "t": 3,
+      "rssBytes": 654725120,
+      "cpuPercent": 4.985044865403789,
+      "procs": 10
+    }
+  ]
+}
