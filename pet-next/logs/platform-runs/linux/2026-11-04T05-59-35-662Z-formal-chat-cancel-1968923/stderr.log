@@ -1,0 +1,14 @@
+/root/.codebuddy-server-cn/bin/stable-5ff26f1ba1f21dfed164f208b0c6d11490103cdf/extensions/genie/out/vendor/shim/node-safe-delete-shim.cjs:404
+            throw new Error(detail);
+                  ^
+
+Error: [safe-delete][SAFE_DELETE_BULK_CONFIRM_REQUIRED] {"count":500,"threshold":500,"scope":"turn","targets":["/data3/DATA/project/project_meishijiang/dsh-pet/pet-next/dist/app/page.html"],"targetCount":1}
+    at checkBulkDeleteGuard (/root/.codebuddy-server-cn/bin/stable-5ff26f1ba1f21dfed164f208b0c6d11490103cdf/extensions/genie/out/vendor/shim/node-safe-delete-shim.cjs:404:19)
+    at tryTrash (/root/.codebuddy-server-cn/bin/stable-5ff26f1ba1f21dfed164f208b0c6d11490103cdf/extensions/genie/out/vendor/shim/node-safe-delete-shim.cjs:733:5)
+    at /root/.codebuddy-server-cn/bin/stable-5ff26f1ba1f21dfed164f208b0c6d11490103cdf/extensions/genie/out/vendor/shim/node-safe-delete-shim.cjs:866:9
+    at mayCopyFile (node:internal/fs/cp/cp:247:11)
+    at onFile (node:internal/fs/cp/cp:242:10)
+    at getStatsForCopy (node:internal/fs/cp/cp:211:12)
+    at async file:///data3/DATA/project/project_meishijiang/dsh-pet/pet-next/scripts/copy-static.mjs:13:1
+
+Node.js v24.14.0

@@ -1,9 +1,9 @@
 # M3-5 D trial e2e t5-spaced-path
-# 2026-11-04T05:46:48.437Z
+# 2026-11-04T06:40:01.311Z
 
-spaced userData: /tmp/pet next trial 1793771173223-433504
+spaced userData: /tmp/pet next trial 1793774387180-536151
 cmd: PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:trial --context=on
-isolated: userData=/tmp/pet next trial 1793771173223-433504 tunnelPort=34419 debugPort=33917 fakeModel=38111
+isolated: userData=/tmp/pet next trial 1793774387180-536151 tunnelPort=33957 debugPort=38105 fakeModel=37491
 panel mounted: mode=local context=on note=只记住当前会话内最近几轮，重启不保留。
 panel open: context=on hasReset=true
 send: 路径带空格
