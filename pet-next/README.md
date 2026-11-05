@@ -4,7 +4,7 @@
 
 ## 启动
 
-需要 Node `>=22.12.0` 和 pnpm。Windows 与 Linux 都是：
+需要 Node `>=22.12.0` 和 pnpm（仓库锁定 `pnpm@10.33.4`，`corepack enable` 即用）。Windows 与 Linux 都是：
 
 ```bash
 cd pet-next
@@ -13,6 +13,15 @@ pnpm start
 ```
 
 `pnpm start` 会先构建再打开窗口。按 Esc 或调用预加载桥的 `quit()` 退出。
+
+### 试用包双击入口（Windows）
+
+源码试用包解压后的推荐入口是双击根目录的 `启动.cmd`（等价于 `node scripts\launch-trial.mjs`）：
+
+1. 前置（一次）：安装 Node 22.12+ 与 pnpm 10.33.4，在包目录执行 `pnpm install` 和 `pnpm build`。双击入口不代替安装与构建——缺构建产物时它会提示「请先在终端运行 pnpm install && pnpm build」并以非零码退出。
+2. 双击 `启动.cmd`：首次出现启动向导（填服务器/SSH 连接配置 → 测试连接，只 `GET /v1/models`，不推理 → 选预览选项 → 启动桌宠）。配置保存在 `~/.pet-next/qwen-remote.json`，再次启动自动回填；直接关窗即干净退出。
+
+原有命令入口不变：`pnpm start`（桌宠）、`pnpm chat:trial`（聊天试用）。上手细节见 [`docs/WINDOWS-TRIAL.md`](docs/WINDOWS-TRIAL.md)。
 
 `pnpm verify` 先做分层预检（缺 ffmpeg / 无 DISPLAY / 非 Windows 的项记为 not-run 并给修复提示），再依次做类型检查、lint、单元测试、进程清理、素材集成、构建和 Electron 实测，任一步失败都会返回非零。这是统一验收命令。`pnpm test` 会走 `core/`、`adapters/`、`app/`、`tests/`、`experiments/` 和 `bench/` 的子目录，并跳过 `*.e2e.test.ts`。素材流水线的纯函数测试由 `tests/assets/unit-suite.test.ts` 以子进程执行。
 

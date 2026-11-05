@@ -94,5 +94,7 @@ pnpm chat:trial --experience=companion     # 对照：去掉该参数
 | `pet-next-trial-evidence-2026-11-04.zip` | 证据包（46 文件，203.7 KiB） | `78acd360e722121a7c2c7a3f19911d30376dd68bd1b2e422d9e6e91fd12d8749` |
 | `pet-next-m36-incremental-edad129.bundle` | `edad129..HEAD` 8 提交增量 | `2046e4d1cfa5bdf50d59e8e2448f819793c2ca3446a4de5f5c79aa59ad467cf6` |
 
-恢复：`git clone <bundle> pet-next && git checkout codex/pet-next-m3-companion-preview`
-（或直接解压源码包后 `pnpm install`；包内无 `.git`/`logs/`/证据，属预期）。
+恢复说明（修正：增量 bundle 不能直接 clone，需区分三种情况）：
+- 干净机器：解压源码包 `pet-next-trial-src-*.zip` 后 `pnpm install`（包内无 `.git`/`logs`/证据，属预期）；
+- 已有基线 `edad129` 的仓库：`git fetch pet-next-m36-incremental-edad129.bundle codex/pet-next-m3-companion-preview && git checkout FETCH_HEAD`（可先 `git bundle verify` 确认基线在）；
+- 想从零 clone 完整历史：用完整 bundle（含全部历史），不要从增量包起步。

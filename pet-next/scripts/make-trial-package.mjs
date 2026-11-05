@@ -19,13 +19,18 @@ import { fileURLToPath, pathToFileURL } from 'node:url';
 const PET_ROOT = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const REPO_ROOT = path.resolve(PET_ROOT, '..');
 
-/** 白名单（相对 pet-next/ 的顶层路径；目录=整目录收集跟踪文件）。 */
+/** 白名单（相对 pet-next/ 的顶层路径；目录=整目录收集跟踪文件）。
+ * M3-7 双击试用入口随目录条目收集：scripts/launch-trial.mjs（scripts/）、
+ * contracts/launcher.ts（contracts/）、core/launcher/（core/）、adapters/launcher/
+ * （adapters/）、app/launcher*（app/）、tests/launcher/（tests/）、docs/（docs/）；
+ * 顶层中文文件名 启动.cmd 必须显式列出（不属于任何目录条目）。 */
 export const SRC_INCLUDE = [
   'adapters/', 'app/', 'assets/', 'assets-pipeline/', 'bench/context/', 'bench/feedback/',
   'config/',
   'contracts/', 'core/', 'docs/', 'electron/', 'experiments/', 'scripts/', 'tests/',
   'package.json', 'pnpm-lock.yaml', 'tsconfig.json', 'tsconfig.preload.json',
   'eslint.config.js', 'README.md', 'LICENSE',
+  '启动.cmd',
 ];
 
 /** 黑名单模式（对 git 跟踪路径二次过滤；试用车不带任何机器现场与身份材料）。 */

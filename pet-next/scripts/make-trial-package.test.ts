@@ -65,6 +65,42 @@ test('collectTrialFiles：白名单目录收集、黑名单剔除、非 pet-next
   assert.ok(!kept.includes('logs/chat-evidence/demo.ndjson'));
 });
 
+test('collectTrialFiles：M3-7 双击试用入口全链进包（启动.cmd + launcher 各层 + 文档）', () => {
+  const ls = [
+    'pet-next/启动.cmd', // 顶层中文文件名：必须显式白名单
+    'pet-next/scripts/launch-trial.mjs',
+    'pet-next/scripts/launch-trial.d.mts',
+    'pet-next/scripts/launch-trial.test.mjs', // 假想同层测试（scripts/ 整目录）
+    'pet-next/contracts/launcher.ts',
+    'pet-next/core/launcher/controller.ts',
+    'pet-next/adapters/launcher/ipc.ts',
+    'pet-next/app/launcher.html',
+    'pet-next/app/launcher.ts',
+    'pet-next/tests/launcher/launch-trial.test.ts',
+    'pet-next/tests/launcher/first-run.e2e.test.ts',
+    'pet-next/docs/WINDOWS-TRIAL.md',
+    'pet-next/启动-别的.cmd', // 不在白名单：不得顺带收集
+  ].join('\n');
+  const { kept, excluded } = collectTrialFiles(ls);
+  for (const file of [
+    '启动.cmd',
+    'scripts/launch-trial.mjs',
+    'scripts/launch-trial.d.mts',
+    'contracts/launcher.ts',
+    'core/launcher/controller.ts',
+    'adapters/launcher/ipc.ts',
+    'app/launcher.html',
+    'app/launcher.ts',
+    'tests/launcher/launch-trial.test.ts',
+    'tests/launcher/first-run.e2e.test.ts',
+    'docs/WINDOWS-TRIAL.md',
+  ]) {
+    assert.ok(kept.includes(file), `试用包必须包含 ${file}`);
+  }
+  assert.ok(!kept.includes('启动-别的.cmd'), '白名单外的顶层文件不得混入');
+  assert.equal(excluded.length, 0);
+});
+
 test('parsePackageArgs：正常与错误', () => {
   const ok = parsePackageArgs(['--out', '/tmp/x', '--only-src', '--dry-run', '--evidence', 'a', '--evidence', 'b']);
   assert.equal(ok.error, undefined);

@@ -1,60 +1,77 @@
 # Windows 试用上手（一页）
 
-pet-next 聊天试用：Windows 10/11 + Node 20 LTS + pnpm 9 + PowerShell。
-本包是**源码试用包**（需自行安装依赖与构建），不是免安装成品。
+pet-next 桌宠试用：Windows 10/11 + Node 22.12+ + pnpm 10.33.4（`corepack enable` 后由仓库 `packageManager` 字段锁定）。
+
+本包是**源码试用包**：需要自行安装依赖与构建，不是免安装成品。上手分两步——首次准备（一次），之后双击 `启动.cmd` 即用。
 
 ## 1. 首次准备（一次）
 
+解压 zip 后在包目录（例如 `cd C:\trial\pet-next`）执行：
+
 ```powershell
-# 解压 zip 后进入目录（例如 cd C:\trial\pet-next）
-corepack enable                # 或 npm i -g pnpm@9
+corepack enable                # 让 pnpm 用仓库锁定的 10.33.4
 pnpm install --frozen-lockfile
-pnpm build                     # 产出 dist/（正式入口启动前必须）
+pnpm build                     # 产出 dist/；双击入口与命令入口都要求它存在
 ```
 
-## 2. 两条命令
+> 首次构建约需几分钟（含 Electron 下载）。若 Electron 下载慢，设镜像：
+> `$env:ELECTRON_MIRROR="https://npmmirror.com/mirrors/electron/"`。
+
+## 2. 双击入口（推荐）
+
+解压根目录双击 `启动.cmd`（内部即 `node scripts\launch-trial.mjs`，不设置任何环境变量、不改 PATH）：
+
+- 首次启动（无 `~/.pet-next/qwen-remote.json`）出现启动向导：填服务器/SSH 连接配置 →
+  测试连接（只 `GET /v1/models`，不推理、零 POST）→ 选预览选项 → 启动桌宠。
+- 配置保存在 `~/.pet-next/qwen-remote.json`（字段模板见 `config/chat-remote.example.json`），
+  再次启动自动回填。
+- 预检失败给可读提示并退出：缺 Node 22.12+（不会自动下载）、缺 `dist/electron/main.js`
+  （提示先 `pnpm install && pnpm build`）。
+- 直接关窗即干净退出（正常退出码 0，无残留进程）；异常退出码显示在窗口里。
+
+## 3. 命令入口（保留）
 
 ```powershell
 pnpm chat:trial --context=on   # 连续对话：记住本窗口内最近 4 个完整轮次
 pnpm chat:trial                # 单轮（缺省 --context=off，与既有行为一致）
+pnpm start                     # 不走向导，直接构建并启动桌宠
 ```
 
-- `--context` 只接受 `on` 或 `off`；其他值会直接报用法并退出，不会误连。
-- 每次启动都会打印一行 `[chat-trial] 上下文=…`；显式 `--context=off` 会清除从
-  PowerShell 继承的 `PET_NEXT_CHAT_CONTEXT` 残留值（残留不会把单轮变连续）。
-- 配置：`~/.pet-next/qwen-remote.json`（服务器地址与 SSH，模板见
-  `config/chat-remote.example.json`；写入后 `pnpm chat:trial` 自动走 SSH 隧道到
-  远端模型，与既有 chat:remote 同一条链）。
+双击入口走完向导后，主程序按所选体验启动：standard = 会话内只读当前屏（LLM 不可读）；
+companion = 屏幕摘要按轮次阅后即焚，同会话内 LLM 可用（完整版预览）。PET 帧率与
+全局气泡见下文「窗口内操作」。
 
-## 3. 窗口内操作
+## 4. 连续模式与窗口内操作
 
-| 操作 | 方式 |
-|---|---|
-| 发消息 | 输入框回车 |
-| 取消在途请求 | 取消按钮；再发新消息会自动清空在途并立即重发 |
-| 新对话 | 新对话按钮（清空本窗口上下文；请求体回落单轮） |
-| 退出 | 直接关窗（退出码与清理见下）；命令行 Ctrl+C 亦可 |
+`--context=on` 的语义：**本窗口进程内的最近 4 个完整轮次**（user→assistant 各算一步），
+关窗即清零，任何场景不落盘。
 
-- 迟到的旧响应不会显示、不会污染后续上下文。
-- 错误提示：隧道断开/模型不可用会以对话内错误消息呈现；重试即重新建链。
+- `Esc`：隐藏/退出桌宠窗口
+- `Ctrl+B`：开关全局气泡（断网时静默降级）
+- `Ctrl+L`：窗口置顶开关（标准窗口粒度）
+- `Ctrl+R`：手动重连当前流式推理
 
-## 4. 会话边界（如实）
+## 5. 会话边界（不会跨窗口/重启携带）
 
-- 上下文只存在**当前窗口内存**：最多 4 个完整轮次、约 2000 个 JS 字符上界；
-  重启/新对话后不保留任何历史。
-- **JS 字符不是 token**：上界按 JS `.length` 计；计费 token 以服务端 `usage` 为准。
+| 场景 | 进程 | 内容可见性 |
+| --- | --- | --- |
+| 关窗后重开（同会话） | 新窗口进程 | 历史内容全丢，只保留 launcher 保存的连接配置 |
+| 退出登录 | 单进程 | 进程内存清零 |
+| 重启电脑 | 全部 | 全部内存清零 |
 
-## 5. 常见误区
+## 6. 常见误区
 
-- “上一次设过 on，这次不带参数就是 off 了”？——不。`PET_NEXT_CHAT_CONTEXT`
-  一旦在 PowerShell 会话里设置会一直存在；**不带参数=off 是缺省，但请显式
-  `--context=off` 最稳**（显式 off 会强制清除继承值）。
-- “chat:local 会自动连服务器”？——不会。`chat:local` 面向本机已起服务的开发
-  场景（默认 `127.0.0.1:18872`，本机没有服务就连不上）。Windows 远程试用请用
-  `pnpm chat:trial`（内部走 chat:remote 的 SSH 委托链）。
+| 误区 | 实际行为 |
+| --- | --- |
+| 双击 `启动.cmd` 就能跑 | 源码试用包需先完成第 1 节的 `pnpm install && pnpm build`；入口不代替构建 |
+| 用 `npx pnpm` / 全局 pnpm 9 | 锁定 `pnpm@10.33.4`：`corepack enable` 后自动对齐 |
+| 向导的「测试连接」会发推理请求 | 只 `GET /v1/models` 验证链路，零 POST；全向导零推理 |
+| 把增量 bundle 直接 `git clone` 当完整源码 | 增量 bundle 只含增量提交，需目标已有基线；干净机器用源码 zip 或完整 bundle（见 `docs/M3-6-D-REPORT.md`） |
 
-## 6. 退出与进程清理
+## 7. 退出与进程清理
 
-- 关窗即退出；正常退出码 0。隧道子进程随入口一并清理（若强杀 PowerShell，可能在
-  任务管理器看到残留 ssh.exe，手动结束即可）。
-- 试用出现异常时：把 `~/.pet-next/` 下日志与窗口报错一并发给负责人。
+- 双击入口/桌宠窗口：直接关窗即干净退出（退出码 0）；`启动.cmd` 窗口在异常码时会
+  `pause` 显示码值再关。
+- CLI 入口：终端窗口关闭或 Ctrl+C 结束；子进程随父进程回收。
+- 残留排查：`tasklist | findstr -i electron`；有残留先等 5 秒（流收尾），再
+  `taskkill /IM electron.exe /F`。
