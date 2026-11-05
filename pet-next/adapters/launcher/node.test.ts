@@ -113,3 +113,93 @@ test('配置路径：PET_NEXT_REMOTE_CONFIG 优先，否则 ~/.pet-next/qwen-rem
   assert.equal(resolveConfigFilePath({ PET_NEXT_REMOTE_CONFIG: '/tmp/custom.json' }, '/home/me'), path.resolve('/tmp/custom.json'));
   assert.equal(resolveConfigFilePath({}, '/home/me'), path.join('/home/me', '.pet-next', 'qwen-remote.json'));
 });
+
+test('真实 probeService：只发 GET /v1/models（零 POST），成功收隧道一次', async () => {
+  await withTempDir(async (dir) => {
+    let stops = 0;
+    const seenUrls: string[] = [];
+    const seenSignals: (AbortSignal | null)[] = [];
+    const fetchImpl = (async (url: string, init?: { method?: string; signal?: AbortSignal | null }) => {
+      seenUrls.push(String(url));
+      seenSignals.push(init?.signal ?? null);
+      return new Response(JSON.stringify({ data: [{ id: 'qwen3.8-27b' }] }), {
+        status: 200,
+        headers: { 'content-type': 'application/json' },
+      });
+    }) as unknown as typeof fetch;
+    const controller = createNodeLauncherController({
+      env: { PET_NEXT_REMOTE_CONFIG: path.join(dir, 'qwen-remote.json') },
+      home: '/unused-home',
+      startTunnel: async () => ({
+        ok: true as const,
+        handle: {
+          localBaseUrl: 'http://127.0.0.1:18873',
+          stop: async () => {
+            stops += 1;
+          },
+          isAlive: () => true,
+        },
+      }),
+      fetchImpl,
+    });
+
+    const result = await controller.probe(config);
+    const signal = seenSignals[0] ?? null;
+    assert.equal(result.ok, true);
+    assert.deepEqual(result.ok ? result.models : [], ['qwen3.8-27b']);
+    assert.equal(seenUrls[0], 'http://127.0.0.1:18873/v1/models');
+    assert.ok(signal, '默认探测必须带超时信号');
+    assert.equal(signal.aborted, false);
+    assert.equal(stops, 1, '探测成功也必须收隧道');
+    assert.equal(controller.state().phase, 'idle');
+  });
+});
+
+test('真实 probeService：外部取消信号合并进 /models 请求，取消后不留活隧道', async () => {
+  await withTempDir(async (dir) => {
+    let stops = 0;
+    let enteredResolve!: () => void;
+    const entered = new Promise<void>((resolve) => {
+      enteredResolve = resolve;
+    });
+    const seenSignals: (AbortSignal | null)[] = [];
+    const fetchImpl = ((_url: string, init?: { signal?: AbortSignal | null }) => {
+      const signal = init?.signal ?? null;
+      seenSignals.push(signal);
+      if (!signal) return Promise.reject(new Error('缺少探测信号'));
+      enteredResolve();
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new Error('aborted')), { once: true });
+      });
+    }) as unknown as typeof fetch;
+    const controller = createNodeLauncherController({
+      env: { PET_NEXT_REMOTE_CONFIG: path.join(dir, 'qwen-remote.json') },
+      home: '/unused-home',
+      startTunnel: async () => ({
+        ok: true as const,
+        handle: {
+          localBaseUrl: 'http://127.0.0.1:18873',
+          stop: async () => {
+            stops += 1;
+          },
+          isAlive: () => true,
+        },
+      }),
+      fetchImpl,
+    });
+
+    const probing = controller.probe(config);
+    await entered;
+    const signal = seenSignals[0] ?? null;
+    assert.ok(signal, '探测必须把合并后的信号交给 fetch');
+    assert.equal(signal.aborted, false, '探测自身 5s 超时不应被当成取消');
+    await controller.stop();
+    const result = await probing;
+    assert.equal(result.ok, false);
+    assert.equal(!result.ok && result.error.code, 'cancelled');
+    assert.equal(signal.aborted, true, '取消必须贯穿到 /models 的 fetch');
+    assert.equal(stops, 1);
+    assert.equal(controller.state().phase, 'idle');
+  });
+});
+

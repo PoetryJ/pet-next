@@ -197,8 +197,16 @@ export function createNodeLauncherController(options: NodeLauncherOptions = {}):
 
   const probeService: LauncherProbeService =
     options.probeService ??
-    (async (config, fetchImpl) => {
-      const result = await probeQwenService(config, fetchImpl);
+    (async (config, fetchImpl, signal) => {
+      // 取消信号合并进 fetch：probeQwenService 自己的 5s 超时信号保持原样，两者任一触发即中止。
+      const withSignal: typeof fetch = signal
+        ? (input, init) =>
+            fetchImpl(input, {
+              ...init,
+              signal: init?.signal ? AbortSignal.any([init.signal, signal]) : signal,
+            })
+        : fetchImpl;
+      const result = await probeQwenService(config, withSignal);
       return result.ok
         ? { ok: true, models: result.models }
         : { ok: false, error: result.error, ...(result.models ? { models: result.models } : {}) };

@@ -107,9 +107,10 @@ function makeProbe(result: { ok: boolean; error?: string; models?: string[] }): 
   return { probeService, calls: () => calls, baseUrls };
 }
 
-function controllerOf(
-  tunnel: TunnelControl,
-  probe: ReturnType<typeof makeProbe>,
+/** 直接注入隧道/探测实现：新回归用例需要可控句柄、可观测存活与迟到返回。 */
+function controllerForRun(
+  startTunnel: LauncherStartTunnel,
+  probeService: LauncherProbeService,
   io: LauncherConfigIo = memoryIo(null),
 ) {
   return createLauncherController({
@@ -117,11 +118,49 @@ function controllerOf(
     configIo: io,
     validate,
     resolveTunnel,
-    startTunnel: tunnel.startTunnel,
-    probeService: probe.probeService,
+    startTunnel,
+    probeService,
     fetchImpl: fetchStub,
     defaultModel: 'qwen3.8-27b',
   });
+}
+
+function controllerOf(
+  tunnel: TunnelControl,
+  probe: ReturnType<typeof makeProbe>,
+  io: LauncherConfigIo = memoryIo(null),
+) {
+  return controllerForRun(tunnel.startTunnel, probe.probeService, io);
+}
+
+interface LiveTunnel extends TunnelControl {
+  alive: () => boolean;
+}
+
+/** 句柄可观测存活：断言取消/失败路径不留活隧道、也不重复停。 */
+function makeLiveTunnel(options: { dead?: boolean } = {}): LiveTunnel {
+  let stops = 0;
+  let alive = true;
+  const startTunnel: LauncherStartTunnel = async () => ({
+    ok: true,
+    handle: {
+      localBaseUrl: 'http://127.0.0.1:18873',
+      stop: async () => {
+        stops += 1;
+        alive = false;
+      },
+      isAlive: () => (options.dead ? false : alive),
+    },
+  });
+  return { startTunnel, stops: () => stops, lastSpec: () => null, alive: () => alive };
+}
+
+function deferred<T>(): { promise: Promise<T>; resolve: (value: T) => void } {
+  let resolve!: (value: T) => void;
+  const promise = new Promise<T>((r) => {
+    resolve = r;
+  });
+  return { promise, resolve };
 }
 
 test('loadConfig/saveConfig 委托给注入的配置 IO；无效配置不覆盖旧文件', async () => {
@@ -236,4 +275,156 @@ test('stop 取消进行中的 start：返回 cancelled，隧道无残留', async
   assert.equal(!result.ok && result.error.code, 'cancelled');
   assert.equal(controller.state().phase, 'idle');
   assert.equal(tunnel.stops(), 0, '未拿到句柄时不会多调 stop');
+});
+
+test('隧道已成功但 /models 未返回时 stop：取消结果、stop 恰一次、无存活句柄', async () => {
+  const tunnel = makeLiveTunnel();
+  const gate = deferred<{ ok: boolean; models?: string[] }>();
+  const entered = deferred<void>();
+  let seenSignal: AbortSignal | undefined;
+  const probeService: LauncherProbeService = (_probeConfig, _fetchImpl, signal) => {
+    seenSignal = signal;
+    entered.resolve();
+    return gate.promise;
+  };
+  const controller = controllerForRun(tunnel.startTunnel, probeService);
+
+  const starting = controller.start(config, { experience: 'companion', chatContext: false });
+  await entered.promise;
+  assert.equal(controller.state().phase, 'starting');
+
+  const stopping = controller.stop();
+  gate.resolve({ ok: true, models: ['qwen3.8-27b'] });
+  const started = await starting;
+  await stopping;
+
+  assert.equal(started.ok, false);
+  assert.equal(!started.ok && started.error.code, 'cancelled');
+  assert.equal(seenSignal?.aborted, true, '/models 探测必须收到本次操作的取消信号');
+  assert.equal(tunnel.stops(), 1, 'stop 必须恰回收一次已取得的句柄');
+  assert.equal(tunnel.alive(), false, '不得留下活句柄');
+  assert.equal(controller.state().phase, 'idle');
+});
+
+test('隧道已成功但 /models 未返回时 stop：probe 也返回 cancelled 且只停一次', async () => {
+  const tunnel = makeLiveTunnel();
+  const gate = deferred<{ ok: boolean; models?: string[] }>();
+  const entered = deferred<void>();
+  const probeService: LauncherProbeService = () => {
+    entered.resolve();
+    return gate.promise;
+  };
+  const controller = controllerForRun(tunnel.startTunnel, probeService);
+
+  const probing = controller.probe(config);
+  await entered.promise;
+  const stopping = controller.stop();
+  gate.resolve({ ok: true, models: ['qwen3.8-27b'] });
+  const result = await probing;
+  await stopping;
+
+  assert.equal(result.ok, false);
+  assert.equal(!result.ok && result.error.code, 'cancelled');
+  assert.equal(tunnel.stops(), 1);
+  assert.equal(tunnel.alive(), false);
+  assert.equal(controller.state().phase, 'idle');
+});
+
+test('忽略 abort 的迟到成功：start/probe 仍返回 cancelled 且句柄已关闭', async () => {
+  const startTunnel = makeLiveTunnel();
+  const startGate = deferred<void>();
+  const startEntered = deferred<void>();
+  const ignoringProbe: LauncherProbeService = async () => {
+    startEntered.resolve();
+    await startGate.promise; // 完全无视 signal，迟到返回 ok
+    return { ok: true, models: ['qwen3.8-27b'] };
+  };
+  const startController = controllerForRun(startTunnel.startTunnel, ignoringProbe);
+  const starting = startController.start(config, { experience: 'companion', chatContext: false });
+  await startEntered.promise;
+  const stoppingStart = startController.stop();
+  startGate.resolve();
+  const started = await starting;
+  await stoppingStart;
+  assert.equal(started.ok, false, '取消后不得把存活句柄交给 start');
+  assert.equal(!started.ok && started.error.code, 'cancelled');
+  assert.equal(startTunnel.stops(), 1);
+  assert.equal(startTunnel.alive(), false);
+  assert.equal(startController.state().phase, 'idle');
+
+  const probeTunnel = makeLiveTunnel();
+  const probeGate = deferred<void>();
+  const probeEntered = deferred<void>();
+  const lateProbe: LauncherProbeService = async () => {
+    probeEntered.resolve();
+    await probeGate.promise;
+    return { ok: true, models: ['qwen3.8-27b'] };
+  };
+  const probeController = controllerForRun(probeTunnel.startTunnel, lateProbe);
+  const probing = probeController.probe(config);
+  await probeEntered.promise;
+  const stoppingProbe = probeController.stop();
+  probeGate.resolve();
+  const probed = await probing;
+  await stoppingProbe;
+  assert.equal(probed.ok, false, '取消后 probe 不得返回 ok');
+  assert.equal(!probed.ok && probed.error.code, 'cancelled');
+  assert.equal(probeTunnel.stops(), 1);
+  assert.equal(probeTunnel.alive(), false);
+});
+
+test('probeService 抛错：返回 service-unavailable、句柄已关闭不泄漏', async () => {
+  const tunnel = makeLiveTunnel();
+  const probeService: LauncherProbeService = () => {
+    throw new Error('探测炸了');
+  };
+  const controller = controllerForRun(tunnel.startTunnel, probeService);
+
+  const result = await controller.probe(config);
+  assert.equal(result.ok, false);
+  assert.equal(!result.ok && result.error.code, 'service-unavailable');
+  assert.match(!result.ok ? result.error.message : '', /探测炸了/);
+  assert.equal(tunnel.stops(), 1);
+  assert.equal(tunnel.alive(), false);
+  assert.equal(controller.state().phase, 'idle');
+  assert.deepEqual(await controller.probe(config), {
+    ok: false,
+    error: { code: 'service-unavailable', message: '探测 http://127.0.0.1:18873/v1/models 失败：探测炸了' },
+  });
+});
+
+test('探测成功但句柄已死：返回 not-ready 并回收句柄', async () => {
+  const tunnel = makeLiveTunnel({ dead: true });
+  const controller = controllerForRun(tunnel.startTunnel, makeProbe({ ok: true, models: ['qwen3.8-27b'] }).probeService);
+
+  const result = await controller.start(config, { experience: 'standard', chatContext: false });
+  assert.equal(result.ok, false);
+  assert.equal(!result.ok && result.error.code, 'not-ready');
+  assert.equal(tunnel.stops(), 1);
+  assert.equal(controller.state().phase, 'idle');
+});
+
+test('取消中并发双 stop：两个 stop 都 resolve，句柄只停一次', async () => {
+  const tunnel = makeLiveTunnel();
+  const gate = deferred<{ ok: boolean; models?: string[] }>();
+  const entered = deferred<void>();
+  const probeService: LauncherProbeService = () => {
+    entered.resolve();
+    return gate.promise;
+  };
+  const controller = controllerForRun(tunnel.startTunnel, probeService);
+
+  const starting = controller.start(config, { experience: 'standard', chatContext: false });
+  await entered.promise;
+  const first = controller.stop();
+  const second = controller.stop();
+  gate.resolve({ ok: true, models: ['qwen3.8-27b'] });
+  await Promise.all([first, second]);
+  const started = await starting;
+
+  assert.equal(started.ok, false);
+  assert.equal(!started.ok && started.error.code, 'cancelled');
+  assert.equal(tunnel.stops(), 1, '并发 stop 也只停一次');
+  assert.equal(tunnel.alive(), false);
+  assert.equal(controller.state().phase, 'idle');
 });
