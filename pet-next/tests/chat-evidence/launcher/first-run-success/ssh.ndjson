@@ -1,6 +1,6 @@
-{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:41761:127.0.0.1:18872","-p","10977","-i","/tmp/pet-launcher-first-run-success-UOo6uE/id_ed25519","tester@fake.example.invalid"],"mode":"ok","targetPort":43431,"pid":3888731,"ts":1793868597450}
-{"event":"fake-ssh-listening","port":41761,"targetPort":18872,"pid":3888731,"ts":1793868597454}
-{"event":"fake-ssh-stopped","port":41761,"pid":3888731,"ts":1793868597659}
-{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:41761:127.0.0.1:18872","-p","10977","-i","/tmp/pet-launcher-first-run-success-UOo6uE/id_ed25519","tester@fake.example.invalid"],"mode":"ok","targetPort":43431,"pid":3888745,"ts":1793868597773}
-{"event":"fake-ssh-listening","port":41761,"targetPort":18872,"pid":3888745,"ts":1793868597777}
-{"event":"fake-ssh-stopped","port":41761,"pid":3888745,"ts":1793868598135}
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:44489:127.0.0.1:18872","-p","10977","-i","/tmp/pet-launcher-first-run-success-aOvTUb/id_ed25519","tester@fake.example.invalid"],"mode":"ok","targetPort":43919,"pid":3969402,"ts":1793871681599}
+{"event":"fake-ssh-listening","port":44489,"targetPort":18872,"pid":3969402,"ts":1793871681604}
+{"event":"fake-ssh-stopped","port":44489,"pid":3969402,"ts":1793871681808}
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:44489:127.0.0.1:18872","-p","10977","-i","/tmp/pet-launcher-first-run-success-aOvTUb/id_ed25519","tester@fake.example.invalid"],"mode":"ok","targetPort":43919,"pid":3969416,"ts":1793871681918}
+{"event":"fake-ssh-listening","port":44489,"targetPort":18872,"pid":3969416,"ts":1793871681923}
+{"event":"fake-ssh-stopped","port":44489,"pid":3969416,"ts":1793871682237}

@@ -1,6 +1,6 @@
-submit_at=1793868580285
-waiting_hidden_ms=1641
-reply_ms=2537
-visual_seq=[{"visual":"idle","requestId":"idle-1","atMs":1793868580282},{"visual":"auto","requestId":"reaction-2","atMs":1793868582795}]
+submit_at=1793871718136
+waiting_hidden_ms=1635
+reply_ms=2531
+visual_seq=[{"visual":"idle","requestId":"idle-1","atMs":1793871718134},{"visual":"auto","requestId":"reaction-2","atMs":1793871720647}]
 reactions=["reaction-2"]
 post=1

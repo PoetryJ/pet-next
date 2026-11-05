@@ -1,8 +1,8 @@
 code=0
-root_pid=3888647
-owned_pids_before=3888647,3888655,3888657,3888658,3888689,3888745,3888687,3888752
+root_pid=3969321
+owned_pids_before=3969321,3969329,3969331,3969332,3969363,3969416,3969361,3969423
 owned_pids_alive_after=
-debug_port=40775 open_after=false
+debug_port=43011 open_after=false
 output_tail=aleFactor":1,"forcedDeviceScaleFactor":null,"scaleSource":"os","displayBounds":{"x":0,"y":0,"width":1280,"height":800},"displayCount":1,"physical":{"x":80,"y":80}}
 {"event":"console","message":"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."}
 

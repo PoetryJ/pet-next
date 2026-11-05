@@ -1,8 +1,8 @@
 code=0
-pids_before=3886304,3886316,3886544,3886551,3886576,3886606,3886607,3886651,3886653,3886667
+pids_before=3968630,3968643,3968847,3968854,3968865,3968867,3968868,3968901,3968911,3968917
 pids_alive_after=
-debug_port=41345 open_after=false
-wait_ms=1004
+debug_port=46561 open_after=false
+wait_ms=0
 output_tail=\"idle-1\"}"}
 [electron] {"event":"console","message":"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."}
 {"event":"electron-exit","code":0,"signal":null}
