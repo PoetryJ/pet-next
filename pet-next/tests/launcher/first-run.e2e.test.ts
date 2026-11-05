@@ -137,17 +137,36 @@ function gate(t: TestContext): boolean {
 /* ---------------------------------- CDP ---------------------------------- */
 
 interface Cdp {
-  send(method: string, params?: Record<string, unknown>): Promise<unknown>;
+  send(method: string, params?: Record<string, unknown>, timeoutMs?: number): Promise<unknown>;
   close(): void;
 }
+
+/** 单条 CDP 命令超时：卡住的 renderer 变成可读失败，而不是把整个用例挂到 300s。 */
+const CDP_SEND_TIMEOUT_MS = 20000;
+/** 建连超时（拿到的 ws URL 可能在窗口销毁后失效）。 */
+const CDP_CONNECT_TIMEOUT_MS = 15000;
 
 async function connectCdp(url: string): Promise<Cdp> {
   const ws = new WebSocket(url);
   let next = 0;
   const pending = new Map<number, { resolve: (value: unknown) => void; reject: (error: Error) => void }>();
   await new Promise<void>((resolve, reject) => {
-    ws.addEventListener('open', () => resolve());
-    ws.addEventListener('error', () => reject(new Error(`cdp connect failed: ${url}`)));
+    const timer = setTimeout(() => {
+      try {
+        ws.close();
+      } catch {
+        /* 已关闭 */
+      }
+      reject(new Error(`cdp connect timeout ${CDP_CONNECT_TIMEOUT_MS}ms: ${url}`));
+    }, CDP_CONNECT_TIMEOUT_MS);
+    ws.addEventListener('open', () => {
+      clearTimeout(timer);
+      resolve();
+    });
+    ws.addEventListener('error', () => {
+      clearTimeout(timer);
+      reject(new Error(`cdp connect failed: ${url}`));
+    });
   });
   ws.addEventListener('message', (event) => {
     const message = JSON.parse(String(event.data)) as { id?: number; result?: unknown; error?: { message?: string } };
@@ -164,11 +183,24 @@ async function connectCdp(url: string): Promise<Cdp> {
     pending.clear();
   });
   return {
-    send(method, params) {
+    send(method, params, timeoutMs = CDP_SEND_TIMEOUT_MS) {
       const id = next + 1;
       next = id;
       return new Promise((resolve, reject) => {
-        pending.set(id, { resolve, reject });
+        const timer = setTimeout(() => {
+          pending.delete(id);
+          reject(new Error(`cdp ${method} timeout ${timeoutMs}ms`));
+        }, timeoutMs);
+        pending.set(id, {
+          resolve(value) {
+            clearTimeout(timer);
+            resolve(value);
+          },
+          reject(error) {
+            clearTimeout(timer);
+            reject(error);
+          },
+        });
         ws.send(JSON.stringify({ id, method, params }));
       });
     },
@@ -483,23 +515,59 @@ async function typeAndSend(cdp: Cdp, text: string): Promise<number> {
   return at;
 }
 
-/** 采集 visual/request 变化序列：用于"reaction 恰一次"判定。 */
-async function observeVisual(cdp: Cdp, ms: number): Promise<Array<{ visual: string; requestId: string; atMs: number }>> {
-  const out: Array<{ visual: string; requestId: string; atMs: number }> = [];
-  const end = Date.now() + ms;
-  while (Date.now() < end) {
-    try {
-      const state = await readPetDom(cdp);
-      const last = out.at(-1);
-      if (last === undefined || last.requestId !== state.requestId || last.visual !== state.visual) {
-        out.push({ visual: state.visual, requestId: state.requestId, atMs: Date.now() });
-      }
-    } catch {
-      /* 页面销毁 */
-    }
-    await delay(30);
+interface VisualEntry {
+  visual: string;
+  requestId: string;
+  atMs: number;
+}
+
+/**
+ * 在页面内装只读 recorder（MutationObserver 监听 documentElement 的 data-visual/data-request）。
+ * 产品自己写 dataset，测试只读记录：避免"回复很快、reaction 在两次轮询之间就播完"的竞态
+ * （负责人复跑里 reactionsIn=0 的抖动正是轮询漏采）。
+ */
+async function installVisualRecorder(cdp: Cdp): Promise<void> {
+  const installed = await evaluate<boolean>(
+    cdp,
+    `(() => {
+      const el = document.documentElement;
+      const log = [];
+      window.__petVisualLog = log;
+      const push = () => {
+        const visual = el.dataset.visual || '';
+        const requestId = el.dataset.request || '';
+        const last = log[log.length - 1];
+        if (last === undefined || last.visual !== visual || last.requestId !== requestId) {
+          log.push({ visual, requestId, atMs: Date.now() });
+        }
+      };
+      push();
+      if (window.__petVisualObserver) window.__petVisualObserver.disconnect();
+      window.__petVisualObserver = new MutationObserver(push);
+      window.__petVisualObserver.observe(el, { attributes: true, attributeFilter: ['data-visual', 'data-request'] });
+      return true;
+    })()`,
+  );
+  if (installed !== true) throw new Error('无法安装 visual recorder');
+}
+
+async function readVisualLog(cdp: Cdp): Promise<VisualEntry[]> {
+  return evaluate<VisualEntry[]>(
+    cdp,
+    '(() => (Array.isArray(window.__petVisualLog) ? window.__petVisualLog.slice() : []))()',
+  );
+}
+
+/** 等第一次 reaction 落网（recorder 从发送前就开始记，不再依赖观察窗口时机）。 */
+async function waitReactionLog(cdp: Cdp, timeoutMs: number): Promise<VisualEntry[]> {
+  const deadline = Date.now() + timeoutMs;
+  let last: VisualEntry[] = [];
+  while (Date.now() < deadline) {
+    last = await readVisualLog(cdp);
+    if (reactionsIn(last).length >= 1) return last;
+    await delay(50);
   }
-  return out;
+  return last;
 }
 
 const reactionsIn = (seq: Array<{ requestId: string }>): string[] =>
@@ -515,7 +583,9 @@ interface Target {
 
 async function listTargets(debugPort: number): Promise<Target[]> {
   try {
-    const list = (await (await fetch(`http://127.0.0.1:${debugPort}/json/list`)).json()) as Target[];
+    // 2s 上限：调试端口 accepts 但不回包时（renderer 卡死）不要无限挂住轮询。
+    const response = await fetch(`http://127.0.0.1:${debugPort}/json/list`, { signal: AbortSignal.timeout(2000) });
+    const list = (await response.json()) as Target[];
     return Array.isArray(list) ? list : [];
   } catch {
     return [];
@@ -528,6 +598,27 @@ async function waitForTarget(debugPort: number, ok: (targets: Target[]) => boole
   while (Date.now() < deadline) {
     last = await listTargets(debugPort);
     if (ok(last)) return last;
+    await delay(150);
+  }
+  throw new Error(`目标窗口未就绪（${timeoutMs}ms 超时）targets=${JSON.stringify(last.map((t) => t.url))}`);
+}
+
+/**
+ * 等 launcher 窗口出现；入口进程若先退出（缺 dist/依赖缺失等）立即抛错。
+ * 并发 `pnpm build` 会短暂清空 dist/electron/main.js，靠这一点把真实原因立刻暴露，
+ * 而不是白等 60s 再报"目标窗口未就绪"。
+ */
+async function waitLauncherTarget(debugPort: number, child: ChildProcess, timeoutMs: number): Promise<Target[]> {
+  const deadline = Date.now() + timeoutMs;
+  let last: Target[] = [];
+  while (Date.now() < deadline) {
+    last = await listTargets(debugPort);
+    if (last.some(isLauncherPage)) return last;
+    if (child.exitCode !== null || child.signalCode !== null) {
+      throw new Error(
+        `入口提前退出（code=${String(child.exitCode)} signal=${String(child.signalCode)}），未出现 ${LAUNCHER_URL_FRAGMENT} 窗口`,
+      );
+    }
     await delay(150);
   }
   throw new Error(`目标窗口未就绪（${timeoutMs}ms 超时）targets=${JSON.stringify(last.map((t) => t.url))}`);
@@ -866,7 +957,7 @@ async function launchCase(launch: LaunchCase): Promise<Handle> {
 
   let socket: string;
   try {
-    const launcher = await waitForTarget(debugPort, (targets) => targets.some(isLauncherPage), 60000);
+    const launcher = await waitLauncherTarget(debugPort, child, 60000);
     const found = launcher.find(isLauncherPage)?.webSocketDebuggerUrl ?? '';
     if (found === '') throw new Error(`${LAUNCHER_URL_FRAGMENT} 窗口缺少 CDP 入口；输出：${out.slice(-2000)}`);
     socket = found;
@@ -1347,6 +1438,8 @@ test('选 companion · 发 1 条 fake 消息：回复上屏、reaction 恰 1 次
     captureAfterStart(handle);
 
     await openPetPanel(petCdp);
+    // 发送前就装 recorder：reaction 再快也不会漏采（仍是读取产品自己写的 dataset）。
+    await installVisualRecorder(petCdp);
     const submittedAt = await typeAndSend(petCdp, '伙伴一句');
     const reply = await waitPetDom(
       petCdp,
@@ -1354,10 +1447,16 @@ test('选 companion · 发 1 条 fake 消息：回复上屏、reaction 恰 1 次
       (s) => s.assistantMsgs.some((m) => m.includes('隧道回复：伙伴一句')),
       40000,
     );
-    const seq = await observeVisual(petCdp, 2500);
+    await waitReactionLog(petCdp, 10000);
+    // 再观察 1.2s 确认不会出现第二次 reaction（断言仍是"恰 1"）。
+    await delay(1200);
+    const seq = await readVisualLog(petCdp);
     const reactions = reactionsIn(seq);
     assert.equal(reactions.length, 1, `成功回复必须恰好一次 reaction；seq=${JSON.stringify(seq)}`);
-    assert.ok(seq.some((item) => item.visual === 'auto'), `reaction 期间 visual 应为 auto；seq=${JSON.stringify(seq)}`);
+    assert.ok(
+      seq.some((item) => item.requestId.startsWith('reaction-') && item.visual === 'auto'),
+      `reaction 期间 visual 应为 auto；seq=${JSON.stringify(seq)}`,
+    );
     const requests = readRequests(handle.logFile);
     assert.equal(requests.length, 1, `发送 1 条必须恰好 1 次 POST，实际 ${requests.length}`);
     assert.equal(countPosts(handle.logFile), 1, 'POST 计数必须为 1');
@@ -1415,6 +1514,7 @@ test('选 companion · 慢回复 2500ms：等待提示先到期、回复上屏�
     captureAfterStart(handle);
 
     await openPetPanel(petCdp);
+    await installVisualRecorder(petCdp);
     const submittedAt = await typeAndSend(petCdp, '慢回复一句');
     const waiting = await waitPetDom(petCdp, '等待反馈未出现', (s) => s.feedbackKind === 'waiting', 15000);
     const hidden = await waitPetDom(petCdp, '等待提示未按期隐藏', (s) => s.feedbackKind === 'hidden', 15000);
@@ -1426,7 +1526,9 @@ test('选 companion · 慢回复 2500ms：等待提示先到期、回复上屏�
       (s) => s.assistantMsgs.some((m) => m.includes('隧道回复：慢回复一句')),
       40000,
     );
-    const seq = await observeVisual(petCdp, 2500);
+    await waitReactionLog(petCdp, 10000);
+    await delay(1200);
+    const seq = await readVisualLog(petCdp);
     const reactions = reactionsIn(seq);
     assert.equal(reactions.length, 1, `慢回复成功也必须恰好一次 reaction；seq=${JSON.stringify(seq)}`);
     assert.equal(countPosts(handle.logFile), 1, '慢回复只允许 1 次 POST');
