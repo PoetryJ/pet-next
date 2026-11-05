@@ -1,6 +1,8 @@
 /**
  * M3-7 A：pnpm 入口解析回归（对应 WINDOWS-R1-REVIEW 两处入口缺陷）。
  * 覆盖：解析优先级、Windows 无 CLI 文件显式报错、中文+空格路径真实 spawn、子进程 exit7 透传、失败无残留。
+ * 路径断言按「目标平台」写死（path.posix / path.win32 语义），不混用宿主 path：
+ * 这样 Unix 布局断言在 Windows 宿主上同样成立（REVIEW 第 23 行）。
  * @module pet-next/tests/feedback/pnpm-entry.test
  */
 import assert from 'node:assert/strict';
@@ -45,15 +47,26 @@ test('PET_NEXT_PNPM_CLI 指向不存在文件时显式报错，不产生子进�
   );
 });
 
-test('项目内 tools/ 与 node_modules/ 候选按顺序命中', () => {
-  const toolsCli = path.join(petRoot, 'tools/node_modules/pnpm/bin/pnpm.cjs');
-  const entry = resolvePnpmEntry(petRoot, {
+test('项目内 tools/ 与 node_modules/ 候选按顺序命中（Unix 布局，与宿主无关）', () => {
+  const toolsCli = '/pkg/pet-next/tools/node_modules/pnpm/bin/pnpm.cjs';
+  const entry = resolvePnpmEntry('/pkg/pet-next', {
     env: {},
     exists: (file) => file === toolsCli,
     execPath: '/usr/bin/node',
     platform: 'linux',
   });
   assert.deepEqual(entry, { command: '/usr/bin/node', args: [toolsCli] });
+});
+
+test('项目内候选在 win32 目标平台用反斜杠拼接（与宿主无关）', () => {
+  const toolsCli = 'C:\\pkg\\pet-next\\tools\\node_modules\\pnpm\\bin\\pnpm.cjs';
+  const entry = resolvePnpmEntry('C:\\pkg\\pet-next', {
+    env: {},
+    exists: (file) => file === toolsCli,
+    execPath: 'C:\\node\\node.exe',
+    platform: 'win32',
+  });
+  assert.deepEqual(entry, { command: 'C:\\node\\node.exe', args: [toolsCli] });
 });
 
 test('由 Node 前缀推导全局 pnpm CLI（Unix 布局）', () => {
@@ -65,6 +78,17 @@ test('由 Node 前缀推导全局 pnpm CLI（Unix 布局）', () => {
     platform: 'linux',
   });
   assert.deepEqual(entry, { command: '/opt/node/bin/node', args: [cli] });
+});
+
+test('由 Node 前缀推导全局 pnpm CLI（win32 便携布局，C:\\node\\node.exe）', () => {
+  const cli = 'C:\\node\\node_modules\\pnpm\\bin\\pnpm.cjs';
+  const entry = resolvePnpmEntry('C:\\app', {
+    env: {},
+    exists: (file) => file === cli,
+    execPath: 'C:\\node\\node.exe',
+    platform: 'win32',
+  });
+  assert.deepEqual(entry, { command: 'C:\\node\\node.exe', args: [cli] });
 });
 
 test('Windows 无任何 CLI 文件时明确报错（绝不回退 spawn pnpm/.cmd）', () => {

@@ -19,7 +19,13 @@ pnpm build                     # 产出 dist/；双击入口与命令入口都�
 
 ## 2. 双击入口（推荐）
 
-解压根目录双击 `启动.cmd`（内部即 `node scripts\launch-trial.mjs`，不设置任何环境变量、不改 PATH）：
+解压根目录双击 `启动.cmd`（内部即 `node scripts\launch-trial.mjs`，不设置任何环境变量、不改 PATH）。
+
+- 该文件以纯 ASCII + CRLF 保存（注释与提示为英文），Windows 默认代码页（GBK/437）下可直接解析，
+  不执行 `chcp`；修复前的中文注释会被 cmd 当成命令执行并落进 `cd_fail`，退出码退回 1。
+- 退出码原样透传：`node scripts\launch-trial.mjs` 返回 7 时窗口显示 7 并以 7 退出；0 则窗口自然关闭。
+
+具体步骤：
 
 - 首次启动（无 `~/.pet-next/qwen-remote.json`）出现启动向导：填服务器/SSH 连接配置 →
   测试连接（只 `GET /v1/models`，不推理、零 POST）→ 选预览选项 → 启动桌宠。

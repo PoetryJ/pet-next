@@ -12,6 +12,10 @@
  * 3. 由当前 Node 可执行文件推导的全局安装（<prefix>/lib/node_modules/pnpm/bin/pnpm.cjs 等）
  * 4. 非 Windows 保留原 spawn('pnpm') 行为；Windows 明确报错并提示设置 PET_NEXT_PNPM_CLI
  *
+ * 路径拼接一律按「目标平台」的规则做（platform === 'win32' 用 path.win32，其余用 path.posix），
+ * 不用宿主 path：否则在 Windows 宿主上模拟 Unix 布局会拼出反斜杠，
+ * 断言只能靠 skip 盖过去（REVIEW 第 23 行不许这么做）。
+ *
  * 刻意不返回 '.cmd'/'.exe' 包装器：Windows 的 .cmd 无法被 spawn 直接拉起。
  * @module pet-next/tests/feedback/pnpm-entry
  */
@@ -42,14 +46,20 @@ const PROJECT_CLI_CANDIDATES = [
   'node_modules/pnpm/bin/pnpm.js',
 ];
 
-/** 由 Node 可执行文件推导全局 pnpm CLI 的绝对路径候选。 */
-function prefixCliCandidates(execPath: string): string[] {
-  const execDir = path.dirname(execPath);
+/** 目标平台的路径实现：只看目标平台，不看宿主。 */
+function pathFor(platform: NodeJS.Platform): typeof path.posix {
+  return platform === 'win32' ? path.win32 : path.posix;
+}
+
+/** 由 Node 可执行文件推导全局 pnpm CLI 的绝对路径候选（按目标平台规则拼接）。 */
+function prefixCliCandidates(execPath: string, platform: NodeJS.Platform): string[] {
+  const api = pathFor(platform);
+  const execDir = api.dirname(execPath);
   return [
     // Windows/便携布局：<execDir>/node_modules/pnpm/bin/pnpm.cjs
-    path.join(execDir, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
+    api.join(execDir, 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
     // Unix 全局布局：<prefix>/lib/node_modules/pnpm/bin/pnpm.cjs（execDir = <prefix>/bin）
-    path.join(path.dirname(execDir), 'lib', 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
+    api.join(api.dirname(execDir), 'lib', 'node_modules', 'pnpm', 'bin', 'pnpm.cjs'),
   ];
 }
 
@@ -62,6 +72,7 @@ export function resolvePnpmEntry(petRoot: string, deps: PnpmEntryDeps = {}): Pnp
   const platform = deps.platform ?? process.platform;
   const env = deps.env ?? process.env;
   const execPath = deps.execPath ?? process.execPath;
+  const api = pathFor(platform);
 
   const explicit = env.PET_NEXT_PNPM_CLI?.trim();
   if (explicit) {
@@ -74,11 +85,11 @@ export function resolvePnpmEntry(petRoot: string, deps: PnpmEntryDeps = {}): Pnp
   }
 
   for (const relative of PROJECT_CLI_CANDIDATES) {
-    const file = path.join(petRoot, relative);
+    const file = api.join(petRoot, relative);
     if (exists(file)) return { command: execPath, args: [file] };
   }
 
-  for (const file of prefixCliCandidates(execPath)) {
+  for (const file of prefixCliCandidates(execPath, platform)) {
     if (exists(file)) return { command: execPath, args: [file] };
   }
 

@@ -16,7 +16,7 @@ pnpm start
 
 ### 试用包双击入口（Windows）
 
-源码试用包解压后的推荐入口是双击根目录的 `启动.cmd`（等价于 `node scripts\launch-trial.mjs`）：
+源码试用包解压后的推荐入口是双击根目录的 `启动.cmd`（等价于 `node scripts\launch-trial.mjs`）。该文件为纯 ASCII + CRLF（注释与提示均为英文），Windows 默认代码页下可直接解析，不需要 `chcp`、也不改 PATH；子进程退出码原样透传（如 7 就是 7），只有异常退出才 `pause` 显示码值：
 
 1. 前置（一次）：安装 Node 22.12+ 与 pnpm 10.33.4，在包目录执行 `pnpm install` 和 `pnpm build`。双击入口不代替安装与构建——缺构建产物时它会提示「请先在终端运行 pnpm install && pnpm build」并以非零码退出。
 2. 双击 `启动.cmd`：首次出现启动向导（填服务器/SSH 连接配置 → 测试连接，只 `GET /v1/models`，不推理 → 选预览选项 → 启动桌宠）。配置保存在 `~/.pet-next/qwen-remote.json`，再次启动自动回填；直接关窗即干净退出。
