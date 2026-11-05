@@ -1,4 +1,4 @@
 window=2097155 geo={"X":80,"Y":80,"WIDTH":320,"HEIGHT":240} center=(92,92)
 drag_started visual=idle
-submit=1793856083735 reply_ms=1568 success_ms=1568 reactions=0
+submit=1793868402377 reply_ms=1567 success_ms=1567 reactions=0
 PASS companion-drag

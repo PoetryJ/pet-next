@@ -1,10 +1,9 @@
 code=0
-root_pid=3753895
-owned_pids_before=3753895,3753902,3753904,3753905,3753936,3753975,3753934,3753983
+root_pid=3888004
+owned_pids_before=3888004,3888014,3888019,3888020,3888052,3888089,3888047,3888097
 owned_pids_alive_after=
-debug_port=38391 open_after=false
-output_tail= type (examples of valid types are "tcp" and on UNIX "unix")
-[3753902:1105/154445.971499:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
-[3753902:1105/154445.971546:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
-[3753902:1105/154445.971562:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+debug_port=44927 open_after=false
+output_tail="preview\",\"visual\":\"idle\",\"requestId\":\"idle-1\"}"}
+{"event":"console","message":"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\n  Policy set or a policy with \"unsafe-eval\" enabled. This exposes users of\n  this app to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."}
+{"event":"console","message":"{\"event\":\"preview\",\"visual\":\"auto\",\"requestId\":\"reaction-2\"}"}
 

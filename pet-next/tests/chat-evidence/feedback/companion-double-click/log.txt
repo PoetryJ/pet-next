@@ -1,2 +1,2 @@
-second_click_at=1793856105156 POST=1
+second_click_at=1793868420884 POST=1
 PASS companion-double-click
