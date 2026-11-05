@@ -1,2 +1,2 @@
-exit natural ok; debug_port=40729 closed; sentinel_pid=2656778 alive
+exit natural ok; debug_port=44889 closed; sentinel_pid=3650211 alive
 PASS companion-exit-smoke

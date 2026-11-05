@@ -1,50 +1,50 @@
 # T1 正式入口：打开→输入→发送→演示回复→关面板→关窗
-# 记录时间: 2026-11-04T13:00:01.502Z
+# 记录时间: 2026-11-05T05:16:07.405Z
 # 用例: t1-open-send-reply
 
-cmd: DISPLAY=:94 PET_NEXT_CHAT_DEBUG_PORT=35997 PET_NEXT_USER_DATA=/tmp/pet-next-formal-e2e-YRbgIF pnpm chat:preview
+cmd: DISPLAY=:94 PET_NEXT_CHAT_DEBUG_PORT=33921 PET_NEXT_USER_DATA=/tmp/pet-next-formal-e2e-Re22gA pnpm chat:preview
 env: PET_NEXT_TEST=1 PET_NEXT_FAKE_CHAT_DELAY_MS=0 PET_NEXT_FAKE_CHAT_SLOW_MS=3000
-cdp page: ws://127.0.0.1:35997/devtools/page/77702C26236DA2F36B03272240C4CC09
-fake chat server port: 35097
-entry electron config: {"event":"chat-demo-electron-config","debugPort":35997,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=35997","/data3/DATA/project/project_meishijiang/pet-next/pet-next/dist/electron/main.js"],"userData":"/tmp/pet-next-formal-e2e-YRbgIF"}
+cdp page: ws://127.0.0.1:33921/devtools/page/BEF03124CE39F267307403A8A669ED61
+fake chat server port: 33605
+entry electron config: {"event":"chat-demo-electron-config","debugPort":33921,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=33921","/data3/DATA/project/project_meishijiang/pet-next/pet-next/dist/electron/main.js"],"userData":"/tmp/pet-next-formal-e2e-Re22gA"}
 panel mounted: phase=closed hidden=true
 rect toggle: x=278.0 y=198.0 34.0x34.0 视口=320x240 disabled=false
 mouse click chat-toggle @ (295,215)
 panel open: phase=open
-rect toggle: x=278.0 y=66.0 34.0x34.0 视口=320x240 disabled=false
-rect title: x=57.0 y=108.0 43.2x14.0 视口=320x240 disabled=null
-rect close: x=286.8 y=107.0 16.2x16.0 视口=320x240 disabled=false
-rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
-rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=true
-rect cancel: x=272.2 y=206.0 30.8x20.0 视口=320x240 disabled=true
+rect toggle: x=278.0 y=43.0 34.0x34.0 视口=320x240 disabled=false
+rect title: x=57.0 y=84.0 72.0x17.0 视口=320x240 disabled=null
+rect close: x=286.8 y=84.5 16.2x16.0 视口=320x240 disabled=false
+rect input: x=57.0 y=165.0 246.0x34.0 视口=320x240 disabled=null
+rect send: x=203.0 y=203.0 46.0x23.0 视口=320x240 disabled=true
+rect cancel: x=257.0 y=203.0 46.0x23.0 视口=320x240 disabled=true
 截图: tests/chat-evidence/formal-entry/t1-01-panel-open.png
-rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
-mouse click chat-input @ (180,185)
+rect input: x=57.0 y=165.0 246.0x34.0 视口=320x240 disabled=null
+mouse click chat-input @ (180,182)
 keyboard input: 你好桌面宠物
-rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
-mouse click chat-send @ (249,216)
+rect send: x=203.0 y=203.0 46.0x23.0 视口=320x240 disabled=false
+mouse click chat-send @ (226,215)
 reply: phase=reply demoTagCount=1 assistantMsgs=["演示回复【演示回复】已收到：你好桌面宠物"]
 截图: tests/chat-evidence/formal-entry/t1-02-reply.png
-rect close: x=286.8 y=49.0 16.2x16.0 视口=320x240 disabled=false
-mouse click chat-close @ (295,57)
+rect close: x=286.8 y=49.5 16.2x16.0 视口=320x240 disabled=false
+mouse click chat-close @ (295,58)
 closed: phase=closed hidden=true
 截图: tests/chat-evidence/formal-entry/t1-03-closed.png
 关窗: 正常关窗（Runtime.evaluate window.pet.quit()）
 entry exit: code=0 signal=null
 stdout tail:
-…-stderr] [2647310:1104/210001.104610:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
-[electron-stderr] [2647310:1104/210001.280466:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
-[electron-stderr] [2647310:1104/210001.280548:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
-[electron-stderr] [2647310:1104/210001.280587:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
-[electron-stderr] [2647310:1104/210001.280594:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
-[electron-stderr] [2647310:1104/210001.320366:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
-[electron-stderr] [2647310:1104/210001.320418:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
-[electron-stderr] [2647310:1104/210001.320451:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
-[electron-stderr] [2647310:1104/210001.320458:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+…-stderr] [3638805:1105/131606.709797:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [3638805:1105/131606.889450:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [3638805:1105/131606.889499:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [3638805:1105/131606.889542:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [3638805:1105/131606.889561:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [3638805:1105/131606.946273:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [3638805:1105/131606.946311:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [3638805:1105/131606.946341:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [3638805:1105/131606.946356:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
 {"event":"electron-exit","code":0,"signal":null}
 {"event":"fake-chat-server-exit","code":0,"signal":null}
-{"event":"chat-demo-done","offline_ready":true,"exit":0,"fakeUrl":"http://127.0.0.1:35097","electronStarted":true}
+{"event":"chat-demo-done","offline_ready":true,"exit":0,"fakeUrl":"http://127.0.0.1:33605","electronStarted":true}
 
 残留进程（本次进程树）: []
-残留进程（--remote-debugging-port=35997）: []
+残留进程（--remote-debugging-port=33921）: []
 PASS
