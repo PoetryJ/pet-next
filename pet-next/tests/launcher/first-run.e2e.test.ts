@@ -831,6 +831,25 @@ async function startBlackhole(): Promise<Blackhole> {
   };
 }
 
+/**
+ * 等构建产物稳定存在再启动入口：并发 `pnpm build` 的 tsc 阶段会短暂删除 dist/electron/main.js，
+ * 此时 spawn 入口只会得到「缺少构建产物」并以 1 退出。连续 1.5s 存在才视为稳定。
+ */
+async function waitForMainBundle(timeoutMs: number): Promise<void> {
+  const deadline = Date.now() + timeoutMs;
+  let stableSince = 0;
+  while (Date.now() < deadline) {
+    if (existsSync(mainBundle)) {
+      if (stableSince === 0) stableSince = Date.now();
+      if (Date.now() - stableSince >= 1500) return;
+    } else {
+      stableSince = 0;
+    }
+    await delay(100);
+  }
+  throw new Error(`dist/electron/main.js 在 ${timeoutMs}ms 内未稳定出现（并发 build 会短暂删除产物）`);
+}
+
 async function waitForFile(file: string, timeoutMs: number): Promise<void> {
   const deadline = Date.now() + timeoutMs;
   while (Date.now() < deadline) {
@@ -882,6 +901,8 @@ interface Handle {
 }
 
 async function launchCase(launch: LaunchCase): Promise<Handle> {
+  // 并发构建期间请先等产物稳定（否则入口必然以「缺少构建产物」退出，属于环境假失败）。
+  await waitForMainBundle(60000);
   const userData = await mkdtemp(path.join(tmpdir(), `pet-launcher-${launch.caseName}-`));
   const instanceTag = path.basename(userData);
   const logFile = path.join(userData, 'requests.ndjson');
@@ -1257,7 +1278,7 @@ test('连接失败 · 可读错误、改到实际 fakePort 再次 probe 成功�
       handle.cdp,
       '探测失败无提示',
       (s) => s.phase === 'editing' && s.phaseText.includes('失败'),
-      40000,
+      60000,
     );
     assert.ok(failed.state.phaseText.length > 0, '失败提示必须有可读文案');
     assert.ok(!failed.state.phaseText.includes('连接成功'), '失败不得显示成功');
