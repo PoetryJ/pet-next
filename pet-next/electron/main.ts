@@ -28,6 +28,17 @@ import {
   type ChatTransport,
 } from '../contracts/chat.ts';
 import { PREVIEW_ENV, PREVIEW_QUERY } from '../contracts/preview.ts';
+import {
+  LAUNCHER_LOAD_CHANNEL,
+  LAUNCHER_MODE_ENV,
+  LAUNCHER_PROBE_CHANNEL,
+  LAUNCHER_SAVE_CHANNEL,
+  LAUNCHER_START_CHANNEL,
+  type LauncherConfig,
+  type LauncherController,
+  type LauncherStartOptions,
+} from '../contracts/launcher.ts';
+import { createNodeLauncherController } from '../adapters/launcher/node.ts';
 import { resolveQwenConfig } from './chat-config.ts';
 import { registerChatService, type ChatServiceHandle } from './chat-service.ts';
 import { logReady } from './ready-report.ts';
@@ -36,6 +47,11 @@ const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WINDOW_WIDTH = 320;
 const WINDOW_HEIGHT = 240;
 let chatHandle: ChatServiceHandle | null = null;
+/** M3-7：launcher 模式单例（未配置/未启动时为 null）。 */
+let launcherController: LauncherController | null = null;
+let launcherWindow: BrowserWindow | null = null;
+/** 启动页已把用户送进桌宠：阻止重复进入，也用于退出清理只做一次。 */
+let launcherQuitting = false;
 
 if (process.env.PET_NEXT_USER_DATA) {
   app.setPath('userData', process.env.PET_NEXT_USER_DATA);
@@ -51,7 +67,55 @@ function workAreaFor(bounds: WindowBounds): WorkArea {
   return screen.getDisplayMatching(bounds).workArea;
 }
 
-function createWindow(): void {
+/** launcher 启动成功后注入的连接（不再从 env 读，避免启动页与进程环境互相污染）。 */
+interface LocalChatOverride {
+  baseUrl: string;
+  model: string;
+  experience: ChatExperience | undefined;
+  context: boolean;
+}
+
+interface LocalChatOptions extends LocalChatOverride {
+  transport: ChatTransport;
+}
+
+/** env local 路径与 launcher 路径共用同一套聊天接线，避免两套逻辑漂移。 */
+function setupLocalChat(win: BrowserWindow, options: LocalChatOptions): void {
+  const provider = createQwenChatProvider({ baseUrl: options.baseUrl, model: options.model });
+  // M3-3：显式开启时才启用有界历史；历史只存在主进程内存。
+  const session = options.context
+    ? createChatSession({ complete: (input) => provider.complete(input), history: createChatHistory() })
+    : undefined;
+  const info: ChatDisplayInfo = {
+    mode: 'local',
+    model: options.model,
+    transport: options.transport,
+    context: options.context,
+    ...(options.experience ? { experience: options.experience } : {}),
+  };
+  ipcMain.handle(CHAT_INFO_CHANNEL, () => info);
+  console.log(
+    JSON.stringify({
+      event: 'chat-mode',
+      mode: 'local',
+      model: options.model,
+      transport: options.transport,
+      context: options.context,
+      ...(options.experience ? { experience: options.experience } : {}),
+    }),
+  );
+  void registerChatService({
+    getWindow: () => win,
+    ...(session ? { session } : { provider }),
+    onClose() {
+      chatHandle = null;
+    },
+  }).then((handle) => {
+    chatHandle = handle;
+  });
+}
+
+function createWindow(chatOverride?: LocalChatOverride): void {
   const area = screen.getPrimaryDisplay().workArea;
   const windowOptions = {
     width: WINDOW_WIDTH,
@@ -135,9 +199,11 @@ function createWindow(): void {
   if (process.env.PET_NEXT_REACTION_URL) query.reaction = process.env.PET_NEXT_REACTION_URL;
   const preview = process.env[PREVIEW_ENV];
   if (preview !== undefined && preview !== '') query[PREVIEW_QUERY] = preview;
-  // M3-6：体验预览只由 env 决定；缺省 undefined（页面不创建反馈对象，原路径不变）。
+  // M3-6：体验预览缺省 undefined（页面不创建反馈对象，原路径不变）。
+  // M3-7：launcher 启动时以用户显式选择为准；否则仍只由 env 决定。
   const experience: ChatExperience | undefined =
-    process.env[CHAT_EXPERIENCE_ENV] === COMPANION_EXPERIENCE ? COMPANION_EXPERIENCE : undefined;
+    chatOverride?.experience ??
+    (process.env[CHAT_EXPERIENCE_ENV] === COMPANION_EXPERIENCE ? COMPANION_EXPERIENCE : undefined);
   const chatLocal = process.env[CHAT_LOCAL_ENV];
   const chatPreview = process.env[CHAT_PREVIEW_ENV];
   const localMode = chatLocal !== undefined && chatLocal !== '';
@@ -145,7 +211,11 @@ function createWindow(): void {
   if (localMode && chatPreview !== undefined && chatPreview !== '') {
     console.log(JSON.stringify({ event: 'chat-mode-warn', reason: 'both-local-and-preview-set', using: 'local' }));
   }
-  if (localMode) {
+  if (chatOverride) {
+    // M3-7 launcher：连接来自启动页用户输入（已探测通过），transport 固定 tunnel。
+    query[CHAT_PREVIEW_QUERY] = CHAT_LOCAL_TOKEN;
+    setupLocalChat(win, { ...chatOverride, transport: 'tunnel' });
+  } else if (localMode) {
     query[CHAT_PREVIEW_QUERY] = CHAT_LOCAL_TOKEN;
     const resolved = resolveQwenConfig(process.env);
     if (!resolved.ok) {
@@ -154,47 +224,17 @@ function createWindow(): void {
       app.quit();
       return;
     }
-    const provider = createQwenChatProvider({
-      baseUrl: resolved.config.baseUrl,
-      model: resolved.config.model,
-    });
     // M3-3：显式预览开关（PET_NEXT_CHAT_CONTEXT 非空）时启用当前会话有界历史；
     // 缺省关闭——不创建历史，provider 载荷与 M3-1 完全一致。历史只存在主进程内存。
     const contextEnabled = process.env[CHAT_CONTEXT_ENV] !== undefined && process.env[CHAT_CONTEXT_ENV] !== '';
-    const session = contextEnabled
-      ? createChatSession({
-          complete: (input) => provider.complete(input),
-          history: createChatHistory(),
-        })
-      : undefined;
     // M3-2：chat:remote 编排会设置 transport=tunnel；页面只读展示，拿不到 SSH 配置。
     const transport: ChatTransport = process.env[CHAT_TRANSPORT_ENV] === 'tunnel' ? 'tunnel' : 'direct';
-    const info: ChatDisplayInfo = {
-      mode: 'local',
+    setupLocalChat(win, {
+      baseUrl: resolved.config.baseUrl,
       model: resolved.config.model,
-      transport,
+      experience,
       context: contextEnabled,
-      ...(experience ? { experience } : {}),
-    };
-    ipcMain.handle(CHAT_INFO_CHANNEL, () => info);
-    console.log(
-      JSON.stringify({
-        event: 'chat-mode',
-        mode: 'local',
-        model: resolved.config.model,
-        transport,
-        context: contextEnabled,
-        ...(experience ? { experience } : {}),
-      }),
-    );
-    void registerChatService({
-      getWindow: () => win,
-      ...(session ? { session } : { provider }),
-      onClose() {
-        chatHandle = null;
-      },
-    }).then((handle) => {
-      chatHandle = handle;
+      transport,
     });
   } else if (chatPreview !== undefined && chatPreview !== '') {
     query[CHAT_PREVIEW_QUERY] = CHAT_PREVIEW_TOKEN;
@@ -226,13 +266,148 @@ function isMove(payload: unknown): payload is { dx: number; dy: number } {
   );
 }
 
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === 'object' && value !== null && !Array.isArray(value);
+}
+
+/** launcher IPC 载荷只做形状校验；字段级合法性由 core/launcher 的白名单校验负责。 */
+function parseConfigPayload(payload: unknown): LauncherConfig | null {
+  if (!isRecord(payload) || !isRecord(payload.config)) return null;
+  return payload.config as unknown as LauncherConfig;
+}
+
+function parseProbePayload(payload: unknown): { config: LauncherConfig; model?: string } | null {
+  const config = parseConfigPayload(payload);
+  if (config === null) return null;
+  const rawModel = isRecord(payload) ? payload.model : undefined;
+  if (typeof rawModel !== 'string' || rawModel.trim() === '') return { config };
+  return { config, model: rawModel.trim() };
+}
+
+function parseStartPayload(payload: unknown): { config: LauncherConfig; options: LauncherStartOptions } | null {
+  const config = parseConfigPayload(payload);
+  const rawOptions = isRecord(payload) ? payload.options : undefined;
+  if (config === null || !isRecord(rawOptions)) return null;
+  const { experience, chatContext } = rawOptions;
+  if (experience !== 'standard' && experience !== 'companion') return null;
+  if (typeof chatContext !== 'boolean') return null;
+  const rawModel = rawOptions.model;
+  const model = typeof rawModel === 'string' && rawModel.trim() !== '' ? rawModel.trim() : undefined;
+  return {
+    config,
+    options: { experience, chatContext, ...(model ? { model } : {}) },
+  };
+}
+
+/** M3-7 首次启动配置窗口：普通有边框窗口（不是桌宠的透明置顶窗）。 */
+function createLauncherWindow(): void {
+  const area = screen.getPrimaryDisplay().workArea;
+  const width = 560;
+  const height = Math.min(760, area.height - 40);
+  const win = new BrowserWindow({
+    width,
+    height,
+    x: Math.round(area.x + (area.width - width) / 2),
+    y: Math.round(area.y + Math.max(0, (area.height - height) / 2)),
+    show: false,
+    frame: true,
+    resizable: true,
+    alwaysOnTop: false,
+    skipTaskbar: false,
+    backgroundColor: '#f4f5f7',
+    title: 'pet-next 首次启动',
+    webPreferences: {
+      preload: path.join(root, 'electron/preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+      spellcheck: false,
+    },
+  });
+  launcherWindow = win;
+  win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  win.webContents.on('did-fail-load', (_event, code, description) => {
+    console.log(JSON.stringify({ event: 'launcher-fail-load', code, description }));
+  });
+  win.once('ready-to-show', () => win.show());
+  win.on('closed', () => {
+    launcherWindow = null;
+  });
+  void win.loadFile(path.join(root, 'app/launcher.html'));
+  console.log(JSON.stringify({ event: 'launcher-open' }));
+}
+
+/** 四个受限 IPC：load/save/probe/start，其余能力不暴露给启动页。 */
+function registerLauncherIpc(): void {
+  launcherController ??= createNodeLauncherController();
+  const controller = launcherController;
+
+  ipcMain.handle(LAUNCHER_LOAD_CHANNEL, () => controller.loadConfig());
+  ipcMain.handle(LAUNCHER_SAVE_CHANNEL, (_event, payload: unknown) => {
+    const config = parseConfigPayload(payload);
+    if (config === null) {
+      return { ok: false, error: { code: 'config-invalid', message: '保存载荷格式错误' } };
+    }
+    return controller.saveConfig(config);
+  });
+  ipcMain.handle(LAUNCHER_PROBE_CHANNEL, (_event, payload: unknown) => {
+    const parsed = parseProbePayload(payload);
+    if (parsed === null) {
+      return { ok: false, error: { code: 'config-invalid', message: '测试连接载荷格式错误' } };
+    }
+    return controller.probe(parsed.config, parsed.model);
+  });
+  ipcMain.handle(LAUNCHER_START_CHANNEL, async (_event, payload: unknown) => {
+    const parsed = parseStartPayload(payload);
+    if (parsed === null) {
+      return { ok: false, error: { code: 'config-invalid', message: '启动载荷格式错误' } };
+    }
+    // 启动前再落一次配置：保存失败就不启动，避免"用着旧配置却以为已保存"。
+    const saved = await controller.saveConfig(parsed.config);
+    if (!saved.ok) return saved;
+    const started = await controller.start(parsed.config, parsed.options);
+    if (!started.ok) return started;
+    // 资源归属：隧道由 controller 持有到退出；启动页销毁，桌宠窗口接管。
+    createWindow({
+      baseUrl: started.baseUrl,
+      model: started.model,
+      experience: started.options.experience === 'companion' ? COMPANION_EXPERIENCE : undefined,
+      context: started.options.chatContext,
+    });
+    console.log(
+      JSON.stringify({
+        event: 'launcher-started',
+        model: started.model,
+        experience: started.options.experience,
+        context: started.options.chatContext,
+      }),
+    );
+    const launcher = launcherWindow;
+    launcherWindow = null;
+    launcher?.destroy();
+    return started;
+  });
+}
+
 void app.whenReady().then(() => {
+  if (process.env[LAUNCHER_MODE_ENV] === '1') {
+    registerLauncherIpc();
+    createLauncherWindow();
+    return;
+  }
   createWindow();
 });
 
-app.on('before-quit', () => {
+app.on('before-quit', (event) => {
   chatHandle?.dispose();
   chatHandle = null;
+  // M3-7：launcher 模式下隧道由 controller 持有；退出前等它真正收掉本次 ssh 再退。
+  if (launcherQuitting || launcherController === null) return;
+  launcherQuitting = true;
+  event.preventDefault();
+  void launcherController.stop().finally(() => {
+    app.quit();
+  });
 });
 
 app.on('window-all-closed', () => {

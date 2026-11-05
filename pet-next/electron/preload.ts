@@ -12,6 +12,12 @@ const CHAT_CANCEL_CHANNEL = 'chat:cancel';
 const CHAT_INFO_CHANNEL = 'chat:info';
 const CHAT_RESET_CHANNEL = 'chat:reset';
 
+// M3-7 launcher 通道名与 contracts/launcher.ts 保持一致（同样内联）。
+const LAUNCHER_LOAD_CHANNEL = 'launcher:load';
+const LAUNCHER_SAVE_CHANNEL = 'launcher:save';
+const LAUNCHER_PROBE_CHANNEL = 'launcher:probe';
+const LAUNCHER_START_CHANNEL = 'launcher:start';
+
 contextBridge.exposeInMainWorld('pet', {
   moveBy(dx: number, dy: number): void {
     ipcRenderer.send('pet:move-by', { dx, dy });
@@ -35,5 +41,24 @@ contextBridge.exposeInMainWorld('petChat', {
   /** 只读展示信息（mode/model）；不含服务地址与凭据。 */
   info(): Promise<unknown> {
     return ipcRenderer.invoke(CHAT_INFO_CHANNEL);
+  },
+});
+
+/**
+ * M3-7 首次启动页桥：只转发 load/save/probe/start 四个受限调用。
+ * 载荷形状见 contracts/launcher.ts；页面拿不到 ipcRenderer，也读不到配置文件本身。
+ */
+contextBridge.exposeInMainWorld('petLauncher', {
+  loadConfig(): Promise<unknown> {
+    return ipcRenderer.invoke(LAUNCHER_LOAD_CHANNEL);
+  },
+  saveConfig(config: unknown): Promise<unknown> {
+    return ipcRenderer.invoke(LAUNCHER_SAVE_CHANNEL, { config });
+  },
+  probe(config: unknown, model?: string): Promise<unknown> {
+    return ipcRenderer.invoke(LAUNCHER_PROBE_CHANNEL, { config, model });
+  },
+  start(config: unknown, options: unknown): Promise<unknown> {
+    return ipcRenderer.invoke(LAUNCHER_START_CHANNEL, { config, options });
   },
 });
