@@ -1,0 +1,238 @@
+/*
+ * M3-7 首次启动配置页样式：普通有边框窗口（非透明），独立于 page.css/chat-panel.css。
+ * 布局：内容宽约 520px 自适应（小窗不溢出），字段纵向排列保证中文可读；
+ * 键盘可达：所有交互元素原生可聚焦，:focus-visible 给出可见描边。
+ * 类名与 data-state 清单见文件底部注释，供接线与测试对照。
+ */
+
+html,
+body {
+  margin: 0;
+  min-height: 100%;
+  background: #f4f6f8;
+  color: #222;
+  font-family: system-ui, -apple-system, 'Segoe UI', 'PingFang SC', 'Microsoft YaHei', sans-serif;
+}
+
+#launcher-root {
+  padding: 16px;
+}
+
+.launcher {
+  box-sizing: border-box;
+  width: min(520px, 100%);
+  margin: 0 auto;
+  padding: 16px 18px;
+  border: 1px solid rgba(0, 0, 0, 0.15);
+  border-radius: 10px;
+  background: #fff;
+  box-shadow: 0 6px 24px rgba(0, 0, 0, 0.12);
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  user-select: none;
+}
+
+.launcher-title {
+  margin: 0;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+.launcher-guide {
+  margin: 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.08);
+  background: #fff8dc;
+  color: #6b5410;
+  font-size: 12px;
+  line-height: 1.6;
+}
+
+.launcher-guide[hidden] {
+  display: none;
+}
+
+.launcher-form {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.launcher-fields,
+.launcher-options {
+  margin: 0;
+  padding: 8px 12px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  border-radius: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+}
+
+.launcher-fields legend,
+.launcher-options legend {
+  padding: 0 4px;
+  font-size: 12px;
+  color: #555;
+}
+
+.launcher-field {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+
+.launcher-field[data-invalid='true'] .launcher-input {
+  border-color: #b3261e;
+}
+
+.launcher-label {
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+  font-size: 12px;
+  color: #333;
+}
+
+.launcher-label > span {
+  font-weight: 500;
+}
+
+.launcher-input {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  border-radius: 6px;
+  box-sizing: border-box;
+  width: 100%;
+  background: #fff;
+  color: #222;
+}
+
+.launcher-input:focus {
+  outline: 1px solid #4a90d9;
+}
+
+.launcher-field-error {
+  font-size: 11px;
+  color: #b3261e;
+  min-height: 0;
+}
+
+.launcher-field-error:empty {
+  display: none;
+}
+
+.launcher-option-group {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  font-size: 12px;
+  color: #333;
+  flex-wrap: wrap;
+}
+
+.launcher-option-group input[type='radio'],
+.launcher-option-group input[type='checkbox'] {
+  margin: 0;
+  accent-color: #4a90d9;
+}
+
+.launcher-option-group label {
+  cursor: pointer;
+}
+
+.launcher-actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+}
+
+.launcher-button {
+  font: inherit;
+  font-size: 13px;
+  padding: 6px 18px;
+  border-radius: 6px;
+  border: 1px solid rgba(0, 0, 0, 0.25);
+  background: #fff;
+  color: #222;
+  cursor: pointer;
+}
+
+.launcher-button:focus-visible,
+.launcher-input:focus-visible,
+.launcher-option-group input:focus-visible + label {
+  outline: 2px solid #4a90d9;
+  outline-offset: 1px;
+}
+
+.launcher-start {
+  background: #4a90d9;
+  border-color: #3a7bc0;
+  color: #fff;
+}
+
+.launcher-retry {
+  align-self: flex-start;
+}
+
+.launcher-button:disabled {
+  opacity: 0.45;
+  cursor: default;
+}
+
+.launcher-status {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.05);
+  font-size: 12px;
+}
+
+.launcher-summary {
+  color: #444;
+  word-break: break-all;
+}
+
+.launcher-phase {
+  color: #555;
+}
+
+.launcher-phase:empty {
+  display: none;
+}
+
+/* 阶段配色：探测/启动中灰、成功绿、失败红；文案本身已含阶段词。 */
+.launcher[data-state='probing'] .launcher-phase,
+.launcher[data-state='starting'] .launcher-phase,
+.launcher[data-state='loading'] .launcher-phase {
+  color: #8a6d00;
+}
+
+.launcher[data-state='running'] .launcher-phase {
+  color: #1f7a1f;
+}
+
+.launcher[data-state='load-error'] .launcher-phase {
+  color: #b3261e;
+}
+
+/*
+ * 类名清单（接线 launcher.html 用）：
+ * 容器：launcher（data-state ∈ loading|load-error|editing|probing|starting|running、
+ *       data-experience ∈ standard|companion、data-context ∈ on|off）
+ * 引导：launcher-guide（hidden = 已有配置）
+ * 表单：launcher-form、launcher-fields、launcher-field（data-invalid）、launcher-label、
+ *       launcher-input（data-testid=launcher-field-<host|port|user|identityFile|localPort|remoteHost|remotePort>）、
+ *       launcher-field-error（data-testid=launcher-field-error-<key>）
+ * 选项：launcher-options、launcher-option-group、radio #launcher-experience-standard|#launcher-experience-companion、
+ *       checkbox #launcher-context
+ * 动作：launcher-actions、launcher-probe（data-testid=launcher-probe）、launcher-start（data-testid=launcher-start）、
+ *       launcher-retry（data-testid=launcher-retry，hidden = 非 load-error 态）
+ * 状态：launcher-status（data-testid=launcher-status）、launcher-summary、launcher-phase（data-testid=launcher-phase）
+ */
