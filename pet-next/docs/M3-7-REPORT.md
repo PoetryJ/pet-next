@@ -1,6 +1,7 @@
 # M3-7 一页交付：首次启动体验预览（含 R1 两处 Windows 入口修复）
 
-分支 `codex/pet-next-m3-first-run`，基线 `b8eaf23`，本轮 HEAD 见文末。未合 main。
+分支 `codex/pet-next-m3-first-run`，基线 `b8eaf23`，未合 main。
+完整 HEAD 与包哈希见仓库外交付清单 `M3-7-DELIVERY.txt`（不写进本文件，避免自引用改变 HEAD）。
 
 ## 解决什么
 双击 → 看见配置页 → 只 GET 测试连接 → 选预览选项 → 启动桌宠 → 关窗干净退出；再次打开能读取上次配置。
