@@ -195,21 +195,70 @@ interface Rect {
   disabled: boolean | null;
 }
 
-async function clickRect(cdp: Cdp, rect: Rect): Promise<void> {
-  const x = Math.round(rect.cx);
-  const y = Math.round(rect.cy);
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'none', buttons: 0 });
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', buttons: 1, clickCount: 1 });
-  await delay(20);
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', buttons: 0, clickCount: 1 });
+/**
+ * 让元素获得焦点并全选。按 data-testid 定位，不依赖坐标命中——
+ * 负责人复跑出现的 "host 收到 port 值" 就是坐标点击未命中/焦点串位导致的。
+ */
+async function focusBySelector(cdp: Cdp, selector: string): Promise<boolean> {
+  return evaluate<boolean>(
+    cdp,
+    `(() => {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (el === null) return false;
+      el.focus();
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) el.select();
+      return document.activeElement === el;
+    })()`,
+  );
 }
 
-/** 清空并输入一个文本框（点击 → 全选 → insertText）。 */
-async function fillField(cdp: Cdp, rect: Rect, text: string): Promise<void> {
-  await clickRect(cdp, rect);
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', modifiers: 2, key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: 2, key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
-  await cdp.send('Input.insertText', { text });
+/** 只读读回元素当前值（输入后立即校验用）。 */
+async function valueOfSelector(cdp: Cdp, selector: string): Promise<string | null> {
+  return evaluate<string | null>(
+    cdp,
+    `(() => {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (el instanceof HTMLInputElement || el instanceof HTMLTextAreaElement) return el.value;
+      return null;
+    })()`,
+  );
+}
+
+/**
+ * 填一个文本框：focus + select（不经坐标）→ Input.insertText → 立刻读回校验；
+ * 不一致时重试一次（键盘显式 Ctrl+A 全选再输入，最多 2 次），仍失败才抛错（带 expected/actual）。
+ */
+async function fillField(cdp: Cdp, selector: string, text: string): Promise<void> {
+  let actual: string | null = null;
+  for (let attempt = 1; attempt <= 2; attempt += 1) {
+    await cdp.send('Page.bringToFront').catch(() => undefined);
+    const focused = await focusBySelector(cdp, selector);
+    if (!focused) throw new Error(`字段 ${selector} 无法聚焦（attempt ${attempt}）`);
+    if (attempt > 1) {
+      await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', modifiers: 2, key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
+      await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: 2, key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
+    }
+    await cdp.send('Input.insertText', { text });
+    actual = await valueOfSelector(cdp, selector);
+    if (actual === text) return;
+  }
+  throw new Error(
+    `字段 ${selector} 输入未生效：expected=${JSON.stringify(text)} actual=${JSON.stringify(actual)}（已重试 2 次）`,
+  );
+}
+
+/** 按 data-testid 触发一次元素 click（不经坐标，避免焦点/命中串位）。 */
+async function clickTestId(cdp: Cdp, selector: string): Promise<void> {
+  const clicked = await evaluate<boolean>(
+    cdp,
+    `(() => {
+      const el = document.querySelector(${JSON.stringify(selector)});
+      if (!(el instanceof HTMLElement)) return false;
+      el.click();
+      return true;
+    })()`,
+  );
+  if (!clicked) throw new Error(`目标元素不存在：${selector}`);
 }
 
 /* --------- launcher 页面 DOM --------- */
@@ -229,6 +278,9 @@ const SEL = {
   phase: '[data-testid="launcher-phase"]',
   experienceCompanion: '[data-testid="launcher-experience-companion"]',
   context: '[data-testid="launcher-context"]',
+  chatToggle: '[data-testid="chat-toggle"]',
+  chatInput: '[data-testid="chat-input"]',
+  chatSend: '[data-testid="chat-send"]',
 } as const;
 
 type FieldName = 'host' | 'port' | 'user' | 'identityFile' | 'localPort' | 'remoteHost' | 'remotePort';
@@ -415,26 +467,19 @@ async function waitPetMounted(cdp: Cdp, timeoutMs: number): Promise<void> {
 
 async function openPetPanel(cdp: Cdp): Promise<PetDomState> {
   await waitPetDom(cdp, '聊天面板未挂载', (s) => s.hasPanel, 60000);
-  const toggle = await waitPetDom(cdp, '聊天开关不可点', (s) => s.rects.toggle.visible, 15000);
-  await clickRect(cdp, toggle.state.rects.toggle);
+  await waitPetDom(cdp, '聊天开关不可点', (s) => s.rects.toggle.found && s.rects.toggle.visible, 15000);
+  await clickTestId(cdp, SEL.chatToggle);
   const opened = await waitPetDom(cdp, '聊天面板未打开', (s) => s.rects.input.visible, 15000);
   return opened.state;
 }
 
 async function typeAndSend(cdp: Cdp, text: string): Promise<number> {
-  const ready = await waitPetDom(cdp, '聊天输入框未就绪', (s) => s.rects.input.found && s.rects.input.visible, 15000);
-  await clickRect(cdp, ready.state.rects.input);
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyDown', modifiers: 2, key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
-  await cdp.send('Input.dispatchKeyEvent', { type: 'keyUp', modifiers: 2, key: 'a', code: 'KeyA', windowsVirtualKeyCode: 65, nativeVirtualKeyCode: 65 });
-  await cdp.send('Input.insertText', { text });
-  const armed = await waitPetDom(
-    cdp,
-    '发送按钮未就绪',
-    (s) => s.inputValue === text && s.rects.send.disabled === false,
-    15000,
-  );
+  await waitPetDom(cdp, '聊天输入框未就绪', (s) => s.rects.input.found && s.rects.input.visible, 15000);
+  // 输入走 testid focus + 读回校验（与 launcher 表单同一套，不经坐标）。
+  await fillField(cdp, SEL.chatInput, text);
+  await waitPetDom(cdp, '发送按钮未就绪', (s) => s.inputValue === text && s.rects.send.disabled === false, 15000);
   const at = Date.now();
-  await clickRect(cdp, armed.state.rects.send);
+  await clickTestId(cdp, SEL.chatSend);
   return at;
 }
 
@@ -852,6 +897,13 @@ async function launchCase(launch: LaunchCase): Promise<Handle> {
       if (stopped) return;
       stopped = true;
       cdp.close();
+      // 清理前先快照本次树（只本次入口；不全局 pkill）。capture 失败不阻断清理。
+      let owned: OwnedProcessSnapshot | null;
+      try {
+        owned = captureOwnedProcesses(child.pid ?? 0);
+      } catch {
+        owned = null;
+      }
       // 只清理本次实例：进程组（launch-trial 派生的 Electron/ssh 都在组内）+ 自身。
       // 不做全局 pkill，树外进程（哨兵等）不得受影响。
       if (process.platform !== 'win32' && typeof child.pid === 'number') {
@@ -863,6 +915,19 @@ async function launchCase(launch: LaunchCase): Promise<Handle> {
       }
       if (child.exitCode === null) child.kill('SIGKILL');
       fake.kill('SIGTERM');
+      // 兜底：失败用例（fillForm/断言抛错）也要立刻收净，避免 Electron/ssh 残留遮挡后续用例；
+      // 只对本次树里仍存活的 PID 补 SIGKILL，绝不按名字全局 kill。
+      if (owned !== null) {
+        const gone = await waitOwnedGone(owned, { timeoutMs: 3000 });
+        for (const pid of gone.alive) {
+          try {
+            process.kill(pid, 'SIGKILL');
+          } catch {
+            /* 已退出 */
+          }
+        }
+        if (gone.alive.length > 0) await waitOwnedGone(owned, { timeoutMs: 2000 });
+      }
       await mkdir(dir, { recursive: true }).catch(() => undefined);
       if (existsSync(logFile)) await copyFile(logFile, path.join(dir, 'requests.ndjson')).catch(() => undefined);
       if (existsSync(sshLog)) await copyFile(sshLog, path.join(dir, 'ssh.ndjson')).catch(() => undefined);
@@ -883,20 +948,31 @@ interface FormValues {
 
 /** 填一遍连接表单（字段名与 contracts/launcher.ts LauncherConfig 对齐）。 */
 async function fillForm(handle: Handle, values: FormValues): Promise<LauncherDomState> {
-  const ready = await waitDom(handle.cdp, 'launcher 表单未挂载', (s) => s.hasForm, 30000);
-  const fields = ready.state.fields;
-  await fillField(handle.cdp, fields.host, values.host);
-  await fillField(handle.cdp, fields.port, values.port);
-  await fillField(handle.cdp, fields.user, values.user);
-  await fillField(handle.cdp, fields.identityFile, values.identityFile);
-  await fillField(handle.cdp, fields.localPort, values.localPort);
-  await fillField(handle.cdp, fields.remoteHost, values.remoteHost);
-  await fillField(handle.cdp, fields.remotePort, values.remotePort);
+  await waitDom(handle.cdp, 'launcher 表单未挂载', (s) => s.hasForm && s.phase === 'editing', 30000);
+  await fillField(handle.cdp, SEL.host, values.host);
+  await fillField(handle.cdp, SEL.port, values.port);
+  await fillField(handle.cdp, SEL.user, values.user);
+  await fillField(handle.cdp, SEL.identityFile, values.identityFile);
+  await fillField(handle.cdp, SEL.localPort, values.localPort);
+  await fillField(handle.cdp, SEL.remoteHost, values.remoteHost);
+  await fillField(handle.cdp, SEL.remotePort, values.remotePort);
   const filled = await readDom(handle.cdp);
   for (const name of Object.keys(values) as Array<keyof FormValues>) {
     assert.equal(filled.fields[name].value, values[name], `字段 ${name} 应回填输入值`);
   }
   return filled;
+}
+
+/** 等「测试连接」可点（editing 且非 busy）。 */
+async function waitProbeReady(cdp: Cdp): Promise<LauncherDomState> {
+  return (await waitDom(cdp, '测试连接按钮未就绪', (s) => s.phase === 'editing' && s.probe.disabled === false, 30000))
+    .state;
+}
+
+/** 等「启动」可点（editing 且非 busy）。 */
+async function waitStartReady(cdp: Cdp): Promise<LauncherDomState> {
+  return (await waitDom(cdp, '启动按钮未就绪', (s) => s.phase === 'editing' && s.start.disabled === false, 30000))
+    .state;
 }
 
 /** 启动成功后 capture 归属（入口 + Electron 子树），断言先于任何清理。 */
@@ -992,13 +1068,14 @@ test('首次启动 · 无配置→填表→测试连接(GET only)→启动→app
     });
     // 测试连接：起隧道 → GET /v1/models → 收隧道；页面给成功提示与模型列表。
     // 页面没有独立保存按钮（启动时先 saveConfig 再 start），故先探测，启动后再验落盘。
-    await clickRect(handle.cdp, (await readDom(handle.cdp)).probe);
+    await waitProbeReady(handle.cdp);
+    await clickTestId(handle.cdp, SEL.probe);
     await waitDom(handle.cdp, '测试连接无成功提示', (s) => s.phaseText.includes('连接成功'), 40000);
     assert.equal(countPosts(handle.logFile), 0, '测试连接只允许 GET');
     // 预览选项：缺省 standard + context off（与现有 trial 入口一致），显式确认后启动。
-    const beforeStart = await readDom(handle.cdp);
+    const beforeStart = await waitStartReady(handle.cdp);
     assert.equal(beforeStart.experience, 'standard', '缺省体验应为 standard');
-    await clickRect(handle.cdp, beforeStart.start);
+    await clickTestId(handle.cdp, SEL.start);
     await waitDom(handle.cdp, '启动未进入保存/启动阶段', (s) => s.phase === 'starting' || s.phase === 'running', 15000);
     // 启动前会先落盘：轮询等配置文件真实出现（不用固定 sleep）。
     await waitForFile(handle.configPath, 15000);
@@ -1083,7 +1160,8 @@ test('连接失败 · 可读错误、改到实际 fakePort 再次 probe 成功�
       remoteHost: '127.0.0.1',
       remotePort: String(deadPort),
     });
-    await clickRect(handle.cdp, (await readDom(handle.cdp)).probe);
+    await waitProbeReady(handle.cdp);
+    await clickTestId(handle.cdp, SEL.probe);
     const failed = await waitDom(
       handle.cdp,
       '探测失败无提示',
@@ -1113,9 +1191,10 @@ test('连接失败 · 可读错误、改到实际 fakePort 再次 probe 成功�
     const retry = await readDom(handle.cdp);
     assert.equal(retry.probe.disabled, false, '失败后必须允许改配置重试');
     assert.equal(retry.fields.remotePort.value, String(deadPort), '失败后字段应保留用户输入');
-    await fillField(handle.cdp, retry.fields.remotePort, String(handle.fakePort));
+    await fillField(handle.cdp, SEL.remotePort, String(handle.fakePort));
     assert.equal((await readDom(handle.cdp)).fields.remotePort.value, String(handle.fakePort), '字段必须可修改');
-    await clickRect(handle.cdp, (await readDom(handle.cdp)).probe);
+    await waitProbeReady(handle.cdp);
+    await clickTestId(handle.cdp, SEL.probe);
     await waitDom(handle.cdp, '改到 fakePort 后再次 probe 未成功', (s) => s.phaseText.includes('连接成功'), 40000);
     // 成功探测同样收隧道：两条隧道都必须有 stopped 记录。
     const allRows = await waitSshLog(
@@ -1173,7 +1252,8 @@ test('探测中关窗 · /models 等待中取消：退出 0、无桌宠窗口、
       remoteHost: '127.0.0.1',
       remotePort: String(blackhole.port),
     });
-    await clickRect(handle.cdp, (await readDom(handle.cdp)).probe);
+    await waitProbeReady(handle.cdp);
+    await clickTestId(handle.cdp, SEL.probe);
     await waitDom(handle.cdp, '点击探测后未进入 probing', (s) => s.phase === 'probing', 15000);
     // 隧道已真实建立（fake-ssh-listening），此时探测仍在等待 → 关窗即"探测中取消"。
     const rows = await waitSshLog(
@@ -1242,7 +1322,7 @@ test('选 companion · 发 1 条 fake 消息：回复上屏、reaction 恰 1 次
   try {
     handle = await launchCase({ caseName: 'companion-chat', config: null, pinFakeTarget: true });
     const tunnelPort = await freePort();
-    const filled = await fillForm(handle, {
+    await fillForm(handle, {
       host: 'fake.example.invalid',
       port: '10977',
       user: 'tester',
@@ -1252,10 +1332,11 @@ test('选 companion · 发 1 条 fake 消息：回复上屏、reaction 恰 1 次
       remotePort: '18872',
     });
     // 用户显式选择 companion（原生 radio；click 触发 change → page.dataset.experience）。
-    await clickRect(handle.cdp, filled.experienceCompanion);
+    await clickTestId(handle.cdp, SEL.experienceCompanion);
     const chosen = await waitDom(handle.cdp, 'companion 单选未生效', (s) => s.experience === 'companion', 15000);
     assert.equal(chosen.state.experience, 'companion');
-    await clickRect(handle.cdp, chosen.state.start);
+    await waitStartReady(handle.cdp);
+    await clickTestId(handle.cdp, SEL.start);
     const pet = await waitPetTarget(handle.debugPort, 90000);
     petCdp = await connectCdp(pet.webSocketDebuggerUrl ?? '');
     await waitPetMounted(petCdp, 30000);
@@ -1313,7 +1394,7 @@ test('选 companion · 慢回复 2500ms：等待提示先到期、回复上屏�
   try {
     handle = await launchCase({ caseName: 'companion-chat-slow', config: null, pinFakeTarget: true, fakeDelayMs: 2500 });
     const tunnelPort = await freePort();
-    const filled = await fillForm(handle, {
+    await fillForm(handle, {
       host: 'fake.example.invalid',
       port: '10977',
       user: 'tester',
@@ -1322,9 +1403,10 @@ test('选 companion · 慢回复 2500ms：等待提示先到期、回复上屏�
       remoteHost: '127.0.0.1',
       remotePort: '18872',
     });
-    await clickRect(handle.cdp, filled.experienceCompanion);
-    const chosen = await waitDom(handle.cdp, 'companion 单选未生效', (s) => s.experience === 'companion', 15000);
-    await clickRect(handle.cdp, chosen.state.start);
+    await clickTestId(handle.cdp, SEL.experienceCompanion);
+    await waitDom(handle.cdp, 'companion 单选未生效', (s) => s.experience === 'companion', 15000);
+    await waitStartReady(handle.cdp);
+    await clickTestId(handle.cdp, SEL.start);
     const pet = await waitPetTarget(handle.debugPort, 90000);
     petCdp = await connectCdp(pet.webSocketDebuggerUrl ?? '');
     await waitPetMounted(petCdp, 30000);
