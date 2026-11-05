@@ -40,6 +40,7 @@ import {
 } from '../contracts/launcher.ts';
 import { createNodeLauncherController } from '../adapters/launcher/node.ts';
 import { resolveQwenConfig } from './chat-config.ts';
+import { launcherRunOptions } from './launcher-run-options.ts';
 import { registerChatService, type ChatServiceHandle } from './chat-service.ts';
 import { logReady } from './ready-report.ts';
 
@@ -73,6 +74,8 @@ interface LocalChatOverride {
   model: string;
   experience: ChatExperience | undefined;
   context: boolean;
+  /** 本次选择的行为/短片令牌；存在 override 时窗口只认它，绝不读父 env。 */
+  preview?: string;
 }
 
 interface LocalChatOptions extends LocalChatOverride {
@@ -197,13 +200,17 @@ function createWindow(chatOverride?: LocalChatOverride): void {
   const query: Record<string, string> = {};
   if (process.env.PET_NEXT_IDLE_URL) query.idle = process.env.PET_NEXT_IDLE_URL;
   if (process.env.PET_NEXT_REACTION_URL) query.reaction = process.env.PET_NEXT_REACTION_URL;
-  const preview = process.env[PREVIEW_ENV];
+  // M3-7：launcher 启动时 preview/experience 都只取本次 override，
+  // 否则父进程残留的 PET_NEXT_PREVIEW / PET_NEXT_EXPERIENCE 会把上一轮的选择带进来。
+  const preview = chatOverride ? chatOverride.preview : process.env[PREVIEW_ENV];
   if (preview !== undefined && preview !== '') query[PREVIEW_QUERY] = preview;
   // M3-6：体验预览缺省 undefined（页面不创建反馈对象，原路径不变）。
-  // M3-7：launcher 启动时以用户显式选择为准；否则仍只由 env 决定。
-  const experience: ChatExperience | undefined =
-    chatOverride?.experience ??
-    (process.env[CHAT_EXPERIENCE_ENV] === COMPANION_EXPERIENCE ? COMPANION_EXPERIENCE : undefined);
+  // M3-7：launcher 启动时以用户显式选择为准（standard 显式为 undefined）；否则仍只由 env 决定。
+  const experience: ChatExperience | undefined = chatOverride
+    ? chatOverride.experience
+    : process.env[CHAT_EXPERIENCE_ENV] === COMPANION_EXPERIENCE
+      ? COMPANION_EXPERIENCE
+      : undefined;
   const chatLocal = process.env[CHAT_LOCAL_ENV];
   const chatPreview = process.env[CHAT_PREVIEW_ENV];
   const localMode = chatLocal !== undefined && chatLocal !== '';
@@ -368,11 +375,14 @@ function registerLauncherIpc(): void {
     const started = await controller.start(parsed.config, parsed.options);
     if (!started.ok) return started;
     // 资源归属：隧道由 controller 持有到退出；启动页销毁，桌宠窗口接管。
+    // M3-7：窗口配置由本次选择翻译而来（companion 必须带上 short,behavior，否则页面无 holder.behavior）。
+    const run = launcherRunOptions(started.options);
     createWindow({
       baseUrl: started.baseUrl,
       model: started.model,
-      experience: started.options.experience === 'companion' ? COMPANION_EXPERIENCE : undefined,
-      context: started.options.chatContext,
+      experience: run.experience,
+      context: run.contextEnabled,
+      preview: run.preview,
     });
     console.log(
       JSON.stringify({
@@ -380,6 +390,7 @@ function registerLauncherIpc(): void {
         model: started.model,
         experience: started.options.experience,
         context: started.options.chatContext,
+        preview: run.preview ?? '',
       }),
     );
     const launcher = launcherWindow;
