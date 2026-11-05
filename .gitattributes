@@ -1,3 +1,5 @@
 # 统一行尾：所有文本文件 LF 入库 + LF 检出，杜绝 CRLF 落盘（prettier 全绿）
 # text=auto：二进制文件（png/webm/gif/ttf 等）自动识别、不做转换
 * text=auto eol=lf
+# 双击入口必须 CRLF：cmd.exe 对 LF 批处理的 goto/label 解析不可靠（M3-7 R1 REVIEW）
+pet-next/启动.cmd text eol=crlf
