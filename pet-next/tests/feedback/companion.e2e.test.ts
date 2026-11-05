@@ -18,6 +18,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, test } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { resolvePnpmEntry } from './pnpm-entry.ts';
 
 const petRoot = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
 const evidenceRoot = path.join(petRoot, 'tests/chat-evidence/feedback');
@@ -47,11 +48,6 @@ function freePort(): Promise<number> {
       server.close(() => resolve(port));
     });
   });
-}
-
-function pnpmPath(): string {
-  const beside = path.join(path.dirname(process.execPath), 'pnpm');
-  return existsSync(beside) ? beside : 'pnpm';
 }
 
 before(async () => {
@@ -352,9 +348,14 @@ async function launch(arm: Arm, caseName: string): Promise<Handle> {
   };
   delete env.PET_NEXT_CHAT_CONTEXT;
   delete env.PET_NEXT_EXPERIENCE;
+  // 宿主若注入 NODE_OPTIONS（IDE/safe-delete shim），入口子进程的 `pnpm build` 会因 fs.cp
+  // 覆盖被拦截而失败；入口自身不依赖该变量，测试子进程环境显式清掉。
+  delete env.NODE_OPTIONS;
   if (arm.name === 'companion') env.PET_NEXT_EXPERIENCE = 'companion';
   let out = '';
-  const child = spawn(pnpmPath(), ['chat:trial', ...arm.args], { cwd: petRoot, env, stdio: ['ignore', 'pipe', 'pipe'] });
+  // M3-7 A：Windows 下不能 spawn 'pnpm'（.cmd 包装器 ENOENT）；显式 Node + pnpm CLI argv，两平台同一路径。
+  const pnpmEntry = resolvePnpmEntry(petRoot);
+  const child = spawn(pnpmEntry.command, [...pnpmEntry.args, 'chat:trial', ...arm.args], { cwd: petRoot, env, stdio: ['ignore', 'pipe', 'pipe'] });
   child.stdout?.on('data', (chunk) => (out += String(chunk)));
   child.stderr?.on('data', (chunk) => (out += String(chunk)));
   const deadline = Date.now() + 150000;

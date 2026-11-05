@@ -50,10 +50,12 @@ public static class PetNextDpi {
 
 $env:PET_NEXT_PLATFORM_MATRIX = 'tests/platform/evidence/win32-matrix.json'
 try {
+  # M3-7 A：Start-Process -ArgumentList 会重新拆含空格/中文的 $runner 路径；
+  # 调用运算符直接执行，参数不经过字符串重组，$LASTEXITCODE 保留真实退出码。
   $runner = Join-Path $PSScriptRoot 'run-platform.ts'
-  $proc = Start-Process -FilePath 'node' -ArgumentList @('--experimental-strip-types', $runner) -NoNewWindow -PassThru
-  $proc.WaitForExit()
-  exit $proc.ExitCode
+  & node --experimental-strip-types $runner
+  $nodeExitCode = $LASTEXITCODE
+  exit $nodeExitCode
 } finally {
   $mutex.ReleaseMutex()
   $mutex.Dispose()
