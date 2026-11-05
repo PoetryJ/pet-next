@@ -1,0 +1,6 @@
+submit_at=1793864688374
+waiting_hidden_ms=1666
+reply_ms=2562
+visual_seq=[{"visual":"auto","requestId":"reaction-2","atMs":1793864690936}]
+reactions=["reaction-2"]
+post=1

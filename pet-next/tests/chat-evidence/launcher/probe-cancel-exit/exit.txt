@@ -1,0 +1,11 @@
+code=0
+root_pid=3753636
+owned_pids_before=3753636,3753643,3753645,3753646,3753677,3753716,3753675,3753689
+owned_pids_alive_after=
+debug_port=46879 open_after=false
+output_tail=id 3753689: Permission denied (13)
+{"event":"launcher-open"}
+[3753643:1105/154441.000513:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+[3753643:1105/154441.000614:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[3753643:1105/154441.004282:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+

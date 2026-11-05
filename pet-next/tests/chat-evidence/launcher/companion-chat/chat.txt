@@ -1,0 +1,6 @@
+submit_at=1793864683658
+reply_ms=74
+visual_seq=[{"visual":"auto","requestId":"reaction-2","atMs":1793864683733}]
+reactions=["reaction-2"]
+post=1
+model_turns=2
