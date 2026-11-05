@@ -99,11 +99,12 @@ function sh(command, args, options = {}) {
   return { ok: result.status === 0 && !result.error, out: (result.stdout ?? '').trim(), error: result.error };
 }
 
-function gitLsFiles() {
+export function gitLsFiles() {
   // 解压包内没有 .git：允许注入清单（测试用临时文件），CLI 行为不变。
   const injected = process.env.PET_NEXT_TRIAL_FILE_LIST;
   if (injected) return readFileSync(injected, 'utf8');
-  const result = sh('git', ['ls-files'], { cwd: REPO_ROOT });
+  // core.quotepath=false：否则中文文件名（如顶层「启动.cmd」）会被转义成 "\345..." 而匹配不到白名单。
+  const result = sh('git', ['-c', 'core.quotepath=false', 'ls-files'], { cwd: REPO_ROOT });
   if (!result.ok) throw new Error(`git ls-files 失败：${String(result.error)}`);
   return result.out;
 }

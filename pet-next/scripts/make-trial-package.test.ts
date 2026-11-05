@@ -4,7 +4,7 @@
  */
 import assert from 'node:assert/strict';
 import { spawn } from 'node:child_process';
-import { mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
+import { existsSync, mkdtempSync, rmSync, writeFileSync, mkdirSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, test } from 'node:test';
@@ -12,6 +12,7 @@ import { fileURLToPath } from 'node:url';
 import {
   archiveWith,
   collectTrialFiles,
+  gitLsFiles,
   isForbidden,
   parsePackageArgs,
 } from './make-trial-package.mjs';
@@ -99,6 +100,16 @@ test('collectTrialFiles：M3-7 双击试用入口全链进包（启动.cmd + lau
   }
   assert.ok(!kept.includes('启动-别的.cmd'), '白名单外的顶层文件不得混入');
   assert.equal(excluded.length, 0);
+});
+
+test('gitLsFiles：中文文件名不被 quotepath 转义（启动.cmd 真能进包；包内无 .git 时跳过）', () => {
+  // 解压源码包内没有 .git，git ls-files 不可用：该回归只在仓库内跑。
+  if (!existsSync(path.join(petRoot, '..', '.git'))) return;
+  const out = gitLsFiles();
+  assert.ok(out.includes('pet-next/启动.cmd'), 'git 输出必须保留未转义的中文文件名');
+  assert.ok(!/\\[0-7]{3}/.test(out), 'git 输出不得出现八进制转义路径');
+  const { kept } = collectTrialFiles(out);
+  assert.ok(kept.includes('启动.cmd'), '启动.cmd 必须被白名单收集');
 });
 
 test('parsePackageArgs：正常与错误', () => {
