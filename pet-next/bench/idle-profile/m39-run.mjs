@@ -64,7 +64,7 @@ const ELECTRON_ROLES = new Set(['main', 'renderer', 'gpu', 'utility', 'zygote', 
 
 function cpuSeconds(roles) {
   let ticks = 0;
-  for (const [role, stat] of Object.entries(roles)) ticks += stat.cpuTicks;
+  for (const stat of Object.values(roles)) ticks += stat.cpuTicks;
   return ticks / HZ;
 }
 
@@ -166,7 +166,7 @@ child.stderr.on('data', (chunk) => {
 });
 
 let cdp = null;
-let sample = null;
+let sample;
 try {
   const socket = await waitForPageSocket(debugPort, () => child.exitCode !== null, Date.now() + 30000);
   cdp = await connectCdp(socket);
