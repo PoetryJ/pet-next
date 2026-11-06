@@ -1,5 +1,5 @@
 {
-  "stamp": "20261106T075118Z",
+  "stamp": "20261106T075311Z",
   "display": ":96",
   "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
   "verdict": "pass",
@@ -9,23 +9,23 @@
       "group": "pre",
       "phase": "merged",
       "title": "交付包 SHA256 + 完整性 + 启动.cmd 字节",
-      "stamp": "20261106T075118Z",
-      "startedAt": "2026-11-06T07:51:18.216Z",
+      "stamp": "20261106T075311Z",
+      "startedAt": "2026-11-06T07:53:11.618Z",
       "command": "(内部检查：sha256/zipfile/启动.cmd 字节)",
       "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
       "display": null,
-      "log": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T075118Z.json",
-      "durationMs": 728,
-      "endedAt": "2026-11-06T07:51:18.944Z",
+      "log": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T075311Z.json",
+      "durationMs": 1570,
+      "endedAt": "2026-11-06T07:53:13.188Z",
       "exitCode": 0,
       "status": "pass",
       "counts": null,
       "notes": [
-        "zip sha256 326e7c64025cf8d741165ae234fb2cc6ff0f7e437c77f6efbe70bd31694af6d4",
+        "zip sha256 dcffc47150dde0320bafc76cafb66915db7178160d247f07588ee1200808e1af",
         "条目 385，启动.cmd 1800B/45 CRLF/0 孤立 LF/非ASCII 0/BOM false/chcp false",
         "逐文件比对 5 个关键文件与 HEAD blob 一致"
       ],
-      "detail": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T075118Z.json"
+      "detail": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T075311Z.json"
     }
   ]
 }

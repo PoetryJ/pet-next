@@ -44,14 +44,15 @@ typecheck 8s；lint 25s；build 14s；launcher（PET_NEXT_LAUNCHER_E2E=1）7/7�
 verify 46/39/0/7（730s）；resources 4 对（hidden 24.1→0 fps，visible 24→24，POST 0/0）；windows not-run。
 详细分层表与披露见 scripts/m38-acceptance/ACCEPTANCE-CHECKLIST.md 第十节。
 
-交付包两个哈希的关系（勿混用）
+交付包三个哈希的关系（勿混用）
 ------------------------------
-最终交付：pet-next-trial-src-2edb158.zip，SHA256 326e7c64025cf8d741165ae234fb2cc6ff0f7e437c77f6efbe70bd31694af6d4，
-385 条目，对应 HEAD 2edb158；启动.cmd 1800B/45 CRLF/0 非 ASCII/无 BOM/无 chcp。
-旧包 pet-next-trial-src-3380f7f.zip（df4c391d…）为同源旧包：与最终包唯一差别是
-scripts/m38-acceptance/ 下 4 个验收脚本换成自修订版（hash 门禁改可选、resources 适配 C 的 runs 布局），
-产品源码/测试/启动.cmd 逐条目一致（diff -rq 两个解压目录复核：仅这 4 个文件不同）。
-报告与交付说明一律以 326e7c64… 为准。
+最终交付：pet-next-trial-src-c4af14d.zip，SHA256 dcffc47150dde0320bafc76cafb66915db7178160d247f07588ee1200808e1af，
+385 条目，对应最终 HEAD c4af14d；启动.cmd 1800B/45 CRLF/0 非 ASCII/无 BOM/无 chcp。
+历史被淘汰包（同源，仅打包时点不同，均不涉及产品源码/测试/启动.cmd）：
+- df4c391d…（3380f7f）：差 scripts/m38-acceptance/ 下 4 个验收脚本的 D 自修订；
+- 326e7c64…（2edb158）：差 scripts/unit-tests.mjs 的单测收集接线（.test.mjs 纳入，598 例）。
+diff -rq 逐目录复核：df4c39→326e7c 仅 4 个文件不同，326e7c→dcffc4 仅 1 个文件不同。
+报告与交付说明一律以 dcffc471… 为准。
 
 解压包 install/build/test 由负责人有界执行（环境替代：ELECTRON_SKIP_BINARY_DOWNLOAD=1 安装、
 从本机同版本 dist 复制二进制并补 path.txt），原始日志在 tests/chat-evidence/m38/pkg-lead/；
