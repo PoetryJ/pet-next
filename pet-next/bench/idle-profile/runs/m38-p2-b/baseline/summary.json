@@ -1,0 +1,389 @@
+{
+  "arm": "baseline",
+  "state": "hidden",
+  "hiddenSignal": "unmapped-only",
+  "seconds": 60,
+  "warmupSec": 8,
+  "sampleCount": 60,
+  "windowSec": 60.146,
+  "platform": "linux 5.4.119-19.0009.28 x64",
+  "host": "nb-1696310541880511232-d04dyonbiakg",
+  "node": "v22.20.0",
+  "electron": "43.3.0",
+  "electronPreflight": "v43.3.0",
+  "head": "60af704b40eb51c47ef5304daea115926fbc9129",
+  "dirtyFiles": 2,
+  "assets": {
+    "idleSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "reactionSha256": "9d73e16ca8d9abcfff96a41d9e98f632a241691ddf81b59538b16a6e77049861"
+  },
+  "display": ":97",
+  "xvfbOwned": true,
+  "preview": "",
+  "productEntry": "node scripts/chat-trial.mjs（等价 pnpm chat:trial 的第二半；构建由本脚本只做一次）",
+  "build": {
+    "built": false,
+    "reason": "up-to-date"
+  },
+  "pageAtMs": 853,
+  "posts": 0,
+  "postsGate": "pass",
+  "candidate": false,
+  "candidateDefaultOff": true,
+  "candidateInjected": false,
+  "roles": {
+    "main": {
+      "cpuSeconds": 0.11,
+      "cpuPercentAvg": 0.2,
+      "rssSumP50Mb": 155.6,
+      "rssSumMaxMb": 156.6,
+      "samples": 60
+    },
+    "renderer": {
+      "cpuSeconds": 2.29,
+      "cpuPercentAvg": 3.8,
+      "rssSumP50Mb": 71.1,
+      "rssSumMaxMb": 72.2,
+      "samples": 60
+    },
+    "gpu": {
+      "cpuSeconds": 0.71,
+      "cpuPercentAvg": 1.2,
+      "rssSumP50Mb": 27.1,
+      "rssSumMaxMb": 27.1,
+      "samples": 60
+    },
+    "utility": {
+      "cpuSeconds": 0.01,
+      "cpuPercentAvg": 0,
+      "rssSumP50Mb": 48.9,
+      "rssSumMaxMb": 48.9,
+      "samples": 60
+    },
+    "zygote": {
+      "cpuSeconds": 0,
+      "cpuPercentAvg": 0,
+      "rssSumP50Mb": 79.5,
+      "rssSumMaxMb": 79.5,
+      "samples": 60
+    },
+    "crashpad": {
+      "cpuSeconds": 0,
+      "cpuPercentAvg": 0,
+      "rssSumP50Mb": 0,
+      "rssSumMaxMb": 0,
+      "samples": 60
+    },
+    "cli": {
+      "cpuSeconds": 0.04,
+      "cpuPercentAvg": 0.1,
+      "rssSumP50Mb": 83.2,
+      "rssSumMaxMb": 84.3,
+      "samples": 60
+    },
+    "fake-ssh": {
+      "cpuSeconds": 0,
+      "cpuPercentAvg": 0,
+      "rssSumP50Mb": 52,
+      "rssSumMaxMb": 52,
+      "samples": 60
+    },
+    "fake-model": {
+      "cpuSeconds": 0,
+      "cpuPercentAvg": 0,
+      "rssSumP50Mb": 58.1,
+      "rssSumMaxMb": 58.1,
+      "samples": 60
+    },
+    "other": {
+      "cpuSeconds": 0,
+      "cpuPercentAvg": 0,
+      "rssSumP50Mb": 0,
+      "rssSumMaxMb": 0,
+      "samples": 60
+    }
+  },
+  "framesPerSec": 24,
+  "frameDeltas": [
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1004
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 25,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 23,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 25,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    },
+    {
+      "frames": 24,
+      "wallMs": 1004
+    },
+    {
+      "frames": 25,
+      "wallMs": 1002
+    },
+    {
+      "frames": 23,
+      "wallMs": 1002
+    },
+    {
+      "frames": 25,
+      "wallMs": 1002
+    },
+    {
+      "frames": 23,
+      "wallMs": 1002
+    },
+    {
+      "frames": 25,
+      "wallMs": 1003
+    },
+    {
+      "frames": 23,
+      "wallMs": 1002
+    },
+    {
+      "frames": 25,
+      "wallMs": 1003
+    },
+    {
+      "frames": 23,
+      "wallMs": 1002
+    },
+    {
+      "frames": 25,
+      "wallMs": 1002
+    },
+    {
+      "frames": 23,
+      "wallMs": 1003
+    },
+    {
+      "frames": 25,
+      "wallMs": 1002
+    },
+    {
+      "frames": 23,
+      "wallMs": 1002
+    },
+    {
+      "frames": 25,
+      "wallMs": 1003
+    },
+    {
+      "frames": 24,
+      "wallMs": 1002
+    }
+  ],
+  "probes": {
+    "recovery": {
+      "latencyMs": 14.700000762939453,
+      "src": "idle.webm",
+      "mediaTimeMs": 42,
+      "wallMs": 106,
+      "visibilityAfter": "visible",
+      "videos": [
+        {
+          "id": "clip",
+          "src": "idle.webm",
+          "paused": false,
+          "hidden": false,
+          "loop": true,
+          "readyState": 4,
+          "t": 0.11
+        },
+        {
+          "id": "clip-next",
+          "src": "",
+          "paused": true,
+          "hidden": true,
+          "loop": false,
+          "readyState": 0,
+          "t": 0
+        }
+      ]
+    },
+    "click": {
+      "latencyMs": 74.39999961853027,
+      "src": "reaction.webm",
+      "mediaTimeMs": 42,
+      "wallMs": 114,
+      "visualBefore": "idle",
+      "visualAfter": "reaction",
+      "framesBefore": 1755,
+      "framesAfter": 1759
+    }
+  },
+  "productExit": null,
+  "failures": [],
+  "notRun": [],
+  "command": "node bench/idle-profile/run.mjs --arm=baseline --seconds=60 --warmup=8 --display=:97 --state=hidden",
+  "generatedAt": "2026-11-06T06:11:39.306Z"
+}

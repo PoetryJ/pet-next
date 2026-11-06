@@ -1,0 +1,6321 @@
+{
+  "summary": {
+    "arm": "baseline",
+    "state": "hidden",
+    "hiddenSignal": "unmapped-only",
+    "seconds": 60,
+    "warmupSec": 8,
+    "sampleCount": 60,
+    "windowSec": 60.152,
+    "platform": "linux 5.4.119-19.0009.28 x64",
+    "host": "nb-1696310541880511232-d04dyonbiakg",
+    "node": "v22.20.0",
+    "electron": "43.3.0",
+    "electronPreflight": "v43.3.0",
+    "head": "60af704b40eb51c47ef5304daea115926fbc9129",
+    "dirtyFiles": 2,
+    "assets": {
+      "idleSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "reactionSha256": "9d73e16ca8d9abcfff96a41d9e98f632a241691ddf81b59538b16a6e77049861"
+    },
+    "display": ":97",
+    "xvfbOwned": true,
+    "preview": "",
+    "productEntry": "node scripts/chat-trial.mjs（等价 pnpm chat:trial 的第二半；构建由本脚本只做一次）",
+    "build": {
+      "built": false,
+      "reason": "up-to-date"
+    },
+    "pageAtMs": 1032,
+    "posts": 0,
+    "postsGate": "pass",
+    "candidate": false,
+    "candidateDefaultOff": true,
+    "candidateInjected": false,
+    "framesPerSec": 24,
+    "frameDeltas": [
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1004
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1004
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 25,
+        "wallMs": 1003
+      },
+      {
+        "frames": 23,
+        "wallMs": 1003
+      },
+      {
+        "frames": 25,
+        "wallMs": 1003
+      },
+      {
+        "frames": 23,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 25,
+        "wallMs": 1003
+      },
+      {
+        "frames": 23,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 25,
+        "wallMs": 1003
+      },
+      {
+        "frames": 23,
+        "wallMs": 1003
+      },
+      {
+        "frames": 25,
+        "wallMs": 1003
+      },
+      {
+        "frames": 23,
+        "wallMs": 1002
+      },
+      {
+        "frames": 25,
+        "wallMs": 1002
+      },
+      {
+        "frames": 23,
+        "wallMs": 1002
+      },
+      {
+        "frames": 25,
+        "wallMs": 1003
+      },
+      {
+        "frames": 23,
+        "wallMs": 1002
+      },
+      {
+        "frames": 25,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 25,
+        "wallMs": 1002
+      },
+      {
+        "frames": 23,
+        "wallMs": 1003
+      },
+      {
+        "frames": 25,
+        "wallMs": 1002
+      },
+      {
+        "frames": 23,
+        "wallMs": 1002
+      },
+      {
+        "frames": 25,
+        "wallMs": 1003
+      },
+      {
+        "frames": 23,
+        "wallMs": 1002
+      },
+      {
+        "frames": 25,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1002
+      },
+      {
+        "frames": 24,
+        "wallMs": 1003
+      }
+    ],
+    "probes": {
+      "recovery": {
+        "latencyMs": 28.19999885559082,
+        "src": "idle.webm",
+        "mediaTimeMs": 83,
+        "wallMs": 105,
+        "visibilityAfter": "visible",
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.151
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ]
+      },
+      "click": {
+        "latencyMs": 355.1999988555908,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 369,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "framesBefore": 1756,
+        "framesAfter": 1759
+      }
+    },
+    "productExit": null,
+    "failures": [],
+    "notRun": [],
+    "command": "node bench/idle-profile/run.mjs --arm=baseline --seconds=60 --warmup=8 --display=:97 --state=hidden",
+    "generatedAt": "2026-11-06T06:13:03.220Z"
+  },
+  "samples": [
+    {
+      "t": 1,
+      "at": 1793945517601,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 6,
+          "cpuSeconds": 0.06,
+          "rssMb": 69.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.7,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 13322,
+        "visibility": "visible",
+        "frames": 312,
+        "bySrc": {
+          "idle.webm": 312
+        },
+        "lastFrameAt": 13304,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.962
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 2,
+      "at": 1793945518603,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 69.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.7,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 14325,
+        "visibility": "visible",
+        "frames": 336,
+        "bySrc": {
+          "idle.webm": 336
+        },
+        "lastFrameAt": 14304,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.965
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 3,
+      "at": 1793945519607,
+      "wallMs": 1004,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 6,
+          "cpuSeconds": 0.06,
+          "rssMb": 69.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 15328,
+        "visibility": "visible",
+        "frames": 360,
+        "bySrc": {
+          "idle.webm": 360
+        },
+        "lastFrameAt": 15320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.966
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 4,
+      "at": 1793945520609,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 69.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 16330,
+        "visibility": "visible",
+        "frames": 384,
+        "bySrc": {
+          "idle.webm": 384
+        },
+        "lastFrameAt": 16320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.968
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 5,
+      "at": 1793945521612,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 6,
+          "cpuSeconds": 0.06,
+          "rssMb": 69.3,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 17333,
+        "visibility": "visible",
+        "frames": 408,
+        "bySrc": {
+          "idle.webm": 408
+        },
+        "lastFrameAt": 17320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.968
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 6,
+      "at": 1793945522614,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 69.3,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 18336,
+        "visibility": "visible",
+        "frames": 432,
+        "bySrc": {
+          "idle.webm": 432
+        },
+        "lastFrameAt": 18320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.971
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 7,
+      "at": 1793945523618,
+      "wallMs": 1004,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 69.3,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 19339,
+        "visibility": "visible",
+        "frames": 456,
+        "bySrc": {
+          "idle.webm": 456
+        },
+        "lastFrameAt": 19320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.972
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 8,
+      "at": 1793945524621,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 69.3,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 20342,
+        "visibility": "visible",
+        "frames": 480,
+        "bySrc": {
+          "idle.webm": 480
+        },
+        "lastFrameAt": 20320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.975
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 9,
+      "at": 1793945525623,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 69.3,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 21345,
+        "visibility": "visible",
+        "frames": 504,
+        "bySrc": {
+          "idle.webm": 504
+        },
+        "lastFrameAt": 21320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.975
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 10,
+      "at": 1793945526625,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.7,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 22347,
+        "visibility": "visible",
+        "frames": 528,
+        "bySrc": {
+          "idle.webm": 528
+        },
+        "lastFrameAt": 22320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.977
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 11,
+      "at": 1793945527628,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.7,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 23350,
+        "visibility": "visible",
+        "frames": 552,
+        "bySrc": {
+          "idle.webm": 552
+        },
+        "lastFrameAt": 23320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.978
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 12,
+      "at": 1793945528631,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 70.7,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 24352,
+        "visibility": "visible",
+        "frames": 576,
+        "bySrc": {
+          "idle.webm": 576
+        },
+        "lastFrameAt": 24320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.981
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 13,
+      "at": 1793945529634,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.7,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 25355,
+        "visibility": "visible",
+        "frames": 601,
+        "bySrc": {
+          "idle.webm": 601
+        },
+        "lastFrameAt": 25353,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.981
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 14,
+      "at": 1793945530637,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 70.7,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 26358,
+        "visibility": "visible",
+        "frames": 624,
+        "bySrc": {
+          "idle.webm": 624
+        },
+        "lastFrameAt": 26320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.984
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 15,
+      "at": 1793945531640,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 70.7,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 27361,
+        "visibility": "visible",
+        "frames": 649,
+        "bySrc": {
+          "idle.webm": 649
+        },
+        "lastFrameAt": 27353,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.984
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 16,
+      "at": 1793945532642,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.8,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 28364,
+        "visibility": "visible",
+        "frames": 672,
+        "bySrc": {
+          "idle.webm": 672
+        },
+        "lastFrameAt": 28320,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.987
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 17,
+      "at": 1793945533645,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.6,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 29367,
+        "visibility": "visible",
+        "frames": 696,
+        "bySrc": {
+          "idle.webm": 696
+        },
+        "lastFrameAt": 29337,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.988
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 18,
+      "at": 1793945534647,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 156.8,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 71,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 30368,
+        "visibility": "visible",
+        "frames": 720,
+        "bySrc": {
+          "idle.webm": 720
+        },
+        "lastFrameAt": 30337,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.99
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 19,
+      "at": 1793945535650,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 31371,
+        "visibility": "visible",
+        "frames": 745,
+        "bySrc": {
+          "idle.webm": 745
+        },
+        "lastFrameAt": 31370,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.99
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 20,
+      "at": 1793945536653,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 32374,
+        "visibility": "visible",
+        "frames": 768,
+        "bySrc": {
+          "idle.webm": 768
+        },
+        "lastFrameAt": 32336,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.993
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 21,
+      "at": 1793945537655,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71.9,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 33376,
+        "visibility": "visible",
+        "frames": 792,
+        "bySrc": {
+          "idle.webm": 792
+        },
+        "lastFrameAt": 33336,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.994
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 22,
+      "at": 1793945538657,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 71.9,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 34378,
+        "visibility": "visible",
+        "frames": 816,
+        "bySrc": {
+          "idle.webm": 816
+        },
+        "lastFrameAt": 34336,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.996
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 23,
+      "at": 1793945539660,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 71.9,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 35381,
+        "visibility": "visible",
+        "frames": 841,
+        "bySrc": {
+          "idle.webm": 841
+        },
+        "lastFrameAt": 35370,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.996
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 24,
+      "at": 1793945540663,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 71.9,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 36384,
+        "visibility": "visible",
+        "frames": 864,
+        "bySrc": {
+          "idle.webm": 864
+        },
+        "lastFrameAt": 36336,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.999
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 25,
+      "at": 1793945541666,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71.9,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 37387,
+        "visibility": "visible",
+        "frames": 889,
+        "bySrc": {
+          "idle.webm": 889
+        },
+        "lastFrameAt": 37370,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.999
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 26,
+      "at": 1793945542668,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 38390,
+        "visibility": "visible",
+        "frames": 912,
+        "bySrc": {
+          "idle.webm": 912
+        },
+        "lastFrameAt": 38336,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 1,
+            "t": 0
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 27,
+      "at": 1793945543670,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 39391,
+        "visibility": "visible",
+        "frames": 937,
+        "bySrc": {
+          "idle.webm": 937
+        },
+        "lastFrameAt": 39369,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.002
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 28,
+      "at": 1793945544672,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 40393,
+        "visibility": "visible",
+        "frames": 960,
+        "bySrc": {
+          "idle.webm": 960
+        },
+        "lastFrameAt": 40336,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.001
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 29,
+      "at": 1793945545675,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 71.6,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 41396,
+        "visibility": "visible",
+        "frames": 985,
+        "bySrc": {
+          "idle.webm": 985
+        },
+        "lastFrameAt": 41369,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.004
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 30,
+      "at": 1793945546677,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 71.6,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 42399,
+        "visibility": "visible",
+        "frames": 1008,
+        "bySrc": {
+          "idle.webm": 1008
+        },
+        "lastFrameAt": 42336,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.958,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.005
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 31,
+      "at": 1793945547679,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 71.6,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 43401,
+        "visibility": "visible",
+        "frames": 1033,
+        "bySrc": {
+          "idle.webm": 1033
+        },
+        "lastFrameAt": 43369,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.007
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 32,
+      "at": 1793945548682,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 71.6,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 44404,
+        "visibility": "visible",
+        "frames": 1057,
+        "bySrc": {
+          "idle.webm": 1057
+        },
+        "lastFrameAt": 44403,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.007
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 33,
+      "at": 1793945549684,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 71.6,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 45405,
+        "visibility": "visible",
+        "frames": 1081,
+        "bySrc": {
+          "idle.webm": 1081
+        },
+        "lastFrameAt": 45386,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.009
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 34,
+      "at": 1793945550687,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 71.6,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 46408,
+        "visibility": "visible",
+        "frames": 1105,
+        "bySrc": {
+          "idle.webm": 1105
+        },
+        "lastFrameAt": 46402,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.01
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 35,
+      "at": 1793945551690,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 71.8,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 47411,
+        "visibility": "visible",
+        "frames": 1129,
+        "bySrc": {
+          "idle.webm": 1129
+        },
+        "lastFrameAt": 47386,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.013
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 36,
+      "at": 1793945552693,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71.8,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 48414,
+        "visibility": "visible",
+        "frames": 1153,
+        "bySrc": {
+          "idle.webm": 1153
+        },
+        "lastFrameAt": 48402,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.014
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 37,
+      "at": 1793945553695,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 71.8,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 49417,
+        "visibility": "visible",
+        "frames": 1177,
+        "bySrc": {
+          "idle.webm": 1177
+        },
+        "lastFrameAt": 49386,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.016
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 38,
+      "at": 1793945554698,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71.8,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 50419,
+        "visibility": "visible",
+        "frames": 1201,
+        "bySrc": {
+          "idle.webm": 1201
+        },
+        "lastFrameAt": 50402,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.017
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 39,
+      "at": 1793945555701,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71.8,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 51422,
+        "visibility": "visible",
+        "frames": 1225,
+        "bySrc": {
+          "idle.webm": 1225
+        },
+        "lastFrameAt": 51386,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.02
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 40,
+      "at": 1793945556703,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71.8,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 52425,
+        "visibility": "visible",
+        "frames": 1249,
+        "bySrc": {
+          "idle.webm": 1249
+        },
+        "lastFrameAt": 52402,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.02
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 41,
+      "at": 1793945557705,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 53426,
+        "visibility": "visible",
+        "frames": 1273,
+        "bySrc": {
+          "idle.webm": 1273
+        },
+        "lastFrameAt": 53402,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.022
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 42,
+      "at": 1793945558707,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 54428,
+        "visibility": "visible",
+        "frames": 1297,
+        "bySrc": {
+          "idle.webm": 1297
+        },
+        "lastFrameAt": 54419,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.022
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 43,
+      "at": 1793945559710,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 55431,
+        "visibility": "visible",
+        "frames": 1321,
+        "bySrc": {
+          "idle.webm": 1321
+        },
+        "lastFrameAt": 55385,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.024
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 44,
+      "at": 1793945560712,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 56434,
+        "visibility": "visible",
+        "frames": 1345,
+        "bySrc": {
+          "idle.webm": 1345
+        },
+        "lastFrameAt": 56419,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.024
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 45,
+      "at": 1793945561715,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 57436,
+        "visibility": "visible",
+        "frames": 1369,
+        "bySrc": {
+          "idle.webm": 1369
+        },
+        "lastFrameAt": 57385,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.027
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 46,
+      "at": 1793945562717,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 156,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 58438,
+        "visibility": "visible",
+        "frames": 1394,
+        "bySrc": {
+          "idle.webm": 1394
+        },
+        "lastFrameAt": 58435,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.027
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 47,
+      "at": 1793945563720,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 72.1,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 27,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 49.2,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 59441,
+        "visibility": "visible",
+        "frames": 1417,
+        "bySrc": {
+          "idle.webm": 1417
+        },
+        "lastFrameAt": 59402,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.03
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 48,
+      "at": 1793945564722,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 71,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 60443,
+        "visibility": "visible",
+        "frames": 1442,
+        "bySrc": {
+          "idle.webm": 1442
+        },
+        "lastFrameAt": 60435,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.029
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 49,
+      "at": 1793945565724,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 154.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.9,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 61445,
+        "visibility": "visible",
+        "frames": 1465,
+        "bySrc": {
+          "idle.webm": 1465
+        },
+        "lastFrameAt": 61402,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.032
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 50,
+      "at": 1793945566727,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.3,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 71,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 62448,
+        "visibility": "visible",
+        "frames": 1490,
+        "bySrc": {
+          "idle.webm": 1490
+        },
+        "lastFrameAt": 62435,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.032
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 51,
+      "at": 1793945567729,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.9,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 63451,
+        "visibility": "visible",
+        "frames": 1513,
+        "bySrc": {
+          "idle.webm": 1513
+        },
+        "lastFrameAt": 63402,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.035
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 52,
+      "at": 1793945568732,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 70.4,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 64454,
+        "visibility": "visible",
+        "frames": 1538,
+        "bySrc": {
+          "idle.webm": 1538
+        },
+        "lastFrameAt": 64452,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.035
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 53,
+      "at": 1793945569734,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 70.4,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 65455,
+        "visibility": "visible",
+        "frames": 1562,
+        "bySrc": {
+          "idle.webm": 1562
+        },
+        "lastFrameAt": 65452,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.037
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 54,
+      "at": 1793945570737,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.4,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 66458,
+        "visibility": "visible",
+        "frames": 1586,
+        "bySrc": {
+          "idle.webm": 1586
+        },
+        "lastFrameAt": 66452,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.038
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 55,
+      "at": 1793945571739,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.4,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 67460,
+        "visibility": "visible",
+        "frames": 1610,
+        "bySrc": {
+          "idle.webm": 1610
+        },
+        "lastFrameAt": 67452,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.04
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 56,
+      "at": 1793945572741,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.5,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 2,
+          "cpuSeconds": 0.02,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 68462,
+        "visibility": "visible",
+        "frames": 1634,
+        "bySrc": {
+          "idle.webm": 1634
+        },
+        "lastFrameAt": 68452,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.039
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 57,
+      "at": 1793945573744,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 70.5,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 69465,
+        "visibility": "visible",
+        "frames": 1658,
+        "bySrc": {
+          "idle.webm": 1658
+        },
+        "lastFrameAt": 69452,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.042
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 58,
+      "at": 1793945574746,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 5,
+          "cpuSeconds": 0.05,
+          "rssMb": 70.5,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 70468,
+        "visibility": "visible",
+        "frames": 1682,
+        "bySrc": {
+          "idle.webm": 1682
+        },
+        "lastFrameAt": 70452,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.042
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 59,
+      "at": 1793945575748,
+      "wallMs": 1002,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 70.7,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 3,
+          "cpuSeconds": 0.03,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 71469,
+        "visibility": "visible",
+        "frames": 1706,
+        "bySrc": {
+          "idle.webm": 1706
+        },
+        "lastFrameAt": 71452,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 1.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 1.044
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    },
+    {
+      "t": 60,
+      "at": 1793945576751,
+      "wallMs": 1003,
+      "roles": {
+        "main": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 154.2,
+          "pids": 1
+        },
+        "renderer": {
+          "cpuPercent": 4,
+          "cpuSeconds": 0.04,
+          "rssMb": 70.7,
+          "pids": 1
+        },
+        "gpu": {
+          "cpuPercent": 1,
+          "cpuSeconds": 0.01,
+          "rssMb": 26.9,
+          "pids": 1
+        },
+        "utility": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 48.9,
+          "pids": 1
+        },
+        "zygote": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 79,
+          "pids": 2
+        },
+        "crashpad": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        },
+        "cli": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 82.8,
+          "pids": 1
+        },
+        "fake-ssh": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 51.9,
+          "pids": 1
+        },
+        "fake-model": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 58.2,
+          "pids": 1
+        },
+        "other": {
+          "cpuPercent": 0,
+          "cpuSeconds": 0,
+          "rssMb": 0,
+          "pids": 0
+        }
+      },
+      "page": {
+        "now": 72472,
+        "visibility": "visible",
+        "frames": 1730,
+        "bySrc": {
+          "idle.webm": 1730
+        },
+        "lastFrameAt": 72452,
+        "lastSrc": "idle.webm",
+        "lastMediaTime": 0.042,
+        "videos": [
+          {
+            "id": "clip",
+            "src": "idle.webm",
+            "paused": false,
+            "hidden": false,
+            "loop": true,
+            "readyState": 4,
+            "t": 0.045
+          },
+          {
+            "id": "clip-next",
+            "src": "",
+            "paused": true,
+            "hidden": true,
+            "loop": false,
+            "readyState": 0,
+            "t": 0
+          }
+        ],
+        "preview": "",
+        "visual": "idle"
+      }
+    }
+  ]
+}

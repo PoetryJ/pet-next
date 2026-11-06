@@ -1,0 +1,7 @@
+harness_exit=0
+arm=candidate state=visible seconds=60 warmup=8
+product_exit=null
+posts=0
+samples=60
+failures=none
+not_run=none
