@@ -1,0 +1,203 @@
+{
+  "stamp": "20261106T062414Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "pass",
+  "layers": [
+    {
+      "layer": "env",
+      "group": "pre",
+      "phase": "pre",
+      "title": "环境快照",
+      "stamp": "20261106T062414Z",
+      "startedAt": "2026-11-06T06:24:14.881Z",
+      "command": "(内部检查：node/pnpm/HEAD/显示/工具)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/env-20261106T062414Z.json",
+      "durationMs": 3475,
+      "endedAt": "2026-11-06T06:24:18.356Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "CPU 384 核（FREEZE 记录为单核，GUI 仍串行）",
+        "工作树不干净：\"?? pet-next/scripts/m38-acceptance/\\n?? pet-next/tests/chat-evidence/m38/\""
+      ],
+      "detail": "tests/chat-evidence/m38/pre/logs/env-20261106T062414Z.json"
+    },
+    {
+      "layer": "pkg-hash",
+      "group": "pre",
+      "phase": "pre",
+      "title": "交付包 SHA256 + 完整性 + 启动.cmd 字节",
+      "stamp": "20261106T062414Z",
+      "startedAt": "2026-11-06T06:24:18.381Z",
+      "command": "(内部检查：sha256/zipfile/启动.cmd 字节)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/pkg-hash-20261106T062414Z.json",
+      "durationMs": 200,
+      "endedAt": "2026-11-06T06:24:18.581Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [],
+      "detail": "tests/chat-evidence/m38/pre/logs/pkg-hash-20261106T062414Z.json"
+    },
+    {
+      "layer": "pkg-extract",
+      "group": "pre",
+      "phase": "pre",
+      "title": "解压到中文+空格目录",
+      "stamp": "20261106T062414Z",
+      "startedAt": "2026-11-06T06:24:18.605Z",
+      "command": "python3 -c <zipfile.extractall> /data3/DATA/project/project_meishijiang/m3-7-r1-delivery/pet-next-trial-src-60af704.zip /tmp/m38-d/中文 空格 解压包",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/pkg-extract-20261106T062414Z.log",
+      "durationMs": 130,
+      "endedAt": "2026-11-06T06:24:18.735Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "解压目录 /tmp/m38-d/中文 空格 解压包"
+      ],
+      "detail": "tests/chat-evidence/m38/pre/logs/pkg-extract-20261106T062414Z.json",
+      "logBytes": 118,
+      "logSha256": "a2814a7d92c64e97fa48d193d42f7345d8466a6cbb05f51d822624571894f7d3"
+    },
+    {
+      "layer": "pkg-install",
+      "group": "pre",
+      "phase": "pre",
+      "title": "解压包 pnpm install --frozen-lockfile",
+      "stamp": "20261106T062414Z",
+      "startedAt": "2026-11-06T06:24:18.762Z",
+      "command": "pnpm install --frozen-lockfile",
+      "cwd": "/tmp/m38-d/中文 空格 解压包",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/pkg-install-20261106T062414Z.log",
+      "durationMs": 1742,
+      "endedAt": "2026-11-06T06:24:20.504Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "耗时 2s",
+        "汇总块 0"
+      ],
+      "logBytes": 442,
+      "logSha256": "2167d9e00efa135b6b611fdd53f6f1d090b9fff4c3b8600794b6867167dc638d"
+    },
+    {
+      "layer": "pkg-electron-binary",
+      "group": "pre",
+      "phase": "pre",
+      "title": "electron 二进制环境替代（披露项）",
+      "stamp": "20261106T062414Z",
+      "startedAt": "2026-11-06T06:24:20.560Z",
+      "command": "(内部检查：pkg node_modules/electron/path.txt，缺则从本机同版本硬链接)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T062414Z.log",
+      "durationMs": 1041,
+      "endedAt": "2026-11-06T06:24:21.601Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "环境替代：解压包 install 未产出 electron 二进制（本机 GitHub 不可达），dist 取本机同版本 worktree，已补 path.txt",
+        "替代源 /data3/DATA/project/project_meishijiang/m38-wt-d/pet-next/node_modules/electron/dist，path.txt=electron",
+        "二进制自检 ELECTRON_RUN_AS_NODE --version → v24.18.1"
+      ],
+      "detail": "tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T062414Z.json",
+      "logBytes": 0,
+      "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+    },
+    {
+      "layer": "pkg-build",
+      "group": "pre",
+      "phase": "pre",
+      "title": "解压包 pnpm build",
+      "stamp": "20261106T062414Z",
+      "startedAt": "2026-11-06T06:24:21.629Z",
+      "command": "pnpm build",
+      "cwd": "/tmp/m38-d/中文 空格 解压包",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/pkg-build-20261106T062414Z.log",
+      "durationMs": 3888,
+      "endedAt": "2026-11-06T06:24:25.517Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "耗时 4s",
+        "汇总块 0"
+      ],
+      "logBytes": 147,
+      "logSha256": "58311097b796e0b73c3060e98d9d0054656f0891ade393cbaf6f5776fbf546d0"
+    },
+    {
+      "layer": "pkg-test",
+      "group": "pre",
+      "phase": "pre",
+      "title": "解压包 pnpm test（默认并发；挂起则如实记 124）",
+      "stamp": "20261106T062414Z",
+      "startedAt": "2026-11-06T06:24:25.535Z",
+      "command": "pnpm test",
+      "cwd": "/tmp/m38-d/中文 空格 解压包",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/pkg-test-20261106T062414Z.log",
+      "durationMs": 17257,
+      "endedAt": "2026-11-06T06:24:42.792Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 560,
+        "pass": 557,
+        "fail": 0,
+        "skipped": 3,
+        "cancelled": 0
+      },
+      "notes": [
+        "耗时 17s",
+        "汇总块 1"
+      ],
+      "logBytes": 53118,
+      "logSha256": "6a7b2cd506beaf2496c3432f7dc64d77012f98470c2115e4db5ce1b8b0e30518"
+    },
+    {
+      "layer": "pkg-test-serial",
+      "group": "pre",
+      "phase": "pre",
+      "title": "解压包纯单元串行复跑",
+      "stamp": "20261106T062414Z",
+      "startedAt": "2026-11-06T06:24:42.844Z",
+      "command": "node --experimental-strip-types --test --test-concurrency=1 ... <同一批文件>",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/pkg-test-serial-20261106T062414Z.log",
+      "durationMs": 32740,
+      "endedAt": "2026-11-06T06:25:15.584Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 560,
+        "pass": 557,
+        "fail": 0,
+        "skipped": 3,
+        "cancelled": 0
+      },
+      "notes": [
+        "串行文件数 63",
+        "汇总块 1",
+        "耗时 33s"
+      ],
+      "detail": "tests/chat-evidence/m38/pre/logs/pkg-test-serial-20261106T062414Z.json",
+      "logBytes": 53019,
+      "logSha256": "07aa64c44a41b3bbeaf9778fde4a4d90e71f80ac63883347da8f12d87161d8ce"
+    }
+  ]
+}

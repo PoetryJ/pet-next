@@ -1,0 +1,23 @@
+{
+  "layer": "pkg-install",
+  "group": "pre",
+  "phase": "pre",
+  "title": "解压包 pnpm install --frozen-lockfile",
+  "stamp": "20261106T062315Z",
+  "startedAt": "2026-11-06T06:23:15.946Z",
+  "command": "pnpm install --frozen-lockfile",
+  "cwd": "/tmp/m38-d/中文 空格 解压包",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/pkg-install-20261106T062315Z.log",
+  "durationMs": 367,
+  "endedAt": "2026-11-06T06:23:16.313Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "耗时 0s",
+    "汇总块 0"
+  ],
+  "logBytes": 105,
+  "logSha256": "408daf639e3778025bacaf342b7aad92d983fa6f6356bb59d66b323b57ecde4c"
+}

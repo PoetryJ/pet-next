@@ -1,0 +1,22 @@
+{
+  "layer": "env",
+  "group": "pre",
+  "phase": "pre",
+  "title": "环境快照",
+  "stamp": "20261106T062414Z",
+  "startedAt": "2026-11-06T06:24:14.881Z",
+  "command": "(内部检查：node/pnpm/HEAD/显示/工具)",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/env-20261106T062414Z.json",
+  "durationMs": 3475,
+  "endedAt": "2026-11-06T06:24:18.356Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "CPU 384 核（FREEZE 记录为单核，GUI 仍串行）",
+    "工作树不干净：\"?? pet-next/scripts/m38-acceptance/\\n?? pet-next/tests/chat-evidence/m38/\""
+  ],
+  "detail": "tests/chat-evidence/m38/pre/logs/env-20261106T062414Z.json"
+}

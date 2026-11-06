@@ -1,0 +1,31 @@
+{
+  "capturedAt": "2026-11-06T06:24:18.348Z",
+  "appRoot": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "evidenceDir": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next/tests/chat-evidence/m38/pre",
+  "node": "v22.20.0",
+  "pnpm": "10.33.4",
+  "platform": "linux",
+  "arch": "x64",
+  "release": "Linux 5.4.119-19.0009.28",
+  "hostname": "nb-1696310541880511232-d04dyonbiakg",
+  "cpuCount": 384,
+  "totalMemMB": 2321166,
+  "display": ":96",
+  "displaySocketExists": false,
+  "head": "60af704b40eb51c47ef5304daea115926fbc9129",
+  "branch": "agent/m38-d",
+  "worktreeClean": false,
+  "gitStatusPorcelain": "?? pet-next/scripts/m38-acceptance/\n?? pet-next/tests/chat-evidence/m38/",
+  "tools": {
+    "Xvfb": "/usr/bin/Xvfb",
+    "xdotool": "/usr/bin/xdotool",
+    "xwininfo": "/usr/bin/xwininfo",
+    "python3": "/opt/conda/envs/siren3/bin/python3"
+  },
+  "inheritedEnv": {
+    "NODE_OPTIONS": null,
+    "PET_NEXT_LAUNCHER_E2E": null,
+    "DISPLAY": null,
+    "PET_NEXT_E2E_DISPLAY": null
+  }
+}

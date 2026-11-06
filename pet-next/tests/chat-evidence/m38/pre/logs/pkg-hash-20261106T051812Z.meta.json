@@ -1,0 +1,20 @@
+{
+  "layer": "pkg-hash",
+  "group": "pre",
+  "phase": "pre",
+  "title": "交付包 SHA256 + 完整性 + 启动.cmd 字节",
+  "stamp": "20261106T051812Z",
+  "startedAt": "2026-11-06T05:18:15.064Z",
+  "command": "(内部检查：sha256/zipfile/启动.cmd 字节)",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/pkg-hash-20261106T051812Z.log",
+  "durationMs": 81,
+  "endedAt": "2026-11-06T05:18:15.145Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [],
+  "logBytes": 1958,
+  "logSha256": "980f41b28143294393afd9dcea9234e2a89c31314fa8906b86bc2c0e5b1f6d44"
+}
