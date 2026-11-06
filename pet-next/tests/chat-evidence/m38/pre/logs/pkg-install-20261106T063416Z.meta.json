@@ -1,0 +1,23 @@
+{
+  "layer": "pkg-install",
+  "group": "pre",
+  "phase": "pre",
+  "title": "解压包 pnpm install --frozen-lockfile（禁用 electron 下载）",
+  "stamp": "20261106T063416Z",
+  "startedAt": "2026-11-06T06:34:16.948Z",
+  "command": "pnpm install --frozen-lockfile",
+  "cwd": "/tmp/m38-d/中文 空格 解压包",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/pkg-install-20261106T063416Z.log",
+  "durationMs": 1056,
+  "endedAt": "2026-11-06T06:34:18.004Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "耗时 1s",
+    "汇总块 0"
+  ],
+  "logBytes": 440,
+  "logSha256": "11bb3b3594f2191eefa32a90e03c78b3f208b930c1961bfd00018b3fc6207acf"
+}

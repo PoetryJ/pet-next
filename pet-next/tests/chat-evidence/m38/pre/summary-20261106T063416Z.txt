@@ -1,0 +1,5 @@
+M3-8 acceptance 20261106T063416Z  phase=by-group  display=:96  root=/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next
+id                status   exit  tests pass fail skip  dur(s)  log
+pkg-install       pass     0     -     -    -    -     1       tests/chat-evidence/m38/pre/logs/pkg-install-20261106T063416Z.log
+pkg-electron-binary pass     0     -     -    -    -     1       tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T063416Z.log
+VERDICT: pass

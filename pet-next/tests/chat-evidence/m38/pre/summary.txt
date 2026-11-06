@@ -1,8 +1,5 @@
-M3-8 acceptance 20261106T063226Z  phase=pre  display=:96  root=/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next
+M3-8 acceptance 20261106T063416Z  phase=by-group  display=:96  root=/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next
 id                status   exit  tests pass fail skip  dur(s)  log
-unit              pass     0     590   587  0    3     20      tests/chat-evidence/m38/pre/logs/unit-baseline-20261106T063226Z.log
-cleanup           pass     0     22    22   0    0     17      tests/chat-evidence/m38/pre/logs/cleanup-baseline-20261106T063226Z.log
-integration       pass     0     5     5    0    0     7       tests/chat-evidence/m38/pre/logs/integration-baseline-20261106T063226Z.log
-typecheck         pass     0     -     -    -    -     7       tests/chat-evidence/m38/pre/logs/typecheck-baseline-20261106T063226Z.log
-lint              pass     0     -     -    -    -     16      tests/chat-evidence/m38/pre/logs/lint-baseline-20261106T063226Z.log
+pkg-install       pass     0     -     -    -    -     1       tests/chat-evidence/m38/pre/logs/pkg-install-20261106T063416Z.log
+pkg-electron-binary pass     0     -     -    -    -     1       tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T063416Z.log
 VERDICT: pass

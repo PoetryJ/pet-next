@@ -126,4 +126,12 @@ Xvfb 自起自收、显式 `PET_NEXT_LAUNCHER_E2E=1`、逐轮证据快照均可�
    原始片段保留在 `tests/chat-evidence/m38/pre/logs/`（无 `.meta.json` 者为被终止的尝试）。
 2. 补齐 electron 二进制后，默认并发 `pnpm test` 与串行复跑都自然结束且计数一致，
    M3-7 记录里"解压包默认并发可能挂起"在本轮未复现；成因与 (1) 相同，已按环境限制归类。
-3. 本机 CPU 实为 384 核（FREEZE 写单核），GUI 仍全部串行执行，不影响判据。
+3. 本机 CPU 实为 384 核（`nproc=1` 是 `OMP_NUM_THREADS=1` 造成的误读），真实紧约束是**内存约 2.3GB**：
+   纯单元可并行，但同一时刻只保留 1 个 Electron/bench，bench 全程避开其他 GUI；本清单所有 GUI 层串行。
+4. 容器原先缺 Electron 系统库（libnspr4/libnss3 等）会 exit 127，负责人已 apt 安装并 ldd 无 not found；
+   本轮 GUI 层（launcher 7/7、rounds 9/9）在该修正后跑通，记为**环境修正**，不是产品失败。
+5. 离线策略已固化进脚本：`pkg-install` 带 `ELECTRON_SKIP_BINARY_DOWNLOAD=1`，二进制由
+   `pkg-electron-binary` 预置（复制同版本 dist 313M + 写无换行 `path.txt`），两层都在 `.meta.json` 留痕；
+   `pkg-install/build/test/serial` 各自独立有界超时（300s/300s/600s/600s），超时只杀本轮进程组并记 124。
+6. 负责人两次终止的 `pkg-test-serial` 尝试（分别 18 分钟与 13 分钟 0% CPU，卡在 `electron/install.js`
+   二进制下载）保留在 `pre/logs/`（无 `.meta.json` 者即为被终止尝试），并已作为"环境限制"归类。

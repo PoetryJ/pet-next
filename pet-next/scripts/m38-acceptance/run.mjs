@@ -70,7 +70,7 @@ const shell = (id, group, title, cmd, argv, extra = {}) => ({
       cmd,
       argv,
       cwd: ctx.cwd,
-      env: childEnv(ctx.gui ? ctx.display : undefined),
+      env: childEnv(ctx.gui ? ctx.display : undefined, extra.env ?? {}),
       logPath: ctx.logPath,
       timeoutMs: ctx.timeoutMs,
     });
@@ -92,11 +92,18 @@ const LAYERS = [
   { id: 'env', group: 'pre', title: '环境快照', timeoutMs: 120_000, preview: '(内部检查：node/pnpm/HEAD/显示/工具)', run: runEnvLayer },
   { id: 'pkg-hash', group: 'pre', title: '交付包 SHA256 + 完整性 + 启动.cmd 字节', timeoutMs: 120_000, preview: '(内部检查：sha256/zipfile/启动.cmd 字节)', run: runPkgHashLayer },
   { id: 'pkg-extract', group: 'pre', title: '解压到中文+空格目录', timeoutMs: 300_000, preview: `python3 -c <zipfile.extractall> ${zipPath} ${pkgDir}`, run: runPkgExtractLayer },
-  shell('pkg-install', 'pre', '解压包 pnpm install --frozen-lockfile', 'pnpm', ['install', '--frozen-lockfile'], { timeoutMs: 900_000, cwd: pkgDir }),
+  // 离线策略：install 期间禁止 electron 下载二进制（本机到 GitHub 无进展，曾 18 分钟 0% CPU），
+  // 二进制由下一层 pkg-electron-binary 预置并补 path.txt，二者都在 .meta.json 里留痕。
+  shell('pkg-install', 'pre', '解压包 pnpm install --frozen-lockfile（禁用 electron 下载）', 'pnpm', ['install', '--frozen-lockfile'], {
+    timeoutMs: 300_000,
+    cwd: pkgDir,
+    env: { ELECTRON_SKIP_BINARY_DOWNLOAD: '1' },
+  }),
   { id: 'pkg-electron-binary', group: 'pre', title: 'electron 二进制环境替代（披露项）', timeoutMs: 300_000, preview: '(内部检查：pkg node_modules/electron/path.txt，缺则从本机同版本硬链接)', run: runPkgElectronBinaryLayer },
-  shell('pkg-build', 'pre', '解压包 pnpm build', 'pnpm', ['build'], { timeoutMs: 900_000, cwd: pkgDir }),
-  shell('pkg-test', 'pre', '解压包 pnpm test（默认并发；挂起则如实记 124）', 'pnpm', ['test'], { timeoutMs: 600_000, cwd: pkgDir }),
-  { id: 'pkg-test-serial', group: 'pre', title: '解压包纯单元串行复跑', timeoutMs: 1_200_000, preview: 'node --experimental-strip-types --test --test-concurrency=1 ... <同一批文件>', run: runPkgTestSerialLayer },
+  shell('pkg-build', 'pre', '解压包 pnpm build', 'pnpm', ['build'], { timeoutMs: 300_000, cwd: pkgDir }),
+  // 有界：实测 17s，给到 600s 上限；一旦超时只杀本轮进程组并如实记 124。
+  shell('pkg-test', 'pre', '解压包 pnpm test（默认并发；超时如实记 124）', 'pnpm', ['test'], { timeoutMs: 600_000, cwd: pkgDir }),
+  { id: 'pkg-test-serial', group: 'pre', title: '解压包纯单元串行复跑', timeoutMs: 600_000, preview: 'node --experimental-strip-types --test --test-concurrency=1 ... <同一批文件>', run: runPkgTestSerialLayer },
   shell('unit', 'post', '纯单元 pnpm test', 'pnpm', ['test'], { timeoutMs: 900_000 }),
   shell('cleanup', 'post', '清理层 pnpm test:cleanup', 'pnpm', ['test:cleanup'], { timeoutMs: 600_000 }),
   shell('integration', 'post', '集成层 pnpm test:integration', 'pnpm', ['test:integration'], { timeoutMs: 900_000 }),
