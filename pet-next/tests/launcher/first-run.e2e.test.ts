@@ -8,12 +8,20 @@
  * gate 返回 false 并由用例立即 return——t.skip 本身不阻断执行；after() 另断言 disabled 期间
  * 零 spawn、零本地监听（POST 随之恒为 0）。
  *
+ * M3-8 A 门（REVIEW 第 16 行）：retry / probe-cancel 的隧道硬门改为跨平台可观测事实——
+ * 本次**已登记**的隧道 PID（fake-ssh-args 行自带的 pid，按 -L 本地端口筛选）全部消失
+ * （processAlive=false）且所属本地转发端口关闭（portOpen=false）。
+ * fake-ssh-stopped 只是替身 SIGTERM/SIGINT 处理器写出的日志，Windows 用 taskkill 结束进程
+ * 根本不走信号，日志永远不出现，所以它从「唯一硬门」降为辅助证据（仍保存进 evidence）。
+ *
  * 场景：
  * 1) 首次无配置→填配置→测试连接(GET only)→启动→app/page.html 桌宠（轮询等 #pet 挂载）→
  *    launcher 销毁→关窗退出 0；POST=0。
  * 2) 再开回填配置。
- * 3) 死端口探测失败→可读错误→改到 fixture 实际 fakePort→再次 probe 成功；旧隧道已退出、POST=0。
- * 4) models 探测进行中关窗→退出 0、无桌宠窗口、无隧道残留（归属 helper 断言先于 finally 清理）。
+ * 3) 死端口探测失败→可读错误→改到 fixture 实际 fakePort→再次 probe 真正成功（连接成功）；
+ *    旧隧道先退出（登记 PID 消失 + 端口关闭）、两次隧道各 1 条、POST=0。
+ * 4) models 探测进行中关窗→退出 0、无桌宠窗口、无隧道残留（登记 PID 消失 + 端口关闭，
+ *    归属 helper 断言先于 finally 清理）。
  * 5) 直接关 launcher→干净退出、无关哨兵存活。
  * 6) 选 companion→启动→发 1 条 fake 消息→回复上屏、reaction 恰 1 次、POST=1、退出 0。
  * 7) 同上但 FAKE_MODEL_DELAY_MS=2500 慢回复。
@@ -29,6 +37,7 @@ import { tmpdir } from 'node:os';
 import path from 'node:path';
 import { after, before, test, type TestContext } from 'node:test';
 import { fileURLToPath } from 'node:url';
+import { windowsTerminatePlan } from '../support/process-tree.ts';
 import { captureOwnedProcesses, waitOwnedGone, type OwnedProcessSnapshot } from './owned-processes.ts';
 
 const petRoot = path.resolve(fileURLToPath(new URL('../..', import.meta.url)));
@@ -735,20 +744,132 @@ function sshForwardSpec(row: SshLogRow): { localPort: number; remotePort: number
 const stoppedFor = (rows: SshLogRow[], port: number): SshLogRow[] =>
   rows.filter((row) => row.event === 'fake-ssh-stopped' && row.port === port);
 
+/**
+ * 本次隧道登记过的 PID：每条 fake-ssh-args 都带发起进程的 pid，`-L` 规格给出本地端口。
+ * 这是跨平台的「登记」事实（进程自己写的），Windows 强杀进程时它照样存在。
+ * 不在这里去重：同一 PID 重复登记本身就是要被断言出来的异常。
+ */
+function tunnelPids(rows: SshLogRow[], port: number): number[] {
+  const pids: number[] = [];
+  for (const row of rows) {
+    if (row.event !== 'fake-ssh-args') continue;
+    const spec = sshForwardSpec(row);
+    if (spec === null || spec.localPort !== port) continue;
+    if (typeof row.pid !== 'number' || !Number.isInteger(row.pid) || row.pid <= 1) continue;
+    pids.push(row.pid);
+  }
+  return pids;
+}
+
+interface TunnelRelease {
+  rows: SshLogRow[];
+  /** 已登记的隧道 PID（按登记顺序，每个隧道一个）。 */
+  pids: number[];
+  /** fake-ssh-stopped 行——只作辅助证据，不参与判定。 */
+  stopped: SshLogRow[];
+}
+
+/**
+ * 隧道释放硬门（M3-8 A）：本次**已登记**的隧道 PID 全部消失（processAlive=false）
+ * 且所属本地转发端口关闭（portOpen=false）。
+ *
+ * 为什么不再用 fake-ssh-stopped 当唯一门：该日志由替身的 SIGTERM/SIGINT 处理器写出，
+ * Windows 用 taskkill/TerminateProcess 结束时根本不走信号，日志永远不出现——
+ * 于是用例在「隧道其实已经收干净」时被判失败（REVIEW 第 16 行、probe-cancel 已自然 exit0）。
+ * 现在改用进程 + 端口这两个可观测事实；日志仍然保存在 evidence 里作为辅助证据。
+ */
+async function waitTunnelReleased(
+  sshLog: string,
+  port: number,
+  label: string,
+  timeoutMs: number,
+  minTunnels = 1,
+): Promise<TunnelRelease> {
+  const deadline = Date.now() + timeoutMs;
+  let rows: SshLogRow[] = [];
+  let diagnostic = '尚未出现 fake-ssh-args 登记';
+  while (Date.now() < deadline) {
+    rows = readSshLog(sshLog);
+    const pids = tunnelPids(rows, port);
+    if (pids.length >= minTunnels) {
+      const alive = pids.filter((pid) => processAlive(pid));
+      const open = await portOpen(port);
+      if (alive.length === 0 && !open) return { rows, pids, stopped: stoppedFor(rows, port) };
+      diagnostic = JSON.stringify({
+        registered: pids,
+        alive,
+        port,
+        port_open: open,
+        stopped_rows: stoppedFor(rows, port).length,
+      });
+    } else {
+      diagnostic = JSON.stringify({ registered: pids, expected_at_least: minTunnels });
+    }
+    await delay(200);
+  }
+  throw new Error(
+    `${label}（${timeoutMs}ms 内未满足「已登记隧道 PID 全部消失且本地端口关闭」）${diagnostic} ssh=${JSON.stringify(rows)}`,
+  );
+}
+
+/** win32 tasklist 的 CSV 行：`"image","pid","session",...`。只认第二列等于目标 PID。 */
+function tasklistHasPid(text: string, pid: number): boolean {
+  for (const line of text.split(/\r?\n/)) {
+    const match = /^"([^"]*)","(\d+)"/.exec(line.trim());
+    if (match?.[2] !== undefined && Number(match[2]) === pid) return true;
+  }
+  return false;
+}
+
 function processAlive(pid: number): boolean {
-  if (pid <= 0) return false;
+  if (!Number.isInteger(pid) || pid <= 0) return false;
   if (process.platform === 'win32') {
     try {
-      return execFileSync('tasklist', ['/FI', `PID eq ${pid}`, '/NH'], { encoding: 'utf8' }).includes(String(pid));
-    } catch {
-      return false;
+      const text = execFileSync('tasklist', ['/FI', `PID eq ${pid}`, '/NH', '/FO', 'CSV'], {
+        encoding: 'utf8',
+        windowsHide: true,
+      });
+      return tasklistHasPid(text, pid);
+    } catch (error) {
+      const typed = error as NodeJS.ErrnoException & { stdout?: string | Buffer };
+      // tasklist 不可用就不能宣称「已消失」：直接失败，避免假绿。
+      if (typed.code === 'ENOENT') {
+        throw new Error('tasklist 不可用，无法确认隧道 PID 是否退出（不能据此判绿）', { cause: error });
+      }
+      // 非零退出时仍解析已拿到的 stdout；解析不到才认定「没有这个 PID」。
+      return tasklistHasPid(String(typed.stdout ?? ''), pid);
     }
   }
   try {
     process.kill(pid, 0);
     return true;
-  } catch {
-    return false;
+  } catch (error) {
+    // EPERM：进程还在，只是当前用户不能给它发信号。
+    return typeof error === 'object' && error !== null && 'code' in error && error.code === 'EPERM';
+  }
+}
+
+/**
+ * win32：只结束本次登记过的 PID（入口 + 归属快照），每个 PID 走 process-tree.ts 的
+ * windowsTerminatePlan → `taskkill /PID <pid> /T /F`（/T 只展开该 PID 的子树）。
+ * 不按映像名结束，不碰树外进程（例如哨兵）。
+ */
+async function terminateWindowsTree(rootPid: number, ownedPids: readonly number[]): Promise<void> {
+  const targets = new Set<number>();
+  if (Number.isInteger(rootPid) && rootPid > 1) targets.add(rootPid);
+  for (const pid of ownedPids) if (Number.isInteger(pid) && pid > 1) targets.add(pid);
+  for (const pid of targets) {
+    let plan: ReturnType<typeof windowsTerminatePlan>;
+    try {
+      plan = windowsTerminatePlan(pid, true, process.pid);
+    } catch {
+      continue; // 拒绝结束自己/非法 PID，不做兜底全局杀。
+    }
+    await new Promise<void>((done) => {
+      const killer = spawn(plan.command, [...plan.args], { stdio: 'ignore', windowsHide: true });
+      killer.once('close', () => done());
+      killer.once('error', () => done());
+    });
   }
 }
 
@@ -1025,10 +1146,12 @@ async function launchCase(launch: LaunchCase): Promise<Handle> {
           /* 组已退出 */
         }
       }
+      // win32 没有进程组：只按本次登记过的 PID 用 taskkill /T 展开子树（process-tree.ts 既有计划），
+      // 不按映像名结束。失败用例（断言抛错）也会走这里，避免 Electron/ssh 残留遮挡后续用例。
+      if (process.platform === 'win32') await terminateWindowsTree(child.pid ?? 0, owned?.pids ?? []);
       if (child.exitCode === null) child.kill('SIGKILL');
       fake.kill('SIGTERM');
-      // 兜底：失败用例（fillForm/断言抛错）也要立刻收净，避免 Electron/ssh 残留遮挡后续用例；
-      // 只对本次树里仍存活的 PID 补 SIGKILL，绝不按名字全局 kill。
+      // 兜底：只对本次树里仍存活的 PID 补一次结束，绝不按名字全局 kill。
       if (owned !== null) {
         const gone = await waitOwnedGone(owned, { timeoutMs: 3000 });
         for (const pid of gone.alive) {
@@ -1282,23 +1405,28 @@ test('连接失败 · 可读错误、改到实际 fakePort 再次 probe 成功�
     );
     assert.ok(failed.state.phaseText.length > 0, '失败提示必须有可读文案');
     assert.ok(!failed.state.phaseText.includes('连接成功'), '失败不得显示成功');
-    // 失败路径必须已经收掉本次隧道：ssh 替身记录 fake-ssh-stopped（同一本地端口）。
-    const firstRows = await waitSshLog(
+    // 失败路径必须已经收掉本次隧道。硬门 = 已登记的隧道 PID 消失 + 本地转发端口关闭；
+    // fake-ssh-stopped 在 Windows 结束进程时不会产生（不走 SIGTERM），只作辅助证据保存。
+    const firstRelease = await waitTunnelReleased(
       handle.sshLog,
-      '失败探测后旧隧道未结束（无 fake-ssh-stopped）',
-      (rows) => stoppedFor(rows, tunnelPort).length >= 1,
-      20000,
+      tunnelPort,
+      '失败探测后旧隧道未退出（已登记 PID 仍存活或本地端口仍监听）',
+      30000,
     );
-    const argsRows = firstRows.filter((row) => row.event === 'fake-ssh-args');
+    const argsRows = firstRelease.rows.filter((row) => row.event === 'fake-ssh-args');
     assert.equal(argsRows.length, 1, `失败探测应只起 1 条隧道，实际 ${argsRows.length}`);
     assert.deepEqual(
       sshForwardSpec(argsRows[0] ?? {}),
       { localPort: tunnelPort, remotePort: deadPort },
       '第一次隧道应转发到死端口',
     );
-    const stopped = stoppedFor(firstRows, tunnelPort)[0];
-    assert.ok(stopped !== undefined && typeof stopped.pid === 'number', 'fake-ssh-stopped 必须带隧道 pid');
-    assert.equal(processAlive(stopped.pid ?? -1), false, `旧隧道进程 ${String(stopped.pid)} 必须已退出`);
+    assert.equal(firstRelease.pids.length, 1, `失败探测应登记 1 个隧道 PID，实际 ${firstRelease.pids.join(',')}`);
+    assert.deepEqual(
+      firstRelease.pids.filter((pid) => processAlive(pid)),
+      [],
+      `旧隧道进程 ${firstRelease.pids.join(',')} 必须已退出（旧隧道必须先退出再重试）`,
+    );
+    assert.equal(await portOpen(tunnelPort), false, `失败探测后隧道本地端口 ${tunnelPort} 必须已关闭`);
     // 改配置重试：remotePort 改成 fake 模型实际端口（fake ssh 转发即通），再次点击 probe。
     const retry = await readDom(handle.cdp);
     assert.equal(retry.probe.disabled, false, '失败后必须允许改配置重试');
@@ -1308,23 +1436,29 @@ test('连接失败 · 可读错误、改到实际 fakePort 再次 probe 成功�
     await waitProbeReady(handle.cdp);
     await clickTestId(handle.cdp, SEL.probe);
     await waitDom(handle.cdp, '改到 fakePort 后再次 probe 未成功', (s) => s.phaseText.includes('连接成功'), 40000);
-    // 成功探测同样收隧道：两条隧道都必须有 stopped 记录。
-    const allRows = await waitSshLog(
+    // 成功探测同样收隧道：硬门是两条已登记隧道都消失且端口关闭（不再看信号日志）。
+    const secondRelease = await waitTunnelReleased(
       handle.sshLog,
-      '成功探测后隧道未全部结束',
-      (rows) => stoppedFor(rows, tunnelPort).length >= 2,
-      20000,
+      tunnelPort,
+      '成功探测后隧道未全部结束（已登记 PID 仍存活或本地端口仍监听）',
+      30000,
+      2,
     );
-    const allArgs = allRows.filter((row) => row.event === 'fake-ssh-args');
-    assert.equal(allArgs.length, 2, `重试应起第 2 条隧道，实际 ${allArgs.length}`);
+    const allArgs = secondRelease.rows.filter((row) => row.event === 'fake-ssh-args');
+    assert.equal(allArgs.length, 2, `重试应起第 2 条隧道（两次各 1 条），实际 ${allArgs.length}`);
     assert.deepEqual(
       sshForwardSpec(allArgs[1] ?? {}),
       { localPort: tunnelPort, remotePort: handle.fakePort },
       '第二次隧道应转发到 fake 模型端口',
     );
-    for (const row of stoppedFor(allRows, tunnelPort)) {
-      assert.equal(processAlive(row.pid ?? -1), false, `隧道进程 ${String(row.pid)} 必须已退出`);
-    }
+    assert.equal(secondRelease.pids.length, 2, `两次探测应各登记 1 个隧道 PID，实际 ${secondRelease.pids.join(',')}`);
+    assert.equal(new Set(secondRelease.pids).size, 2, `两条隧道必须是不同进程：${secondRelease.pids.join(',')}`);
+    assert.deepEqual(
+      secondRelease.pids.filter((pid) => processAlive(pid)),
+      [],
+      `隧道进程 ${secondRelease.pids.join(',')} 必须全部退出`,
+    );
+    assert.equal(await portOpen(tunnelPort), false, `成功探测后隧道本地端口 ${tunnelPort} 必须已关闭`);
     assert.equal(countPosts(handle.logFile), 0, '失败重试全程零 POST');
     await writeCaseEvidence(
       handle.caseName,
@@ -1334,6 +1468,13 @@ test('连接失败 · 可读错误、改到实际 fakePort 再次 probe 成功�
         `fake_port=${handle.fakePort}`,
         `tunnel_port=${tunnelPort}`,
         `failure_text=${failed.state.phaseText}`,
+        `first_tunnel_pids=${firstRelease.pids.join(',')}`,
+        `first_port_open_after=false`,
+        `first_stopped_log_rows=${firstRelease.stopped.length}`,
+        `second_tunnel_pids=${secondRelease.pids.join(',')}`,
+        `second_port_open_after=false`,
+        `second_stopped_log_rows=${secondRelease.stopped.length}`,
+        `stopped_log_note=signal-log is auxiliary only; Windows taskkill produces no fake-ssh-stopped`,
         'post=0',
         '',
       ].join('\n'),
@@ -1378,26 +1519,48 @@ test('探测中关窗 · /models 等待中取消：退出 0、无桌宠窗口、
       rows.some((row) => row.event === 'fake-ssh-listening' && row.port === tunnelPort),
       'fake-ssh 必须已监听本次隧道端口',
     );
+    const registeredBeforeCancel = tunnelPids(rows, tunnelPort);
+    assert.equal(registeredBeforeCancel.length, 1, `探测前必须登记 1 条隧道，实际 ${registeredBeforeCancel.join(',')}`);
     assert.equal((await readDom(handle.cdp)).phase, 'probing', '关窗时必须仍处于探测中');
     // 无桌宠窗口：关窗前不得出现 app/page.html。
     assert.equal((await listTargets(handle.debugPort)).filter(isPetPage).length, 0, '探测阶段不得创建桌宠窗口');
     // 立即关窗：断言（退出码/归属/端口）在 finally 之前。
     const code = await closeAndAssertClean(handle, { expectNoPetWindow: true });
     assert.equal(code, 0, `探测中关窗退出码必须 0；stdout=${handle.output().slice(-800)}`);
-    // 隧道收尾：ssh 替身记录 fake-ssh-stopped，且 pid 已退出、本地端口不再监听。
-    const after = await waitSshLog(
+    // 隧道收尾硬门（跨平台）：本次已登记的隧道 PID 消失 + 本地转发端口关闭。
+    // fake-ssh-stopped 只是信号处理器的日志，Windows taskkill 不产生它，因此只作辅助证据。
+    const after = await waitTunnelReleased(
       handle.sshLog,
-      '探测中关窗后隧道未收（无 fake-ssh-stopped）',
-      (list) => stoppedFor(list, tunnelPort).length >= 1,
-      20000,
+      tunnelPort,
+      '探测中关窗后隧道未收（已登记 PID 仍存活或本地端口仍监听）',
+      30000,
     );
-    for (const row of stoppedFor(after, tunnelPort)) {
-      assert.equal(processAlive(row.pid ?? -1), false, `隧道进程 ${String(row.pid)} 必须已退出`);
-    }
+    assert.equal(after.pids.length, 1, `取消前登记的隧道必须仍是同一个，实际 ${after.pids.join(',')}`);
+    assert.deepEqual(
+      after.pids.filter((pid) => processAlive(pid)),
+      [],
+      `隧道进程 ${after.pids.join(',')} 必须已退出`,
+    );
     assert.equal(await portOpen(tunnelPort), false, `隧道本地端口 ${tunnelPort} 不得残留监听`);
     // 未进入启动链：main 不得打印 launcher-started，也不得留下 page.html target。
     assert.ok(!handle.output().includes('"event":"launcher-started"'), '探测中取消不得进入启动链');
     assert.equal((await listTargets(handle.debugPort)).filter(isPetPage).length, 0, '取消后不得有桌宠窗口');
+    assert.equal(countPosts(handle.logFile), 0, '探测中取消全程零 POST（只允许 GET /models）');
+    await writeCaseEvidence(
+      handle.caseName,
+      'tunnel.txt',
+      [
+        `tunnel_port=${tunnelPort}`,
+        `registered_pids=${registeredBeforeCancel.join(',')}`,
+        `registered_pids_alive_after=${after.pids.filter((pid) => processAlive(pid)).join(',')}`,
+        `port_open_after=false`,
+        `stopped_log_rows=${after.stopped.length}`,
+        `stopped_log_note=signal-log is auxiliary only; Windows taskkill produces no fake-ssh-stopped`,
+        `exit_code=${String(code)}`,
+        'post=0',
+        '',
+      ].join('\n'),
+    );
     console.log(`[launcher-e2e] PASS probe-cancel-exit ms=${Date.now() - startedAt} tunnel_port=${tunnelPort} POST=0`);
   } finally {
     if (handle) await handle.stop();
