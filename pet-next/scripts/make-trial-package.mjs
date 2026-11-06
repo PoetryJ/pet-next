@@ -26,6 +26,7 @@ const REPO_ROOT = path.resolve(PET_ROOT, '..');
  * 顶层中文文件名 启动.cmd 必须显式列出（不属于任何目录条目）。 */
 export const SRC_INCLUDE = [
   'adapters/', 'app/', 'assets/', 'assets-pipeline/', 'bench/context/', 'bench/feedback/',
+  'bench/idle-profile/',
   'config/',
   'contracts/', 'core/', 'docs/', 'electron/', 'experiments/', 'scripts/', 'tests/',
   'package.json', 'pnpm-lock.yaml', 'tsconfig.json', 'tsconfig.preload.json',
@@ -41,6 +42,7 @@ export const FORBIDDEN_PATTERNS = [
   /(^|\/)runtime\//,
   /(^|\/)bench\/runs[^/]+\//,
   /(^|\/)bench\/feedback\/runs\//,
+  /(^|\/)bench\/idle-profile\/runs\//,
   /^tests\/chat-evidence\//,
   /^tests\/independent-.*\.check\.ts$/,
   /(^|\/)userdata\//,

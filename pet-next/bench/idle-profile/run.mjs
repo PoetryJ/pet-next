@@ -186,7 +186,9 @@ function electronPreflight() {
         .trim();
       return { binary, version, attempt };
     } catch (error) {
-      if (attempt === 2) throw new Error(`electron preflight 失败：${error?.stderr?.toString?.() ?? error.message}`);
+      if (attempt === 2) {
+        throw new Error(`electron preflight 失败：${error?.stderr?.toString?.() ?? error.message}`, { cause: error });
+      }
     }
   }
   return null;
@@ -220,7 +222,7 @@ function xdo(args) {
 
 /** 只按本轮的 electron main pid 找窗口（同名窗口不认，避免误 unmap 别人的 GUI）。 */
 function findMainPid(tag) {
-  let entries = [];
+  let entries;
   try {
     entries = readdirSync('/proc');
   } catch {
@@ -228,7 +230,7 @@ function findMainPid(tag) {
   }
   for (const entry of entries) {
     if (!/^\d+$/.test(entry)) continue;
-    let cmd = '';
+    let cmd;
     try {
       cmd = readFileSync(`/proc/${entry}/cmdline`, 'utf8');
     } catch {
@@ -452,7 +454,7 @@ async function main() {
       const applied = await cdp.evaluate(text);
       if (applied !== 'ok') recordFailure(`注入候选失败：${String(applied)}`);
     }
-    const first = await snapshot(cdp);
+    await snapshot(cdp);
     await sleep(warmupSec * 1000);
 
     // 状态：可见 = 保持原样；隐藏 = X11 unmap 产品窗，再看 visibilityState 是否翻转。
