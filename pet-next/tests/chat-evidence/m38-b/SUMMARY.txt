@@ -5,6 +5,10 @@ worktree : /data3/DATA/project/project_meishijiang/m38-wt-b（分支 agent/m38-b
 应用根   : <worktree>/pet-next
 环境     : PATH=/tmp/m38-tools/bin:$PATH（node v22.20.0、pnpm 10.33.4）；NODE_OPTIONS 未设置；
            纯单测，不开 GUI、不占 :94/:95-:97、不碰 bench。
+           CPU：在线 384 核（getconf _NPROCESSORS_ONLN=384，node os.cpus()=384，availableParallelism()=384）；
+           `nproc` 显示 1 是 OMP_NUM_THREADS=1 被 glibc 计入的读数，不代表机器只有 1 核（负责人已更正）。
+           内存：MemTotal 2 321 165 kB ≈ 2.21 GiB，本轮开始时 MemAvailable ≈ 1.86 GiB。
+           因此这里的真实约束是内存而非 CPU：4 进程并发在 384 核上不构成 CPU 竞争。
 本文件是索引与结论；每轮的原始 stdout/stderr/timeline 在本目录对应子目录里，未事后改写。
 
 一、改动文件（只动我名下的）
@@ -71,6 +75,16 @@ close 后才 finished，没有 exit/close 缺失。
         signal=SIGKILL、exit=null、事件次序 spawn>limit-reached>kill-return>exit>close>finished，
         事后无残留子进程。即限时路径确实执行并带走整棵树。
 
+内存画像（为"整包并发"这条未跑路径提供数量级，不做结论）：
+  node tests/chat-evidence/m38-b/memory/measure-peak-rss.mjs <out> node --experimental-strip-types \
+    --test --test-reporter spec scripts/chat-demo-core.test.ts
+  原始数据：memory/environment.txt、memory/single/peak-rss.json、memory/single/stdout.log
+  结果：进程树 2 个进程、峰值 RSS 131.9MB（135 100 kB）、用时 278ms、exit 0、17/17 pass。
+  数量级：MemTotal 2.21GiB ÷ 131.9MB ≈ 17。即本机同时跑到 ~17 个这种大小的测试进程就到了内存上限，
+  而 `node --test` 默认并发是 availableParallelism-1 = 383。整包 pnpm test 若有几十个测试文件同时开跑，
+  内存超额是可预期的；这是"整包并发挂起"值得先查的边界，但整包跑属负责人，本轮 not-run，
+  也不据此断言历史挂起就是内存导致。
+
 五、结论：未复现（不猜根因）
 ------------------------------------------------
 在本机（linux 5.4.119 x64，node v22.20.0，单文件、无 GUI、无其它套件干扰）：
@@ -80,7 +94,10 @@ close 后才 finished，没有 exit/close 缺失。
 
 边界（这些条件本轮没有覆盖，不能从上面的"未复现"外推）：
 - 只跑了 chat-demo-core.test.ts 单文件；历史描述是"源码包并发单测"，整包 pnpm test / 全量并发
-  没有跑（属负责人验收层，且单核机上有 C 在做资源测量，本轮不抢 CPU）。
+  没有跑（属负责人验收层，且 C 在做资源测量，本轮只做纯单测、不开 GUI/bench）。
+- 4 进程并发跑在 384 核、2.2GiB 内存的机器上：CPU 侧几乎没有竞争，内存侧 4×132MB 也远未到上限，
+  所以"靠并发压力触发超时/挂起"这条路径在本轮配置下基本不可能被触发；要压这个边界应压内存
+  （见上"内存画像"的 17 个进程数量级），不是加压 CPU。
 - 历史挂起的原始日志、平台与并发度未知；本轮无法只凭 15 次通过判定历史现象不存在。
 - 未在 Windows 上跑（本机 Linux）。
 建议：若后续再出现挂起，用同一探针（加 --procs、--limit-ms）在真实复现命令上采时间线，

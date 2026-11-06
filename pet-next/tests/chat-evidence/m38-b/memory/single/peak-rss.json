@@ -1,0 +1,17 @@
+{
+  "command": [
+    "node",
+    "--experimental-strip-types",
+    "--test",
+    "--test-reporter",
+    "spec",
+    "scripts/chat-demo-core.test.ts"
+  ],
+  "startedAt": "2026-11-06T05:12:49.770Z",
+  "durationMs": 278,
+  "exitCode": 0,
+  "signal": null,
+  "peakTreeRssKb": 135100,
+  "peakTreeRssMb": 131.9,
+  "peakTreeProcs": 2
+}
