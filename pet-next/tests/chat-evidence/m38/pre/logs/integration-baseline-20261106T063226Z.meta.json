@@ -1,0 +1,29 @@
+{
+  "layer": "integration",
+  "group": "post",
+  "phase": "pre",
+  "title": "集成层 pnpm test:integration",
+  "stamp": "20261106T063226Z",
+  "startedAt": "2026-11-06T06:33:04.656Z",
+  "command": "pnpm test:integration",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/integration-baseline-20261106T063226Z.log",
+  "durationMs": 6582,
+  "endedAt": "2026-11-06T06:33:11.238Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": {
+    "tests": 5,
+    "pass": 5,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "notes": [
+    "耗时 7s",
+    "汇总块 1"
+  ],
+  "logBytes": 1052,
+  "logSha256": "3518af6d243317d006ee93bede2be7976a89b37cb21f185c024c2a282a97e939"
+}

@@ -1,0 +1,25 @@
+{
+  "layer": "pkg-electron-binary",
+  "group": "pre",
+  "phase": "pre",
+  "title": "electron 二进制环境替代（披露项）",
+  "stamp": "20261106T063049Z",
+  "startedAt": "2026-11-06T06:30:54.311Z",
+  "command": "(内部检查：pkg node_modules/electron/path.txt，缺则从本机同版本硬链接)",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T063049Z.log",
+  "durationMs": 835,
+  "endedAt": "2026-11-06T06:30:55.146Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "环境替代：解压包 install 未产出 electron 二进制（本机 GitHub 不可达），dist 取本机同版本 worktree，已补 path.txt",
+    "替代源 /data3/DATA/project/project_meishijiang/m38-wt-d/pet-next/node_modules/electron/dist，path.txt=electron",
+    "二进制自检 ELECTRON_RUN_AS_NODE --version → v24.18.1"
+  ],
+  "detail": "tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T063049Z.json",
+  "logBytes": 0,
+  "logSha256": "e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855"
+}

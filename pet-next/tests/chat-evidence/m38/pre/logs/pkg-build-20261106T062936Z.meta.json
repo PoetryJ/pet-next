@@ -1,0 +1,23 @@
+{
+  "layer": "pkg-build",
+  "group": "pre",
+  "phase": "pre",
+  "title": "解压包 pnpm build",
+  "stamp": "20261106T062936Z",
+  "startedAt": "2026-11-06T06:29:42.255Z",
+  "command": "pnpm build",
+  "cwd": "/tmp/m38-d/中文 空格 解压包",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/pkg-build-20261106T062936Z.log",
+  "durationMs": 3837,
+  "endedAt": "2026-11-06T06:29:46.092Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "耗时 4s",
+    "汇总块 0"
+  ],
+  "logBytes": 147,
+  "logSha256": "58311097b796e0b73c3060e98d9d0054656f0891ade393cbaf6f5776fbf546d0"
+}

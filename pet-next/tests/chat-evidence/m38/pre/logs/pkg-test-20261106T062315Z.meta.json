@@ -1,0 +1,29 @@
+{
+  "layer": "pkg-test",
+  "group": "pre",
+  "phase": "pre",
+  "title": "解压包 pnpm test（默认并发；挂起则如实记 124）",
+  "stamp": "20261106T062315Z",
+  "startedAt": "2026-11-06T06:23:20.882Z",
+  "command": "pnpm test",
+  "cwd": "/tmp/m38-d/中文 空格 解压包",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/pkg-test-20261106T062315Z.log",
+  "durationMs": 17246,
+  "endedAt": "2026-11-06T06:23:38.128Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": {
+    "tests": 560,
+    "pass": 557,
+    "fail": 0,
+    "skipped": 3,
+    "cancelled": 0
+  },
+  "notes": [
+    "耗时 17s",
+    "汇总块 1"
+  ],
+  "logBytes": 53097,
+  "logSha256": "d32c5aafebb8fe480fad8d91d1443a4abec8b0c51637564bf6d4a128c0ff47c1"
+}

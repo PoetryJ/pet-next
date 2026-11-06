@@ -1,0 +1,3 @@
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:35911:127.0.0.1:37883","-p","10977","-i","/tmp/pet-launcher-probe-cancel-exit-GOzbY9/id_ed25519","tester@fake.example.invalid"],"mode":"ok","targetPort":0,"pid":192729,"ts":1793946525259}
+{"event":"fake-ssh-listening","port":35911,"targetPort":37883,"pid":192729,"ts":1793946525263}
+{"event":"fake-ssh-stopped","port":35911,"pid":192729,"ts":1793946525456}

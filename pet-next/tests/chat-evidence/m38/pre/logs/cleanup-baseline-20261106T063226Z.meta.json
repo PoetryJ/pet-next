@@ -1,0 +1,29 @@
+{
+  "layer": "cleanup",
+  "group": "post",
+  "phase": "pre",
+  "title": "清理层 pnpm test:cleanup",
+  "stamp": "20261106T063226Z",
+  "startedAt": "2026-11-06T06:32:47.146Z",
+  "command": "pnpm test:cleanup",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/cleanup-baseline-20261106T063226Z.log",
+  "durationMs": 17493,
+  "endedAt": "2026-11-06T06:33:04.639Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": {
+    "tests": 22,
+    "pass": 22,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "notes": [
+    "耗时 17s",
+    "汇总块 1"
+  ],
+  "logBytes": 2417,
+  "logSha256": "c68a98471e024b2ff362b4262f10146199ef9d124ebf25257481187b63e5c06e"
+}

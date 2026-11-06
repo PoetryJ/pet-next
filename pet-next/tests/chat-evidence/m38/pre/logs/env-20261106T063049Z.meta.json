@@ -1,0 +1,22 @@
+{
+  "layer": "env",
+  "group": "pre",
+  "phase": "pre",
+  "title": "环境快照",
+  "stamp": "20261106T063049Z",
+  "startedAt": "2026-11-06T06:30:49.477Z",
+  "command": "(内部检查：node/pnpm/HEAD/显示/工具)",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/env-20261106T063049Z.json",
+  "durationMs": 3249,
+  "endedAt": "2026-11-06T06:30:52.726Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "CPU 384 核（FREEZE 记录为单核，GUI 仍串行）",
+    "工作树不干净：\"M pet-next/scripts/m38-acceptance/ACCEPTANCE-CHECKLIST.md\\n M pet-next/scripts/m38-acceptance/layers-post.mjs\\n M pet-next/scripts/m38-acceptance/run.mjs\\n M pet-next/tests/chat-evidence/m38/pre/results.ndjson\\n M pet-next/tests/chat-evidence/m38/pre/summary.json\\n M pet-next/tests/chat-evidence/m38/pre/summary.txt\\n?? pet-next/tests/chat-evidence/m38/pre/logs/build-baseline-20261106T062647Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/env-20261106T062936Z.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/env-20261106T062936Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/launcher-20261106T062640Z.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/launcher-20261106T062640Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/launcher-baseline-20261106T062647Z.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/launcher-baseline-20261106T062647Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-build-20261106T062936Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T062936Z.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T062936Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-extract-20261106T062936Z.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-extract-20261106T062936Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-hash-20261106T062936Z.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-hash-20261106T062936Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-install-20261106T062936Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-test-20261106T062936Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-test-serial-20261106T062936Z.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/pkg-test-serial-20261106T062936Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/rounds-baseline-20261106T062750Z.json\\n?? pet-next/tests/chat-evidence/m38/pre/logs/rounds-baseline-20261106T062750Z.meta.json\\n?? pet-next/tests/chat-evidence/m38/pre/rounds/\\n?? pet-next/tests/chat-evidence/m38/pre/summary-20261106T062936Z.json\\n?? pet-next/tests/chat-evidence/m38/pre/summary-20261106T062936Z.txt\""
+  ],
+  "detail": "tests/chat-evidence/m38/pre/logs/env-20261106T063049Z.json"
+}
