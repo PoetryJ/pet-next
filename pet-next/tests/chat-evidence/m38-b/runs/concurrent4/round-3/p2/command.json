@@ -1,0 +1,20 @@
+{
+  "round": 3,
+  "index": 2,
+  "command": "/root/.codebuddy-server-cn/bin/stable-b72e1c95b338c0ad905fa55af1a5011cf4093a9f/node",
+  "args": [
+    "--experimental-strip-types",
+    "--test",
+    "--test-reporter",
+    "spec",
+    "scripts/chat-demo-core.test.ts"
+  ],
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-b/pet-next",
+  "env": {
+    "PATH": "/tmp/m38-tools/bin:/tmp/m38-tools/bin:/root/.codebuddy-server-cn/bin/stable-5ff26f1ba1f21dfed164f208b0c6d11490103cdf/extensions/genie/out/vendor/shim/safe-bin:/root/.codebuddy-server-cn/bin/stable-5ff26f1ba1f21dfed164f208b0c6d11490103cdf/bin/remote-cli:/opt/conda/envs/siren3/bin:/usr/local/nvidia/bin:/usr/local/cuda/bin:/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin",
+    "NODE_OPTIONS": null,
+    "DISPLAY": null
+  },
+  "limitMs": 10000,
+  "startedAt": "2026-11-06T05:11:31.135Z"
+}

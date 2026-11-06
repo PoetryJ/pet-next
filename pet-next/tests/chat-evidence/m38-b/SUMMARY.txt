@@ -1,0 +1,140 @@
+M3-8 B：测试资源隔离与挂起有界定位（2026-11-06）
+================================================
+worktree : /data3/DATA/project/project_meishijiang/m38-wt-b（分支 agent/m38-b）
+基线 HEAD: 60af704b40eb51c47ef5304daea115926fbc9129
+应用根   : <worktree>/pet-next
+环境     : PATH=/tmp/m38-tools/bin:$PATH（node v22.20.0、pnpm 10.33.4）；NODE_OPTIONS 未设置；
+           纯单测，不开 GUI、不占 :94/:95-:97、不碰 bench。
+           CPU：在线 384 核（getconf _NPROCESSORS_ONLN=384，node os.cpus()=384，availableParallelism()=384）；
+           `nproc` 显示 1 是 OMP_NUM_THREADS=1 被 glibc 计入的读数，不代表机器只有 1 核（负责人已更正）。
+           内存：MemTotal 2 321 165 kB ≈ 2.21 GiB，本轮开始时 MemAvailable ≈ 1.86 GiB。
+           因此这里的真实约束是内存而非 CPU：4 进程并发在 384 核上不构成 CPU 竞争。
+本文件是索引与结论；每轮的原始 stdout/stderr/timeline 在本目录对应子目录里，未事后改写。
+
+一、改动文件（只动我名下的）
+------------------------------------------------
+新增 pet-next/scripts/test-run-context.mjs       隔离 helper（唯一新增共享模块）
+新增 pet-next/scripts/test-run-context.d.mts     类型声明
+新增 pet-next/scripts/test-run-context.test.mjs  8 例单测
+新增 pet-next/tests/chat-evidence/m38-b/**       本证据目录（含 run-hang-probe.mjs 探针）
+未改 scripts/chat-demo-core.test.ts：本轮 15 次复跑未复现，按任务要求不猜根因、不动等待点。
+
+二、必跑：单文件 17 例
+------------------------------------------------
+命令（cwd=<worktree>/pet-next）：
+  node --experimental-strip-types --test --test-reporter spec scripts/chat-demo-core.test.ts
+结果：tests 17 / pass 17 / fail 0 / duration_ms 135.208249 / exit 0（2026-11-06T13:10:29+08:00）
+原始输出：baseline/spec.stdout.log、baseline/spec.stderr.log、baseline/exit.txt、baseline/environment.txt
+
+三、挂起定位：设计
+------------------------------------------------
+探针：tests/chat-evidence/m38-b/run-hang-probe.mjs（只读测试文件）
+每个被测进程：
+  - 外部看门狗 10 000ms 总限；到点 process.kill(-pid, 'SIGKILL') 只杀本进程组，记录返回值；
+  - 记录 spawn / stdout / stderr / 测试开始（▶）/ 测试结束（✔✖）/ exit / close / error /
+    limit-reached / kill-return 的墙钟时间戳与偏移；
+  - 记录最后开始的测试、最后结束的测试、最后一行输出、用时、退出码、信号；
+  - 环境：删除 NODE_OPTIONS，PATH 前置 /tmp/m38-tools/bin，cwd=<worktree>/pet-next。
+  - 默认目标是 scripts/chat-demo-core.test.ts；--target 只用于跑负对照夹具。
+stopGraceMs=20 只是 runDemo 内部 SIGTERM→SIGKILL 的升级等待，不是总超时；本实验没有调大任何超时、
+没有加 process.exit、没有改测试文件。
+
+四、挂起定位：结果（15 次运行，全部真实退出码）
+------------------------------------------------
+矩阵 A 单进程 3 轮：runs/single/summary.txt、runs/single/round-*/p1/timeline.json
+矩阵 B 4 个独立进程并发 3 轮：runs/concurrent4/summary.txt、runs/concurrent4/round-*/p*/timeline.json
+
+轮 进程 用时ms 超时 退出码 信号 kill返回 最后开始测试 事件次序（尾部）
+A1  1    159  否   0     null 未触发   依赖解析     exit>close>finished
+A2  1    158  否   0     null 未触发   依赖解析     exit>close>finished
+A3  1    159  否   0     null 未触发   依赖解析     exit>close>finished
+B1  1    174  否   0     null 未触发   依赖解析     exit>close>finished
+B1  2    179  否   0     null 未触发   依赖解析     exit>close>finished
+B1  3    191  否   0     null 未触发   依赖解析     exit>close>finished
+B1  4    204  否   0     null 未触发   依赖解析     exit>close>finished
+B2  1    159  否   0     null 未触发   依赖解析     exit>close>finished
+B2  2    172  否   0     null 未触发   依赖解析     exit>close>finished
+B2  3    184  否   0     null 未触发   依赖解析     exit>close>finished
+B2  4    199  否   0     null 未触发   依赖解析     exit>close>finished
+B3  1    162  否   0     null 未触发   依赖解析     exit>close>finished
+B3  2    176  否   0     null 未触发   依赖解析     exit>close>finished
+B3  3    189  否   0     null 未触发   依赖解析     exit>close>finished
+B3  4    202  否   0     null 未触发   依赖解析     exit>close>finished
+
+每次运行内层 node --test 自报 duration_ms 约 120～150ms（探针含 node 启动开销，故外层用时略高）；
+每个进程都数到 3 个套件开始、20 条结束（3 套件 + 17 用例），eventOrder 里 exit 在 close 之前、
+close 后才 finished，没有 exit/close 缺失。
+超时 0/15，非零退出 0/15，SIGKILL 调用 0 次（kill.returned=null 表示看门狗未到点）。
+
+负对照（证明看门狗本身有效，排除"未超时是因为探针坏了"）：
+  node tests/chat-evidence/m38-b/run-hang-probe.mjs --tag=negative-control --procs=1 --rounds=1 \
+    --limit-ms=1500 --target=tests/chat-evidence/m38-b/hang-fixture.mjs \
+    --out=tests/chat-evidence/m38-b/runs/negative-control
+  hang-fixture.mjs 顶层 await 永不结束，并留一个继承 stdout 的子进程。
+  结果：用时 1522ms、timedOut=true、kill.returned=true（process.kill(-pid,'SIGKILL')）、
+        signal=SIGKILL、exit=null、事件次序 spawn>limit-reached>kill-return>exit>close>finished，
+        事后无残留子进程。即限时路径确实执行并带走整棵树。
+
+内存画像（为"整包并发"这条未跑路径提供数量级，不做结论）：
+  node tests/chat-evidence/m38-b/memory/measure-peak-rss.mjs <out> node --experimental-strip-types \
+    --test --test-reporter spec scripts/chat-demo-core.test.ts
+  原始数据：memory/environment.txt、memory/single/peak-rss.json、memory/single/stdout.log
+  结果：进程树 2 个进程、峰值 RSS 131.9MB（135 100 kB）、用时 278ms、exit 0、17/17 pass。
+  数量级：MemTotal 2.21GiB ÷ 131.9MB ≈ 17。即本机同时跑到 ~17 个这种大小的测试进程就到了内存上限，
+  而 `node --test` 默认并发是 availableParallelism-1 = 383。整包 pnpm test 若有几十个测试文件同时开跑，
+  内存超额是可预期的；这是"整包并发挂起"值得先查的边界，但整包跑属负责人，本轮 not-run，
+  也不据此断言历史挂起就是内存导致。
+
+五、结论：未复现（不猜根因）
+------------------------------------------------
+在本机（linux 5.4.119 x64，node v22.20.0，单文件、无 GUI、无其它套件干扰）：
+- 单进程 3 轮、4 进程并发 3 轮，共 15 次全部 exit 0，最长 204ms，远未触及 10s 总限；
+- 没有任何一次出现 exit/close 事件缺失或挂住，20ms stopGrace 也没有表现为挂起点；
+- 因此没有证据支持"stopGraceMs=20 导致挂起"，也没有最小等待点可修。按要求不做推测性修改。
+
+边界（这些条件本轮没有覆盖，不能从上面的"未复现"外推）：
+- 只跑了 chat-demo-core.test.ts 单文件；历史描述是"源码包并发单测"，整包 pnpm test / 全量并发
+  没有跑（属负责人验收层，且 C 在做资源测量，本轮只做纯单测、不开 GUI/bench）。
+- 4 进程并发跑在 384 核、2.2GiB 内存的机器上：CPU 侧几乎没有竞争，内存侧 4×132MB 也远未到上限，
+  所以"靠并发压力触发超时/挂起"这条路径在本轮配置下基本不可能被触发；要压这个边界应压内存
+  （见上"内存画像"的 17 个进程数量级），不是加压 CPU。
+- 历史挂起的原始日志、平台与并发度未知；本轮无法只凭 15 次通过判定历史现象不存在。
+- 未在 Windows 上跑（本机 Linux）。
+建议：若后续再出现挂起，用同一探针（加 --procs、--limit-ms）在真实复现命令上采时间线，
+先判断是"进程内 await 未结束"还是"事件循环被阻塞/退出事件缺失"，再定位最小等待点。
+
+六、隔离 helper：scripts/test-run-context.mjs
+------------------------------------------------
+API（与冻结口径一致）：
+  createRunContext({ label, kind, appRoot? }) ->
+    { dir, logDir, configPath, modelLogPath, sshLogPath, freePort(), env(extra), snapshot(), cleanup() }
+  startOwnXvfb({ label }) -> { display, socket, pid, stop() }
+语义要点：
+- 唯一：<tmp>/pet-next-runs/<kind>/<时间戳>-<label>-<pid>-<随机>/；logs、userData、config 均在本轮目录内；
+  configPath 可直接给 PET_NEXT_REMOTE_CONFIG，modelLogPath→FAKE_MODEL_LOG，sshLogPath→FAKE_SSH_LOG。
+- 端口：freePort() 只从内核取一次临时端口并登记，snapshot().ports 可核对；不预占共享端口。
+- 显示器：startOwnXvfb 从 :120 起认领（跳过 :94、:95-:97），靠 /tmp/pet-next-xvfb-<n>.lock 排他，
+  stop() 只按自己的 pid 发 SIGTERM→SIGKILL，不按名字批量杀，不影响别人的 Xvfb/Electron。
+- 清理：cleanup() 先探测本轮端口是否仍被监听、记录日志/配置残留，写 <logDir>/residual.json 并返回
+  { ok, ports:{allocated,stillListening}, files, notes, dirKept }；ok=false 默认保留目录当证据，
+  只删本轮目录，不杀任何外部进程。
+- 构建先完成再启动：helper 不构建；顺序是 createRunContext（只建目录）→ 等构建产物 →
+  startOwnXvfb → spawn(env: ctx.env({ DISPLAY: xvfb.display }))。见模块头注释。
+单测（8 例，含 Xvfb 两路互不影响、cleanup 先断言后删、无关进程存活）：
+  node --experimental-strip-types --test --test-reporter spec scripts/test-run-context.test.mjs
+  结果：tests 8 / pass 8 / fail 0 / skipped 0 / duration_ms 315.858457 / exit 0
+  原始输出：helper/spec.stdout.log、helper/spec.stderr.log、helper/exit.txt、helper/environment.txt
+  跑完检查：/tmp/pet-next-xvfb-*.lock 0 个，无本 helper 起的 Xvfb 残留。
+
+七、not-run 与接线建议
+------------------------------------------------
+not-run：
+- 整包 pnpm test / pnpm verify（负责人）；
+- tests/launcher/first-run.e2e.test.ts 的改造与真跑（属 A）；
+- Windows 侧复验（本机 Linux）；
+- 真实 GUI/bench（C 在测量，本轮不跑）。
+接线建议（package.json 由负责人改）：
+- 把 scripts/test-run-context.test.mjs 加进单测收集（它不在 tests/**，scripts/unit-tests.mjs 只收
+  roots 里的 *.test.ts；需要显式加一条 node --test 命令）。
+- A 的 first-run 若要复用：用 ctx.freePort() 给 PET_NEXT_CHAT_DEBUG_PORT / 隧道端口，用
+  startOwnXvfb 取代当前硬编码 :94 / 手工 socket 检测；gate 判断改为自己的 ctx 目录与显示器是否就绪。

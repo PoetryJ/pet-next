@@ -1,0 +1,6 @@
+worktree: /data3/DATA/project/project_meishijiang/m38-wt-b/pet-next
+branch: agent/m38-b
+base HEAD: 60af704b40eb51c47ef5304daea115926fbc9129 (M3-8 开始时)
+env: PATH=/tmp/m38-tools/bin:$PATH, NODE_OPTIONS 未设置, DISPLAY 未设置(纯单测，不开 GUI)
+command: node --experimental-strip-types --test --test-reporter spec scripts/chat-demo-core.test.ts
+cwd: <worktree>/pet-next

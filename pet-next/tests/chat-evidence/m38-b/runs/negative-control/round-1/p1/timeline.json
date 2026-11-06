@@ -1,0 +1,81 @@
+{
+  "round": 1,
+  "index": 1,
+  "pid": 118403,
+  "startedAt": "2026-11-06T05:11:33.923Z",
+  "durationMs": 1522,
+  "timedOut": true,
+  "limitMs": 1500,
+  "exitCode": null,
+  "signalCode": "SIGKILL",
+  "kill": {
+    "returned": true,
+    "error": null
+  },
+  "lastStartedTest": null,
+  "lastFinishedTest": null,
+  "lastOutputLine": "{\"event\":\"hang-fixture-started\"}",
+  "startedCount": 0,
+  "finishedCount": 0,
+  "eventOrder": [
+    "spawn-request",
+    "spawn",
+    "limit-reached",
+    "kill-return",
+    "exit",
+    "close",
+    "finished"
+  ],
+  "events": [
+    {
+      "at": 1793941892409,
+      "offsetMs": 8,
+      "kind": "spawn-request"
+    },
+    {
+      "at": 1793941892413,
+      "offsetMs": 12,
+      "kind": "spawn",
+      "pid": 118403
+    },
+    {
+      "at": 1793941892466,
+      "offsetMs": 65,
+      "kind": "stdout",
+      "bytes": 33
+    },
+    {
+      "at": 1793941893915,
+      "offsetMs": 1514,
+      "kind": "limit-reached",
+      "limitMs": 1500
+    },
+    {
+      "at": 1793941893915,
+      "offsetMs": 1514,
+      "kind": "kill-return",
+      "signal": "SIGKILL",
+      "target": "-118403",
+      "returned": true
+    },
+    {
+      "at": 1793941893923,
+      "offsetMs": 1522,
+      "kind": "exit",
+      "code": null,
+      "signal": "SIGKILL"
+    },
+    {
+      "at": 1793941893923,
+      "offsetMs": 1522,
+      "kind": "close",
+      "code": null,
+      "signal": "SIGKILL"
+    },
+    {
+      "at": 1793941893923,
+      "offsetMs": 1522,
+      "kind": "finished"
+    }
+  ]
+}

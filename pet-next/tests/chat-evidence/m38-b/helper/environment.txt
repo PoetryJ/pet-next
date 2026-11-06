@@ -1,0 +1,4 @@
+# run_at 2026-11-06T13:10:32+08:00
+# git_head 60af704b40eb51c47ef5304daea115926fbc9129
+# command node --experimental-strip-types --test --test-reporter spec scripts/test-run-context.test.mjs
+# NODE_OPTIONS=<unset>

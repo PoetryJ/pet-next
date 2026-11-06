@@ -1,0 +1,19 @@
+{
+  "tag": "concurrent4",
+  "startedAt": "2026-11-06T05:11:30.585Z",
+  "platform": "linux 5.4.119-19.0009.28 x64",
+  "node": "v22.20.0",
+  "cpus": 384,
+  "loadavg": [
+    16.08,
+    18.04,
+    17.25
+  ],
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-b/pet-next",
+  "target": "scripts/chat-demo-core.test.ts",
+  "limitMs": 10000,
+  "procs": 4,
+  "rounds": 3,
+  "nodeOptionsUnset": true,
+  "display": null
+}

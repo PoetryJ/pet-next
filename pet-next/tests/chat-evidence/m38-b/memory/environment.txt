@@ -1,0 +1,12 @@
+# run_at 2026-11-06T13:12:49+08:00
+# worktree /data3/DATA/project/project_meishijiang/m38-wt-b (branch agent/m38-b)
+# git_head 由本轮提交前的 60af704b40eb51c47ef5304daea115926fbc9129 基线派生（未改产品源码）
+# cpu: nproc=1（OMP_NUM_THREADS=1 的读数） getconf _NPROCESSORS_ONLN=384 OMP_NUM_THREADS=1
+# node v22.20.0: os.cpus()=384 os.availableParallelism()=384
+# mem_total_kb 2321165（≈2.21GiB），MemAvailable 约 1948908 kB（≈1.86GiB）
+# 说明：本机 /usr/bin/time 不存在，故用 measure-peak-rss.mjs（ps 轮询进程树 RSS）测峰值。
+# command: node tests/chat-evidence/m38-b/memory/measure-peak-rss.mjs \
+#            tests/chat-evidence/m38-b/memory/single \
+#            node --experimental-strip-types --test --test-reporter spec scripts/chat-demo-core.test.ts
+# cwd: <worktree>/pet-next
+# NODE_OPTIONS 未设置
