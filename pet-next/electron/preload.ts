@@ -21,6 +21,8 @@ const LAUNCHER_START_CHANNEL = 'launcher:start';
 // M3-9 节能预览通道名与 contracts/idle-suspension.ts 保持一致（同样内联）。
 const WINDOW_VISIBILITY_CHANNEL = 'pet:window-visibility';
 const WINDOW_VISIBILITY_QUERY_CHANNEL = 'pet:window-visibility:query';
+// 仅 PET_NEXT_TEST=1 时主进程才注册该 handler；产品路径不调用。
+const TEST_WINDOW_CHANNEL = 'pet:test-window';
 
 contextBridge.exposeInMainWorld('pet', {
   moveBy(dx: number, dy: number): void {
@@ -85,5 +87,15 @@ contextBridge.exposeInMainWorld('petWindowVisibility', {
     return () => {
       ipcRenderer.removeListener(WINDOW_VISIBILITY_CHANNEL, handler);
     };
+  },
+});
+
+/**
+ * M3-9 测试专用：让 e2e 调用真实的 BrowserWindow 动作。
+ * 主进程只在 `PET_NEXT_TEST=1` 注册 handler，产品路径从不调用。
+ */
+contextBridge.exposeInMainWorld('petTestWindow', {
+  act(action: string): Promise<unknown> {
+    return ipcRenderer.invoke(TEST_WINDOW_CHANNEL, action);
   },
 });

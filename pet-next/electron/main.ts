@@ -28,7 +28,7 @@ import {
   type ChatTransport,
 } from '../contracts/chat.ts';
 import { parsePreview, PREVIEW_ENV, PREVIEW_QUERY } from '../contracts/preview.ts';
-import { IDLE_PAUSE_QUERY, idlePauseEnabled } from '../contracts/idle-suspension.ts';
+import { IDLE_PAUSE_QUERY, TEST_WINDOW_CHANNEL, idlePauseEnabled } from '../contracts/idle-suspension.ts';
 import { attachWindowVisibility } from './window-visibility.ts';
 import {
   LAUNCHER_LOAD_CHANNEL,
@@ -164,6 +164,37 @@ function createWindow(chatOverride?: LocalChatOverride): void {
   win.on('closed', () => {
     idleVisibility?.dispose();
   });
+
+  // 仅测试进程可用：让 e2e 调用真实的 BrowserWindow 动作（hide/show/minimize/restore/blur）。
+  // 产品进程不注册，页面也没有任何代码调用它。
+  if (process.env.PET_NEXT_TEST === '1') {
+    ipcMain.removeHandler(TEST_WINDOW_CHANNEL);
+    ipcMain.handle(TEST_WINDOW_CHANNEL, (event, action: unknown) => {
+      if (event.sender !== win.webContents) return null;
+      switch (action) {
+        case 'hide':
+          win.hide();
+          break;
+        case 'show':
+          win.show();
+          break;
+        case 'minimize':
+          win.minimize();
+          break;
+        case 'restore':
+          win.restore();
+          break;
+        case 'blur':
+          win.blur();
+          break;
+        case 'state':
+          break;
+        default:
+          return null;
+      }
+      return { visible: win.isVisible(), minimized: win.isMinimized(), focused: win.isFocused() };
+    });
+  }
 
   const controller = createWindowController({
     getBounds: () => win.getBounds(),

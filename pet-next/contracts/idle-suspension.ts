@@ -25,6 +25,12 @@ export const WINDOW_VISIBILITY_QUERY_CHANNEL = 'pet:window-visibility:query';
 /** 页面侧观测面（测试/bench 读，产品路径不读）。 */
 export const IDLE_SUSPENSION_DEBUG_KEY = '__petIdleSuspension';
 
+/**
+ * 仅 `PET_NEXT_TEST=1` 时注册的窗口动作通道，供 e2e 调用真实的
+ * `BrowserWindow.hide/show/minimize/restore/blur`。产品路径不调用，关闭时不注册 handler。
+ */
+export const TEST_WINDOW_CHANNEL = 'pet:test-window';
+
 /** 隐藏原因。`blur` 不是隐藏；遮挡识别本轮不做。 */
 export type WindowVisibilityReason = 'visible' | 'hidden' | 'minimized';
 

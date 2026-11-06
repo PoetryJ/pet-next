@@ -30,6 +30,8 @@ declare global {
     petWindowVisibility?: PetWindowVisibilityBridge;
     /** M3-9 只读观测面；只有页面装配了节能预览时才写入。 */
     __petIdleSuspension?: IdleSuspensionDebugState;
+    /** 仅 PET_NEXT_TEST=1 的 e2e 使用；产品页面不调用。 */
+    petTestWindow?: { act(action: string): Promise<unknown> };
   }
 }
 

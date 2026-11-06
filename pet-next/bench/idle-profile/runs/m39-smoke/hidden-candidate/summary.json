@@ -1,0 +1,304 @@
+{
+  "arm": "candidate",
+  "state": "hidden",
+  "label": "m39-smoke-hidden-candidate",
+  "asset": {
+    "path": "assets/idle.webm",
+    "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+  },
+  "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+  "wallSeconds": 12.7,
+  "samples": 18,
+  "electronCpuSeconds": 0.03,
+  "totalCpuSeconds": 0.15,
+  "electronCpuPerMinute": 0.142,
+  "totalCpuPerMinute": 0.709,
+  "electronRssBytes": 393306112,
+  "totalRssBytes": 461049856,
+  "decodedFrames": 0,
+  "clip": {
+    "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+    "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+  },
+  "pausedAtEnd": true,
+  "hiddenAtEnd": true,
+  "leaseAtEnd": {
+    "generation": 1,
+    "slot": "single",
+    "elementIdentity": "single-primary"
+  },
+  "postCount": 0,
+  "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+  "samples_detail": [
+    {
+      "t": 0.004,
+      "electronCpu": 0,
+      "totalCpu": 0,
+      "electronRss": 393617408,
+      "totalRss": 455172096,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 0.709,
+      "electronCpu": 0,
+      "totalCpu": 0.01,
+      "electronRss": 393400320,
+      "totalRss": 455225344,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 1.414,
+      "electronCpu": 0,
+      "totalCpu": 0.02,
+      "electronRss": 393400320,
+      "totalRss": 456085504,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 2.119,
+      "electronCpu": 0,
+      "totalCpu": 0.02,
+      "electronRss": 393277440,
+      "totalRss": 455962624,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 2.823,
+      "electronCpu": 0,
+      "totalCpu": 0.03,
+      "electronRss": 393277440,
+      "totalRss": 454705152,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 3.527,
+      "electronCpu": 0,
+      "totalCpu": 0.06,
+      "electronRss": 393277440,
+      "totalRss": 453214208,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 4.232,
+      "electronCpu": 0,
+      "totalCpu": 0.06,
+      "electronRss": 393277440,
+      "totalRss": 453750784,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 4.938,
+      "electronCpu": 0.01,
+      "totalCpu": 0.07,
+      "electronRss": 393277440,
+      "totalRss": 454287360,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 5.644,
+      "electronCpu": 0.01,
+      "totalCpu": 0.09,
+      "electronRss": 393277440,
+      "totalRss": 454557696,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 6.35,
+      "electronCpu": 0.01,
+      "totalCpu": 0.09,
+      "electronRss": 393277440,
+      "totalRss": 455098368,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 7.055,
+      "electronCpu": 0.02,
+      "totalCpu": 0.1,
+      "electronRss": 393277440,
+      "totalRss": 455098368,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 7.761,
+      "electronCpu": 0.02,
+      "totalCpu": 0.11,
+      "electronRss": 393277440,
+      "totalRss": 455098368,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 8.465,
+      "electronCpu": 0.02,
+      "totalCpu": 0.11,
+      "electronRss": 393277440,
+      "totalRss": 461021184,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 9.171,
+      "electronCpu": 0.03,
+      "totalCpu": 0.12,
+      "electronRss": 393277440,
+      "totalRss": 461021184,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 9.875,
+      "electronCpu": 0.03,
+      "totalCpu": 0.14,
+      "electronRss": 393277440,
+      "totalRss": 461021184,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 10.581,
+      "electronCpu": 0.03,
+      "totalCpu": 0.14,
+      "electronRss": 393277440,
+      "totalRss": 461021184,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 11.286,
+      "electronCpu": 0.03,
+      "totalCpu": 0.14,
+      "electronRss": 393306112,
+      "totalRss": 461049856,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    },
+    {
+      "t": 11.991,
+      "electronCpu": 0.03,
+      "totalCpu": 0.14,
+      "electronRss": 393306112,
+      "totalRss": 461049856,
+      "decoded": 5,
+      "paused": true,
+      "hidden": true,
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      }
+    }
+  ]
+}

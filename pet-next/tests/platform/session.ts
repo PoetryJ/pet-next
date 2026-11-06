@@ -53,6 +53,8 @@ export interface ScaleLaunch {
   label: string;
   /** null 表示不传 `--force-device-scale-factor`。 */
   forced: number | null;
+  /** 额外环境变量（M3-9 e2e 需要 PET_NEXT_IDLE_PAUSE / DISPLAY）。缺省不加。 */
+  env?: Record<string, string>;
 }
 
 const require = createRequire(path.join(petRoot(), 'package.json'));
@@ -73,7 +75,7 @@ export async function openPet(launch: ScaleLaunch): Promise<PetSession> {
     executable: electronPath,
     args,
     cwd: root,
-    env: { ...process.env, PET_NEXT_TEST: '1', PET_NEXT_USER_DATA: userData },
+    env: { ...process.env, PET_NEXT_TEST: '1', PET_NEXT_USER_DATA: userData, ...(launch.env ?? {}) },
     label: launch.label,
     logRoot: path.join(root, 'logs', 'platform-runs'),
   });

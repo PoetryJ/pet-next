@@ -1,0 +1,15 @@
+[435482:1106/173141.814802:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+[435482:1106/173142.151110:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[435482:1106/173142.151262:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+[435482:1106/173142.151288:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory
+[435482:1106/173142.154193:ERROR:content/browser/zygote_host/zygote_host_impl_linux.cc:279] Failed to adjust OOM score of renderer with pid 435519: Permission denied (13)
+
+DevTools listening on ws://127.0.0.1:38529/devtools/browser/e9b1068a-16a5-4a09-82e6-c8f1c3a42257
+[435482:1106/173142.185806:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[435482:1106/173142.192588:ERROR:content/browser/zygote_host/zygote_host_impl_linux.cc:279] Failed to adjust OOM score of renderer with pid 435537: Permission denied (13)
+[435482:1106/173142.204362:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+[435482:1106/173142.204451:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[435482:1106/173142.207594:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+Error occurred in handler for 'pet:window-visibility:query': Error: No handler registered for 'pet:window-visibility:query'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:120643)
+    at Session.emit (node:events:509:28)
