@@ -1,0 +1,16 @@
+{
+  "zip": "pet-next-trial-src-8037278.zip",
+  "sha256": "220ab4c97365d96e9a17ee0dd11a5c770f913e36aa5e78dd4f5e90ea747a27ce",
+  "entries": 394,
+  "testzip": null,
+  "node_modules_entries": 0,
+  "start_cmd": { "bytes": 1800, "crlf": 45, "loneLf": 0, "nonAscii": 0, "bom": false, "chcp": false, "note": "仓库内为 LF 存储；打包按 eol 规范化为 CRLF，字节不等但 blob 一致" },
+  "blob_equal_to_head": ["package.json", "pnpm-lock.yaml", "启动.cmd", "scripts/make-trial-package.mjs", "tests/idle-suspension.e2e.test.ts", "core/idle-suspension/policy.ts", "electron/window-visibility.ts", "contracts/idle-suspension.ts", "adapters/media/adapter.ts", "app/pet-media.ts"],
+  "install": { "status": "not-run", "reason": "本机无 pnpm 可执行体、无离线 store、无网络；未做真实 install" },
+  "dependency_tree": "node_modules 软链到宿主工作区（环境替代，不是干净安装）",
+  "build": { "exit": 0 },
+  "typecheck": { "exit": 0 },
+  "lint": { "exit": 0 },
+  "unit": { "exit": 0, "tests": 598, "pass": 595, "fail": 0, "skipped": 3, "note": "比仓库 628 少 30：白名单不含 bench 根 8 个 *.test.ts（M3-5 既有取舍）" },
+  "e2e_in_package": "not-run（有界执行只到 build/单测；真实 Electron 由仓库内 verify 与 launcher 层覆盖）"
+}
