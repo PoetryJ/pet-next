@@ -150,13 +150,23 @@ Xvfb 自起自收、显式 `PET_NEXT_LAUNCHER_E2E=1`、逐轮证据快照均可�
 | launcher（显式 PET_NEXT_LAUNCHER_E2E=1） | pass | 0；7 / 7 / 0 / 0 | 45s |
 | rounds（取消/重试/退出，3 轮） | pass | 0；9 / 9 / 0 / 0 | 87s |
 | verify（完整 pnpm verify） | pass | 0；46 / 39 / 0 / 7 | 730s |
-| pkg-extract + pkg-hash（新包 3380f7f） | pass | 0；385 条目，5 个关键文件与 HEAD blob 一致 | 1s |
+| pkg-extract + pkg-hash（最终交付包 2edb158） | pass | 0；385 条目，5 个关键文件与 HEAD blob 一致 | 1s |
 | resources（4 对） | pass | 0；hidden 24.1→0 fps，visible 24→24 | <1s |
 | windows | not-run | -（本机 linux） | - |
 
 - verify 的 46/39/7 与负责人口径一致；7 skip 即 launcher 组（未开 PET_NEXT_LAUNCHER_E2E 时按设计跳过）。
-- 新包 SHA256 `df4c391d…`（385 条目）；`启动.cmd` 包内 1800B/45 CRLF，HEAD 里以 LF 存储（1755B），
-  说明打包做了 eol 规范化，因此校验口径改为"包内容经 `git hash-object --path` 与 `HEAD:path` 比对"。
+- **交付包最终口径**：`pet-next-trial-src-2edb158.zip`，SHA256
+  `326e7c64025cf8d741165ae234fb2cc6ff0f7e437c77f6efbe70bd31694af6d4`，385 条目，对应 HEAD `2edb158`。
+  先前记录的 `df4c391d…`（对应 3380f7f）是**同源旧包**：与本包唯一差别是
+  `scripts/m38-acceptance/{run.mjs,layers-pre.mjs,layers-post.mjs,ACCEPTANCE-CHECKLIST.md}`
+  4 个文件换成本轮自修订版（`pkg-hash` 的 hash 门禁改为可选、`resources` 适配 `runs/<pair>-{b,c}/<arm>`），
+  产品源码/测试/`启动.cmd` 逐条目一致（我用 `diff -rq` 对两个解压目录独立复核：仅这 4 个文件不同，
+  且与本次提交版本字节相同）。两份哈希并存时以 `326e7c64…` 为交付口径。
+- `启动.cmd` 包内 1800B / 45 CRLF / 0 非 ASCII / 无 BOM / 无 chcp；仓库里以 LF 存储（1755B），
+  说明打包做了 eol 规范化，因此校验口径是"包内容经 `git hash-object --path` 与 `HEAD:path` 比对"，
+  **不能**用字节直比（否则必然误判"包与 HEAD 不一致"）。
+- 复跑注意：`pkg-hash` 依赖已解压目录，若把 `pkg-hash,pkg-extract` 放进同一次调用，层定义顺序会让
+  hash 先跑而误报"解压目录为空"；应按 `--layer=pkg-extract` 再 `--layer=pkg-hash` 分两次执行。
 - resources 抽验：`m38-p1` 对 CPU（electron-only）3.05→0.23 s/min、RSS 全角色求和 575.5→572.8MB、POST 0/0，
   与 C 的 SUMMARY 完全一致；`m38-v0`（visible）24→24 fps，CPU 3.23→3.38，符合"可见时不降载"。
 - 脚本自身两次口径修正（须披露）：`pkg-hash` 原先硬编码 M3-7 基线 SHA/条目数与 worktree 路径前缀，

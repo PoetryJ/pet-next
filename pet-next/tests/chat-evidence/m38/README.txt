@@ -34,5 +34,26 @@ node scripts/m38-acceptance/run.mjs --list
    （path.txt 必须无换行），只动 /tmp 下的解压目录、不动产品源码；该层结果是"环境替代"，
    不能当成干净安装的产物去宣称。
    探针原始输出：logs/adhoc-probe-electron-install-hang.log、logs/adhoc-probe-chat-demo-hang.log。
-2. 本机 CPU 为 384 核（协调文件写单核），GUI 层仍串行执行。
+2. 本机 CPU 为 384 核（协调文件写单核），GUI 层仍串行执行；真实紧约束是内存约 2.3GB。
 3. Windows 项无环境，一律 not-run，命令与预期见 summary 的 windows 层输出。
+
+合流后独立验收（phase=merged）
+-----------------------------
+HEAD 3380f7f 实测全部 exit 0：env 3.5s；unit 590/587/0/3（24s）；cleanup 22（18s）；integration 5（7s）；
+typecheck 8s；lint 25s；build 14s；launcher（PET_NEXT_LAUNCHER_E2E=1）7/7（45s）；rounds 3 轮 9/9（87s）；
+verify 46/39/0/7（730s）；resources 4 对（hidden 24.1→0 fps，visible 24→24，POST 0/0）；windows not-run。
+详细分层表与披露见 scripts/m38-acceptance/ACCEPTANCE-CHECKLIST.md 第十节。
+
+交付包两个哈希的关系（勿混用）
+------------------------------
+最终交付：pet-next-trial-src-2edb158.zip，SHA256 326e7c64025cf8d741165ae234fb2cc6ff0f7e437c77f6efbe70bd31694af6d4，
+385 条目，对应 HEAD 2edb158；启动.cmd 1800B/45 CRLF/0 非 ASCII/无 BOM/无 chcp。
+旧包 pet-next-trial-src-3380f7f.zip（df4c391d…）为同源旧包：与最终包唯一差别是
+scripts/m38-acceptance/ 下 4 个验收脚本换成自修订版（hash 门禁改可选、resources 适配 C 的 runs 布局），
+产品源码/测试/启动.cmd 逐条目一致（diff -rq 两个解压目录复核：仅这 4 个文件不同）。
+报告与交付说明一律以 326e7c64… 为准。
+
+解压包 install/build/test 由负责人有界执行（环境替代：ELECTRON_SKIP_BINARY_DOWNLOAD=1 安装、
+从本机同版本 dist 复制二进制并补 path.txt），原始日志在 tests/chat-evidence/m38/pkg-lead/；
+D 的包层结论止于 SHA256/完整性/启动.cmd/逐文件一致性。
+
