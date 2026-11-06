@@ -1,0 +1,56 @@
+{
+  "stamp": "20261106T075113Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "fail",
+  "layers": [
+    {
+      "layer": "pkg-hash",
+      "group": "pre",
+      "phase": "merged",
+      "title": "交付包 SHA256 + 完整性 + 启动.cmd 字节",
+      "stamp": "20261106T075113Z",
+      "startedAt": "2026-11-06T07:51:13.700Z",
+      "command": "(内部检查：sha256/zipfile/启动.cmd 字节)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T075113Z.json",
+      "durationMs": 115,
+      "endedAt": "2026-11-06T07:51:13.815Z",
+      "exitCode": 1,
+      "status": "fail",
+      "counts": null,
+      "notes": [
+        "失败项 file-vs-HEAD:package.json: 期望 HEAD blob，实际 解压目录缺该文件（解压目录为空）",
+        "失败项 file-vs-HEAD:pnpm-lock.yaml: 期望 HEAD blob，实际 解压目录缺该文件（解压目录为空）",
+        "失败项 file-vs-HEAD:启动.cmd: 期望 HEAD blob，实际 解压目录缺该文件（解压目录为空）",
+        "失败项 file-vs-HEAD:scripts/m38-acceptance/run.mjs: 期望 HEAD blob，实际 解压目录缺该文件（解压目录为空）",
+        "失败项 file-vs-HEAD:tests/launcher/first-run.e2e.test.ts: 期望 HEAD blob，实际 解压目录缺该文件（解压目录为空）"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T075113Z.json"
+    },
+    {
+      "layer": "pkg-extract",
+      "group": "pre",
+      "phase": "merged",
+      "title": "解压到中文+空格目录",
+      "stamp": "20261106T075113Z",
+      "startedAt": "2026-11-06T07:51:13.843Z",
+      "command": "python3 -c <zipfile.extractall> /data3/DATA/project/project_meishijiang/m38-delivery/pet-next-trial-src-2edb158.zip /tmp/m38-d/中文 空格 2edb158",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T075113Z.log",
+      "durationMs": 123,
+      "endedAt": "2026-11-06T07:51:13.966Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "解压目录 /tmp/m38-d/中文 空格 2edb158"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T075113Z.json",
+      "logBytes": 118,
+      "logSha256": "a2814a7d92c64e97fa48d193d42f7345d8466a6cbb05f51d822624571894f7d3"
+    }
+  ]
+}

@@ -150,13 +150,28 @@ Xvfb 自起自收、显式 `PET_NEXT_LAUNCHER_E2E=1`、逐轮证据快照均可�
 | launcher（显式 PET_NEXT_LAUNCHER_E2E=1） | pass | 0；7 / 7 / 0 / 0 | 45s |
 | rounds（取消/重试/退出，3 轮） | pass | 0；9 / 9 / 0 / 0 | 87s |
 | verify（完整 pnpm verify） | pass | 0；46 / 39 / 0 / 7 | 730s |
-| pkg-extract + pkg-hash（新包 3380f7f） | pass | 0；385 条目，5 个关键文件与 HEAD blob 一致 | 1s |
+| pkg-extract + pkg-hash（最终交付包 c4af14d） | pass | 0；385 条目，5 个关键文件与 HEAD blob 一致 | 2s |
 | resources（4 对） | pass | 0；hidden 24.1→0 fps，visible 24→24 | <1s |
 | windows | not-run | -（本机 linux） | - |
 
 - verify 的 46/39/7 与负责人口径一致；7 skip 即 launcher 组（未开 PET_NEXT_LAUNCHER_E2E 时按设计跳过）。
-- 新包 SHA256 `df4c391d…`（385 条目）；`启动.cmd` 包内 1800B/45 CRLF，HEAD 里以 LF 存储（1755B），
-  说明打包做了 eol 规范化，因此校验口径改为"包内容经 `git hash-object --path` 与 `HEAD:path` 比对"。
+- 上表 unit 计数 `590/587/0/3` 是 D 在 3380f7f 上的实测值。最终 HEAD `c4af14d` 只改
+  `scripts/unit-tests.mjs` 一处收集条件（`.test.mjs` 纳入、`.e2e.test.*` 仍排除），把 B 的
+  `scripts/test-run-context.test.mjs`（8 例）接入门禁，单测层变为 **598 / 595 / 0 / 3**；
+  该次完整 verify 由负责人执行（第四次），D 未重跑，此处只记口径来源。
+- **交付包最终口径**：`pet-next-trial-src-c4af14d.zip`，SHA256
+  `dcffc47150dde0320bafc76cafb66915db7178160d247f07588ee1200808e1af`，385 条目，对应最终 HEAD `c4af14d`。
+  历史上验过的两个包均为**同源被淘汰包**，不再作为交付物：
+  - `df4c391d…`（对应 3380f7f）：差异为 D 合流时对 `scripts/m38-acceptance/` 4 个文件的自修订
+    （`pkg-hash` 的 hash 门禁改为可选、`resources` 适配 `runs/<pair>-{b,c}/<arm>`）；
+  - `326e7c64…`（对应 2edb158）：差异为负责人补的单测收集接线（`scripts/unit-tests.mjs`）。
+  两处差异均不涉及产品源码/测试/`启动.cmd`；三个包的 5 个关键文件与 `启动.cmd` 结构不变量一致
+  （`diff -rq` 逐目录复核：df4c39→326e7c 仅 4 个验收脚本不同，326e7c→dcffc4 仅 `scripts/unit-tests.mjs` 不同）。
+- `启动.cmd` 包内 1800B / 45 CRLF / 0 非 ASCII / 无 BOM / 无 chcp；仓库里以 LF 存储（1755B），
+  说明打包做了 eol 规范化，因此校验口径是"包内容经 `git hash-object --path` 与 `HEAD:path` 比对"，
+  **不能**用字节直比（否则必然误判"包与 HEAD 不一致"）。
+- 复跑注意：`pkg-hash` 依赖已解压目录，若把 `pkg-hash,pkg-extract` 放进同一次调用，层定义顺序会让
+  hash 先跑而误报"解压目录为空"；应按 `--layer=pkg-extract` 再 `--layer=pkg-hash` 分两次执行。
 - resources 抽验：`m38-p1` 对 CPU（electron-only）3.05→0.23 s/min、RSS 全角色求和 575.5→572.8MB、POST 0/0，
   与 C 的 SUMMARY 完全一致；`m38-v0`（visible）24→24 fps，CPU 3.23→3.38，符合"可见时不降载"。
 - 脚本自身两次口径修正（须披露）：`pkg-hash` 原先硬编码 M3-7 基线 SHA/条目数与 worktree 路径前缀，
