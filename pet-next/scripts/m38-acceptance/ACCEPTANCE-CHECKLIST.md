@@ -104,6 +104,11 @@ pkg-electron-binary pass exit 0  (环境替代：干净安装后仍缺二进制�
 pkg-build         pass  exit 0   4s
 pkg-test          pass  exit 0   560 / 557 / 0 / 3   17s
 pkg-test-serial   pass  exit 0   560 / 557 / 0 / 3   33s
+unit              pass  exit 0   590 / 587 / 0 / 3   20s
+cleanup           pass  exit 0   22 / 22 / 0 / 0      17s
+integration       pass  exit 0   5 / 5 / 0 / 0        7s
+typecheck         pass  exit 0   7s
+lint              pass  exit 0   16s
 build             pass  exit 0   15s
 launcher          pass  exit 0   7 / 7 / 0 / 0       45s
 rounds            pass  exit 0   9 / 9 / 0 / 0       87s（3 轮 × 3 例，逐轮 exit 0）

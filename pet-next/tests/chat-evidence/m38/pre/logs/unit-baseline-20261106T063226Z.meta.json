@@ -1,0 +1,29 @@
+{
+  "layer": "unit",
+  "group": "post",
+  "phase": "pre",
+  "title": "纯单元 pnpm test",
+  "stamp": "20261106T063226Z",
+  "startedAt": "2026-11-06T06:32:26.594Z",
+  "command": "pnpm test",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/unit-baseline-20261106T063226Z.log",
+  "durationMs": 19966,
+  "endedAt": "2026-11-06T06:32:46.560Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": {
+    "tests": 590,
+    "pass": 587,
+    "fail": 0,
+    "skipped": 3,
+    "cancelled": 0
+  },
+  "notes": [
+    "耗时 20s",
+    "汇总块 1"
+  ],
+  "logBytes": 55690,
+  "logSha256": "86ceeae62e71a2ece08bada09b8a085e4dcfdac650c7f70bc872a8529a26a0fe"
+}

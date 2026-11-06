@@ -1,0 +1,141 @@
+{
+  "stamp": "20261106T063226Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "pass",
+  "layers": [
+    {
+      "layer": "unit",
+      "group": "post",
+      "phase": "pre",
+      "title": "纯单元 pnpm test",
+      "stamp": "20261106T063226Z",
+      "startedAt": "2026-11-06T06:32:26.594Z",
+      "command": "pnpm test",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/unit-baseline-20261106T063226Z.log",
+      "durationMs": 19966,
+      "endedAt": "2026-11-06T06:32:46.560Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 590,
+        "pass": 587,
+        "fail": 0,
+        "skipped": 3,
+        "cancelled": 0
+      },
+      "notes": [
+        "耗时 20s",
+        "汇总块 1"
+      ],
+      "logBytes": 55690,
+      "logSha256": "86ceeae62e71a2ece08bada09b8a085e4dcfdac650c7f70bc872a8529a26a0fe"
+    },
+    {
+      "layer": "cleanup",
+      "group": "post",
+      "phase": "pre",
+      "title": "清理层 pnpm test:cleanup",
+      "stamp": "20261106T063226Z",
+      "startedAt": "2026-11-06T06:32:47.146Z",
+      "command": "pnpm test:cleanup",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/cleanup-baseline-20261106T063226Z.log",
+      "durationMs": 17493,
+      "endedAt": "2026-11-06T06:33:04.639Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 22,
+        "pass": 22,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      },
+      "notes": [
+        "耗时 17s",
+        "汇总块 1"
+      ],
+      "logBytes": 2417,
+      "logSha256": "c68a98471e024b2ff362b4262f10146199ef9d124ebf25257481187b63e5c06e"
+    },
+    {
+      "layer": "integration",
+      "group": "post",
+      "phase": "pre",
+      "title": "集成层 pnpm test:integration",
+      "stamp": "20261106T063226Z",
+      "startedAt": "2026-11-06T06:33:04.656Z",
+      "command": "pnpm test:integration",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/integration-baseline-20261106T063226Z.log",
+      "durationMs": 6582,
+      "endedAt": "2026-11-06T06:33:11.238Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 5,
+        "pass": 5,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      },
+      "notes": [
+        "耗时 7s",
+        "汇总块 1"
+      ],
+      "logBytes": 1052,
+      "logSha256": "3518af6d243317d006ee93bede2be7976a89b37cb21f185c024c2a282a97e939"
+    },
+    {
+      "layer": "typecheck",
+      "group": "post",
+      "phase": "pre",
+      "title": "pnpm typecheck",
+      "stamp": "20261106T063226Z",
+      "startedAt": "2026-11-06T06:33:11.254Z",
+      "command": "pnpm typecheck",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/typecheck-baseline-20261106T063226Z.log",
+      "durationMs": 7240,
+      "endedAt": "2026-11-06T06:33:18.494Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "耗时 7s",
+        "汇总块 0"
+      ],
+      "logBytes": 160,
+      "logSha256": "215e1676bfce0be171a570b540da8c64eb8654eb4cc35b85fb518283dd60b1ea"
+    },
+    {
+      "layer": "lint",
+      "group": "post",
+      "phase": "pre",
+      "title": "pnpm lint",
+      "stamp": "20261106T063226Z",
+      "startedAt": "2026-11-06T06:33:18.511Z",
+      "command": "pnpm lint",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/pre/logs/lint-baseline-20261106T063226Z.log",
+      "durationMs": 16092,
+      "endedAt": "2026-11-06T06:33:34.603Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "耗时 16s",
+        "汇总块 0"
+      ],
+      "logBytes": 93,
+      "logSha256": "a646b857dd15a42814e34071976c0e68893b57eaf0dbe589caeef8bdfa1d010a"
+    }
+  ]
+}

@@ -1,0 +1,23 @@
+{
+  "layer": "typecheck",
+  "group": "post",
+  "phase": "pre",
+  "title": "pnpm typecheck",
+  "stamp": "20261106T063226Z",
+  "startedAt": "2026-11-06T06:33:11.254Z",
+  "command": "pnpm typecheck",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/typecheck-baseline-20261106T063226Z.log",
+  "durationMs": 7240,
+  "endedAt": "2026-11-06T06:33:18.494Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "耗时 7s",
+    "汇总块 0"
+  ],
+  "logBytes": 160,
+  "logSha256": "215e1676bfce0be171a570b540da8c64eb8654eb4cc35b85fb518283dd60b1ea"
+}
