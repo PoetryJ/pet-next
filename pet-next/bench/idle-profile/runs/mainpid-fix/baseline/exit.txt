@@ -1,0 +1,7 @@
+harness_exit=0
+arm=baseline state=visible seconds=5 warmup=2
+product_exit=null
+posts=0
+samples=5
+failures=none
+not_run=none
