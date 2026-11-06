@@ -40,7 +40,9 @@ async function collect(dir, files) {
       await collect(full, files);
       continue;
     }
-    if (!entry.name.endsWith('.test.ts') || entry.name.endsWith('.e2e.test.ts')) continue;
+    // `.test.mjs` 只收纯 ESM 的共享模块测试（B 的 scripts/test-run-context.test.mjs）；
+    // `.e2e.test.*` 一律不在纯单元层。
+    if (!/\.test\.(ts|mjs)$/.test(entry.name) || /\.e2e\.test\.(ts|mjs)$/.test(entry.name)) continue;
     if (dedicatedFiles.has(relative)) continue;
     files.push(full);
   }
