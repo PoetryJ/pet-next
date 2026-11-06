@@ -135,3 +135,32 @@ Xvfb 自起自收、显式 `PET_NEXT_LAUNCHER_E2E=1`、逐轮证据快照均可�
    `pkg-install/build/test/serial` 各自独立有界超时（300s/300s/600s/600s），超时只杀本轮进程组并记 124。
 6. 负责人两次终止的 `pkg-test-serial` 尝试（分别 18 分钟与 13 分钟 0% CPU，卡在 `electron/install.js`
    二进制下载）保留在 `pre/logs/`（无 `.meta.json` 者即为被终止尝试），并已作为"环境限制"归类。
+
+## 十、合流后独立验收（phase=merged，HEAD 3380f7f，2026-11-06）
+
+| 层 | 结果 | 退出码/计数 | 耗时 |
+| --- | --- | --- | --- |
+| env | pass | 0 | 3.5s |
+| unit | pass | 0；590 / 587 / 0 / 3 | 24s |
+| cleanup | pass | 0；22 / 22 / 0 / 0 | 18s |
+| integration | pass | 0；5 / 5 / 0 / 0 | 7s |
+| typecheck | pass | 0 | 8s |
+| lint | pass | 0 | 25s |
+| build | pass | 0 | 14s |
+| launcher（显式 PET_NEXT_LAUNCHER_E2E=1） | pass | 0；7 / 7 / 0 / 0 | 45s |
+| rounds（取消/重试/退出，3 轮） | pass | 0；9 / 9 / 0 / 0 | 87s |
+| verify（完整 pnpm verify） | pass | 0；46 / 39 / 0 / 7 | 730s |
+| pkg-extract + pkg-hash（新包 3380f7f） | pass | 0；385 条目，5 个关键文件与 HEAD blob 一致 | 1s |
+| resources（4 对） | pass | 0；hidden 24.1→0 fps，visible 24→24 | <1s |
+| windows | not-run | -（本机 linux） | - |
+
+- verify 的 46/39/7 与负责人口径一致；7 skip 即 launcher 组（未开 PET_NEXT_LAUNCHER_E2E 时按设计跳过）。
+- 新包 SHA256 `df4c391d…`（385 条目）；`启动.cmd` 包内 1800B/45 CRLF，HEAD 里以 LF 存储（1755B），
+  说明打包做了 eol 规范化，因此校验口径改为"包内容经 `git hash-object --path` 与 `HEAD:path` 比对"。
+- resources 抽验：`m38-p1` 对 CPU（electron-only）3.05→0.23 s/min、RSS 全角色求和 575.5→572.8MB、POST 0/0，
+  与 C 的 SUMMARY 完全一致；`m38-v0`（visible）24→24 fps，CPU 3.23→3.38，符合"可见时不降载"。
+- 脚本自身两次口径修正（须披露）：`pkg-hash` 原先硬编码 M3-7 基线 SHA/条目数与 worktree 路径前缀，
+  换新包后误报 4 次；`resources` 原先只认 `runs/<pair>/{baseline,candidate}`，未适配 C 的
+  `runs/<pair>-{b,c}/<arm>` 布局，误报 1 次。均为脚本问题，修正后 pass，**不是产品失败**。
+- 解压包 install/build/test 未由 D 执行（负责人口径：离线 electron 由负责人有界执行并回填证据）；
+  D 只保留 SHA/完整性/启动.cmd/逐文件一致性结论。

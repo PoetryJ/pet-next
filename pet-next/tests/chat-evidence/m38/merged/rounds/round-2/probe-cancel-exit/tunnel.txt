@@ -1,0 +1,8 @@
+tunnel_port=42299
+registered_pids=260580
+registered_pids_alive_after=
+port_open_after=false
+stopped_log_rows=1
+stopped_log_note=signal-log is auxiliary only; Windows taskkill produces no fake-ssh-stopped
+exit_code=0
+post=0

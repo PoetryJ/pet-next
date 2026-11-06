@@ -1,0 +1,23 @@
+{
+  "layer": "lint",
+  "group": "post",
+  "phase": "merged",
+  "title": "pnpm lint",
+  "stamp": "20261106T071426Z",
+  "startedAt": "2026-11-06T07:15:26.067Z",
+  "command": "pnpm lint",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/merged/logs/lint-20261106T071426Z.log",
+  "durationMs": 25037,
+  "endedAt": "2026-11-06T07:15:51.104Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "耗时 25s",
+    "汇总块 0"
+  ],
+  "logBytes": 93,
+  "logSha256": "a646b857dd15a42814e34071976c0e68893b57eaf0dbe589caeef8bdfa1d010a"
+}

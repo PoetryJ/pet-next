@@ -1,0 +1,23 @@
+{
+  "layer": "build",
+  "group": "post",
+  "phase": "merged",
+  "title": "pnpm build",
+  "stamp": "20261106T071426Z",
+  "startedAt": "2026-11-06T07:15:51.121Z",
+  "command": "pnpm build",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/merged/logs/build-20261106T071426Z.log",
+  "durationMs": 13805,
+  "endedAt": "2026-11-06T07:16:04.926Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "耗时 14s",
+    "汇总块 0"
+  ],
+  "logBytes": 170,
+  "logSha256": "1dcac3f2dea1d059e3cd51f6c504bc408a5f943ffd6ad182118905f69efd5e76"
+}

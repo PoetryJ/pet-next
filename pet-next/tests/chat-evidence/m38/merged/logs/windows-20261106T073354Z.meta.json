@@ -1,0 +1,25 @@
+{
+  "layer": "windows",
+  "group": "post",
+  "phase": "merged",
+  "title": "Windows 项判定",
+  "stamp": "20261106T073354Z",
+  "startedAt": "2026-11-06T07:33:54.385Z",
+  "command": "(内部判定：无 Windows 则 not-run，只列命令)",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/merged/logs/windows-20261106T073354Z.json",
+  "durationMs": 0,
+  "endedAt": "2026-11-06T07:33:54.385Z",
+  "exitCode": null,
+  "status": "not-run",
+  "counts": null,
+  "notes": [
+    "cmd-entry.test.ts 真实 .cmd 5 例（含 3 个 Windows-only） → node --experimental-strip-types --test --test-reporter spec tests/launcher/cmd-entry.test.ts（预期 exit0；5 pass / 0 skipped（跑前系统代码页未被改））",
+    "显式 launcher E2E 7 例 → set PET_NEXT_LAUNCHER_E2E=1 && node --experimental-strip-types --test --test-concurrency=1 \"tests/launcher/first-run.e2e.test.ts\"（预期 exit0；7 pass（真实 Electron，快/慢回复各 1 次 fake POST））",
+    "Windows 平台公开校验 → pnpm verify:windows（预期 exit0；真实系统 125/150 仍 not-run）",
+    "交付解压包（中文+空格路径） → pnpm install --frozen-lockfile && pnpm build && pnpm test（预期 install/build exit0；test 自然结束（数量以本轮实际为准））"
+  ],
+  "notRun": "本机平台 linux 无 Windows/pwsh：全部 Windows 项 not-run，不以 Linux/Node 结论替代。",
+  "detail": "tests/chat-evidence/m38/merged/logs/windows-20261106T073354Z.json"
+}

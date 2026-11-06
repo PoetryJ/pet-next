@@ -1,0 +1,4 @@
+M3-8 acceptance 20261106T073349Z  phase=merged  display=:96  root=/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next
+id                status   exit  tests pass fail skip  dur(s)  log
+resources         pass     0     -     -    -    -     0       tests/chat-evidence/m38/merged/logs/resources-20261106T073349Z.json
+VERDICT: pass

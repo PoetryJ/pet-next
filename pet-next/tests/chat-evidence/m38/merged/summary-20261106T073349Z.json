@@ -1,0 +1,38 @@
+{
+  "stamp": "20261106T073349Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "pass",
+  "layers": [
+    {
+      "layer": "resources",
+      "group": "post",
+      "phase": "merged",
+      "title": "资源对照复核",
+      "stamp": "20261106T073349Z",
+      "startedAt": "2026-11-06T07:33:49.491Z",
+      "command": "(内部检查：bench/idle-profile/runs)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/resources-20261106T073349Z.json",
+      "durationMs": 373,
+      "endedAt": "2026-11-06T07:33:49.864Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "m38-p1: hidden=hidden fps 24.1→0，CPU 3.09→0.27 s/min，RSS 求和 P50 575.5→572.8 MB，POST 0/0",
+        "m38-p2: hidden=hidden fps 24→0，CPU 3.16→0.14 s/min，RSS 求和 P50 575.5→564.7 MB，POST 0/0",
+        "m38-p3: hidden=hidden fps 24→0，CPU 3.23→0.37 s/min，RSS 求和 P50 575.4→572.3 MB，POST 0/0",
+        "m38-v0: hidden=visible fps 24→24，CPU 3.23→3.38 s/min，RSS 求和 P50 574.7→575.0 MB，POST 0/0",
+        "mainpid-fix: 只有单臂数据（baseline），按补充数据记录",
+        "可解析对 4/5",
+        "无法验证：",
+        "  - 账本只能读 C 落盘的 summary/requests/samples，无法证明两臂确在同机同素材交替；只能核对字段与顺序。",
+        "  - 不能证明采样期间无其它 GUI/bench 并发（单核争用只能看时间戳重叠，无法排除）。",
+        "  - RSS 为进程 RSS 求和口径时，不能当作桌宠自身开销。"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/resources-20261106T073349Z.json"
+    }
+  ]
+}

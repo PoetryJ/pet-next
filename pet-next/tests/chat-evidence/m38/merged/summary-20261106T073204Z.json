@@ -1,0 +1,56 @@
+{
+  "stamp": "20261106T073204Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "fail",
+  "layers": [
+    {
+      "layer": "pkg-hash",
+      "group": "pre",
+      "phase": "merged",
+      "title": "交付包 SHA256 + 完整性 + 启动.cmd 字节",
+      "stamp": "20261106T073204Z",
+      "startedAt": "2026-11-06T07:32:04.447Z",
+      "command": "(内部检查：sha256/zipfile/启动.cmd 字节)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T073204Z.json",
+      "durationMs": 951,
+      "endedAt": "2026-11-06T07:32:05.398Z",
+      "exitCode": 1,
+      "status": "fail",
+      "counts": null,
+      "notes": [
+        "失败项 file-vs-HEAD:package.json: 期望 9e52529b437184d3da2483fe5d4a53417b6b8b98，实际 12e9d94933e2311e7588a0844d25370da019153f",
+        "失败项 file-vs-HEAD:pnpm-lock.yaml: 期望 0af92c40b8011b6644d3948906fb5ebfa84c8c3f，实际 0fd15f5f5db027c5c11290207f28e70beda819d5",
+        "失败项 file-vs-HEAD:启动.cmd: 期望 b7750d002083bd5a96ba51c7a9dd575a9f658938，实际 f365e6bf65fffd61b725919a7eb13ac9a37d3e35",
+        "失败项 file-vs-HEAD:scripts/m38-acceptance/run.mjs: 期望 81482cd9b9d195fff7f36f0de91f8808d5452a3e，实际 a793f2def8c11f45dfc09d5cb5306f15795bccb5",
+        "失败项 file-vs-HEAD:tests/launcher/first-run.e2e.test.ts: 期望 7457efb500fe8f3a1014ddfa59b18a989c34193c，实际 f35d00da01fab66e95bb74366b8a830d513a89a8"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T073204Z.json"
+    },
+    {
+      "layer": "pkg-extract",
+      "group": "pre",
+      "phase": "merged",
+      "title": "解压到中文+空格目录",
+      "stamp": "20261106T073204Z",
+      "startedAt": "2026-11-06T07:32:05.426Z",
+      "command": "python3 -c <zipfile.extractall> /data3/DATA/project/project_meishijiang/m38-delivery/pet-next-trial-src-3380f7f.zip /tmp/m38-d/中文 空格 3380f7f",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T073204Z.log",
+      "durationMs": 128,
+      "endedAt": "2026-11-06T07:32:05.554Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "解压目录 /tmp/m38-d/中文 空格 3380f7f"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T073204Z.json",
+      "logBytes": 118,
+      "logSha256": "a2814a7d92c64e97fa48d193d42f7345d8466a6cbb05f51d822624571894f7d3"
+    }
+  ]
+}

@@ -63,6 +63,10 @@ export async function runPkgHashLayer(ctx) {
     'z = zipfile.ZipFile(sys.argv[1])',
     'bad = z.testzip()',
     'names = z.namelist()',
+    "req = ['package.json', 'pnpm-lock.yaml', '启动.cmd', 'scripts/m38-acceptance/run.mjs',",
+    "       'tests/launcher/first-run.e2e.test.ts']",
+    // 用 SHA1 与 `git rev-parse HEAD:<path>` 的 blob 哈希对齐，保证比的是"这个 commit"而不是我的工作树。
+    'files = {n: (hashlib.sha1(z.read(n)).hexdigest() if n in names else None) for n in req}',
     "cmd = [n for n in names if n.endswith('.cmd')]",
     'entry = {}',
     'if cmd:',
@@ -73,7 +77,8 @@ export async function runPkgHashLayer(ctx) {
     "             'bom': b[:3] == b'\\xef\\xbb\\xbf',",
     "             'chcp': b'chcp' in b.lower(),",
     "             'sha256': hashlib.sha256(b).hexdigest()}",
-    "print(json.dumps({'testzip': bad, 'entries': len(names), 'cmd': entry}, ensure_ascii=False))",
+    "    print(json.dumps({'testzip': bad, 'entries': len(names), 'names': names, 'cmd': entry, 'files': files},",
+    '                     ensure_ascii=False))',
   ].join('\n');
   const analyzed = await execCapture('python3', ['-c', py, ctx.zipPath]);
   if (!analyzed.ok) {
@@ -81,36 +86,69 @@ export async function runPkgHashLayer(ctx) {
   }
   const info = JSON.parse(analyzed.stdout);
   const cmd = info.cmd ?? {};
-  const worktreeCmdPath = path.join(ctx.appRoot, '启动.cmd');
-  const worktreeCmd = existsSync(worktreeCmdPath) ? await readFile(worktreeCmdPath) : null;
+  // 逐文件比对：包内关键文件必须与当前 worktree（应为待验收 HEAD）字节一致，
+  // 这比固定 SHA 常量更能发现"包不是从这个 commit 打的"。
+  const requiredFiles = [
+    'package.json',
+    'pnpm-lock.yaml',
+    '启动.cmd',
+    'scripts/m38-acceptance/run.mjs',
+    'tests/launcher/first-run.e2e.test.ts',
+  ];
+  const fileChecks = [];
+  // 仓库根可能高于应用根（本 worktree 是 <repo>/pet-next），先取相对前缀再拼 HEAD:path。
+  const prefixInfo = await execCapture('git', ['-C', ctx.appRoot, 'rev-parse', '--show-prefix']);
+  const gitPrefix = prefixInfo.ok ? prefixInfo.stdout : '';
+  // 比的是"这个 commit 的 blob"：包内容经 `git hash-object --path=...` 按路径过滤后
+  // 得到 blob 哈希，再与 `git rev-parse HEAD:<path>` 对齐；这样既不受我本地未提交改动影响，
+  // 也不受 启动.cmd 的 CRLF/eol 属性影响（--path 会应用同一套过滤器）。
+  const extractedRoot = existsSync(path.join(ctx.pkgDir, 'package.json')) ? ctx.pkgDir : null;
+  for (const rel of requiredFiles) {
+    const extracted = extractedRoot === null ? null : path.join(extractedRoot, rel);
+    if (extracted === null || !existsSync(extracted)) {
+      fileChecks.push({ id: `file-vs-HEAD:${rel}`, ok: false, expected: 'HEAD blob', actual: `解压目录缺该文件（${extractedRoot === null ? '解压目录为空' : '缺文件'}）` });
+      continue;
+    }
+    const expected = await execCapture('git', ['-C', ctx.appRoot, 'rev-parse', `HEAD:${gitPrefix}${rel}`]);
+    const actual = await execCapture('git', ['-C', ctx.appRoot, 'hash-object', `--path=${gitPrefix}${rel}`, extracted]);
+    fileChecks.push({
+      id: `file-vs-HEAD:${rel}`,
+      ok: expected.ok && actual.ok && expected.stdout === actual.stdout,
+      expected: expected.ok ? expected.stdout : `rev-parse 失败：${expected.stderr}`,
+      actual: actual.ok ? actual.stdout : `hash-object 失败：${actual.stderr}`,
+    });
+  }
   const checks = [
-    { id: 'zip-sha256', ok: zipSha === ctx.expectedZipSha, expected: ctx.expectedZipSha, actual: zipSha },
     { id: 'zip-testzip', ok: info.testzip === null, expected: null, actual: info.testzip },
-    { id: 'zip-entries', ok: info.entries === ctx.expectedEntries, expected: ctx.expectedEntries, actual: info.entries },
-    { id: 'cmd-bytes', ok: cmd.bytes === 1800, expected: 1800, actual: cmd.bytes },
-    { id: 'cmd-crlf', ok: cmd.crlf === 45, expected: 45, actual: cmd.crlf },
+    // 只有显式传入基线常量时才做等值断言；否则 SHA/条目数仅记录（随 HEAD 变化）。
+    ...(ctx.expectedZipSha === null ? [] : [{ id: 'zip-sha256', ok: zipSha === ctx.expectedZipSha, expected: ctx.expectedZipSha, actual: zipSha }]),
+    ...(ctx.expectedEntries === null ? [] : [{ id: 'zip-entries', ok: info.entries === ctx.expectedEntries, expected: ctx.expectedEntries, actual: info.entries }]),
+    // 结构不变量：启动.cmd 必须是纯 ASCII + 全 CRLF + 无 BOM + 无 chcp；字节数随内容记录不断言。
     { id: 'cmd-lone-lf', ok: cmd.loneLf === 0, expected: 0, actual: cmd.loneLf },
     { id: 'cmd-non-ascii', ok: cmd.nonAscii === 0, expected: 0, actual: cmd.nonAscii },
     { id: 'cmd-bom', ok: cmd.bom === false, expected: false, actual: cmd.bom },
     { id: 'cmd-no-chcp', ok: cmd.chcp === false, expected: false, actual: cmd.chcp },
-    {
-      id: 'cmd-sha256-vs-worktree',
-      ok: worktreeCmd !== null && sha256(worktreeCmd) === cmd.sha256,
-      expected: worktreeCmd === null ? 'worktree 缺少 启动.cmd' : sha256(worktreeCmd),
-      actual: cmd.sha256 ?? null,
-    },
+    { id: 'zip-no-node-modules', ok: !(info.names ?? []).some((name) => name.includes('node_modules/')), expected: 'no node_modules', actual: 'checked' },
+    { id: 'zip-has-lock', ok: (info.names ?? []).includes('pnpm-lock.yaml'), expected: 'pnpm-lock.yaml', actual: 'checked' },
+    ...fileChecks,
   ];
   const failures = checks.filter((check) => !check.ok);
   return {
     exitCode: failures.length === 0 ? 0 : 1,
     counts: null,
     status: failures.length === 0 ? 'pass' : 'fail',
-    notes: failures.map((item) => `失败项 ${item.id}: 期望 ${String(item.expected)}，实际 ${String(item.actual)}`),
+    notes: failures.length > 0
+      ? failures.map((item) => `失败项 ${item.id}: 期望 ${String(item.expected)}，实际 ${String(item.actual)}`)
+      : [
+        `zip sha256 ${zipSha}`,
+        `条目 ${info.entries}，启动.cmd ${cmd.bytes}B/${cmd.crlf} CRLF/${cmd.loneLf} 孤立 LF/非ASCII ${cmd.nonAscii}/BOM ${cmd.bom}/chcp ${cmd.chcp}`,
+        `逐文件比对 ${requiredFiles.length} 个关键文件与 HEAD blob 一致`,
+      ],
     logJson: {
       zipPath: ctx.zipPath,
       zipSha,
       expectedZipSha: ctx.expectedZipSha,
-      worktreeCmdSha256: worktreeCmd === null ? null : sha256(worktreeCmd),
+      expectedEntries: ctx.expectedEntries,
       zip: info,
       checks,
     },

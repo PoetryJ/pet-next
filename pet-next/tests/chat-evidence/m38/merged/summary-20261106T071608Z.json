@@ -1,0 +1,44 @@
+{
+  "stamp": "20261106T071608Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "pass",
+  "layers": [
+    {
+      "layer": "launcher",
+      "group": "post",
+      "phase": "merged",
+      "title": "显式 PET_NEXT_LAUNCHER_E2E=1 的 7 例",
+      "stamp": "20261106T071608Z",
+      "startedAt": "2026-11-06T07:16:08.151Z",
+      "command": "PET_NEXT_LAUNCHER_E2E=1 node --experimental-strip-types --test --test-concurrency=1 tests/launcher/first-run.e2e.test.ts",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": ":96",
+      "log": "tests/chat-evidence/m38/merged/logs/launcher-20261106T071608Z.log",
+      "displayState": {
+        "ready": true,
+        "owned": true,
+        "reason": "自起 Xvfb :96"
+      },
+      "durationMs": 45154,
+      "endedAt": "2026-11-06T07:16:53.411Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 7,
+        "pass": 7,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      },
+      "notes": [
+        "PET_NEXT_LAUNCHER_E2E=1 显式开启",
+        "display :96（PET_NEXT_E2E_DISPLAY 同值）",
+        "汇总块 1，耗时 45s"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/launcher-20261106T071608Z.json",
+      "logBytes": 1430,
+      "logSha256": "ff127f03a9dfca9d447aab739f837a32ea5a3c989ae4126b78b637bb2a7e0166"
+    }
+  ]
+}

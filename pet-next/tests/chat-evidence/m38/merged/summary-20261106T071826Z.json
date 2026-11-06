@@ -1,0 +1,42 @@
+{
+  "stamp": "20261106T071826Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "pass",
+  "layers": [
+    {
+      "layer": "verify",
+      "group": "post",
+      "phase": "merged",
+      "title": "完整 pnpm verify（串行自然结束）",
+      "stamp": "20261106T071826Z",
+      "startedAt": "2026-11-06T07:18:26.487Z",
+      "command": "pnpm verify",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": ":96",
+      "log": "tests/chat-evidence/m38/merged/logs/verify-20261106T071826Z.log",
+      "displayState": {
+        "ready": true,
+        "owned": true,
+        "reason": "自起 Xvfb :96"
+      },
+      "durationMs": 730099,
+      "endedAt": "2026-11-06T07:30:36.692Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 46,
+        "pass": 39,
+        "fail": 0,
+        "skipped": 7,
+        "cancelled": 0
+      },
+      "notes": [
+        "耗时 730s",
+        "汇总块 4"
+      ],
+      "logBytes": 90595,
+      "logSha256": "6498bf57efc5a72ef2a757d20abbbfc65279438377f206588a01afbe5f5fcb5c"
+    }
+  ]
+}

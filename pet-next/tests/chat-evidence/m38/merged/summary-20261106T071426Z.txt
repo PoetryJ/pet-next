@@ -1,0 +1,10 @@
+M3-8 acceptance 20261106T071426Z  phase=merged  display=:96  root=/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next
+id                status   exit  tests pass fail skip  dur(s)  log
+env               pass     0     -     -    -    -     4       tests/chat-evidence/m38/merged/logs/env-20261106T071426Z.json
+unit              pass     0     590   587  0    3     23      tests/chat-evidence/m38/merged/logs/unit-20261106T071426Z.log
+cleanup           pass     0     22    22   0    0     18      tests/chat-evidence/m38/merged/logs/cleanup-20261106T071426Z.log
+integration       pass     0     5     5    0    0     7       tests/chat-evidence/m38/merged/logs/integration-20261106T071426Z.log
+typecheck         pass     0     -     -    -    -     8       tests/chat-evidence/m38/merged/logs/typecheck-20261106T071426Z.log
+lint              pass     0     -     -    -    -     25      tests/chat-evidence/m38/merged/logs/lint-20261106T071426Z.log
+build             pass     0     -     -    -    -     14      tests/chat-evidence/m38/merged/logs/build-20261106T071426Z.log
+VERDICT: pass

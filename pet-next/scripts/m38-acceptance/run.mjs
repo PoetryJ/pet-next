@@ -46,8 +46,11 @@ const zipPath = opt('zip', '/data3/DATA/project/project_meishijiang/m3-7-r1-deli
 const pkgDir = opt('pkg-dir', '/tmp/m38-d/中文 空格 解压包');
 const electronDistSource = opt('electron-dist', path.join(APP_ROOT, 'node_modules/electron'));
 const phaseOverride = opt('phase', '');
-const expectedZipSha = opt('expect-zip-sha256', '3ad2a72fa7773f1103da9fb32a58370327bb6539b9933b3b54aac21d5e174fb9');
-const expectedEntries = Number(opt('expect-entries', '370'));
+// 可选：只有显式传入才断言 zip 的绝对 SHA/条目数；默认走"结构与 worktree 逐文件一致"的口径，
+// 这样换包（M3-8 新包）不会因为常量过期被误判为失败。
+const expectedZipSha = opt('expect-zip-sha256', '') || null;
+const expectedEntriesRaw = opt('expect-entries', '');
+const expectedEntries = expectedEntriesRaw === '' ? null : Number(expectedEntriesRaw);
 const stamp = new Date().toISOString().replace(/[-:]/g, '').replace(/\..*$/, 'Z');
 const evidenceRoot = path.join(APP_ROOT, 'tests/chat-evidence/m38');
 const lockPath = '/tmp/m38-d-accept.lock';

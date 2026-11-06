@@ -1,0 +1,6 @@
+M3-8 acceptance 20261106T073045Z  phase=merged  display=:96  root=/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next
+id                status   exit  tests pass fail skip  dur(s)  log
+pkg-hash          fail     1     -     -    -    -     0       tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T073045Z.json
+pkg-extract       pass     0     -     -    -    -     0       tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T073045Z.log
+失败层：pkg-hash
+VERDICT: fail

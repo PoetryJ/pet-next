@@ -1,0 +1,29 @@
+{
+  "layer": "unit",
+  "group": "post",
+  "phase": "merged",
+  "title": "纯单元 pnpm test",
+  "stamp": "20261106T071426Z",
+  "startedAt": "2026-11-06T07:14:29.752Z",
+  "command": "pnpm test",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/merged/logs/unit-20261106T071426Z.log",
+  "durationMs": 23494,
+  "endedAt": "2026-11-06T07:14:53.246Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": {
+    "tests": 590,
+    "pass": 587,
+    "fail": 0,
+    "skipped": 3,
+    "cancelled": 0
+  },
+  "notes": [
+    "耗时 23s",
+    "汇总块 1"
+  ],
+  "logBytes": 55676,
+  "logSha256": "5c260078964b1615499e55db0adf0818714dddd1456913d626a5fd46e8460aa2"
+}

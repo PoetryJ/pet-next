@@ -1,0 +1,116 @@
+{
+  "pattern": "探测中关窗|连接失败|直接关 launcher 窗口",
+  "rounds": [
+    {
+      "round": 1,
+      "log": "tests/chat-evidence/m38/merged/logs/rounds-r1-20261106T071656Z.log",
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 28579,
+      "counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      },
+      "cases": [
+        {
+          "key": "cancel",
+          "caseDir": "probe-cancel-exit",
+          "evidenceCopied": true,
+          "exitTxt": "code=0\nroot_pid=259810\nowned_pids_before=259810,259817,259819,259820,259855,259892,259850,259866\nowned_pids_alive_after=\ndebug_port=35819 open_after=false\noutput_tail=th pid 259866: Permission denied (13)\n{\"event\":\"launcher-open\"}\n[259817:1106/151722.092299:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[259817:1106/151722.092378:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[259817:1106/151722.095893:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n\n",
+          "expect": "exit0；owned_pids_alive_after=[]；debug_port 关闭；POST=0"
+        },
+        {
+          "key": "retry",
+          "caseDir": "probe-fail-retry",
+          "evidenceCopied": true,
+          "exitTxt": "code=0\nroot_pid=259426\nowned_pids_before=259426,259433,259435,259436,259468,259463,259480\nowned_pids_alive_after=\ndebug_port=36643 open_after=false\noutput_tail=th pid 259480: Permission denied (13)\n{\"event\":\"launcher-open\"}\n[259433:1106/151658.549068:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[259433:1106/151658.549208:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[259433:1106/151658.552745:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n\n",
+          "expect": "exit0；改到实际 fakePort 后再次 probe 成功；旧隧道退出；POST=0"
+        },
+        {
+          "key": "exit",
+          "caseDir": "cancel-clean-exit",
+          "evidenceCopied": true,
+          "exitTxt": "code=0\nroot_pid=259965\nowned_pids_before=259965,259972,259974,259975,260007,260002,260018\nowned_pids_alive_after=\ndebug_port=43621 open_after=false\noutput_tail=th pid 260018: Permission denied (13)\n{\"event\":\"launcher-open\"}\n[259972:1106/151724.800040:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[259972:1106/151724.800165:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[259972:1106/151724.803951:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n\n",
+          "expect": "exit0；无残留进程/端口；哨兵存活；POST=0"
+        }
+      ]
+    },
+    {
+      "round": 2,
+      "log": "tests/chat-evidence/m38/merged/logs/rounds-r2-20261106T071656Z.log",
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 29052,
+      "counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      },
+      "cases": [
+        {
+          "key": "cancel",
+          "caseDir": "probe-cancel-exit",
+          "evidenceCopied": true,
+          "exitTxt": "code=0\nroot_pid=260499\nowned_pids_before=260499,260506,260508,260509,260541,260580,260536,260553\nowned_pids_alive_after=\ndebug_port=40107 open_after=false\noutput_tail=th pid 260553: Permission denied (13)\n{\"event\":\"launcher-open\"}\n[260506:1106/151750.391212:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[260506:1106/151750.391321:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[260506:1106/151750.395007:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n\n",
+          "expect": "exit0；owned_pids_alive_after=[]；debug_port 关闭；POST=0"
+        },
+        {
+          "key": "retry",
+          "caseDir": "probe-fail-retry",
+          "evidenceCopied": true,
+          "exitTxt": "code=0\nroot_pid=260137\nowned_pids_before=260137,260144,260146,260147,260184,260174,260191\nowned_pids_alive_after=\ndebug_port=42901 open_after=false\noutput_tail=th pid 260191: Permission denied (13)\n{\"event\":\"launcher-open\"}\n[260144:1106/151727.548876:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[260144:1106/151727.548974:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[260144:1106/151727.552528:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n\n",
+          "expect": "exit0；改到实际 fakePort 后再次 probe 成功；旧隧道退出；POST=0"
+        },
+        {
+          "key": "exit",
+          "caseDir": "cancel-clean-exit",
+          "evidenceCopied": true,
+          "exitTxt": "code=0\nroot_pid=260607\nowned_pids_before=260607,260614,260616,260617,260663,260658,260675\nowned_pids_alive_after=\ndebug_port=35527 open_after=false\noutput_tail=th pid 260675: Permission denied (13)\n{\"event\":\"launcher-open\"}\n[260614:1106/151754.359211:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[260614:1106/151754.359302:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[260614:1106/151754.363022:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n\n",
+          "expect": "exit0；无残留进程/端口；哨兵存活；POST=0"
+        }
+      ]
+    },
+    {
+      "round": 3,
+      "log": "tests/chat-evidence/m38/merged/logs/rounds-r3-20261106T071656Z.log",
+      "exitCode": 0,
+      "timedOut": false,
+      "durationMs": 28035,
+      "counts": {
+        "tests": 3,
+        "pass": 3,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      },
+      "cases": [
+        {
+          "key": "cancel",
+          "caseDir": "probe-cancel-exit",
+          "evidenceCopied": true,
+          "exitTxt": "code=0\nroot_pid=261194\nowned_pids_before=261194,261201,261203,261204,261236,261278,261231,261248\nowned_pids_alive_after=\ndebug_port=43743 open_after=false\noutput_tail=th pid 261248: Permission denied (13)\n{\"event\":\"launcher-open\"}\n[261201:1106/151819.931393:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[261201:1106/151819.931503:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[261201:1106/151819.935243:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n\n",
+          "expect": "exit0；owned_pids_alive_after=[]；debug_port 关闭；POST=0"
+        },
+        {
+          "key": "retry",
+          "caseDir": "probe-fail-retry",
+          "evidenceCopied": true,
+          "exitTxt": "code=0\nroot_pid=260783\nowned_pids_before=260783,260799,260801,260802,260871,260866,260883\nowned_pids_alive_after=\ndebug_port=38863 open_after=false\noutput_tail=th pid 260883: Permission denied (13)\n{\"event\":\"launcher-open\"}\n[260799:1106/151757.116477:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[260799:1106/151757.116579:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[260799:1106/151757.120234:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n\n",
+          "expect": "exit0；改到实际 fakePort 后再次 probe 成功；旧隧道退出；POST=0"
+        },
+        {
+          "key": "exit",
+          "caseDir": "cancel-clean-exit",
+          "evidenceCopied": true,
+          "exitTxt": "code=0\nroot_pid=261296\nowned_pids_before=261296,261306,261308,261309,261346,261336,261352\nowned_pids_alive_after=\ndebug_port=37141 open_after=false\noutput_tail=th pid 261352: Permission denied (13)\n{\"event\":\"launcher-open\"}\n[261306:1106/151822.877152:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[261306:1106/151822.877240:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[261306:1106/151822.880717:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n\n",
+          "expect": "exit0；无残留进程/端口；哨兵存活；POST=0"
+        }
+      ]
+    }
+  ]
+}

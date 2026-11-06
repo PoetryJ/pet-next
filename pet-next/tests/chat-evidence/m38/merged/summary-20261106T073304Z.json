@@ -1,0 +1,67 @@
+{
+  "stamp": "20261106T073304Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "fail",
+  "layers": [
+    {
+      "layer": "resources",
+      "group": "post",
+      "phase": "merged",
+      "title": "资源对照复核",
+      "stamp": "20261106T073304Z",
+      "startedAt": "2026-11-06T07:33:04.955Z",
+      "command": "(内部检查：bench/idle-profile/runs)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/resources-20261106T073304Z.json",
+      "durationMs": 393,
+      "endedAt": "2026-11-06T07:33:05.349Z",
+      "exitCode": 1,
+      "status": "fail",
+      "counts": null,
+      "notes": [
+        "可解析对 0/9",
+        "m38-p1-b: 只有单臂数据（baseline）",
+        "m38-p1-c: 只有单臂数据（candidate）",
+        "m38-p2-b: 只有单臂数据（baseline）",
+        "m38-p2-c: 只有单臂数据（candidate）",
+        "m38-p3-b: 只有单臂数据（baseline）",
+        "m38-p3-c: 只有单臂数据（candidate）",
+        "m38-v0-b: 只有单臂数据（baseline）",
+        "m38-v0-c: 只有单臂数据（candidate）",
+        "mainpid-fix: 只有单臂数据（baseline）",
+        "无法验证：",
+        "  - 账本只能读 C 落盘的 summary/requests/samples，无法证明两臂确在同机同素材交替；只能核对字段与顺序。",
+        "  - 不能证明采样期间无其它 GUI/bench 并发（单核争用只能看时间戳重叠，无法排除）。",
+        "  - RSS 为进程 RSS 求和口径时，不能当作桌宠自身开销。"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/resources-20261106T073304Z.json"
+    },
+    {
+      "layer": "windows",
+      "group": "post",
+      "phase": "merged",
+      "title": "Windows 项判定",
+      "stamp": "20261106T073304Z",
+      "startedAt": "2026-11-06T07:33:05.373Z",
+      "command": "(内部判定：无 Windows 则 not-run，只列命令)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/windows-20261106T073304Z.json",
+      "durationMs": 0,
+      "endedAt": "2026-11-06T07:33:05.373Z",
+      "exitCode": null,
+      "status": "not-run",
+      "counts": null,
+      "notes": [
+        "cmd-entry.test.ts 真实 .cmd 5 例（含 3 个 Windows-only） → node --experimental-strip-types --test --test-reporter spec tests/launcher/cmd-entry.test.ts（预期 exit0；5 pass / 0 skipped（跑前系统代码页未被改））",
+        "显式 launcher E2E 7 例 → set PET_NEXT_LAUNCHER_E2E=1 && node --experimental-strip-types --test --test-concurrency=1 \"tests/launcher/first-run.e2e.test.ts\"（预期 exit0；7 pass（真实 Electron，快/慢回复各 1 次 fake POST））",
+        "Windows 平台公开校验 → pnpm verify:windows（预期 exit0；真实系统 125/150 仍 not-run）",
+        "交付解压包（中文+空格路径） → pnpm install --frozen-lockfile && pnpm build && pnpm test（预期 install/build exit0；test 自然结束（数量以本轮实际为准））"
+      ],
+      "notRun": "本机平台 linux 无 Windows/pwsh：全部 Windows 项 not-run，不以 Linux/Node 结论替代。",
+      "detail": "tests/chat-evidence/m38/merged/logs/windows-20261106T073304Z.json"
+    }
+  ]
+}

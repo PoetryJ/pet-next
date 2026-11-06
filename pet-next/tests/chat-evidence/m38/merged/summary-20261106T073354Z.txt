@@ -1,0 +1,5 @@
+M3-8 acceptance 20261106T073354Z  phase=merged  display=:96  root=/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next
+id                status   exit  tests pass fail skip  dur(s)  log
+windows           not-run  -     -     -    -    -     0       tests/chat-evidence/m38/merged/logs/windows-20261106T073354Z.json
+not-run 层：windows
+VERDICT: pass-with-not-run

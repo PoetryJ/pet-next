@@ -1,0 +1,12 @@
+dead_port=41397
+fake_port=38999
+tunnel_port=39655
+failure_text=连接失败（not-ready）：隧道未就绪：检查网络与远端服务是否可达
+first_tunnel_pids=260912
+first_port_open_after=false
+first_stopped_log_rows=1
+second_tunnel_pids=260912,261120
+second_port_open_after=false
+second_stopped_log_rows=2
+stopped_log_note=signal-log is auxiliary only; Windows taskkill produces no fake-ssh-stopped
+post=0

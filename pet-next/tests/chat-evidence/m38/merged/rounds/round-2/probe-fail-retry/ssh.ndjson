@@ -1,0 +1,6 @@
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:39371:127.0.0.1:39281","-p","10977","-i","/tmp/pet-launcher-probe-fail-retry-wNTLx8/id_ed25519","tester@fake.example.invalid"],"mode":"ok","targetPort":0,"pid":260217,"ts":1793949447699}
+{"event":"fake-ssh-listening","port":39371,"targetPort":39281,"pid":260217,"ts":1793949447703}
+{"event":"fake-ssh-stopped","port":39371,"pid":260217,"ts":1793949467874}
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:39371:127.0.0.1:41513","-p","10977","-i","/tmp/pet-launcher-probe-fail-retry-wNTLx8/id_ed25519","tester@fake.example.invalid"],"mode":"ok","targetPort":0,"pid":260480,"ts":1793949467964}
+{"event":"fake-ssh-listening","port":39371,"targetPort":41513,"pid":260480,"ts":1793949467968}
+{"event":"fake-ssh-stopped","port":39371,"pid":260480,"ts":1793949468155}

@@ -136,24 +136,45 @@ export async function runResourcesLayer(ctx) {
       notes: [],
     };
   }
-  const stamps = (await readdir(runsRoot, { withFileTypes: true }))
+  const entries = (await readdir(runsRoot, { withFileTypes: true }))
     .filter((entry) => entry.isDirectory())
     .map((entry) => entry.name)
     .sort();
-  const pairs = [];
-  for (const stamp of stamps) {
-    const arms = {};
-    for (const arm of ['baseline', 'candidate']) {
-      const dir = path.join(runsRoot, stamp, arm);
-      if (!existsSync(dir)) continue;
-      arms[arm] = {
-        summary: await readIfExists(path.join(dir, 'summary.json')),
-        exit: await readIfExists(path.join(dir, 'exit.txt')),
-        requests: await readIfExists(path.join(dir, 'requests.ndjson')),
-        samples: await readIfExists(path.join(dir, 'samples.json')),
-      };
+  // 兼容两种落盘布局：runs/<pair>/{baseline,candidate}/ 与 runs/<pair>-{b,c}/<arm>/。
+  const grouped = new Map();
+  const addArm = (key, arm, dir) => {
+    if (!grouped.has(key)) grouped.set(key, {});
+    grouped.get(key)[arm] = dir;
+  };
+  for (const name of entries) {
+    const dir = path.join(runsRoot, name);
+    const inner = (await readdir(dir, { withFileTypes: true }))
+      .filter((entry) => entry.isDirectory())
+      .map((entry) => entry.name)
+      .filter((item) => item === 'baseline' || item === 'candidate');
+    // 先按 -b/-c 后缀配对（C 的布局是 runs/<pair>-b/baseline/），再退回"目录内直接含两臂"。
+    const suffix = name.endsWith('-b') ? 'baseline' : name.endsWith('-c') ? 'candidate' : null;
+    if (suffix !== null) {
+      const armDir = inner.includes(suffix) ? path.join(dir, suffix) : inner.length === 1 ? path.join(dir, inner[0]) : dir;
+      addArm(name.slice(0, -2), suffix, armDir);
+      continue;
     }
-    pairs.push({ stamp, arms });
+    if (inner.length > 0) {
+      for (const arm of inner) addArm(name, arm, path.join(dir, arm));
+    }
+  }
+  const readArm = async (dir) => ({
+    dir: path.relative(ctx.appRoot, dir),
+    summary: await readIfExists(path.join(dir, 'summary.json')),
+    exit: await readIfExists(path.join(dir, 'exit.txt')),
+    requests: await readIfExists(path.join(dir, 'requests.ndjson')),
+    samples: await readIfExists(path.join(dir, 'samples.json')),
+  });
+  const pairs = [];
+  for (const [stamp, arms] of [...grouped.entries()].sort()) {
+    const resolved = {};
+    for (const [arm, dir] of Object.entries(arms)) resolved[arm] = await readArm(dir);
+    pairs.push({ stamp, arms: resolved });
   }
   const notes = [];
   const problems = [];
@@ -161,11 +182,18 @@ export async function runResourcesLayer(ctx) {
     return { exitCode: null, counts: null, status: 'not-run', notRun: 'runs 目录为空', notes: [] };
   }
   let parsedPairs = 0;
+  const totals = (summary) => {
+    const roles = summary?.roles ?? {};
+    const cpuSeconds = Object.values(roles).reduce((sum, role) => sum + (role?.cpuSeconds ?? 0), 0);
+    const rssSumP50Mb = Object.values(roles).reduce((sum, role) => sum + (role?.rssSumP50Mb ?? 0), 0);
+    return { cpuSeconds, rssSumP50Mb };
+  };
   for (const pair of pairs) {
     const baseline = pair.arms.baseline;
     const candidate = pair.arms.candidate;
     if (baseline === undefined || candidate === undefined) {
-      problems.push(`${pair.stamp}: 只有单臂数据（${Object.keys(pair.arms).join(',')}）`);
+      // 单臂目录（如 harness 校验用 mainpid-fix）只提示，不算失败。
+      notes.push(`${pair.stamp}: 只有单臂数据（${Object.keys(pair.arms).join(',')}），按补充数据记录`);
       continue;
     }
     let baselineSummary;
@@ -177,6 +205,10 @@ export async function runResourcesLayer(ctx) {
       problems.push(`${pair.stamp}: summary.json 不是合法 JSON`);
       continue;
     }
+    if (baselineSummary === null || candidateSummary === null) {
+      problems.push(`${pair.stamp}: 缺 summary.json`);
+      continue;
+    }
     parsedPairs += 1;
     const postCount = (text) => (text ?? '').split('\n').filter((line) => line.trim() !== '').length;
     const baselineRequests = postCount(baseline.requests);
@@ -184,17 +216,50 @@ export async function runResourcesLayer(ctx) {
     if (baselineRequests > 0 || candidateRequests > 0) {
       problems.push(`${pair.stamp}: 待机出现请求（baseline=${baselineRequests}, candidate=${candidateRequests}）`);
     }
-    const keys = (object) => (object === null || typeof object !== 'object' ? [] : Object.keys(object));
-    notes.push(
-      `${pair.stamp}: summary keys baseline=[${keys(baselineSummary).join(',')}] candidate=[${keys(candidateSummary).join(',')}]`,
-    );
-    const seconds = [baselineSummary?.seconds, candidateSummary?.seconds];
-    if (seconds.every((value) => typeof value === 'number') && seconds[0] !== seconds[1]) {
-      problems.push(`${pair.stamp}: 两臂采样秒数不等（${seconds.join(' vs ')}）`);
+    // 同机同素材同口径：这些字段两臂必须一致，否则"配对"不成立。
+    const same = (label, pick) => {
+      const values = [pick(baselineSummary), pick(candidateSummary)];
+      if (values[0] !== values[1]) problems.push(`${pair.stamp}: 两臂 ${label} 不同（${values.join(' vs ')}）`);
+    };
+    same('采样秒数', (s) => s?.seconds);
+    same('host', (s) => s?.host);
+    same('head', (s) => s?.head);
+    same('display', (s) => s?.display);
+    same('sampleCount', (s) => s?.sampleCount);
+    same('assets.idleSha256', (s) => s?.assets?.idleSha256);
+    same('assets.reactionSha256', (s) => s?.assets?.reactionSha256);
+    same('state', (s) => s?.state);
+    // 原型必须"默认关闭 + 只在 candidate 臂注入"。
+    const baseInjected = baselineSummary?.candidateInjected;
+    const candInjected = candidateSummary?.candidateInjected;
+    const defaultOff = candidateSummary?.candidateDefaultOff;
+    if (baseInjected !== false) problems.push(`${pair.stamp}: baseline 臂注入了原型（candidateInjected=${String(baseInjected)}）`);
+    if (candInjected !== true) problems.push(`${pair.stamp}: candidate 臂未注入原型（candidateInjected=${String(candInjected)}）`);
+    if (defaultOff !== true) problems.push(`${pair.stamp}: 原型默认关闭未被记录（candidateDefaultOff=${String(defaultOff)}）`);
+    // 待机零请求：posts 必须为 0 且闸门 pass；两臂都不得有失败。
+    for (const [arm, summary] of [['baseline', baselineSummary], ['candidate', candidateSummary]]) {
+      if ((summary?.posts ?? summary?.post ?? 0) !== 0) problems.push(`${pair.stamp}/${arm}: posts=${String(summary?.posts ?? summary?.post)}（应为 0）`);
+      if ((summary?.failures ?? []).length > 0) problems.push(`${pair.stamp}/${arm}: failures=${JSON.stringify(summary.failures)}`);
     }
-    const hosts = [baselineSummary?.hostname, candidateSummary?.hostname];
-    if (hosts.every((value) => typeof value === 'string') && hosts[0] !== hosts[1]) {
-      problems.push(`${pair.stamp}: 两臂 hostname 不同（${hosts.join(' vs ')}）`);
+    const base = totals(baselineSummary);
+    const cand = totals(candidateSummary);
+    const baseFps = baselineSummary?.framesPerSec;
+    const candFps = candidateSummary?.framesPerSec;
+    notes.push(
+      `${pair.stamp}: hidden=${String(baselineSummary?.state)} fps ${String(baseFps)}→${String(candFps)}，`
+      + `CPU ${base.cpuSeconds.toFixed(2)}→${cand.cpuSeconds.toFixed(2)} s/min，`
+      + `RSS 求和 P50 ${base.rssSumP50Mb.toFixed(1)}→${cand.rssSumP50Mb.toFixed(1)} MB，POST ${String(baselineRequests)}/${String(candidateRequests)}`,
+    );
+    // 判据：hidden 态 baseline 仍在出帧、candidate 必须 0 帧；visible 对照两臂都应出帧。
+    if (baselineSummary?.state === 'hidden') {
+      if (!(typeof baseFps === 'number' && baseFps > 1)) problems.push(`${pair.stamp}: baseline 隐藏态帧率异常（${String(baseFps)}）`);
+      if (!(candFps === 0)) problems.push(`${pair.stamp}: candidate 隐藏态仍在出帧（${String(candFps)}）`);
+      if (!(cand.cpuSeconds < base.cpuSeconds)) problems.push(`${pair.stamp}: candidate CPU 未下降（${cand.cpuSeconds.toFixed(2)} vs ${base.cpuSeconds.toFixed(2)}）`);
+    }
+    if (baselineSummary?.state === 'visible') {
+      if (!(typeof baseFps === 'number' && baseFps > 1) || !(typeof candFps === 'number' && candFps > 1)) {
+        problems.push(`${pair.stamp}: visible 对照两臂帧率异常（${String(baseFps)} vs ${String(candFps)}）`);
+      }
     }
   }
   const unverifiable = [

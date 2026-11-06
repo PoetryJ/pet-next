@@ -1,0 +1,52 @@
+{
+  "stamp": "20261106T073125Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "fail",
+  "layers": [
+    {
+      "layer": "pkg-hash",
+      "group": "pre",
+      "phase": "merged",
+      "title": "交付包 SHA256 + 完整性 + 启动.cmd 字节",
+      "stamp": "20261106T073125Z",
+      "startedAt": "2026-11-06T07:31:25.057Z",
+      "command": "(内部检查：sha256/zipfile/启动.cmd 字节)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T073125Z.json",
+      "durationMs": 105,
+      "endedAt": "2026-11-06T07:31:25.162Z",
+      "exitCode": 1,
+      "status": "fail",
+      "counts": null,
+      "notes": [
+        "失败项 file-vs-worktree:scripts/m38-acceptance/run.mjs: 期望 b0066711f630974c0ac6f4b73960e4e77ebd811379b098e5a91d1aab0ff0d90c，实际 2145ca23812947420bcd61fc0e50a2dec35b39bbaa8c26db6ed8b92f2210101b"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T073125Z.json"
+    },
+    {
+      "layer": "pkg-extract",
+      "group": "pre",
+      "phase": "merged",
+      "title": "解压到中文+空格目录",
+      "stamp": "20261106T073125Z",
+      "startedAt": "2026-11-06T07:31:25.189Z",
+      "command": "python3 -c <zipfile.extractall> /data3/DATA/project/project_meishijiang/m38-delivery/pet-next-trial-src-3380f7f.zip /tmp/m38-d/中文 空格 3380f7f",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T073125Z.log",
+      "durationMs": 125,
+      "endedAt": "2026-11-06T07:31:25.314Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "解压目录 /tmp/m38-d/中文 空格 3380f7f"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T073125Z.json",
+      "logBytes": 118,
+      "logSha256": "a2814a7d92c64e97fa48d193d42f7345d8466a6cbb05f51d822624571894f7d3"
+    }
+  ]
+}

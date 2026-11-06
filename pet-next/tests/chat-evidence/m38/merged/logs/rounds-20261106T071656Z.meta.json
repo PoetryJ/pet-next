@@ -1,0 +1,34 @@
+{
+  "layer": "rounds",
+  "group": "post",
+  "phase": "merged",
+  "title": "关键取消/重试/退出 3 轮隔离",
+  "stamp": "20261106T071656Z",
+  "startedAt": "2026-11-06T07:16:56.298Z",
+  "command": "PET_NEXT_LAUNCHER_E2E=1 node --test --test-name-pattern=<3 例> ×3 轮",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": ":96",
+  "log": "tests/chat-evidence/m38/merged/logs/rounds-20261106T071656Z.json",
+  "displayState": {
+    "ready": true,
+    "owned": true,
+    "reason": "自起 Xvfb :96"
+  },
+  "durationMs": 87267,
+  "endedAt": "2026-11-06T07:18:23.671Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": {
+    "tests": 9,
+    "pass": 9,
+    "fail": 0,
+    "skipped": 0,
+    "cancelled": 0
+  },
+  "notes": [
+    "pattern=探测中关窗|连接失败|直接关 launcher 窗口",
+    "3 轮逐轮：R1=0 R2=0 R3=0",
+    "每轮证据已快照到 rounds/round-N/（原始 exit.txt/ndjson）"
+  ],
+  "detail": "tests/chat-evidence/m38/merged/logs/rounds-20261106T071656Z.json"
+}

@@ -1,0 +1,31 @@
+{
+  "capturedAt": "2026-11-06T07:14:29.712Z",
+  "appRoot": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "evidenceDir": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next/tests/chat-evidence/m38/merged",
+  "node": "v22.20.0",
+  "pnpm": "10.33.4",
+  "platform": "linux",
+  "arch": "x64",
+  "release": "Linux 5.4.119-19.0009.28",
+  "hostname": "nb-1696310541880511232-d04dyonbiakg",
+  "cpuCount": 384,
+  "totalMemMB": 2321166,
+  "display": ":96",
+  "displaySocketExists": false,
+  "head": "3380f7f5b44935d2b35a66b7d90aec9677d75aa4",
+  "branch": "HEAD",
+  "worktreeClean": true,
+  "gitStatusPorcelain": "",
+  "tools": {
+    "Xvfb": "/usr/bin/Xvfb",
+    "xdotool": "/usr/bin/xdotool",
+    "xwininfo": "/usr/bin/xwininfo",
+    "python3": "/opt/conda/envs/siren3/bin/python3"
+  },
+  "inheritedEnv": {
+    "NODE_OPTIONS": null,
+    "PET_NEXT_LAUNCHER_E2E": null,
+    "DISPLAY": null,
+    "PET_NEXT_E2E_DISPLAY": null
+  }
+}

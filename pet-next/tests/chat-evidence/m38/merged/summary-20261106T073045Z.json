@@ -1,0 +1,53 @@
+{
+  "stamp": "20261106T073045Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "fail",
+  "layers": [
+    {
+      "layer": "pkg-hash",
+      "group": "pre",
+      "phase": "merged",
+      "title": "交付包 SHA256 + 完整性 + 启动.cmd 字节",
+      "stamp": "20261106T073045Z",
+      "startedAt": "2026-11-06T07:30:45.215Z",
+      "command": "(内部检查：sha256/zipfile/启动.cmd 字节)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T073045Z.json",
+      "durationMs": 89,
+      "endedAt": "2026-11-06T07:30:45.304Z",
+      "exitCode": 1,
+      "status": "fail",
+      "counts": null,
+      "notes": [
+        "失败项 zip-sha256: 期望 3ad2a72fa7773f1103da9fb32a58370327bb6539b9933b3b54aac21d5e174fb9，实际 df4c391d8e4ebf067ceaa68cae21cd3c6395251650729b26a9449630215fe0da",
+        "失败项 zip-entries: 期望 370，实际 385"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/pkg-hash-20261106T073045Z.json"
+    },
+    {
+      "layer": "pkg-extract",
+      "group": "pre",
+      "phase": "merged",
+      "title": "解压到中文+空格目录",
+      "stamp": "20261106T073045Z",
+      "startedAt": "2026-11-06T07:30:45.346Z",
+      "command": "python3 -c <zipfile.extractall> /data3/DATA/project/project_meishijiang/m38-delivery/pet-next-trial-src-3380f7f.zip /tmp/m38-d/中文 空格 3380f7f",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T073045Z.log",
+      "durationMs": 125,
+      "endedAt": "2026-11-06T07:30:45.471Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "解压目录 /tmp/m38-d/中文 空格 3380f7f"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T073045Z.json",
+      "logBytes": 118,
+      "logSha256": "a2814a7d92c64e97fa48d193d42f7345d8466a6cbb05f51d822624571894f7d3"
+    }
+  ]
+}

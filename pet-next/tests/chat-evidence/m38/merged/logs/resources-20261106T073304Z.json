@@ -1,0 +1,77 @@
+{
+  "runsRoot": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next/bench/idle-profile/runs",
+  "pairCount": 9,
+  "parsedPairs": 0,
+  "problems": [
+    "m38-p1-b: 只有单臂数据（baseline）",
+    "m38-p1-c: 只有单臂数据（candidate）",
+    "m38-p2-b: 只有单臂数据（baseline）",
+    "m38-p2-c: 只有单臂数据（candidate）",
+    "m38-p3-b: 只有单臂数据（baseline）",
+    "m38-p3-c: 只有单臂数据（candidate）",
+    "m38-v0-b: 只有单臂数据（baseline）",
+    "m38-v0-c: 只有单臂数据（candidate）",
+    "mainpid-fix: 只有单臂数据（baseline）"
+  ],
+  "unverifiable": [
+    "账本只能读 C 落盘的 summary/requests/samples，无法证明两臂确在同机同素材交替；只能核对字段与顺序。",
+    "不能证明采样期间无其它 GUI/bench 并发（单核争用只能看时间戳重叠，无法排除）。",
+    "RSS 为进程 RSS 求和口径时，不能当作桌宠自身开销。"
+  ],
+  "pairs": [
+    {
+      "stamp": "m38-p1-b",
+      "arms": [
+        "baseline"
+      ]
+    },
+    {
+      "stamp": "m38-p1-c",
+      "arms": [
+        "candidate"
+      ]
+    },
+    {
+      "stamp": "m38-p2-b",
+      "arms": [
+        "baseline"
+      ]
+    },
+    {
+      "stamp": "m38-p2-c",
+      "arms": [
+        "candidate"
+      ]
+    },
+    {
+      "stamp": "m38-p3-b",
+      "arms": [
+        "baseline"
+      ]
+    },
+    {
+      "stamp": "m38-p3-c",
+      "arms": [
+        "candidate"
+      ]
+    },
+    {
+      "stamp": "m38-v0-b",
+      "arms": [
+        "baseline"
+      ]
+    },
+    {
+      "stamp": "m38-v0-c",
+      "arms": [
+        "candidate"
+      ]
+    },
+    {
+      "stamp": "mainpid-fix",
+      "arms": [
+        "baseline"
+      ]
+    }
+  ]
+}

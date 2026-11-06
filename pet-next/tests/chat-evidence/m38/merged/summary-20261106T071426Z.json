@@ -1,0 +1,185 @@
+{
+  "stamp": "20261106T071426Z",
+  "display": ":96",
+  "root": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "verdict": "pass",
+  "layers": [
+    {
+      "layer": "env",
+      "group": "pre",
+      "phase": "merged",
+      "title": "环境快照",
+      "stamp": "20261106T071426Z",
+      "startedAt": "2026-11-06T07:14:26.192Z",
+      "command": "(内部检查：node/pnpm/HEAD/显示/工具)",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/env-20261106T071426Z.json",
+      "durationMs": 3528,
+      "endedAt": "2026-11-06T07:14:29.720Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "CPU 384 核（FREEZE 记录为单核，GUI 仍串行）"
+      ],
+      "detail": "tests/chat-evidence/m38/merged/logs/env-20261106T071426Z.json"
+    },
+    {
+      "layer": "unit",
+      "group": "post",
+      "phase": "merged",
+      "title": "纯单元 pnpm test",
+      "stamp": "20261106T071426Z",
+      "startedAt": "2026-11-06T07:14:29.752Z",
+      "command": "pnpm test",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/unit-20261106T071426Z.log",
+      "durationMs": 23494,
+      "endedAt": "2026-11-06T07:14:53.246Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 590,
+        "pass": 587,
+        "fail": 0,
+        "skipped": 3,
+        "cancelled": 0
+      },
+      "notes": [
+        "耗时 23s",
+        "汇总块 1"
+      ],
+      "logBytes": 55676,
+      "logSha256": "5c260078964b1615499e55db0adf0818714dddd1456913d626a5fd46e8460aa2"
+    },
+    {
+      "layer": "cleanup",
+      "group": "post",
+      "phase": "merged",
+      "title": "清理层 pnpm test:cleanup",
+      "stamp": "20261106T071426Z",
+      "startedAt": "2026-11-06T07:14:53.263Z",
+      "command": "pnpm test:cleanup",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/cleanup-20261106T071426Z.log",
+      "durationMs": 18201,
+      "endedAt": "2026-11-06T07:15:11.464Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 22,
+        "pass": 22,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      },
+      "notes": [
+        "耗时 18s",
+        "汇总块 1"
+      ],
+      "logBytes": 2418,
+      "logSha256": "7800e12162b3c1721df68a7f8c36da1011f84db09961d396f73ebf7c30dd38d9"
+    },
+    {
+      "layer": "integration",
+      "group": "post",
+      "phase": "merged",
+      "title": "集成层 pnpm test:integration",
+      "stamp": "20261106T071426Z",
+      "startedAt": "2026-11-06T07:15:11.483Z",
+      "command": "pnpm test:integration",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/integration-20261106T071426Z.log",
+      "durationMs": 6936,
+      "endedAt": "2026-11-06T07:15:18.419Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": {
+        "tests": 5,
+        "pass": 5,
+        "fail": 0,
+        "skipped": 0,
+        "cancelled": 0
+      },
+      "notes": [
+        "耗时 7s",
+        "汇总块 1"
+      ],
+      "logBytes": 1054,
+      "logSha256": "42a33f153c8d947dc4fb7fdefadc0f8952fe0fc3f9d418b3f15669b20c11d2e2"
+    },
+    {
+      "layer": "typecheck",
+      "group": "post",
+      "phase": "merged",
+      "title": "pnpm typecheck",
+      "stamp": "20261106T071426Z",
+      "startedAt": "2026-11-06T07:15:18.437Z",
+      "command": "pnpm typecheck",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/typecheck-20261106T071426Z.log",
+      "durationMs": 7556,
+      "endedAt": "2026-11-06T07:15:25.993Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "耗时 8s",
+        "汇总块 0"
+      ],
+      "logBytes": 160,
+      "logSha256": "215e1676bfce0be171a570b540da8c64eb8654eb4cc35b85fb518283dd60b1ea"
+    },
+    {
+      "layer": "lint",
+      "group": "post",
+      "phase": "merged",
+      "title": "pnpm lint",
+      "stamp": "20261106T071426Z",
+      "startedAt": "2026-11-06T07:15:26.067Z",
+      "command": "pnpm lint",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/lint-20261106T071426Z.log",
+      "durationMs": 25037,
+      "endedAt": "2026-11-06T07:15:51.104Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "耗时 25s",
+        "汇总块 0"
+      ],
+      "logBytes": 93,
+      "logSha256": "a646b857dd15a42814e34071976c0e68893b57eaf0dbe589caeef8bdfa1d010a"
+    },
+    {
+      "layer": "build",
+      "group": "post",
+      "phase": "merged",
+      "title": "pnpm build",
+      "stamp": "20261106T071426Z",
+      "startedAt": "2026-11-06T07:15:51.121Z",
+      "command": "pnpm build",
+      "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+      "display": null,
+      "log": "tests/chat-evidence/m38/merged/logs/build-20261106T071426Z.log",
+      "durationMs": 13805,
+      "endedAt": "2026-11-06T07:16:04.926Z",
+      "exitCode": 0,
+      "status": "pass",
+      "counts": null,
+      "notes": [
+        "耗时 14s",
+        "汇总块 0"
+      ],
+      "logBytes": 170,
+      "logSha256": "1dcac3f2dea1d059e3cd51f6c504bc408a5f943ffd6ad182118905f69efd5e76"
+    }
+  ]
+}
