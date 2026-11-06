@@ -1,0 +1,43 @@
+最终交付包复核（D，2026-11-06，最后一轮）
+=========================================
+交付物：pet-next-trial-src-cf5799c.zip（/data3/DATA/project/project_meishijiang/m38-delivery/）
+SHA256：35714b1453768f4d18dcb021fa9f6f95f745c1093b785e48ace6ccf7df9599dc
+条目数：385，testzip=null，无 node_modules
+对应 HEAD：cf5799c
+解压位置：/tmp/m38-d/中文 空格 cf5799c（中文 + 空格路径）
+
+层结果（分两次执行，先解压后校验）
+---------------------------------
+pkg-extract  pass exit=0  stamp 20261106T080621Z  logs/pkg-extract-20261106T080621Z.log
+pkg-hash     pass exit=0  stamp 20261106T080621Z  logs/pkg-hash-20261106T080621Z.json
+注：pkg-hash 依赖已解压目录，若与 pkg-extract 放进同一次调用，层定义顺序会让 hash 先跑并误报
+    “解压目录为空”；必须 --layer=pkg-extract 再 --layer=pkg-hash。
+
+启动.cmd 结构不变量
+------------------
+1800B / 45 CRLF / 0 孤立 LF / 0 非 ASCII / 无 BOM / 无 chcp；
+sha256 前 16 位 f2f39deee4163787，在 3380f7f、2edb158、c4af14d、cf5799c 四个包中完全一致。
+
+与 HEAD 的一致性（git blob 语义，不是字节直比）
+---------------------------------------------
+5 个关键文件（package.json、pnpm-lock.yaml、启动.cmd、scripts/m38-acceptance/run.mjs、
+tests/launcher/first-run.e2e.test.ts）经 `git hash-object --path=<prefix><rel>` 与
+`HEAD:<prefix><rel>` 比对：全部一致。
+额外闭合：scripts/m38-acceptance/ACCEPTANCE-CHECKLIST.md 的 blob 也一致
+（HEAD f27464c8e7d131d508bbd9e5e7fbcbd92163beb1 == 包内同值），
+即本包不存在“仓库文档比包内新”的悬空差异。
+
+与上一包 dcffc471（c4af14d）的差异
+--------------------------------
+`diff -rq` 两个解压目录：**仅 1 个文件不同** = scripts/m38-acceptance/ACCEPTANCE-CHECKLIST.md
+（D 的合流记录）。产品源码 / 测试 / 启动.cmd / package.json / pnpm-lock.yaml 全部一致
+（启动.cmd 与 package.json/lock 的 sha256 逐包核对相同）。
+与更早的 df4c391d（3380f7f）相比，累计差异仍是验收脚本自修订 + 单测收集接线 + 合流记录，
+均不涉及产品源码。
+
+包层 install/build/test
+-----------------------
+由负责人有界执行（环境替代：ELECTRON_SKIP_BINARY_DOWNLOAD=1 安装 + 从本机同版本 dist
+复制二进制并补无换行 path.txt），原始记录见 tests/chat-evidence/m38/pkg-lead/；
+D 的结论止于 SHA256 / 完整性 / 启动.cmd / 逐文件一致性。
+本文件所在目录 tests/chat-evidence/ 不进源码包，故记录本身不会再改变包 sha。

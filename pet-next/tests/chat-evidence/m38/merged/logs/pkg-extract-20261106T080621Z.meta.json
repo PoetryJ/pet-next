@@ -1,0 +1,23 @@
+{
+  "layer": "pkg-extract",
+  "group": "pre",
+  "phase": "merged",
+  "title": "解压到中文+空格目录",
+  "stamp": "20261106T080621Z",
+  "startedAt": "2026-11-06T08:06:21.374Z",
+  "command": "python3 -c <zipfile.extractall> /data3/DATA/project/project_meishijiang/m38-delivery/pet-next-trial-src-cf5799c.zip /tmp/m38-d/中文 空格 cf5799c",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T080621Z.log",
+  "durationMs": 147,
+  "endedAt": "2026-11-06T08:06:21.521Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "解压目录 /tmp/m38-d/中文 空格 cf5799c"
+  ],
+  "detail": "tests/chat-evidence/m38/merged/logs/pkg-extract-20261106T080621Z.json",
+  "logBytes": 118,
+  "logSha256": "a2814a7d92c64e97fa48d193d42f7345d8466a6cbb05f51d822624571894f7d3"
+}
