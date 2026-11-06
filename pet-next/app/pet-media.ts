@@ -9,6 +9,7 @@ import type { MediaElement } from '../adapters/media/types.ts';
 import { bindTwoSlotSurface, createTwoSlotAdapter, twoSlotModeForPreview } from '../adapters/media/two-slot/index.ts';
 import type { PlaybackMode } from '../contracts/preview.ts';
 import type { SlotClip } from '../contracts/media-slot.ts';
+import type { IdleSuspensionDebugState } from '../contracts/idle-suspension.ts';
 
 export interface PetMediaRequest {
   requestId: string;
@@ -29,9 +30,33 @@ export interface PetMedia {
   begin(request: PetMediaRequest): void;
   showPlaceholder(): void;
   dispose(): void;
+  /**
+   * M3-9：报告窗口隐藏状态。只有单槽 idle 会真的暂停；
+   * 双槽/未开开关时是安全 no-op，并在观测面里写明原因。
+   */
+  setHidden(hidden: boolean): void;
+  /** M3-9：只读观测面，供 e2e/bench 断言归属与次数。 */
+  idleSuspensionState(): IdleSuspensionDebugState;
 }
 
 const PREHEAT_REQUEST_ID = 'preheat-reaction';
+
+/** 开关关闭或双槽模式下的观测面；不参与任何播放决策。 */
+function inactiveIdleState(reason: string): IdleSuspensionDebugState {
+  return {
+    enabled: false,
+    revision: null,
+    hidden: false,
+    generation: null,
+    phase: null,
+    clip: null,
+    lease: null,
+    pauseCount: 0,
+    resumeCount: 0,
+    lastAction: 'none',
+    lastSkipReason: reason,
+  };
+}
 
 /**
  * 装配页面上的两个 video。`playback` 为 `single` 时不创建双槽适配器。
@@ -45,6 +70,8 @@ export function attachPetMedia(options: {
   placeholder: HTMLImageElement;
   timeoutMs: number;
   reactionUrl: string;
+  /** M3-9：显式预览开关。缺省 false——不创建节能策略。 */
+  idlePause?: boolean;
   onStatus(status: PetMediaStatus): void;
 }): PetMedia {
   const mode = twoSlotModeForPreview(options.playback);
@@ -59,6 +86,7 @@ function attachSingle(options: {
   standby: HTMLVideoElement;
   placeholder: HTMLImageElement;
   timeoutMs: number;
+  idlePause?: boolean;
   onStatus(status: PetMediaStatus): void;
 }): PetMedia {
   const media = createMediaAdapter({
@@ -66,6 +94,7 @@ function attachSingle(options: {
     loader: createElementLoader(options.primary),
     clock: systemMediaClock(),
     timeoutMs: options.timeoutMs,
+    idlePause: options.idlePause === true,
     onStatus(event) {
       if (event.status === 'playing') {
         showSlot(options, 0);
@@ -85,6 +114,12 @@ function attachSingle(options: {
     },
     dispose() {
       media.dispose();
+    },
+    setHidden(hidden) {
+      media.setHidden(hidden);
+    },
+    idleSuspensionState() {
+      return media.idleSuspensionState();
     },
   };
 }
@@ -145,6 +180,11 @@ function attachTwoSlot(
     },
     dispose() {
       media.dispose();
+    },
+    // M3-9：双槽不启用该预览（TASKS 明确），只保留观测面供断言，绝不暂停。
+    setHidden() {},
+    idleSuspensionState() {
+      return inactiveIdleState('two-slot');
     },
   };
 }

@@ -18,6 +18,10 @@ const LAUNCHER_SAVE_CHANNEL = 'launcher:save';
 const LAUNCHER_PROBE_CHANNEL = 'launcher:probe';
 const LAUNCHER_START_CHANNEL = 'launcher:start';
 
+// M3-9 节能预览通道名与 contracts/idle-suspension.ts 保持一致（同样内联）。
+const WINDOW_VISIBILITY_CHANNEL = 'pet:window-visibility';
+const WINDOW_VISIBILITY_QUERY_CHANNEL = 'pet:window-visibility:query';
+
 contextBridge.exposeInMainWorld('pet', {
   moveBy(dx: number, dy: number): void {
     ipcRenderer.send('pet:move-by', { dx, dy });
@@ -60,5 +64,26 @@ contextBridge.exposeInMainWorld('petLauncher', {
   },
   start(config: unknown, options: unknown): Promise<unknown> {
     return ipcRenderer.invoke(LAUNCHER_START_CHANNEL, { config, options });
+  },
+});
+
+/**
+ * M3-9 节能预览：只转发"当前窗口可见性快照"。
+ * 主进程在开关关闭时不注册对应 handler，页面拿到 null 即视为未启用；
+ * 页面拿不到 ipcRenderer，也不能自己声明隐藏状态。
+ */
+contextBridge.exposeInMainWorld('petWindowVisibility', {
+  query(): Promise<unknown> {
+    return ipcRenderer.invoke(WINDOW_VISIBILITY_QUERY_CHANNEL);
+  },
+  /** 订阅推送，返回注销函数；页面卸载时必须调用。 */
+  subscribe(listener: (snapshot: unknown) => void): () => void {
+    const handler = (_event: unknown, snapshot: unknown): void => {
+      listener(snapshot);
+    };
+    ipcRenderer.on(WINDOW_VISIBILITY_CHANNEL, handler);
+    return () => {
+      ipcRenderer.removeListener(WINDOW_VISIBILITY_CHANNEL, handler);
+    };
   },
 });

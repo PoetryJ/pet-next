@@ -10,6 +10,12 @@
 /** 显式预览开关。空串、`0`、`false`、`off` 都视为关闭；缺省不创建任何节能对象。 */
 export const IDLE_PAUSE_ENV = 'PET_NEXT_IDLE_PAUSE';
 
+/**
+ * 主进程转给页面的查询参数。只有开关打开且单槽时才写入 `1`，
+ * 页面据此决定是否订阅窗口快照、是否覆盖 `__petIdleSuspension`。
+ */
+export const IDLE_PAUSE_QUERY = 'idlePause';
+
 /** 主进程 → 页面：窗口状态变化推送。 */
 export const WINDOW_VISIBILITY_CHANNEL = 'pet:window-visibility';
 

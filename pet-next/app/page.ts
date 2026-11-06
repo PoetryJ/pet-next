@@ -6,6 +6,8 @@
 import { domScreenPointToDip } from '../adapters/window/pointer-point.ts';
 import { DAILY_CADENCE, DEMO_CADENCE } from '../contracts/behavior.ts';
 import { parsePreview, PREVIEW_QUERY } from '../contracts/preview.ts';
+import { IDLE_PAUSE_QUERY } from '../contracts/idle-suspension.ts';
+import { attachIdleSuspension, type IdleSuspensionHandle } from './idle-suspension.ts';
 import {
   CHAT_LOCAL_TOKEN,
   CHAT_PREVIEW_QUERY,
@@ -30,6 +32,8 @@ const SHORT_REACTION = new URL('../assets/candidates/reaction/short.webm', locat
 
 const params = new URLSearchParams(location.search);
 const selection = parsePreview(params.get(PREVIEW_QUERY));
+// M3-9：只有主进程显式注入 `idlePause=1`（开关打开且单槽）才装配；缺省零对象、零监听。
+const idlePause = params.get(IDLE_PAUSE_QUERY) === '1';
 const idleUrl = params.get('idle') ?? new URL('../assets/idle.webm', location.href).href;
 const shippedReaction = new URL('../assets/reaction.webm', location.href).href;
 const reactionUrl = params.get('reaction') ?? (selection.short ? SHORT_REACTION : selection.candidate ? CANDIDATE_REACTION : shippedReaction);
@@ -54,7 +58,13 @@ if (previewMark !== null) {
 }
 
 // M3-6：反馈控制器必须能被拖动回调与聊天面板共用，故提前声明。
-const holder: { controller?: PetController; behavior?: BehaviorPet; feedback?: FeedbackController } = {};
+const holder: {
+  controller?: PetController;
+  behavior?: BehaviorPet;
+  feedback?: FeedbackController;
+  /** M3-9：只有显式预览开关打开时存在。 */
+  idleSuspension?: IdleSuspensionHandle;
+} = {};
 
 // M3-0/M3-1：仅在聊天令牌（preview=demo / local=真实模型）下挂载面板；普通桌宠入口保持既有行为。
 const chatMode = params.get(CHAT_PREVIEW_QUERY);
@@ -110,6 +120,7 @@ const media: PetMedia = attachPetMedia({
   placeholder,
   timeoutMs: LOAD_TIMEOUT_MS,
   reactionUrl,
+  idlePause,
   onStatus(event) {
     if (selection.benchObserve) {
       benchLog({ event: 'bench-media', status: event.status, requestId: event.requestId });
@@ -128,11 +139,18 @@ const media: PetMedia = attachPetMedia({
   },
 });
 
+// M3-9：先接快照再 boot——"启动时窗口已隐藏"也能在首个 idle 兑现后立即暂停；
+// 开关关闭时这里不创建对象，也不注册任何监听。
+if (idlePause) {
+  holder.idleSuspension = attachIdleSuspension({ media, bridge: window.petWindowVisibility });
+}
+
 const surface = {
   moveBy(dx: number, dy: number) {
     window.pet.moveBy(dx, dy);
   },
   quit() {
+    holder.idleSuspension?.dispose();
     media.dispose();
     window.pet.quit();
   },
@@ -168,6 +186,12 @@ if (selection.behavior) {
         },
         dispose() {
           media.dispose();
+        },
+        setHidden(hidden: boolean) {
+          media.setHidden(hidden);
+        },
+        idleSuspensionState() {
+          return media.idleSuspensionState();
         },
       }
     : media;

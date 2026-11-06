@@ -27,7 +27,9 @@ import {
   type ChatExperience,
   type ChatTransport,
 } from '../contracts/chat.ts';
-import { PREVIEW_ENV, PREVIEW_QUERY } from '../contracts/preview.ts';
+import { parsePreview, PREVIEW_ENV, PREVIEW_QUERY } from '../contracts/preview.ts';
+import { IDLE_PAUSE_QUERY, idlePauseEnabled } from '../contracts/idle-suspension.ts';
+import { attachWindowVisibility } from './window-visibility.ts';
 import {
   LAUNCHER_LOAD_CHANNEL,
   LAUNCHER_MODE_ENV,
@@ -149,6 +151,20 @@ function createWindow(chatOverride?: LocalChatOverride): void {
   win.webContents.setBackgroundThrottling(false);
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
 
+  // M3-9：显式节能预览（默认关闭）。preview 只取本次 override，和下方 loadFile 用同一份。
+  const preview = chatOverride ? chatOverride.preview : process.env[PREVIEW_ENV];
+  const idlePauseRequested = idlePauseEnabled();
+  const idlePauseApplies = idlePauseRequested && parsePreview(preview).playback === 'single';
+  if (idlePauseRequested && !idlePauseApplies) {
+    // 双槽模式不启用该预览：明确记录原因，不静默降级。
+    console.log(JSON.stringify({ event: 'idle-pause-skip', reason: 'two-slot' }));
+  }
+  // 开关关闭时这里为 null：不注册任何窗口监听、不开 IPC handler。
+  const idleVisibility = idlePauseApplies ? attachWindowVisibility(win) : null;
+  win.on('closed', () => {
+    idleVisibility?.dispose();
+  });
+
   const controller = createWindowController({
     getBounds: () => win.getBounds(),
     setPosition(x, y) {
@@ -202,8 +218,9 @@ function createWindow(chatOverride?: LocalChatOverride): void {
   if (process.env.PET_NEXT_REACTION_URL) query.reaction = process.env.PET_NEXT_REACTION_URL;
   // M3-7：launcher 启动时 preview/experience 都只取本次 override，
   // 否则父进程残留的 PET_NEXT_PREVIEW / PET_NEXT_EXPERIENCE 会把上一轮的选择带进来。
-  const preview = chatOverride ? chatOverride.preview : process.env[PREVIEW_ENV];
   if (preview !== undefined && preview !== '') query[PREVIEW_QUERY] = preview;
+  // M3-9：只有单槽且开关打开才通知页面订阅窗口快照（页面据此决定是否创建节能对象）。
+  if (idlePauseApplies) query[IDLE_PAUSE_QUERY] = '1';
   // M3-6：体验预览缺省 undefined（页面不创建反馈对象，原路径不变）。
   // M3-7：launcher 启动时以用户显式选择为准（standard 显式为 undefined）；否则仍只由 env 决定。
   const experience: ChatExperience | undefined = chatOverride
