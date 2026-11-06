@@ -107,9 +107,13 @@ export async function runRoundsLayer(ctx) {
     });
   }
   const failed = rounds.filter((round) => round.exitCode !== 0);
+  const totals = { tests: 0, pass: 0, fail: 0, skipped: 0, cancelled: 0 };
+  for (const round of rounds) {
+    for (const key of Object.keys(totals)) totals[key] += round.counts?.[key] ?? 0;
+  }
   return {
     exitCode: failed.length === 0 ? 0 : 1,
-    counts: null,
+    counts: totals,
     status: failed.length === 0 ? 'pass' : 'fail',
     notes: [
       `pattern=${pattern}`,

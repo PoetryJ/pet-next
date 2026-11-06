@@ -1,0 +1,21 @@
+{
+  "layer": "pkg-electron-binary",
+  "group": "pre",
+  "phase": "pre",
+  "title": "electron 二进制环境替代（披露项）",
+  "stamp": "20261106T062936Z",
+  "startedAt": "2026-11-06T06:29:42.231Z",
+  "command": "(内部检查：pkg node_modules/electron/path.txt，缺则从本机同版本硬链接)",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T062936Z.json",
+  "durationMs": 0,
+  "endedAt": "2026-11-06T06:29:42.231Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": null,
+  "notes": [
+    "electron 二进制已可用（未做替换）"
+  ],
+  "detail": "tests/chat-evidence/m38/pre/logs/pkg-electron-binary-20261106T062936Z.json"
+}

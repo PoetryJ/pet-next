@@ -285,10 +285,12 @@ async function main() {
   for (const phase of new Set(results.map((item) => item.phase))) {
     await mkdir(path.join(evidenceRoot, phase), { recursive: true });
     const subset = results.filter((item) => item.phase === phase);
-    await writeFile(
-      path.join(evidenceRoot, phase, 'summary.json'),
-      `${JSON.stringify({ stamp, display, root: APP_ROOT, verdict: failed.length > 0 ? 'fail' : notRun.length > 0 ? 'pass-with-not-run' : 'pass', layers: subset }, null, 2)}\n`,
-    );
+    const verdict = failed.length > 0 ? 'fail' : notRun.length > 0 ? 'pass-with-not-run' : 'pass';
+    const summaryJson = `${JSON.stringify({ stamp, display, root: APP_ROOT, verdict, layers: subset }, null, 2)}\n`;
+    // 每个 stamp 留一份，同时更新 latest，避免后续单层复跑把整轮汇总覆盖掉。
+    await writeFile(path.join(evidenceRoot, phase, `summary-${stamp}.json`), summaryJson);
+    await writeFile(path.join(evidenceRoot, phase, `summary-${stamp}.txt`), summaryText);
+    await writeFile(path.join(evidenceRoot, phase, 'summary.json'), summaryJson);
     await writeFile(path.join(evidenceRoot, phase, 'summary.txt'), summaryText);
   }
   return failed.length > 0 ? 1 : 0;

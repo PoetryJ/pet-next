@@ -1,0 +1,12 @@
+{
+  "counts": {
+    "tests": 7,
+    "pass": 0,
+    "fail": 0,
+    "skipped": 7,
+    "cancelled": 0
+  },
+  "blocks": 1,
+  "durationMs": 141,
+  "timedOut": false
+}

@@ -30,7 +30,7 @@
 | P3 | `启动.cmd` 字节 | 1800B / 45 CRLF / 0 孤立 LF / 0 非 ASCII / 无 BOM / 无 `chcp` | 一致 |
 | P4 | `启动.cmd` 与 HEAD 一致 | 包内 sha256 == worktree `启动.cmd` sha256 | 一致（`f2f39dee…c1038`） |
 | P5 | 中文+空格解压 | `/tmp/m38-d/中文 空格 解压包`，UTF-8 名保留 | 通过 |
-| P6 | install --frozen-lockfile | exit 0（干净目录） | exit 0，2s（store 预热） |
+| P6 | install --frozen-lockfile | exit 0（干净目录） | exit 0，≤2s（store 预热） |
 | P7 | build | exit 0 | exit 0，4s |
 | P8 | test（`pnpm test` 默认并发，自然结束） | exit 0，数量与串行一致 | exit 0，560/557/0/3，17s |
 | P9 | test 串行复跑（同一批文件，`--test-concurrency=1`） | exit 0 | exit 0，560/557/0/3，33s，63 文件 |
@@ -99,12 +99,20 @@
 env               pass  exit 0
 pkg-hash          pass  exit 0   (P1–P4 全部一致)
 pkg-extract       pass  exit 0
-pkg-install       pass  exit 0   2s
-pkg-electron-binary pass exit 0  (环境替代，已披露)
+pkg-install       pass  exit 0   1–2s（干净目录，store 预热）
+pkg-electron-binary pass exit 0  (环境替代：干净安装后仍缺二进制，已复制 313M 并补 path.txt，已披露)
 pkg-build         pass  exit 0   4s
 pkg-test          pass  exit 0   560 / 557 / 0 / 3   17s
 pkg-test-serial   pass  exit 0   560 / 557 / 0 / 3   33s
+build             pass  exit 0   15s
+launcher          pass  exit 0   7 / 7 / 0 / 0       45s
+rounds            pass  exit 0   9 / 9 / 0 / 0       87s（3 轮 × 3 例，逐轮 exit 0）
 ```
+
+阶段1 额外用基线在 `:96` 上自验了 GUI 链路（`build` → `launcher` 7/7 → `rounds` 3 轮）：
+Xvfb 自起自收、显式 `PET_NEXT_LAUNCHER_E2E=1`、逐轮证据快照均可跑通，
+免得到了合流后才第一次发现脚本/显示问题。注意 `launcher` 依赖 `dist/electron/main.js`，
+所以合流后必须 `build` 先于 `launcher`/`rounds`/`e2e`。
 
 已知事件（须在交付说明中披露）：
 1. 解压包内 `pnpm install --frozen-lockfile` exit 0 但未产出 electron 二进制（本机到 GitHub 不可达），

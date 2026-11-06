@@ -1,0 +1,5 @@
+dead_port=40857
+fake_port=33881
+tunnel_port=45293
+failure_text=连接失败（not-ready）：隧道未就绪：检查网络与远端服务是否可达
+post=0

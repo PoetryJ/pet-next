@@ -1,0 +1,36 @@
+{
+  "layer": "launcher",
+  "group": "post",
+  "phase": "pre",
+  "title": "显式 PET_NEXT_LAUNCHER_E2E=1 的 7 例",
+  "stamp": "20261106T062640Z",
+  "startedAt": "2026-11-06T06:26:40.412Z",
+  "command": "PET_NEXT_LAUNCHER_E2E=1 node --experimental-strip-types --test --test-concurrency=1 tests/launcher/first-run.e2e.test.ts",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": ":96",
+  "log": "tests/chat-evidence/m38/pre/logs/launcher-20261106T062640Z.log",
+  "displayState": {
+    "ready": true,
+    "owned": true,
+    "reason": "自起 Xvfb :96"
+  },
+  "durationMs": 145,
+  "endedAt": "2026-11-06T06:26:40.661Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": {
+    "tests": 7,
+    "pass": 0,
+    "fail": 0,
+    "skipped": 7,
+    "cancelled": 0
+  },
+  "notes": [
+    "PET_NEXT_LAUNCHER_E2E=1 显式开启",
+    "display :96（PET_NEXT_E2E_DISPLAY 同值）",
+    "汇总块 1，耗时 0s"
+  ],
+  "detail": "tests/chat-evidence/m38/pre/logs/launcher-20261106T062640Z.json",
+  "logBytes": 1475,
+  "logSha256": "0fa8f7c9dd7af5afbcd56ce40590853eb070f5a87c8c5f639df86983ad8398a1"
+}

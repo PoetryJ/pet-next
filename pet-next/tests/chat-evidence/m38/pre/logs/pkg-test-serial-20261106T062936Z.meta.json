@@ -1,0 +1,31 @@
+{
+  "layer": "pkg-test-serial",
+  "group": "pre",
+  "phase": "pre",
+  "title": "解压包纯单元串行复跑",
+  "stamp": "20261106T062936Z",
+  "startedAt": "2026-11-06T06:30:03.382Z",
+  "command": "node --experimental-strip-types --test --test-concurrency=1 ... <同一批文件>",
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-d/pet-next",
+  "display": null,
+  "log": "tests/chat-evidence/m38/pre/logs/pkg-test-serial-20261106T062936Z.log",
+  "durationMs": 32700,
+  "endedAt": "2026-11-06T06:30:36.082Z",
+  "exitCode": 0,
+  "status": "pass",
+  "counts": {
+    "tests": 560,
+    "pass": 557,
+    "fail": 0,
+    "skipped": 3,
+    "cancelled": 0
+  },
+  "notes": [
+    "串行文件数 63",
+    "汇总块 1",
+    "耗时 33s"
+  ],
+  "detail": "tests/chat-evidence/m38/pre/logs/pkg-test-serial-20261106T062936Z.json",
+  "logBytes": 53017,
+  "logSha256": "7246322c5740bad164dd91b2b64ffa12771d38fd85601125c056585e89512c09"
+}
