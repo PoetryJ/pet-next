@@ -160,7 +160,7 @@ function createWindow(chatOverride?: LocalChatOverride): void {
     console.log(JSON.stringify({ event: 'idle-pause-skip', reason: 'two-slot' }));
   }
   // 开关关闭时这里为 null：不注册任何窗口监听、不开 IPC handler。
-  const idleVisibility = idlePauseApplies ? attachWindowVisibility(win) : null;
+  const idleVisibility = idlePauseApplies ? attachWindowVisibility(win, { ipcMain }) : null;
   win.on('closed', () => {
     idleVisibility?.dispose();
   });

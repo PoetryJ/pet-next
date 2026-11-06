@@ -33,7 +33,7 @@
  * @module pet-next/tests/launcher/cmd-entry.test
  */
 import assert from 'node:assert/strict';
-import { type ChildProcess, spawn } from 'node:child_process';
+import { type ChildProcess, spawn, spawnSync } from 'node:child_process';
 import { readFileSync } from 'node:fs';
 import { copyFile, mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
@@ -152,12 +152,21 @@ test('真实 启动.cmd：node 不在 PATH 时提示并退出 1（不进 cd_fail
   let failure: unknown;
   try {
     const wrapperDir = await makeWrapperDir(base);
-    // 注入一个 where 替身（exit /b 1）当「node 不存在」：真实 Windows 上无法删掉 node。
-    const stubDir = path.join(base, 'no-node-path');
-    await mkdir(stubDir, { recursive: true });
-    await writeFile(path.join(stubDir, 'where.cmd'), '@echo off\r\nexit /b 1\r\n', 'latin1');
-    const result = await runRealCmd(wrapperDir, '0', { pathValue: [stubDir, wrapperDir].join(path.delimiter) });
+    // 真实 where.exe 保留在子进程 PATH 中；不可用 where.cmd 替身，批处理会转移控制流。
+    const system32 = path.join(process.env.SystemRoot ?? 'C:\\Windows', 'System32');
+    const preflight = spawnSync(path.join(system32, 'where.exe'), ['node'], {
+      cwd: wrapperDir,
+      env: childEnv(system32, '0', path.join(wrapperDir, 'launch-cwd.txt')),
+      timeout: 3000,
+      windowsHide: true,
+      encoding: 'utf8',
+    });
+    assert.ifError(preflight.error);
+    assert.equal(preflight.status, 1, `夹具必须排除 node：${preflight.stdout}${preflight.stderr}`);
+    const result = await runRealCmd(wrapperDir, '0', { pathValue: system32 });
     assert.equal(result.code, 1);
+    // 与 REVIEW 的 no-node-real-where-result.json 同一条件：no_node 分支只写 stdout，stderr 必须为空。
+    assert.equal(result.stderr, '', `no_node 分支不得写 stderr：${result.stderr}`);
     assert.match(result.stdout, /Node\.js was not found in PATH/);
     assert.ok(!result.stdout.includes('Failed to change directory'), `不得进入 cd_fail：${result.stdout}`);
   } catch (error) {

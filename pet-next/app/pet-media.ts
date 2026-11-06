@@ -107,7 +107,7 @@ function attachSingle(options: {
   });
   return {
     begin(request) {
-      media.begin({ playbackId: request.requestId, url: request.url, once: request.once });
+      media.begin({ playbackId: request.requestId, url: request.url, once: request.once, clip: request.clip });
     },
     showPlaceholder() {
       showPlaceholder(options);

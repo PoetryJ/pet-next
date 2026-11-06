@@ -69,6 +69,24 @@ function createHarness(cadence: { autoCooldownMinMs: number; autoCooldownMaxMs: 
     dispose() {
       return undefined;
     },
+    setHidden() {
+      return undefined;
+    },
+    idleSuspensionState() {
+      return {
+        enabled: false,
+        revision: null,
+        hidden: false,
+        generation: null,
+        phase: null,
+        clip: null,
+        lease: null,
+        pauseCount: 0,
+        resumeCount: 0,
+        lastAction: 'none',
+        lastSkipReason: 'test',
+      };
+    },
   };
   const pet = createBehaviorPet({
     media,

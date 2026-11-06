@@ -163,7 +163,7 @@ async function playThrough(env: ReturnType<typeof harness>, index: number, src?:
 describe('createMediaAdapter', () => {
   test('正常播放会上报 playing 和 ended，循环片段的 ended 会重播而不是结束', async () => {
     const env = harness();
-    env.adapter.begin({ playbackId: 'reaction:1', url: 'react.webm', once: true });
+    env.adapter.begin({ playbackId: 'reaction:1', url: 'react.webm', once: true, clip: 'reaction' });
     assert.equal(env.adapter.phase, 'loading');
     assert.equal(env.clock.pending, 1);
     await playThrough(env, 0, 'mem:react');
@@ -179,7 +179,7 @@ describe('createMediaAdapter', () => {
     ]);
 
     const loop = harness();
-    loop.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false });
+    loop.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
     await playThrough(loop, 0, 'mem:idle');
     loop.element.end();
     assert.equal(loop.adapter.phase, 'playing');
@@ -189,7 +189,7 @@ describe('createMediaAdapter', () => {
 
   test('加载失败、播放拒绝和超时各自失败，迟到的成功不能复活', async () => {
     const failed = harness();
-    failed.adapter.begin({ playbackId: 'idle:1', url: 'missing.webm', once: false });
+    failed.adapter.begin({ playbackId: 'idle:1', url: 'missing.webm', once: false, clip: 'idle' });
     failed.loader.fail(0, 'asset-load');
     await flush();
     assert.equal(failed.adapter.phase, 'failed');
@@ -198,13 +198,13 @@ describe('createMediaAdapter', () => {
     assert.equal(failed.clock.pending, 0);
 
     const decode = harness();
-    decode.adapter.begin({ playbackId: 'idle:2', url: 'bad.webm', once: false });
+    decode.adapter.begin({ playbackId: 'idle:2', url: 'bad.webm', once: false, clip: 'idle' });
     decode.loader.fail(0, 'decode-error');
     await flush();
     assert.deepEqual(decode.reports[0], { playbackId: 'idle:2', status: 'failed', reason: 'decode-error' });
 
     const rejected = harness();
-    rejected.adapter.begin({ playbackId: 'reaction:1', url: 'react.webm', once: true });
+    rejected.adapter.begin({ playbackId: 'reaction:1', url: 'react.webm', once: true, clip: 'reaction' });
     rejected.loader.succeed(0);
     await flush();
     rejected.element.settle(false);
@@ -215,7 +215,7 @@ describe('createMediaAdapter', () => {
     assert.equal(rejected.adapter.phase, 'failed');
 
     const timed = harness();
-    timed.adapter.begin({ playbackId: 'idle:3', url: 'slow.webm', once: false });
+    timed.adapter.begin({ playbackId: 'idle:3', url: 'slow.webm', once: false, clip: 'idle' });
     timed.clock.fireNext();
     assert.equal(timed.adapter.phase, 'failed');
     assert.deepEqual(timed.reports, [{ playbackId: 'idle:3', status: 'failed', reason: 'timeout' }]);
@@ -228,9 +228,9 @@ describe('createMediaAdapter', () => {
 
   test('替换会取消旧请求并在新源就绪时释放旧地址', async () => {
     const env = harness();
-    env.adapter.begin({ playbackId: 'A', url: 'a.webm', once: true });
+    env.adapter.begin({ playbackId: 'A', url: 'a.webm', once: true, clip: 'reaction' });
     await playThrough(env, 0, 'mem:a');
-    env.adapter.begin({ playbackId: 'B', url: 'b.webm', once: true });
+    env.adapter.begin({ playbackId: 'B', url: 'b.webm', once: true, clip: 'reaction' });
     assert.equal(env.adapter.generation, 2);
     assert.equal(env.clock.pending, 1);
     env.element.end();
@@ -250,9 +250,9 @@ describe('createMediaAdapter', () => {
 
   test('A→B→C 时旧加载、旧 play 和旧 ended 都不影响 C', async () => {
     const env = harness();
-    env.adapter.begin({ playbackId: 'A', url: 'a.webm', once: true });
-    env.adapter.begin({ playbackId: 'B', url: 'b.webm', once: true });
-    env.adapter.begin({ playbackId: 'C', url: 'c.webm', once: true });
+    env.adapter.begin({ playbackId: 'A', url: 'a.webm', once: true, clip: 'reaction' });
+    env.adapter.begin({ playbackId: 'B', url: 'b.webm', once: true, clip: 'reaction' });
+    env.adapter.begin({ playbackId: 'C', url: 'c.webm', once: true, clip: 'reaction' });
     assert.equal(env.adapter.generation, 3);
     assert.equal(env.loader.pending[0]?.token.aborted, true);
     assert.equal(env.loader.pending[1]?.token.aborted, true);
@@ -272,7 +272,7 @@ describe('createMediaAdapter', () => {
 
   test('卸载后清理监听、计时器和已持有地址，迟到回调不能再播放', async () => {
     const env = harness();
-    env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false });
+    env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
     await playThrough(env, 0, 'mem:idle');
     env.adapter.dispose();
     assert.equal(env.adapter.phase, 'disposed');
@@ -283,12 +283,12 @@ describe('createMediaAdapter', () => {
     assert.deepEqual(env.loader.released, ['mem:idle']);
     assert.equal(env.clock.pending, 0);
     env.element.end();
-    env.adapter.begin({ playbackId: 'idle:2', url: 'idle.webm', once: false });
+    env.adapter.begin({ playbackId: 'idle:2', url: 'idle.webm', once: false, clip: 'idle' });
     assert.equal(env.adapter.phase, 'disposed');
     assert.equal(env.loader.pending.length, 1);
 
     const loading = harness();
-    loading.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false });
+    loading.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
     loading.adapter.dispose();
     assert.equal(loading.clock.pending, 0);
     assert.equal(loading.loader.pending[0]?.token.aborted, true);
@@ -300,7 +300,7 @@ describe('createMediaAdapter', () => {
 
   test('播放中的解码错误进入 failed', async () => {
     const env = harness();
-    env.adapter.begin({ playbackId: 'reaction:1', url: 'react.webm', once: true });
+    env.adapter.begin({ playbackId: 'reaction:1', url: 'react.webm', once: true, clip: 'reaction' });
     await playThrough(env, 0);
     env.element.failDecode();
     assert.equal(env.adapter.phase, 'failed');

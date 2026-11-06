@@ -393,7 +393,7 @@ async function runTrial(command: TrialCommand, wait: 'frame' | 'ended'): Promise
   reactionId = `play-${++seq}`;
   if (mode === 'single') {
     armTarget(videos[0]!);
-    single?.begin({ playbackId: reactionId, url: reactionUrl, once: true });
+    single?.begin({ playbackId: reactionId, url: reactionUrl, once: true, clip: 'reaction' });
   } else {
     two?.begin({ requestId: reactionId, url: reactionUrl, once: true, clip: 'reaction' });
   }
@@ -431,7 +431,7 @@ async function showIdle(dwellMs: number): Promise<boolean> {
   if (mode === 'single') {
     idleVideo = videos[0]!;
     raise(idleVideo);
-    single?.begin({ playbackId: idleId, url: idleUrl, once: false });
+    single?.begin({ playbackId: idleId, url: idleUrl, once: false, clip: 'idle' });
   } else {
     idleVideo = null;
     two?.begin({ requestId: idleId, url: idleUrl, once: false, clip: 'idle' });
