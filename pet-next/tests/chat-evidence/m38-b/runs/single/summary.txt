@@ -1,0 +1,6 @@
+tag=single procs=1 rounds=3 limitMs=10000
+node=v22.20.0 cpus=384 platform=linux 5.4.119-19.0009.28 x64
+round	proc	durationMs	timedOut	exit	signal	lastStarted	lastLine	eventOrder
+1	1	159	false	0	null	依赖解析	"ℹ duration_ms 124.282253"	spawn-request>spawn>test-start>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-start>test-finish>test-finish>test-finish>test-finish>test-start>test-finish>test-finish>test-finish>exit>close>finished
+2	1	158	false	0	null	依赖解析	"ℹ duration_ms 124.726742"	spawn-request>spawn>test-start>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-start>test-finish>test-finish>test-finish>test-finish>test-start>test-finish>test-finish>test-finish>exit>close>finished
+3	1	159	false	0	null	依赖解析	"ℹ duration_ms 126.568661"	spawn-request>spawn>test-start>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-finish>test-start>test-finish>test-finish>test-finish>test-finish>test-start>test-finish>test-finish>test-finish>exit>close>finished

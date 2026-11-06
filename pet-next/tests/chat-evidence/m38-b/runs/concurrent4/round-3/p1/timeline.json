@@ -1,0 +1,346 @@
+{
+  "round": 3,
+  "index": 1,
+  "pid": 118329,
+  "startedAt": "2026-11-06T05:11:31.286Z",
+  "durationMs": 162,
+  "timedOut": false,
+  "limitMs": 10000,
+  "exitCode": 0,
+  "signalCode": null,
+  "kill": {
+    "returned": null,
+    "error": null
+  },
+  "lastStartedTest": "依赖解析",
+  "lastFinishedTest": "依赖解析 (17.195637ms)",
+  "lastOutputLine": "ℹ duration_ms 126.525953",
+  "startedCount": 3,
+  "finishedCount": 20,
+  "eventOrder": [
+    "spawn-request",
+    "spawn",
+    "test-start",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-start",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "test-start",
+    "test-finish",
+    "test-finish",
+    "test-finish",
+    "exit",
+    "close",
+    "finished"
+  ],
+  "events": [
+    {
+      "at": 1793941891132,
+      "offsetMs": 8,
+      "kind": "spawn-request"
+    },
+    {
+      "at": 1793941891134,
+      "offsetMs": 10,
+      "kind": "spawn",
+      "pid": 118329
+    },
+    {
+      "at": 1793941891241,
+      "offsetMs": 117,
+      "kind": "stdout",
+      "bytes": 104
+    },
+    {
+      "at": 1793941891241,
+      "offsetMs": 117,
+      "kind": "test-start",
+      "name": "runDemo 启动编排"
+    },
+    {
+      "at": 1793941891241,
+      "offsetMs": 117,
+      "kind": "test-finish",
+      "name": "半行到达的就绪记录也要等整行才启动 Electron (5.84557ms)"
+    },
+    {
+      "at": 1793941891242,
+      "offsetMs": 118,
+      "kind": "stdout",
+      "bytes": 95
+    },
+    {
+      "at": 1793941891242,
+      "offsetMs": 118,
+      "kind": "test-finish",
+      "name": "一个 chunk 里多行时按行解析，重复就绪不重复启动 Electron (0.89642ms)"
+    },
+    {
+      "at": 1793941891242,
+      "offsetMs": 118,
+      "kind": "stdout",
+      "bytes": 98
+    },
+    {
+      "at": 1793941891242,
+      "offsetMs": 118,
+      "kind": "test-finish",
+      "name": "fake 启动失败：非零退出、不起 Electron、不报 offline_ready:true (0.478059ms)"
+    },
+    {
+      "at": 1793941891243,
+      "offsetMs": 119,
+      "kind": "stdout",
+      "bytes": 76
+    },
+    {
+      "at": 1793941891243,
+      "offsetMs": 119,
+      "kind": "test-finish",
+      "name": "fake 非零退出：先报错再清理，退出码非零 (0.196305ms)"
+    },
+    {
+      "at": 1793941891244,
+      "offsetMs": 120,
+      "kind": "stdout",
+      "bytes": 70
+    },
+    {
+      "at": 1793941891244,
+      "offsetMs": 120,
+      "kind": "test-finish",
+      "name": "Electron 启动失败：非零退出并清掉 fake (1.690782ms)"
+    },
+    {
+      "at": 1793941891245,
+      "offsetMs": 121,
+      "kind": "stdout",
+      "bytes": 111
+    },
+    {
+      "at": 1793941891245,
+      "offsetMs": 121,
+      "kind": "test-finish",
+      "name": "正常关窗（Electron 退出码 0）：退出码 0，offline_ready 为 true，fake 收尾 (0.711684ms)"
+    },
+    {
+      "at": 1793941891245,
+      "offsetMs": 121,
+      "kind": "stdout",
+      "bytes": 96
+    },
+    {
+      "at": 1793941891245,
+      "offsetMs": 121,
+      "kind": "test-finish",
+      "name": "Ctrl-C：两个子进程都清理、退出码 130、信号 handler 被移除 (0.634066ms)"
+    },
+    {
+      "at": 1793941891247,
+      "offsetMs": 123,
+      "kind": "stdout",
+      "bytes": 59
+    },
+    {
+      "at": 1793941891247,
+      "offsetMs": 123,
+      "kind": "test-finish",
+      "name": "SIGTERM：退出码 143 且收尾干净 (0.797562ms)"
+    },
+    {
+      "at": 1793941891248,
+      "offsetMs": 124,
+      "kind": "stdout",
+      "bytes": 95
+    },
+    {
+      "at": 1793941891248,
+      "offsetMs": 124,
+      "kind": "test-finish",
+      "name": "/healthz 不是 offline_ready：不起 Electron、不报 offline_ready:true (0.544068ms)"
+    },
+    {
+      "at": 1793941891248,
+      "offsetMs": 124,
+      "kind": "stdout",
+      "bytes": 68
+    },
+    {
+      "at": 1793941891248,
+      "offsetMs": 124,
+      "kind": "test-finish",
+      "name": "health 请求抛错：非零退出并清理 fake (0.527198ms)"
+    },
+    {
+      "at": 1793941891248,
+      "offsetMs": 124,
+      "kind": "stdout",
+      "bytes": 97
+    },
+    {
+      "at": 1793941891248,
+      "offsetMs": 124,
+      "kind": "test-finish",
+      "name": "面板加载失败（fail-load）：非零退出且 offline_ready 不为 true (0.845302ms)"
+    },
+    {
+      "at": 1793941891249,
+      "offsetMs": 125,
+      "kind": "stdout",
+      "bytes": 91
+    },
+    {
+      "at": 1793941891249,
+      "offsetMs": 125,
+      "kind": "test-finish",
+      "name": "面板没渲染前不报 offline_ready:true（即使 Electron 已起） (0.616246ms)"
+    },
+    {
+      "at": 1793941891250,
+      "offsetMs": 126,
+      "kind": "stdout",
+      "bytes": 39
+    },
+    {
+      "at": 1793941891250,
+      "offsetMs": 126,
+      "kind": "test-finish",
+      "name": "runDemo 启动编排 (14.979876ms)"
+    },
+    {
+      "at": 1793941891250,
+      "offsetMs": 126,
+      "kind": "stdout",
+      "bytes": 136
+    },
+    {
+      "at": 1793941891250,
+      "offsetMs": 126,
+      "kind": "test-start",
+      "name": "runDemo 冻结启动参数"
+    },
+    {
+      "at": 1793941891250,
+      "offsetMs": 126,
+      "kind": "test-finish",
+      "name": "PET_NEXT_CHAT_DEBUG_PORT 合法时传 --remote-debugging-port，userData 原样透传 (1.067146ms)"
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "stdout",
+      "bytes": 83
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "test-finish",
+      "name": "未设 debug 端口不加参数；非法端口忽略并记 warn (0.911569ms)"
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "stdout",
+      "bytes": 87
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "test-finish",
+      "name": "Electron 路径解析不出来：非零退出，不 spawn 空命令 (0.257274ms)"
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "stdout",
+      "bytes": 44
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "test-finish",
+      "name": "runDemo 冻结启动参数 (2.386437ms)"
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "stdout",
+      "bytes": 142
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "test-start",
+      "name": "依赖解析"
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "test-finish",
+      "name": "resolveElectronPath 取到真实可执行文件路径（回归 require(...).electron 拿到 undefined） (16.973282ms)"
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "stdout",
+      "bytes": 58
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "test-finish",
+      "name": "parsePort 只接受 1..65535 的整数 (0.136937ms)"
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "stdout",
+      "bytes": 31
+    },
+    {
+      "at": 1793941891269,
+      "offsetMs": 145,
+      "kind": "test-finish",
+      "name": "依赖解析 (17.195637ms)"
+    },
+    {
+      "at": 1793941891281,
+      "offsetMs": 157,
+      "kind": "stdout",
+      "bytes": 117
+    },
+    {
+      "at": 1793941891286,
+      "offsetMs": 162,
+      "kind": "exit",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "at": 1793941891286,
+      "offsetMs": 162,
+      "kind": "close",
+      "code": 0,
+      "signal": null
+    },
+    {
+      "at": 1793941891286,
+      "offsetMs": 162,
+      "kind": "finished"
+    }
+  ]
+}
