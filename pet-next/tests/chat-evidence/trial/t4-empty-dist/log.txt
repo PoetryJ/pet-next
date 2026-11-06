@@ -1,9 +1,9 @@
 # M3-5 D trial e2e t4-empty-dist
-# 2026-11-05T09:34:45.262Z
+# 2026-11-06T07:02:37.309Z
 
 dist/electron/main.js removed before launch
 cmd: PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:trial (no args)
-isolated: userData=/tmp/pet-next-trial-e2e-r122Cn tunnelPort=35531 debugPort=46125 fakeModel=41719
+isolated: userData=/tmp/pet-next-trial-e2e-LOhknS tunnelPort=34115 debugPort=45901 fakeModel=34463
 panel mounted: mode=local context=off note=null
 panel open: context=off hasReset=false
 send: 空目录首启

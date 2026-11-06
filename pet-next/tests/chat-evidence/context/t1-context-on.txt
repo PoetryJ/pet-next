@@ -1,7 +1,7 @@
 # M3-3 E2E t1-context-on
-# 2026-11-05T09:32:37.166Z
+# 2026-11-06T06:59:50.768Z
 
-cmd: DISPLAY=:94 PET_NEXT_QWEN_BASE_URL=http://127.0.0.1:34779/v1 PET_NEXT_CHAT_CONTEXT=1 pnpm chat:local
+cmd: DISPLAY=:94 PET_NEXT_QWEN_BASE_URL=http://127.0.0.1:34853/v1 PET_NEXT_CHAT_CONTEXT=1 pnpm chat:local
 panel mounted: phase=closed context=on
 panel open: context=on hasReset=true
 send: 我叫小林

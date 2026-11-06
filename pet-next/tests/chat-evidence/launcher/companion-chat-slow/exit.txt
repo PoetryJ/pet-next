@@ -1,10 +1,10 @@
 code=0
-root_pid=3970477
-owned_pids_before=3970477,3970484,3970486,3970487,3970568,3970603,3970560,3970611
+root_pid=249916
+owned_pids_before=249916,249923,249925,249926,249972,250049,249967,250057
 owned_pids_alive_after=
-debug_port=32783 open_after=false
-output_tail= type (examples of valid types are "tcp" and on UNIX "unix")
-[3970484:1105/174200.654799:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
-[3970484:1105/174200.654931:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
-[3970484:1105/174200.654948:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+debug_port=36231 open_after=false
+output_tail=ess type (examples of valid types are "tcp" and on UNIX "unix")
+[249923:1106/151419.236517:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
+[249923:1106/151419.236547:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[249923:1106/151419.236564:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: 
 

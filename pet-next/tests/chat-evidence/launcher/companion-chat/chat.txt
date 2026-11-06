@@ -1,6 +1,6 @@
-submit_at=1793871714287
+submit_at=1793949252622
 reply_ms=49
-visual_seq=[{"visual":"idle","requestId":"idle-1","atMs":1793871714284},{"visual":"auto","requestId":"reaction-2","atMs":1793871714296}]
+visual_seq=[{"visual":"idle","requestId":"idle-1","atMs":1793949252619},{"visual":"auto","requestId":"reaction-2","atMs":1793949252630}]
 reactions=["reaction-2"]
 post=1
 model_turns=2
