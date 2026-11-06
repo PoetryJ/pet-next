@@ -1,3 +1,3 @@
-{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:33069:127.0.0.1:18872","-p","10977","tester@fake.example.invalid"],"mode":"ok","targetPort":41069,"pid":235122,"ts":1793948535817}
-{"event":"fake-ssh-listening","port":33069,"targetPort":18872,"pid":235122,"ts":1793948535822}
-{"event":"fake-ssh-stopped","port":33069,"pid":235122,"ts":1793948540619}
+{"event":"fake-ssh-args","args":["-N","-o","ExitOnForwardFailure=yes","-o","ConnectTimeout=8","-o","ServerAliveInterval=15","-o","ServerAliveCountMax=3","-o","StrictHostKeyChecking=accept-new","-L","127.0.0.1:40863:127.0.0.1:18872","-p","10977","tester@fake.example.invalid"],"mode":"ok","targetPort":41315,"pid":311114,"ts":1793951801126}
+{"event":"fake-ssh-listening","port":40863,"targetPort":18872,"pid":311114,"ts":1793951801131}
+{"event":"fake-ssh-stopped","port":40863,"pid":311114,"ts":1793951806888}

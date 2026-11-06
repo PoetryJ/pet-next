@@ -1,0 +1,8 @@
+{
+  "executable": "pnpm",
+  "args": [
+    "chat:preview"
+  ],
+  "cwd": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next",
+  "platform": "linux"
+}

@@ -1,2 +1,2 @@
-submit=1793948809775 error_ms=1567 text=发送失败
+submit=1793952080860 error_ms=1573 text=发送失败
 PASS companion-error

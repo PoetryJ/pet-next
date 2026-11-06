@@ -1,11 +1,11 @@
 code=0
-pids_before=243612,243623,243878,243885,243893,243897,243898,243926,243931,243943
+pids_before=320157,320168,320474,320483,320539,320541,320542,320570,320580,320586
 pids_alive_after=
-debug_port=38227 open_after=false
-wait_ms=1
+debug_port=42665 open_after=false
+wait_ms=0
 output_tail=sOwner: object_path= /org/freedesktop/DBus: unknown error type:
-[electron-stderr] [243893:1106/150834.936240:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
-[electron-stderr] [243893:1106/150834.936258:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [320539:1106/160308.522104:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [320539:1106/160308.522136:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
 {"event":"electron-exit","code":0,"signal":null}
 {"event":"chat-local-done","mode":"local","exit":0}
 {"event":"chat-remote-done","exit":0}

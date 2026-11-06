@@ -1,8 +1,8 @@
 # T4 正式入口失败路径：fake 端口被占用 → 非零退出
-# 记录时间: 2026-11-06T07:04:00.101Z
+# 记录时间: 2026-11-06T07:58:32.092Z
 # 用例: t4-entry-failure
 
-cmd: DISPLAY=:94 PET_NEXT_CHAT_DEBUG_PORT=41763 PET_NEXT_FAKE_CHAT_PORT=46413 pnpm chat:preview
+cmd: DISPLAY=:94 PET_NEXT_CHAT_DEBUG_PORT=33855 PET_NEXT_FAKE_CHAT_PORT=38723 pnpm chat:preview
 entry exit: code=1 signal=null
 stdout tail:
 
@@ -16,7 +16,7 @@ stdout tail:
 [fake-stderr] node:net:1940
 [fake-stderr] const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
 [fake-stderr] ^
-[fake-stderr] Error: listen EADDRINUSE: address already in use 127.0.0.1:46413
+[fake-stderr] Error: listen EADDRINUSE: address already in use 127.0.0.1:38723
 [fake-stderr] at Server.setupListenHandle [as _listen2] (node:net:1940:16)
 [fake-stderr] at listenInCluster (node:net:1997:12)
 [fake-stderr] at node:net:2206:7
@@ -25,7 +25,7 @@ stdout tail:
 [fake-stderr] errno: -98,
 [fake-stderr] syscall: 'listen',
 [fake-stderr] address: '127.0.0.1',
-[fake-stderr] port: 46413
+[fake-stderr] port: 38723
 [fake-stderr] }
 [fake-stderr] Node.js v22.20.0
 {"event":"fake-chat-server-exit","code":1,"signal":null}

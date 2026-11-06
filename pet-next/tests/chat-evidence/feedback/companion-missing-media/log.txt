@@ -1,2 +1,2 @@
-submit=1793948912655 visuals=["auto","idle"] trace=idle:idle-1,auto:reaction-2,idle:idle-3 POST=1
+submit=1793952186258 visuals=["idle"] trace=idle:idle-1,auto:reaction-2,idle:idle-3 POST=1
 PASS companion-missing-media

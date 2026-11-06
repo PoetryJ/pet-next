@@ -1,4 +1,4 @@
-submit=1793948790093 waiting_ms=57 reply_ms=1569 success_ms=1570 react_ms=1570 reaction=reaction-2
+submit=1793952060929 waiting_ms=56 reply_ms=1568 success_ms=1569 react_ms=1569 reaction=reaction-2
 screenshot=/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/tests/chat-evidence/feedback/companion-success/react.png
-hint_hidden_ms=4130
+hint_hidden_ms=4109
 PASS companion-success

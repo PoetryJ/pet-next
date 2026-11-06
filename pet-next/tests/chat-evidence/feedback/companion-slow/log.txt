@@ -1,2 +1,2 @@
-submit=1793948954370 waiting_hidden_ms=1645 reply_ms=2583 success_ms=2583 react_ms=2583 reaction=reaction-2 POST=1
+submit=1793952229255 waiting_hidden_ms=1655 reply_ms=2595 success_ms=2595 react_ms=2595 reaction=reaction-2 POST=1
 PASS companion-slow
