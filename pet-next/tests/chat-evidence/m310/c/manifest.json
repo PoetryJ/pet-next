@@ -1,0 +1,1140 @@
+{
+  "schema": "pet-next-portable-manifest/1",
+  "gitSha": "d6e33e1f90be0d29c67d67507a4ec010dbebd97a",
+  "builtAt": "2026-11-09T10:06:41.909Z",
+  "platform": "win32",
+  "arch": "x64",
+  "name": "PetNext",
+  "appVersion": "0.1.0",
+  "electronVersion": "43.3.0",
+  "packagerVersion": "20.3.0",
+  "asar": false,
+  "electronZip": {
+    "file": "/data3/DATA/project/project_meishijiang/m310-cache/electron/electron-v43.3.0-win32-x64.zip",
+    "sha256": "18528bedc6a9b04bdc5efb7b803cbc3cb0e5ea6415d54046e23d464d89a00da9",
+    "bytes": 144396349
+  },
+  "staging": {
+    "entries": 120,
+    "files": [
+      "dist/adapters/chat/fake-provider.js",
+      "dist/adapters/chat/fake-server-main.js",
+      "dist/adapters/chat/fake-server.js",
+      "dist/adapters/chat/http-provider.js",
+      "dist/adapters/chat/qwen-provider.js",
+      "dist/adapters/connection/tunnel.js",
+      "dist/adapters/launcher/node.js",
+      "dist/adapters/media/adapter.js",
+      "dist/adapters/media/element-loader.js",
+      "dist/adapters/media/two-slot/adapter.js",
+      "dist/adapters/media/two-slot/bind-surface.js",
+      "dist/adapters/media/two-slot/index.js",
+      "dist/adapters/media/two-slot/prepare-slot.js",
+      "dist/adapters/media/two-slot/present-slot.js",
+      "dist/adapters/media/two-slot/select-slot.js",
+      "dist/adapters/media/two-slot/slot-runtime.js",
+      "dist/adapters/media/two-slot/token.js",
+      "dist/adapters/media/two-slot/types.js",
+      "dist/adapters/media/types.js",
+      "dist/adapters/pointer/index.js",
+      "dist/adapters/window/clamp.js",
+      "dist/adapters/window/controller.js",
+      "dist/adapters/window/pointer-point.js",
+      "dist/adapters/window/scale-source.js",
+      "dist/adapters/window/track.js",
+      "dist/adapters/window/types.js",
+      "dist/app/behavior-pet.js",
+      "dist/app/bridge.js",
+      "dist/app/chat-panel.css",
+      "dist/app/chat-panel.js",
+      "dist/app/feedback-view.js",
+      "dist/app/feedback.js",
+      "dist/app/idle-suspension.js",
+      "dist/app/launcher-view.js",
+      "dist/app/launcher.css",
+      "dist/app/launcher.html",
+      "dist/app/launcher.js",
+      "dist/app/page.css",
+      "dist/app/page.html",
+      "dist/app/page.js",
+      "dist/app/pet-media.js",
+      "dist/app/preview-gate.js",
+      "dist/app/types.js",
+      "dist/app/wire.js",
+      "dist/assets/candidates/reaction/manifest.json",
+      "dist/assets/candidates/reaction/plates/frame-62-checker.png",
+      "dist/assets/candidates/reaction/plates/frame-62-dark.png",
+      "dist/assets/candidates/reaction/plates/frame-62-light.png",
+      "dist/assets/candidates/reaction/plates/frame-84-checker.png",
+      "dist/assets/candidates/reaction/plates/frame-84-dark.png",
+      "dist/assets/candidates/reaction/plates/frame-84-light.png",
+      "dist/assets/candidates/reaction/provenance.json",
+      "dist/assets/candidates/reaction/reaction.webm",
+      "dist/assets/candidates/reaction/shipped-plates/frame-0-checker.png",
+      "dist/assets/candidates/reaction/shipped-plates/frame-0-dark.png",
+      "dist/assets/candidates/reaction/shipped-plates/frame-0-light.png",
+      "dist/assets/candidates/reaction/shipped-plates/frame-12-checker.png",
+      "dist/assets/candidates/reaction/shipped-plates/frame-12-dark.png",
+      "dist/assets/candidates/reaction/shipped-plates/frame-12-light.png",
+      "dist/assets/candidates/reaction/short-manifest.json",
+      "dist/assets/candidates/reaction/short-plates/frame-105-checker.png",
+      "dist/assets/candidates/reaction/short-plates/frame-105-dark.png",
+      "dist/assets/candidates/reaction/short-plates/frame-105-light.png",
+      "dist/assets/candidates/reaction/short-plates/frame-6-checker.png",
+      "dist/assets/candidates/reaction/short-plates/frame-6-dark.png",
+      "dist/assets/candidates/reaction/short-plates/frame-6-light.png",
+      "dist/assets/candidates/reaction/short.webm",
+      "dist/assets/candidates/reaction/source.webm",
+      "dist/assets/idle.webm",
+      "dist/assets/placeholder.png",
+      "dist/assets/reaction.webm",
+      "dist/contracts/arbiter-examples.js",
+      "dist/contracts/arbiter.js",
+      "dist/contracts/asset-candidate.js",
+      "dist/contracts/assets.js",
+      "dist/contracts/behavior.js",
+      "dist/contracts/bench-click.js",
+      "dist/contracts/bench.js",
+      "dist/contracts/chat.js",
+      "dist/contracts/connection.js",
+      "dist/contracts/coordinates.js",
+      "dist/contracts/coverage.js",
+      "dist/contracts/direct-run.js",
+      "dist/contracts/idle-suspension.js",
+      "dist/contracts/index.js",
+      "dist/contracts/launcher.js",
+      "dist/contracts/media-slot.js",
+      "dist/contracts/mulberry32.js",
+      "dist/contracts/preview.js",
+      "dist/contracts/process-tracker.js",
+      "dist/core/behavior/desktop.js",
+      "dist/core/behavior/index.js",
+      "dist/core/behavior/policy.js",
+      "dist/core/behavior/propose.js",
+      "dist/core/behavior/reduce.js",
+      "dist/core/behavior/scheduler.js",
+      "dist/core/behavior/types.js",
+      "dist/core/chat/history.js",
+      "dist/core/chat/session.js",
+      "dist/core/chat/types.js",
+      "dist/core/feedback/index.js",
+      "dist/core/feedback/reduce.js",
+      "dist/core/feedback/types.js",
+      "dist/core/idle-suspension/policy.js",
+      "dist/core/interaction/gesture.js",
+      "dist/core/interaction/session.js",
+      "dist/core/interaction/types.js",
+      "dist/core/launcher/config.js",
+      "dist/core/launcher/controller.js",
+      "dist/core/launcher/types.js",
+      "dist/core/playback/reduce.js",
+      "dist/core/playback/types.js",
+      "dist/electron/chat-config.js",
+      "dist/electron/chat-service.js",
+      "dist/electron/launcher-run-options.js",
+      "dist/electron/main.js",
+      "dist/electron/packaged-main.js",
+      "dist/electron/preload.js",
+      "dist/electron/ready-report.js",
+      "dist/electron/window-visibility.js"
+    ]
+  },
+  "package": {
+    "entries": 197,
+    "bytes": 367213277
+  },
+  "zip": {
+    "file": "PetNext-win32-x64.zip",
+    "bytes": 146564405,
+    "sha256": "48eb0dd09c0372143f1bb85f0d213a11f9aa57a9d48de45517c3565d1cb5ca1a"
+  },
+  "files": [
+    {
+      "path": "PetNext-win32-x64/LICENSE",
+      "bytes": 1096,
+      "sha256": "5154e165bd6c2cc0cfbcd8916498c7abab0497923bafcd5cb07673fe8480087d"
+    },
+    {
+      "path": "PetNext-win32-x64/LICENSES.chromium.html",
+      "bytes": 20313957,
+      "sha256": "b911161e6594ec76b872498b423c54406168f2974e0d407a847f7de1e5ff94dd"
+    },
+    {
+      "path": "PetNext-win32-x64/PetNext.exe",
+      "bytes": 225441792,
+      "sha256": "28ce893d94c4f2c2c63c420facd7eaca09a15b3383f04eb9ec6b53ce1ed3b7e2"
+    },
+    {
+      "path": "PetNext-win32-x64/chrome_100_percent.pak",
+      "bytes": 119905,
+      "sha256": "d76fe8fa3a14cd73e4c858746e2ab2d2fa6f2df38a906fa5814b50a8a895fc96"
+    },
+    {
+      "path": "PetNext-win32-x64/chrome_200_percent.pak",
+      "bytes": 197089,
+      "sha256": "b74ad439f3d3762657f3ba533a6af3ac63315c838ed46519891366f43d834a0e"
+    },
+    {
+      "path": "PetNext-win32-x64/d3dcompiler_47.dll",
+      "bytes": 4741488,
+      "sha256": "a05f99734f7c4822fefc12b367af21fd0976ed6608752fb1e1e80b6ece7ecbbb"
+    },
+    {
+      "path": "PetNext-win32-x64/dxcompiler.dll",
+      "bytes": 25616384,
+      "sha256": "56a29f483555dddbefb491aa470b8c5c268d66a149892a8a40a582f3e92b1895"
+    },
+    {
+      "path": "PetNext-win32-x64/dxil.dll",
+      "bytes": 1509760,
+      "sha256": "77e039c905030a641e53658a008b74e90635a5ea9b6b79eabd0f2003bdfca59a"
+    },
+    {
+      "path": "PetNext-win32-x64/ffmpeg.dll",
+      "bytes": 3067904,
+      "sha256": "afb4f083d34c470bdafc6d1d3801142ea2a71b76553329485d91a35534c086df"
+    },
+    {
+      "path": "PetNext-win32-x64/icudtl.dat",
+      "bytes": 10876560,
+      "sha256": "bd8c145abdf3f8383276ce01dfa4ae48709bef9fef1c0711eb7c3fab4f6eb7c2"
+    },
+    {
+      "path": "PetNext-win32-x64/libEGL.dll",
+      "bytes": 474624,
+      "sha256": "a3b40bb99acd821d955e4a26555b43efe12bd98056a8b7693be0e63b9ed53910"
+    },
+    {
+      "path": "PetNext-win32-x64/libGLESv2.dll",
+      "bytes": 8031744,
+      "sha256": "01eeec6f3451d5981ce883e9ec7a346c96173bb58854c5c3f3452e1637fb6d6f"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/af.pak",
+      "bytes": 614017,
+      "sha256": "dcf39c3edbb6b0a625baee0263a9b426eadd1a6d1bfbf03a209501a18bc4b0e4"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/am.pak",
+      "bytes": 994699,
+      "sha256": "b1d444f2346105a6e15f9b14fc5653e1edaa2b435290fb8f1238347a4d4ca8f9"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ar.pak",
+      "bytes": 1096192,
+      "sha256": "ab4941fbb89fb14f045bd54edbff7158e2d7fd0b5f2687ada0b1df9ad84c0e2a"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/bg.pak",
+      "bytes": 1138139,
+      "sha256": "e4a5bea23a26a06af611a7cb518b22a1d53ec5df45a6322f0e264b99c7318441"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/bn.pak",
+      "bytes": 1461088,
+      "sha256": "137cf9cdba13ea7286584c5cac05dd34c6394f89036e367aa032ffb34f17dcc9"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ca.pak",
+      "bytes": 692259,
+      "sha256": "8a472eabdc3f30d94c56367d526f6d345ad65732827097aac747438f233a536f"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/cs.pak",
+      "bytes": 718691,
+      "sha256": "5804ba5b76974b48b15922cf91c3e9dbbf549e2d88218dc767e4650520503135"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/da.pak",
+      "bytes": 644715,
+      "sha256": "57f4637094de41122da569415c16c5524794bc90aa3af226da14703d04981db0"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/de.pak",
+      "bytes": 693302,
+      "sha256": "6201f0c314340a272e6cd7b57e13c4e20e3bc64f053f2c6f8e98f1cf52840908"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/el.pak",
+      "bytes": 1251062,
+      "sha256": "48d430dca8785ce24fc605851b2bb739164b8e5fb5588909329a82e58f6902d0"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/en-GB.pak",
+      "bytes": 559913,
+      "sha256": "df40bcaed92ac89c6eb379a4053f9f44cd466f7e51268367f8d72e9508143a88"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/en-US.pak",
+      "bytes": 566095,
+      "sha256": "74404352908184e834397df60b238f23462e77d69ac4136b4f20af2db6191436"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/es-419.pak",
+      "bytes": 683108,
+      "sha256": "55a36991fa1e523fcdbc49e4227d66bb83d28bfdc7d08dcc659837d1beda3281"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/es.pak",
+      "bytes": 679701,
+      "sha256": "9ff88eabacab95f8bbef9e95f63d3619fa8d640ec03523d80abb26243b059a65"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/et.pak",
+      "bytes": 620420,
+      "sha256": "0292298736847491828465a3dcf04cf4a0d9bd63d4b1a9d183c7eeb389343d26"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/fa.pak",
+      "bytes": 1026890,
+      "sha256": "55d3a85f71fb270b20f2c45bfc6a4bfa7026a49dc98d92ce30acb76c9e0bda2a"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/fi.pak",
+      "bytes": 632436,
+      "sha256": "0535e2acd4517ce8099aa0a4a3e562af37ca6a699faca1de3b348b8bfacf2a8b"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/fil.pak",
+      "bytes": 715769,
+      "sha256": "f9e86324deee168d160a51402588da9987646c8c5899b76b6255d7e3a46a7bb5"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/fr.pak",
+      "bytes": 738341,
+      "sha256": "c2c7639ebdd3f50779ded050ac94c24773bf5e348984ff7ce53f0b386b2eec27"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/gu.pak",
+      "bytes": 1443762,
+      "sha256": "34e4d54d66a0b0471542ee76c55cc9d3b27fcaf15cdf63c3d7e7b46cfdfb3f4f"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/he.pak",
+      "bytes": 898809,
+      "sha256": "b90f6b709886c37ac52fb8eb1e4d40931b0558b084dcda69e3e4b5ba537e23f8"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/hi.pak",
+      "bytes": 1529643,
+      "sha256": "57432f987cd26251065245e62b9ec47c1a90bd6ab2f2c4227c3c9becca3994f6"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/hr.pak",
+      "bytes": 691185,
+      "sha256": "9ef77921560c91e5d6e42df6504589b8b7efb84c9b5119ac51e9a10d8c83a089"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/hu.pak",
+      "bytes": 738546,
+      "sha256": "31e407f43bbd0cd0692755f961bb39d10af1f9f0af205455dd70fb4c7eeb85a5"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/id.pak",
+      "bytes": 612462,
+      "sha256": "e7957c9c58f890b5d053ea50c5fcb4b66cbc3c47478c42a5962810cb15814249"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/it.pak",
+      "bytes": 669218,
+      "sha256": "88220058e902f05d7a2e61ec21667a5ca44c543ad0042fe530d698aa55836aa4"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ja.pak",
+      "bytes": 815554,
+      "sha256": "4186d52dd6b41e1fce9432890b758bad513f4da4c14c4962b46b0c15b4df58a9"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/kn.pak",
+      "bytes": 1661701,
+      "sha256": "9744dbadbb7c31cc6393a0682daf91045be270bab934dff7dbad79b76287616e"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ko.pak",
+      "bytes": 694027,
+      "sha256": "ee01af13e4e4b804e48d7126a38a059e210c7f4fba0c37fd2dfa9ef4c106b9d3"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/lt.pak",
+      "bytes": 752001,
+      "sha256": "bc5d99751f1b252ed074bfc4bf6dc94321b3f785a0a0d4300209acae40220f74"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/lv.pak",
+      "bytes": 749059,
+      "sha256": "e91342ed84e1847968b40194250b4d76bbd2ea13133675b8b099dca45ee0f197"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ml.pak",
+      "bytes": 1705542,
+      "sha256": "a45bcebcf69244bdbca6c0a4fe68c89430c6531e9d3cbddaa85758385b877934"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/mr.pak",
+      "bytes": 1415199,
+      "sha256": "fa87d519a8545b2748c52ccd7704b320877b2d03385991ceabe75c2745200331"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ms.pak",
+      "bytes": 644669,
+      "sha256": "2ab44645c1ed7b68c9121ee0ab9cdf8c7b9d1721d131b08f258b8a85b8ed0af0"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/nb.pak",
+      "bytes": 616327,
+      "sha256": "8eaa23c418a3fafb9e85b5445e73fb2f5e13be1f033ff2487c4081148aaa2f4e"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/nl.pak",
+      "bytes": 642150,
+      "sha256": "43a15f2dfda6ce1c908e9913eb02aba9602e3f24c6c96f7fed7852d61a1263f6"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/pl.pak",
+      "bytes": 717729,
+      "sha256": "5e47475490d1514e3670c44f55a2061672c8e7f6219211b3d907bacbe5aa0a5c"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/pt-BR.pak",
+      "bytes": 673147,
+      "sha256": "2191f4b09031038607309bc39d9d9aec544ce2b6ecec623e443915dafe983511"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/pt-PT.pak",
+      "bytes": 676984,
+      "sha256": "98daa1072e7c405e3f5e030bfe25ef1e12b31a96e0b1db245d6805a564390f75"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ro.pak",
+      "bytes": 702574,
+      "sha256": "da5c79d06ae972aa460724ef378f91bf4afda911b167a896963f6e0d4daf9aec"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ru.pak",
+      "bytes": 1163520,
+      "sha256": "b0977b6a115c6836189200423b44202c1329ff702b68ab9a72f996fe42c6ec81"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/sk.pak",
+      "bytes": 730258,
+      "sha256": "951c05d59f1ca05a7f184327c40c320b1e4e48fbfaa21951e21f5ea5275e2c6a"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/sl.pak",
+      "bytes": 699179,
+      "sha256": "2bc385d457dc844794f9396458c4090e6233afec5a08b4a5a92e45ef31e07b78"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/sr.pak",
+      "bytes": 1075898,
+      "sha256": "c3b4a5aba1e86ea0088e5c33002bb055ed567840b2859b277014be0a7283013e"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/sv.pak",
+      "bytes": 624021,
+      "sha256": "3af85c15ce3e76344404c37325a60932ce53763539c8cd8b3120424f709f73de"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/sw.pak",
+      "bytes": 660623,
+      "sha256": "a806d782b21930ec6243b8e5b393e7fa970ce9d297e96b02e6596fa6ce6c8a86"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ta.pak",
+      "bytes": 1696711,
+      "sha256": "516660683214c01341300fa8d15c7e39aecc38792b76fe74bdcc464024f4294f"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/te.pak",
+      "bytes": 1571940,
+      "sha256": "5439181ded31f8cc5dbcc1eed358753d4b7449ad29380baabe4cb893d8751a06"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/th.pak",
+      "bytes": 1320867,
+      "sha256": "946b4a45a9d43b15359927f33307fc35f50d7e880f02890b07bdfd1160f2db59"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/tr.pak",
+      "bytes": 672677,
+      "sha256": "37619e7084337a839d8ccf7915381cf9975d0ffc9451bd37d210bc7322645219"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/uk.pak",
+      "bytes": 1172722,
+      "sha256": "8ea16b807cb01daa3280665f2bf457aa14185fa7eec5b81b36fd0a5c3d55b1b9"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/ur.pak",
+      "bytes": 1010270,
+      "sha256": "d57cd219249e207d34c21a619935d0f0a7814a0ccdd36051a42400c60a599e47"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/vi.pak",
+      "bytes": 799770,
+      "sha256": "37f2c01a308ad8bb93d9525d81480880f97d54191dbe7c1c1e75aa9fcf009450"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/zh-CN.pak",
+      "bytes": 571748,
+      "sha256": "0386ef8bf3ce4e24c604ee039273e452d12f8b1d6e5ac7e746995e8b39fab379"
+    },
+    {
+      "path": "PetNext-win32-x64/locales/zh-TW.pak",
+      "bytes": 564377,
+      "sha256": "740c2da1eedff44b57d8700b6f81f1acf17e67bdf534220553b448da42f62b66"
+    },
+    {
+      "path": "PetNext-win32-x64/resources.pak",
+      "bytes": 7236975,
+      "sha256": "dbc09df898b959d93a7355dc833f0559474d55ab884da9e103e221e0603b3a8e"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/LICENSE",
+      "bytes": 1069,
+      "sha256": "22757dc9c895b2729a2fc684d227cadfb54d5af3dd300029926839e8c4e269ce"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/README.md",
+      "bytes": 9123,
+      "sha256": "d9cb4228a2a96969ec18bdbfd5a2bf64063329697caa16ea322be851601ea90f"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/chat/fake-provider.js",
+      "bytes": 1319,
+      "sha256": "f24931e56cf25ce768ecbb28f50e498bb74b5ef33376e5ec363bab81dd70528c"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/chat/fake-server-main.js",
+      "bytes": 1414,
+      "sha256": "8fa2441a057aa1c59862be32c6a0a90f44fa7462891a79bcf80edde22b03c147"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/chat/fake-server.js",
+      "bytes": 4315,
+      "sha256": "e2315b236a1071d239e8ed01591fea5f4d8b4c82397cb544fc3af3def1214ec2"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/chat/http-provider.js",
+      "bytes": 2020,
+      "sha256": "f87b7d71b20d07b5e052e0ec0e51378935e0c061f99015a1d199504ebdf2e5e1"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/chat/qwen-provider.js",
+      "bytes": 7101,
+      "sha256": "4c245669e7147fea26b33584fc905e89174b4846fa2d787a14776aa04c1b82e5"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/connection/tunnel.js",
+      "bytes": 11342,
+      "sha256": "3c36858812c9685da6cbde97e6039bc4ef88259410292190abc05df94ebe881c"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/launcher/node.js",
+      "bytes": 8249,
+      "sha256": "f0f3dfbf4dfe8cb46de6b2eee0613353abb5689d0cd2d387ac43a46c2cced8de"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/adapter.js",
+      "bytes": 14726,
+      "sha256": "100f160947b1103d6f95f789849fc1338a21e585c78754f3f59f1096cb992851"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/element-loader.js",
+      "bytes": 1782,
+      "sha256": "29102ede2b3a81e57c071dd83bfba9b2bf752fe755b92c11b72ce83c430ba2db"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/two-slot/adapter.js",
+      "bytes": 5235,
+      "sha256": "027110ec634a36dcfe8adce3793fba85ab007eec1cadcec32871bdfbfe6a6303"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/two-slot/bind-surface.js",
+      "bytes": 1940,
+      "sha256": "fc25c1e4ef84e1d94ca53e29971577e608be778fdd0c31eba05433f3de1199ae"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/two-slot/index.js",
+      "bytes": 299,
+      "sha256": "effa04c8a211943d0c7995cb5eee25deb3ef07d5809b1acf3107697289c4e403"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/two-slot/prepare-slot.js",
+      "bytes": 6727,
+      "sha256": "23d41659027415790bea6d221e4e81df9fb8b6f7cea6c908e0bfb47fefe7443a"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/two-slot/present-slot.js",
+      "bytes": 3436,
+      "sha256": "b10ff2d1b8f5954210d9fe6896896adba3d0a0e8677476c096e347f43b4f254c"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/two-slot/select-slot.js",
+      "bytes": 2304,
+      "sha256": "fa74121174ec4570ee707b118e4a591bf4556796fbd956bf6b0a8e11dabf0e44"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/two-slot/slot-runtime.js",
+      "bytes": 2828,
+      "sha256": "62be748318506fd1026019107a6e3ec7c73c4d596a11a6bd6d32e10ffd25b91c"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/two-slot/token.js",
+      "bytes": 1066,
+      "sha256": "9351a19e487b965e829c56f13b32ed81962e80c13fad97e2ab0af390c55bc3f9"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/two-slot/types.js",
+      "bytes": 44,
+      "sha256": "01ae2a5b120382f9a648ced7ee8507493a134f216d100fc61600c6c9738235d2"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/media/types.js",
+      "bytes": 44,
+      "sha256": "01ae2a5b120382f9a648ced7ee8507493a134f216d100fc61600c6c9738235d2"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/pointer/index.js",
+      "bytes": 183,
+      "sha256": "10553313a2fe2b9686b467a2ce49e9891871666b4b0be1c2c8d394b6bd74e628"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/window/clamp.js",
+      "bytes": 480,
+      "sha256": "619313fb093db32ccea414f0cb3f14119aef6db4eaa1318965fccaa571354f98"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/window/controller.js",
+      "bytes": 932,
+      "sha256": "ed2eaf83e4397a632b0667f008c11a7a7dcb31bdf83bfd861f18f13abf3d3471"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/window/pointer-point.js",
+      "bytes": 539,
+      "sha256": "82a4e790a4149880140ade80822198eb97939c9d97a2f8acc3fc86c843c1ce3c"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/window/scale-source.js",
+      "bytes": 810,
+      "sha256": "bca644b9369e53009f461ac92f02afe00e0e28ec1897c774b60fdab952be4905"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/window/track.js",
+      "bytes": 1475,
+      "sha256": "105d0018c108daf72b156a5a361bac36b42e55b9a0f1cbf71d72b305498bab42"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/adapters/window/types.js",
+      "bytes": 189,
+      "sha256": "69c62660515ad3b962a472a7859ab482e23e2088829ebb652ed402dd0284c3a5"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/behavior-pet.js",
+      "bytes": 8134,
+      "sha256": "663f06de710b601e824d6328975aeb80d43604f7e58b18375f21c1da3ed3b9b3"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/bridge.js",
+      "bytes": 45,
+      "sha256": "80e9ade77f7d8d89bb3a7ab7b4f6becb433e01728e9fe868f8d7f331ae89dbbb"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/chat-panel.css",
+      "bytes": 8233,
+      "sha256": "b50506d7f8f371df1c5256911ff03b759e8245701965739f9943259a07960325"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/chat-panel.js",
+      "bytes": 20810,
+      "sha256": "5f202b74e73c3180902864ac6b43b1a94d2dfe8c21169fc6ad59b7b9da7526ae"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/feedback-view.js",
+      "bytes": 1141,
+      "sha256": "b8b9d4e4223235446ff5d3e07c6dabbb400a9bf1628b451b681951c143415cdd"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/feedback.js",
+      "bytes": 3172,
+      "sha256": "433553e8de5964ee7ee4b728eaf1d59cc95ea6663eeed6d465593f1572be55b4"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/idle-suspension.js",
+      "bytes": 3545,
+      "sha256": "831e0de32c3fc5922e26c94361c29ecbc7e6b77b6e610ade3cd7c18a5cbb2070"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/launcher-view.js",
+      "bytes": 22204,
+      "sha256": "0f7d7244405ce7742d4370f87dce0205609a87b6819aab6264404405b128a626"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/launcher.css",
+      "bytes": 5133,
+      "sha256": "4bdc76bc8b9e40e6edd6d1d07ec3eb37a479fc9d11305ef5a020f0440f1c427a"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/launcher.html",
+      "bytes": 376,
+      "sha256": "ec758883b3e969781fe68ea257ee1834905bbb17b9a204f5bc621a686dd9059e"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/launcher.js",
+      "bytes": 651,
+      "sha256": "515eabc963f7e62b26bbb5652bda7dce6a0a05a18bb2079f07676c092481c29e"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/page.css",
+      "bytes": 411,
+      "sha256": "446428a6d3d6e6c34a2c8f7c7b27133ca4fdfdcb8e0e15617f1b793faecc7d73"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/page.html",
+      "bytes": 530,
+      "sha256": "1896221b85cb2015aa31a3083a19912d0bb300666ad91fe789dd4849ed82a944"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/page.js",
+      "bytes": 10287,
+      "sha256": "1ef0d06001ad0fe7d913c822ae9b2d544471ba35d26279b5ae8525eddf7e6ca1"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/pet-media.js",
+      "bytes": 6208,
+      "sha256": "f175ce5dfa0e1b2778c8fdd73d2a29777b41bc0f3a5a17355f512de34e10c6b9"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/preview-gate.js",
+      "bytes": 1088,
+      "sha256": "7796f6d86c0144b235e4d17395896e1b02a2446f2d05a01372082c6fd6c72124"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/types.js",
+      "bytes": 44,
+      "sha256": "01ae2a5b120382f9a648ced7ee8507493a134f216d100fc61600c6c9738235d2"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/app/wire.js",
+      "bytes": 3145,
+      "sha256": "46097956a5a19bbb49ddc4f808d5ce81b67d6141ca9afdde49da4003fe2abaf9"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/manifest.json",
+      "bytes": 1484,
+      "sha256": "43548c0b9949077343197b0a2ab7cdb8723bd8a7241b3bd231b0821eee882489"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/plates/frame-62-checker.png",
+      "bytes": 113742,
+      "sha256": "9f01a7c79b0e9fe6997565d3eb9330d5b99f9d3d78d22fdc3257f11d5ad8dc8e"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/plates/frame-62-dark.png",
+      "bytes": 109781,
+      "sha256": "dec9e656ff4567b334f1458a2b2a8cfefc46cba0031a20d37e43a286709f13d3"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/plates/frame-62-light.png",
+      "bytes": 111715,
+      "sha256": "8e8be0f256fbca32a2e352363446911fb8d12d9dbae06761a5e5ad9674e17a3e"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/plates/frame-84-checker.png",
+      "bytes": 115614,
+      "sha256": "968d82a34f905448076d06c7298a430b0e3d8a23bc96c87cc9ad83dd8e695361"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/plates/frame-84-dark.png",
+      "bytes": 111495,
+      "sha256": "1de9b304e07a99874fdc5a10fab39f57b9ae4af6c21586b2731ac25c6880e85b"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/plates/frame-84-light.png",
+      "bytes": 113472,
+      "sha256": "5f5c01c85179651bd3cf655dac8bdb48e042df6d547a34924f0ac8a7d09a1caf"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/provenance.json",
+      "bytes": 5233,
+      "sha256": "ffb3ba373ad3ea18bb63692b2c6c8085afd2e458dc878028432970c87aad6784"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/reaction.webm",
+      "bytes": 421669,
+      "sha256": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/shipped-plates/frame-0-checker.png",
+      "bytes": 4093,
+      "sha256": "ff32db5cc6ef126c7bcb113cd8ea7b2792b3294e29a1461061a474b13c8ce54b"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/shipped-plates/frame-0-dark.png",
+      "bytes": 2439,
+      "sha256": "131e36f95e51630438a2beddd5e4edc03924bc1117eb5ea69eb6f8bac73c4f1d"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/shipped-plates/frame-0-light.png",
+      "bytes": 2452,
+      "sha256": "f488578620a50b4dc9d74cde1975ea8d5c39280df29f679696f754c27e189753"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/shipped-plates/frame-12-checker.png",
+      "bytes": 4115,
+      "sha256": "a372d6821d82575161db51aa3aaf7f22dd79d2d2ccbc89a1497dfb0ee4d4bb8d"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/shipped-plates/frame-12-dark.png",
+      "bytes": 2480,
+      "sha256": "18d6da842b351bcc02ca6e21b67dc43548b8ef2ae213778f00b2515ae8c6b63a"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/shipped-plates/frame-12-light.png",
+      "bytes": 2521,
+      "sha256": "1cc6cf10aa599c1293543cc7dfb534e06c86ebbb49230d4bda457bcbc5c85126"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/short-manifest.json",
+      "bytes": 1216,
+      "sha256": "3d74308bc2e6c46e15c824f49332f00c840890ed42d14e07d40d0ab551aec681"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/short-plates/frame-105-checker.png",
+      "bytes": 114750,
+      "sha256": "4be9b616cced84eb6a1ba4e55ddfaef31ed16dd44db74b5a3e5c440378cd8d44"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/short-plates/frame-105-dark.png",
+      "bytes": 110631,
+      "sha256": "f4da324d83b89a1dd196a5af13ed63bfca632f51aa9410c6b4ab65f67b2779fd"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/short-plates/frame-105-light.png",
+      "bytes": 112788,
+      "sha256": "6b3781c955e56e93dd26dcd8ef2a7e4ee0a4660b9d844808d351393bfd313217"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/short-plates/frame-6-checker.png",
+      "bytes": 114224,
+      "sha256": "042a3ea9d912d1c51ee46cf5ecdc873af41ed8e4c4c70c43b100a2affcb369d2"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/short-plates/frame-6-dark.png",
+      "bytes": 110354,
+      "sha256": "5d2a20f06fa984c02b7420bd2a60fa1e78126313be9e760fd9bb14f0274f45dd"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/short-plates/frame-6-light.png",
+      "bytes": 112367,
+      "sha256": "2ac7108261eb746f352c7efee6977de65709ed9fef4e0e1c891d6a8887811435"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/short.webm",
+      "bytes": 371579,
+      "sha256": "3781ac8068ce3f5d605a333d8ff87b6a8272441bffae825f7dd01bc5359dc9c9"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/candidates/reaction/source.webm",
+      "bytes": 421669,
+      "sha256": "48cd729ccdcf746369942ea954d242e9afdd5643e1dac3827fa5e67450eb8776"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/idle.webm",
+      "bytes": 78419,
+      "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/placeholder.png",
+      "bytes": 229,
+      "sha256": "cef548d332264a6ffc9440679da983c0be61e34ed2b41f879fce150647d41dc8"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/assets/reaction.webm",
+      "bytes": 150347,
+      "sha256": "9d73e16ca8d9abcfff96a41d9e98f632a241691ddf81b59538b16a6e77049861"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/arbiter-examples.js",
+      "bytes": 3701,
+      "sha256": "3857c55e65b85154dd120b60e2af45a17ab9a47001f093bce433c2d7e261ba97"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/arbiter.js",
+      "bytes": 1017,
+      "sha256": "688f9c0a9589dd7b5f4283ff38f4516befab555835f3298c0a65a13d28426c19"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/asset-candidate.js",
+      "bytes": 301,
+      "sha256": "3d79f110603e351ca8db4bae7e8facb0ecb57247df9436186d5f97d4b98839bd"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/assets.js",
+      "bytes": 501,
+      "sha256": "56f5243e6640a9a16f01a4f6fdfa5286eedbd9a66340a6f1e1dcda1b7d6672c8"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/behavior.js",
+      "bytes": 1233,
+      "sha256": "e9d8ca67c2ee0d9082ea6e192e001759179c3b72f2ae18f97b1fd452be5ee88c"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/bench-click.js",
+      "bytes": 688,
+      "sha256": "4d77e28aeba9504e519796ad92bdefe9af3a4b94d17a38c194e24cef4e9ec914"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/bench.js",
+      "bytes": 537,
+      "sha256": "bfabc7803940ab1f311e5fcf3063105c9e57297ad866f7b4fbc8082415b4f6fd"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/chat.js",
+      "bytes": 3654,
+      "sha256": "cca051e6799b7cc7dba4b1cd21d77455baf3ba70fcd162521369d3087681e50e"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/connection.js",
+      "bytes": 1503,
+      "sha256": "607ea8d141932c517c06f2792358acb0469856f8d139c60d0fd744417c27cdb5"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/coordinates.js",
+      "bytes": 958,
+      "sha256": "cf3c93e8add5ff25d9e6cb5ca7d70dd62cc7a3ee2ca4331c18e1a02690cdea2e"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/coverage.js",
+      "bytes": 779,
+      "sha256": "90e6c0762dc81d09a371f490771b94ea39968bc126b77229fcd1ea9427710abf"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/direct-run.js",
+      "bytes": 627,
+      "sha256": "3523a614004d7b636932d70bc5c2888f21dddfafb1fc5bdcb8918830a4d7994b"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/idle-suspension.js",
+      "bytes": 3430,
+      "sha256": "d9906cfbfcfc05c1f8340d845eddd23aeca197099b6d2ea08805d10d093a5515"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/index.js",
+      "bytes": 1099,
+      "sha256": "cf6abb5ba6745c68e6ed38dd93bdd83ff99f663c2ddb9757c1a98040a5f440de"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/launcher.js",
+      "bytes": 1083,
+      "sha256": "84ed6c6ae177397a35847322e2c978d078bbf3f34200a9cdbfaca2a6f0a035d5"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/media-slot.js",
+      "bytes": 408,
+      "sha256": "f5543d85b22350e5a2b6912e58d14195b068c7dbdabca29c1909070f92b0e242"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/mulberry32.js",
+      "bytes": 624,
+      "sha256": "951d97961326e66c8d908fca761535dcfa1e610aae2ff08e1022729080d4dc3b"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/preview.js",
+      "bytes": 2955,
+      "sha256": "5613b0e3ff04135d51d9cdd2370691fdbcfbf77d31d0f78a14a402d88d4f8e44"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/contracts/process-tracker.js",
+      "bytes": 695,
+      "sha256": "6b563824a3ec05d5f717281361e9da95625af09b5cab79fb6939041de83be0c0"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/behavior/desktop.js",
+      "bytes": 3563,
+      "sha256": "ae7196c696f5ea3844c764da03cc9d9b3f2afcb90e18facd4ec8d54005c9ef31"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/behavior/index.js",
+      "bytes": 1114,
+      "sha256": "f14075cd26856f1fec65aadf6ce0bd6780b2bb0b1a76b40560c9b19c58717686"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/behavior/policy.js",
+      "bytes": 2805,
+      "sha256": "2fd4c6758ed12b9339a5ada1a90cdf811b6ab4c99295d11976ea10974366e5b9"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/behavior/propose.js",
+      "bytes": 1549,
+      "sha256": "3cd3f8de827a7d0da103d2108f12d1c06819d2f140e8a824bfda1e41c74bd8f0"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/behavior/reduce.js",
+      "bytes": 8164,
+      "sha256": "ca79eaff2d65afaa58cb1a0758dcd3bfc97b16fc9b8b420f1c9f53e32412bb7c"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/behavior/scheduler.js",
+      "bytes": 512,
+      "sha256": "0198408067c8ad4dcbc987a33784ba347e2d1b25056e00a771c76787fb1f05f2"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/behavior/types.js",
+      "bytes": 284,
+      "sha256": "c6590648207cce08f53a666903abbd770597fd932d34d13948ce73a6171fcee4"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/chat/history.js",
+      "bytes": 2015,
+      "sha256": "45cf134574bcf2a025a2d7f63f5047adb38c45afb9cb75894c92d426bae6296c"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/chat/session.js",
+      "bytes": 8143,
+      "sha256": "83efb7e60f5da7aafc6e8b626ef4bed3ffdb8045b9c86ecdb8290349c8d53cda"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/chat/types.js",
+      "bytes": 635,
+      "sha256": "66606f39445312b6109480bcc48e8bfcce3861758d13fcec717d98ddb672530c"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/feedback/index.js",
+      "bytes": 264,
+      "sha256": "72cefe17e94e9acedc4ef71ca6f74845a9dd0462d74d76fd32b4222d4ddf2954"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/feedback/reduce.js",
+      "bytes": 4892,
+      "sha256": "cce67e6a2d3900ad0b247880d95fc6a613f30bddfed99f40ee5e73a8da4046ba"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/feedback/types.js",
+      "bytes": 317,
+      "sha256": "9a90ccf5fa83a490fa5b1c1e935752d5bf6a2cde4a1c4ddcdc253ae25c262180"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/idle-suspension/policy.js",
+      "bytes": 2929,
+      "sha256": "b0327a31a9acc4332f64549b819fc6274cb30ef9d4eab83926d39c80d30647d8"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/interaction/gesture.js",
+      "bytes": 3166,
+      "sha256": "dea5bbac771e72f06a3a1c1196a9ab92595eda722dd6cd63c492c2b9bb1ae4ab"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/interaction/session.js",
+      "bytes": 1672,
+      "sha256": "d80152d0ec666a892cda03baee3a8d4078c326912f47d8edc85be427e942c617"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/interaction/types.js",
+      "bytes": 178,
+      "sha256": "b7e8261f250b0c681d6fc9d0f0d1b85c067785a106512fb45242bee6f0c89690"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/launcher/config.js",
+      "bytes": 2043,
+      "sha256": "edd811a6b6d4fa4145be84e883406b3ac049f7ecd8b03206254d8481afba1431"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/launcher/controller.js",
+      "bytes": 9150,
+      "sha256": "b6895bf13efcad840d6867490334c949e33db5bf2c680914f862ae14dc590658"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/launcher/types.js",
+      "bytes": 979,
+      "sha256": "48fb7191a663a06c0dd844914bf8e0090b04bd9938f97315fd08cf6cd97fcf43"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/playback/reduce.js",
+      "bytes": 5876,
+      "sha256": "a07b5169d2d7084846d2e7325b16209385d51257344e67e24efa6265d33762b4"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/core/playback/types.js",
+      "bytes": 186,
+      "sha256": "c4856a6b1beaaaf411bf044c3fc6dff2b44bf390c2100a0d70b2bb79f6ee68d0"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/electron/chat-config.js",
+      "bytes": 5295,
+      "sha256": "5d81a5ea82fb5e9548e2484bef47827063da0bb6fcda87c2f3634f04dbf06ca3"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/electron/chat-service.js",
+      "bytes": 5098,
+      "sha256": "8a171502234be9d20f2672bf20dcfbd041757d00a97bc9bf2f7643734179ad06"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/electron/launcher-run-options.js",
+      "bytes": 1752,
+      "sha256": "b01513cc16ccc08810413236ab8e51645a122c9167f7d5831a3ad1240aefabd6"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/electron/main.js",
+      "bytes": 18541,
+      "sha256": "8cbcbd3df366ae07d8bc6c2113b455a75480d888ae05734fbb3d78e857f1aa9e"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/electron/packaged-main.js",
+      "bytes": 957,
+      "sha256": "7b893913f05b3aeb708d0659459591994a2a521aef6d187c286b279f13e643e6"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/electron/preload.js",
+      "bytes": 4165,
+      "sha256": "6f41b45ac2c5224d88d98f3e793a61708cb6cd0867fda89579b9207a543cbd6e"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/electron/ready-report.js",
+      "bytes": 1258,
+      "sha256": "664fe249048ae93e16d0552f4fdd35adc920064b8c1accbcc0e8b7dbf2dea14f"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/dist/electron/window-visibility.js",
+      "bytes": 3246,
+      "sha256": "13daa9dfad9ff8ffeccfee2bb01d00b59a8b88d62dee8e4684b7f26f3964a2bb"
+    },
+    {
+      "path": "PetNext-win32-x64/resources/app/package.json",
+      "bytes": 310,
+      "sha256": "c85b0d4f738535de46fc5b4fff051f2ccc0bcdca4cd472b5a7386c614f904997"
+    },
+    {
+      "path": "PetNext-win32-x64/snapshot_blob.bin",
+      "bytes": 365488,
+      "sha256": "8dfab590b9780a198fae51cd101c468d61cce40556734db3ec501be11df61051"
+    },
+    {
+      "path": "PetNext-win32-x64/v8_context_snapshot.bin",
+      "bytes": 740048,
+      "sha256": "8a51c6fa8fe292f533dcdab7e77705213fee2de64247b5638e02c257c47f34be"
+    },
+    {
+      "path": "PetNext-win32-x64/version",
+      "bytes": 6,
+      "sha256": "0094bae899827d1f488ae9946b19b68a8e0104e88f3cee7914eb33bfde558995"
+    },
+    {
+      "path": "PetNext-win32-x64/vk_swiftshader.dll",
+      "bytes": 5502464,
+      "sha256": "dfd6f3d220e963e5d43dc1f76ddf67796d2ca1b7be1ee291728e3505f700264e"
+    },
+    {
+      "path": "PetNext-win32-x64/vk_swiftshader_icd.json",
+      "bytes": 106,
+      "sha256": "32d83ff113fef532a9f97e0d2831f8656628ab1c99e9060f0332b1532839afd9"
+    },
+    {
+      "path": "PetNext-win32-x64/vulkan-1.dll",
+      "bytes": 930304,
+      "sha256": "dd4f81864cfd0436a93e7a47292bf3ea143ab10d780a1ec85bf89c63bdbc53e3"
+    }
+  ],
+  "buildSeconds": 63.4,
+  "notes": "构建端产物；用户运行端不需要 Node/pnpm/源码。SSH 模式仍依赖系统 OpenSSH 与用户凭据。"
+}
