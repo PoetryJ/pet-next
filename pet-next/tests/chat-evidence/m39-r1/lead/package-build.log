@@ -1,0 +1,4 @@
+
+> pet-next@0.1.0 build /tmp/中文 空格 解压包
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+

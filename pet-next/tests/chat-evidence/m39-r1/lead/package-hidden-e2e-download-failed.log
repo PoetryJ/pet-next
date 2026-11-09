@@ -1,0 +1,142 @@
+✖ ① 隐藏期 2s 延迟成功 + 2000/2001 字符正文（截断契约与 length 元信息） (10755.187295ms)
+✖ ①′ 同样素材与配置、仅 idle-pause 关闭：隐藏不影响 2s 延迟与长正文链路 (10718.15006ms)
+✖ ② 隐藏取消 → 立即重发 → 旧结果晚到：不占新槽、不出现旧消息、不触发新 reaction (10715.269784ms)
+✖ ③ 隐藏期到真实 15s 总 deadline → 恢复 → 重发（恢复 0 POST、不补播反馈、失败不入史） (60056.745076ms)
+✖ ④ 隐藏 reset → 旧结果迟到 → 新请求：清展示、清历史、旧结果按 id 隔离 (10709.919059ms)
+✖ ⑤ 上游连接重置 → 可读错误 → 手动重发成功（无自动重试） (10711.898265ms)
+✖ ⑥ 在途隐藏关窗 → 自然退出（exit 0）、本次 PID 与调试端口消失、上游断开 (10710.883737ms)
+✖ 对照 · context=off + 标准体验：成功链路不注入历史、无反馈节点、无回应动作 (10706.876606ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 0
+ℹ fail 8
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 138710.323953
+
+✖ failing tests:
+
+test at tests/chat-hidden-lifecycle.e2e.test.ts:704:1
+✖ ① 隐藏期 2s 延迟成功 + 2000/2001 字符正文（截断契约与 length 元信息） (10755.187295ms)
+  Error: 入口提前退出 code=1
+  {"event":"chat-local-config","mode":"local","baseUrl":"http://127.0.0.1:44791/v1","model":"qwen3.8-27b"}
+  Downloading Electron binary...
+  {"event":"chat-local-failed","reason":"electron-path-error","exit":1,"message":"Electron failed to install correctly. Please delete `node_modules/electron` and run \"npx install-electron --no\" manually."}
+  {"event":"chat-local-done","mode":"local","exit":1}
+  
+  TypeError: fetch failed
+  chat-local 失败：electron-path-error（Electron failed to install correctly. Please delete `node_modules/electron` and run "npx install-electron --no" manually.）
+  
+      at openRun (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:419:13)
+      at async TestContext.<anonymous> (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:707:15)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async startSubtestAfterBootstrap (node:internal/test_runner/harness:358:3)
+
+test at tests/chat-hidden-lifecycle.e2e.test.ts:790:1
+✖ ①′ 同样素材与配置、仅 idle-pause 关闭：隐藏不影响 2s 延迟与长正文链路 (10718.15006ms)
+  Error: 入口提前退出 code=1
+  {"event":"chat-local-config","mode":"local","baseUrl":"http://127.0.0.1:37975/v1","model":"qwen3.8-27b"}
+  Downloading Electron binary...
+  {"event":"chat-local-failed","reason":"electron-path-error","exit":1,"message":"Electron failed to install correctly. Please delete `node_modules/electron` and run \"npx install-electron --no\" manually."}
+  {"event":"chat-local-done","mode":"local","exit":1}
+  
+  TypeError: fetch failed
+  chat-local 失败：electron-path-error（Electron failed to install correctly. Please delete `node_modules/electron` and run "npx install-electron --no" manually.）
+  
+      at openRun (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:419:13)
+      at async TestContext.<anonymous> (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:793:15)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/chat-hidden-lifecycle.e2e.test.ts:828:1
+✖ ② 隐藏取消 → 立即重发 → 旧结果晚到：不占新槽、不出现旧消息、不触发新 reaction (10715.269784ms)
+  Error: 入口提前退出 code=1
+  {"event":"chat-local-config","mode":"local","baseUrl":"http://127.0.0.1:42443/v1","model":"qwen3.8-27b"}
+  Downloading Electron binary...
+  {"event":"chat-local-failed","reason":"electron-path-error","exit":1,"message":"Electron failed to install correctly. Please delete `node_modules/electron` and run \"npx install-electron --no\" manually."}
+  {"event":"chat-local-done","mode":"local","exit":1}
+  
+  TypeError: fetch failed
+  chat-local 失败：electron-path-error（Electron failed to install correctly. Please delete `node_modules/electron` and run "npx install-electron --no" manually.）
+  
+      at openRun (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:419:13)
+      at async TestContext.<anonymous> (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:831:15)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/chat-hidden-lifecycle.e2e.test.ts:906:1
+✖ ③ 隐藏期到真实 15s 总 deadline → 恢复 → 重发（恢复 0 POST、不补播反馈、失败不入史） (60056.745076ms)
+  Error: CDP 未就绪（60s）
+  {"event":"chat-local-config","mode":"local","baseUrl":"http://127.0.0.1:46269/v1","model":"qwen3.8-27b"}
+  Downloading Electron binary...
+  
+  
+      at openRun (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:437:11)
+      at async TestContext.<anonymous> (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:909:15)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/chat-hidden-lifecycle.e2e.test.ts:962:1
+✖ ④ 隐藏 reset → 旧结果迟到 → 新请求：清展示、清历史、旧结果按 id 隔离 (10709.919059ms)
+  Error: 入口提前退出 code=1
+  {"event":"chat-local-config","mode":"local","baseUrl":"http://127.0.0.1:40703/v1","model":"qwen3.8-27b"}
+  Downloading Electron binary...
+  {"event":"chat-local-failed","reason":"electron-path-error","exit":1,"message":"Electron failed to install correctly. Please delete `node_modules/electron` and run \"npx install-electron --no\" manually."}
+  {"event":"chat-local-done","mode":"local","exit":1}
+  
+  TypeError: fetch failed
+  chat-local 失败：electron-path-error（Electron failed to install correctly. Please delete `node_modules/electron` and run "npx install-electron --no" manually.）
+  
+      at openRun (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:419:13)
+      at async TestContext.<anonymous> (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:965:15)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/chat-hidden-lifecycle.e2e.test.ts:1018:1
+✖ ⑤ 上游连接重置 → 可读错误 → 手动重发成功（无自动重试） (10711.898265ms)
+  Error: 入口提前退出 code=1
+  {"event":"chat-local-config","mode":"local","baseUrl":"http://127.0.0.1:34493/v1","model":"qwen3.8-27b"}
+  Downloading Electron binary...
+  {"event":"chat-local-failed","reason":"electron-path-error","exit":1,"message":"Electron failed to install correctly. Please delete `node_modules/electron` and run \"npx install-electron --no\" manually."}
+  {"event":"chat-local-done","mode":"local","exit":1}
+  
+  TypeError: fetch failed
+  chat-local 失败：electron-path-error（Electron failed to install correctly. Please delete `node_modules/electron` and run "npx install-electron --no" manually.）
+  
+      at openRun (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:419:13)
+      at async TestContext.<anonymous> (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:1021:15)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/chat-hidden-lifecycle.e2e.test.ts:1054:1
+✖ ⑥ 在途隐藏关窗 → 自然退出（exit 0）、本次 PID 与调试端口消失、上游断开 (10710.883737ms)
+  Error: 入口提前退出 code=1
+  {"event":"chat-local-config","mode":"local","baseUrl":"http://127.0.0.1:38319/v1","model":"qwen3.8-27b"}
+  Downloading Electron binary...
+  {"event":"chat-local-failed","reason":"electron-path-error","exit":1,"message":"Electron failed to install correctly. Please delete `node_modules/electron` and run \"npx install-electron --no\" manually."}
+  {"event":"chat-local-done","mode":"local","exit":1}
+  
+  TypeError: fetch failed
+  chat-local 失败：electron-path-error（Electron failed to install correctly. Please delete `node_modules/electron` and run "npx install-electron --no" manually.）
+  
+      at openRun (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:419:13)
+      at async TestContext.<anonymous> (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:1057:15)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)
+
+test at tests/chat-hidden-lifecycle.e2e.test.ts:1094:1
+✖ 对照 · context=off + 标准体验：成功链路不注入历史、无反馈节点、无回应动作 (10706.876606ms)
+  Error: 入口提前退出 code=1
+  {"event":"chat-local-config","mode":"local","baseUrl":"http://127.0.0.1:42133/v1","model":"qwen3.8-27b"}
+  Downloading Electron binary...
+  {"event":"chat-local-failed","reason":"electron-path-error","exit":1,"message":"Electron failed to install correctly. Please delete `node_modules/electron` and run \"npx install-electron --no\" manually."}
+  {"event":"chat-local-done","mode":"local","exit":1}
+  
+  TypeError: fetch failed
+  chat-local 失败：electron-path-error（Electron failed to install correctly. Please delete `node_modules/electron` and run "npx install-electron --no" manually.）
+  
+      at openRun (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:419:13)
+      at async TestContext.<anonymous> (file:///tmp/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20%E8%A7%A3%E5%8E%8B%E5%8C%85/tests/chat-hidden-lifecycle.e2e.test.ts:1097:15)
+      at async Test.run (node:internal/test_runner/test:1125:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:787:7)

@@ -1,0 +1,30 @@
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +108
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+Progress: resolved 108, reused 0, downloaded 10, added 10
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.33.4 → 12.18.0.   │
+   │   Changelog: https://pnpm.io/v/12.18.0   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+Progress: resolved 108, reused 0, downloaded 94, added 93
+Progress: resolved 108, reused 0, downloaded 105, added 105
+Progress: resolved 108, reused 0, downloaded 107, added 107
+ WARN  Tarball download average speed 1 KiB/s (size 9 KiB) is below 50 KiB/s: https://registry.npmjs.org/@humanfs/node/-/node-0.16.8.tgz (GET)
+Progress: resolved 108, reused 0, downloaded 108, added 107
+Progress: resolved 108, reused 0, downloaded 108, added 108, done
+
+devDependencies:
++ @eslint/js 10.0.1
++ @types/node 22.20.5
++ electron 43.3.0
++ eslint 10.13.0
++ typescript 5.9.3
++ typescript-eslint 8.72.1
+
+Done in 6.9s using pnpm v10.33.4

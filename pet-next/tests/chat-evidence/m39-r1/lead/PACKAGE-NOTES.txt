@@ -1,0 +1,9 @@
+中文+空格解压包（Linux，本轮）：
+- install: pnpm install --frozen-lockfile，exit 0（6.9s，真实 node_modules 目录，非软链；store 命中）。
+- build: pnpm build，exit 0。
+- test: node scripts/unit-tests.mjs，exit 0，621/617 pass/0 fail/4 skip。
+- 包内 e2e（idle / hidden）not-run：pnpm 安装后 Electron 二进制未随包落地，
+  require('electron') 触发 install.js 下载时 fetch failed（本机到 GitHub 不通），
+  因此 3 例/8 例全部在启动前失败。这不是产品失败，也不能记 e2e 通过。
+  仓库内同一提交已真实跑 idle 3/3、hidden 8/8。
+- Windows 的 install/build/test 同样 not-run（无 Windows 机器），交 Codex。
