@@ -1,0 +1,13 @@
+Windows 正式 idle E2E：not-run（本机 Linux，无 Windows 机器）。
+要求 Codex/Windows 执行者用正式文件复验（不要再造临时 check 副本）：
+
+  cd <解压包>/pet-next
+  node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/idle-suspension.e2e.test.ts
+
+预期：3/3，exit 0。win32 分支使用原生桌面，不启动 Xvfb/openbox；
+启动 show:false 的合法初始 pause/resume 已改为相对计数，blur 只断言前后不变。
+本机只证明 Linux 3/3；Windows 结果不得由本文件推导。
+
+另：Windows 解压包 install/build/test 本轮同样 not-run；Linux 侧 install/build/test 见 lead/package-*.log。
+原始 Windows 失败（2 过 1 败，绝对计数假设）与修正驱动记录已由 D 归档在
+tests/chat-evidence/m39-r1/windows/，不覆盖、不冒充原始命令全绿。
