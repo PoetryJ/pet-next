@@ -1,0 +1,80 @@
+# M3-9 R1 C：隐藏聊天故障闭环 e2e 原始运行日志（冻结版）
+
+- 运行时间：2026-11-09T15:52:36
+- 分支：agent/m39r1-c
+- HEAD：23889291d5ea1da9e84290133a06c93a456ef7a4
+- merge 的 B commit：430bd5fa60a23653809054980ae0c62fe947da7e（父 5f4b431）
+- merge commit：4c204ef814bde27e18210063d16bad97f7624a93
+- 显示：:131（本文件自起 Xvfb，独占；未使用他人显示器）
+- node：v24.14.0
+- 命令：env -u NODE_OPTIONS node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/chat-hidden-lifecycle.e2e.test.ts
+- 退出码：0
+- 汇总：tests 8 / pass 8 / fail 0 / skip 0 / cancelled 0 / duration_ms 50203.163761
+- 边界：fake 只做模型；0 次真实模型 POST；未访问 127.0.0.1:18872；未改默认开关、max_tokens、生产 timeout
+
+## 逐场景（详见下方原始输出中的 ✔ 行与 [hidden-e2e] 每臂记录）
+
+- ① 主组合（context=true / experience=companion / idlePause=on）：单请求 delay 2000ms + 2001 字符，
+  隐藏期成功（本次 elapsed=2111ms），DOM 截断到 2000；2000 字符边界原样交付；finish_reason=length
+  轮同样截断且不报错；与首句同文本的第四句 bodySha256 与首轮相同（2000/2001 轮被 2000 字符预算整轮淘汰）。posts=4。
+- ①′ 同素材同配置、仅 idlePause=off：idleSurface=absent，posts=2，2s 延迟 + 截断 + 2000 边界一致。
+- ② 隐藏 cancel → 同句立即重发 → 旧结果晚到：posts=3；fake aborted=1 / clientAborted=1；
+  proxy postCount=3 / forwarded=3 / abortedUpstream=1；DOM 恒 1 条助手消息、无旧消息、无新 reaction；
+  取消轮未入史（sha256 相同），新一句入史（sha256 变化）。
+- ③ 隐藏期真实 15s deadline → 恢复 → 重发：elapsed=15101ms；错误「发送失败（timeout）：响应超时，可稍后重试」；
+  恢复 0 POST、无 waiting 补播；超时轮未入史（sha256 相同）。posts=2。
+- ④ 隐藏 reset → 迟到 → 新请求：展示清空仅留「已开启新对话（此前内容不再带入）」；旧响应 clientAborted=1 且 DOM 仍空；
+  新请求 sha256 回到首轮（历史已清空）。posts=3。
+- ⑤ 上游连接 reset → 可读错误 → 手动重发：错误含 provider-error + 中文提示；无自动重试。posts=2。
+- ⑥ 在途隐藏关窗：exit=0（非超时）；本次 PID 残留 []；调试端口关闭；fake aborted=1；proxy postCount=1 / abortedUpstream=1。
+- 对照 context=false + 标准体验（idlePause=on）：feedbackKind=absent、reaction=[]、无 chat-reset；
+  两次同句请求 sha256 相同（无历史注入）。posts=2。
+
+## 失败/修正记录（不隐藏）
+
+- 合入前有一轮 ⑥ 在 180s 用例时限挂死（整文件 599s 超时，rc=124）：pet.quit 的 CDP 回包可能与窗口消失竞争，
+  丢包时 promise 永久 pending。已在测试装置内修：关窗不依赖回包（最多等 1.5s）+ CDP close 立即拒所有等待者；
+  修后 ⑥ 连跑 3 次全过，整轮再连跑 6 次全绿。判定为测试装置健壮性问题，不是产品缺陷。
+- 六类均按现有实现通过，本轮没有提出任何产品补丁。
+
+## 原始输出（spec reporter 原文，含每臂 [hidden-e2e] 记录）
+
+[hidden-e2e] long-body arm=main context=true experience=companion idlePause=on idleSurface=present posts=0 proxyPosts=n/a
+[hidden-e2e] long-body arm=main context=true experience=companion idlePause=on idleSurface=present posts=4 proxyPosts=n/a
+[hidden-e2e] long-body ok elapsed=2111ms bodies=2000/2000 posts=4 paused=1
+✔ ① 隐藏期 2s 延迟成功 + 2000/2001 字符正文（截断契约与 length 元信息） (3912.218625ms)
+[hidden-e2e] idle-off arm=main-no-idle context=true experience=companion idlePause=off idleSurface=absent posts=0 proxyPosts=n/a
+[hidden-e2e] idle-off arm=main-no-idle context=true experience=companion idlePause=off idleSurface=absent posts=2 proxyPosts=n/a
+[hidden-e2e] idle-off ok idle-off posts=2
+✔ ①′ 同样素材与配置、仅 idle-pause 关闭：隐藏不影响 2s 延迟与长正文链路 (3100.159096ms)
+[hidden-e2e] cancel-late arm=main-proxy context=true experience=companion idlePause=on idleSurface=present posts=0 proxyPosts=0
+[hidden-e2e] cancel-late arm=main-proxy context=true experience=companion idlePause=on idleSurface=present posts=3 proxyPosts=3
+[hidden-e2e] cancel-late ok fakestats={"total":3,"parsed":3,"pending":0,"completed":2,"completedLate":0,"aborted":1,"reset":0,"writeFailed":0,"clientAborted":1,"requestBytes":1221,"responseBytes":957,"byMode":{"headers-sent":1,"ok":2},"closed":false} proxystats={"postCount":3,"total":3,"forwarded":3,"completed":2,"downstreamClosedEarly":1,"abortedUpstream":1,"upstreamErrors":0,"synthesizedErrors":0,"closed":false}
+✔ ② 隐藏取消 → 立即重发 → 旧结果晚到：不占新槽、不出现旧消息、不触发新 reaction (3475.776069ms)
+[hidden-e2e] deadline arm=main context=true experience=companion idlePause=on idleSurface=present posts=0 proxyPosts=n/a
+[hidden-e2e] deadline arm=main context=true experience=companion idlePause=on idleSurface=present posts=2 proxyPosts=n/a
+[hidden-e2e] deadline ok elapsed=15101ms posts=2
+✔ ③ 隐藏期到真实 15s 总 deadline → 恢复 → 重发（恢复 0 POST、不补播反馈、失败不入史） (16859.946784ms)
+[hidden-e2e] reset-late arm=main context=true experience=companion idlePause=on idleSurface=present posts=0 proxyPosts=n/a
+[hidden-e2e] reset-late arm=main context=true experience=companion idlePause=on idleSurface=present posts=3 proxyPosts=n/a
+[hidden-e2e] reset-late ok posts=3
+✔ ④ 隐藏 reset → 旧结果迟到 → 新请求：清展示、清历史、旧结果按 id 隔离 (5314.906019ms)
+[hidden-e2e] upstream-reset arm=main context=true experience=companion idlePause=on idleSurface=present posts=0 proxyPosts=n/a
+[hidden-e2e] upstream-reset arm=main context=true experience=companion idlePause=on idleSurface=present posts=2 proxyPosts=n/a
+[hidden-e2e] upstream-reset ok posts=2
+✔ ⑤ 上游连接重置 → 可读错误 → 手动重发成功（无自动重试） (858.436884ms)
+[hidden-e2e] in-flight-quit arm=main-proxy context=true experience=companion idlePause=on idleSurface=present posts=0 proxyPosts=0
+[hidden-e2e] in-flight-quit ok exit=0 posts=1 aborted=1
+✔ ⑥ 在途隐藏关窗 → 自然退出（exit 0）、本次 PID 与调试端口消失、上游断开 (788.581174ms)
+[hidden-e2e] control-off arm=control context=false experience= idlePause=on idleSurface=present posts=0 proxyPosts=n/a
+[hidden-e2e] control-off arm=control context=false experience= idlePause=on idleSurface=present posts=2 proxyPosts=n/a
+[hidden-e2e] control-off ok control posts=2
+✔ 对照 · context=off + 标准体验：成功链路不注入历史、无反馈节点、无回应动作 (4358.381485ms)
+ℹ tests 8
+ℹ suites 0
+ℹ pass 8
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 50203.163761
