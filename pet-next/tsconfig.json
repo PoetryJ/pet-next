@@ -20,6 +20,7 @@
     "adapters/**/*.ts",
     "app/**/*.ts",
     "electron/main.ts",
+    "electron/packaged-main.ts",
     "tests/**/*.ts",
     "contracts/**/*.ts",
     "experiments/**/*.ts",

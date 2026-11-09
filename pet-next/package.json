@@ -35,7 +35,8 @@
     "experiment:arbiter:demo": "node --experimental-strip-types experiments/arbiter/demo/main.ts",
     "chat:trial": "pnpm build && node scripts/chat-trial.mjs",
     "m38:accept": "node scripts/m38-acceptance/run.mjs",
-    "idle:profile": "node bench/idle-profile/run.mjs"
+    "idle:profile": "node bench/idle-profile/run.mjs",
+    "package:portable": "node scripts/package-portable.mjs"
   },
   "pnpm": {
     "onlyBuiltDependencies": [
@@ -43,6 +44,7 @@
     ]
   },
   "devDependencies": {
+    "@electron/packager": "20.3.0",
     "@eslint/js": "^10.0.1",
     "@types/node": "^22.15.0",
     "electron": "43.3.0",
