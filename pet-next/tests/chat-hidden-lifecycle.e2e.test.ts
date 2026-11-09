@@ -26,9 +26,13 @@
  * 固定 sleep 只用于“断言某件事不应发生”的观察窗口，不当作就绪条件。
  * 每个测试有总时限，只清理本次进程树与本次 display。
  *
+ * 构建：before 里用「当前 Node + pnpm CLI 文件 argv」（`tests/feedback/pnpm-entry.ts` 的
+ * `resolvePnpmEntry`）只 build 一次，不 spawnSync('pnpm') 猜 shell（Windows 上只有 .cmd 包装器）。
+ *
  * 运行：
  *   node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/chat-hidden-lifecycle.e2e.test.ts
- * 团队约定：本文件独占显示 :131（自己起 Xvfb，已在跑则复用，不 kill 他人）。
+ * 显示：Linux 独占 :131（自己起 Xvfb，已在跑则复用，不 kill 他人）；Windows/macOS 用真实桌面，
+ * 不启动 Xvfb，也不向入口注入 DISPLAY。
  * @module pet-next/tests/chat-hidden-lifecycle.e2e
  */
 import assert from 'node:assert/strict';
@@ -43,11 +47,14 @@ import { fileURLToPath } from 'node:url';
 
 import { aliveTracked } from './platform/session.ts';
 import { startTrackedRun, type TrackedRun } from './support/tracked-run.ts';
+import { resolvePnpmEntry } from './feedback/pnpm-entry.ts';
 
 const petRoot = path.resolve(fileURLToPath(new URL('..', import.meta.url)));
 const ENTRY = path.join(petRoot, 'scripts/chat-local.mjs');
 const LOG_ROOT = path.join(petRoot, 'logs/platform-runs');
-/** 团队约定：本 E2E 独占 :131。 */
+/** Windows/macOS 用真实桌面，不启动 Xvfb；只有 Linux 需要独占显示。 */
+const REAL_DESKTOP = process.platform !== 'linux';
+/** 团队约定：Linux E2E 独占 :131。 */
 const DISPLAY = process.env.PET_NEXT_E2E_DISPLAY ?? ':131';
 const DISPLAY_SUFFIX = DISPLAY.startsWith(':') ? DISPLAY.slice(1) : DISPLAY;
 const DISPLAY_SOCKET = `/tmp/.X11-unix/X${DISPLAY_SUFFIX}`;
@@ -319,9 +326,18 @@ function portListening(port: number): Promise<boolean> {
 function buildOnce(): void {
   const env: NodeJS.ProcessEnv = { ...process.env };
   delete env.NODE_OPTIONS;
-  const result = spawnSync('pnpm', ['build'], { cwd: petRoot, env, encoding: 'utf8', timeout: 300_000 });
+  // Windows 只有 pnpm.cmd 包装器，spawnSync('pnpm') 会 ENOENT；统一用「当前 Node + pnpm CLI 文件 argv」。
+  const pnpm = resolvePnpmEntry(petRoot);
+  const result = spawnSync(pnpm.command, [...pnpm.args, 'build'], {
+    cwd: petRoot,
+    env,
+    encoding: 'utf8',
+    timeout: 300_000,
+  });
   if (result.status !== 0) {
-    throw new Error(`pnpm build 失败（exit=${String(result.status)}）\nstdout:${result.stdout ?? ''}\nstderr:${result.stderr ?? ''}`);
+    throw new Error(
+      `pnpm build 失败（exit=${String(result.status)}，command=${pnpm.command} ${pnpm.args.join(' ')}）\nstdout:${result.stdout ?? ''}\nstderr:${result.stderr ?? ''}`,
+    );
   }
   assert.equal(existsSync(path.join(petRoot, 'dist/electron/main.js')), true, 'build 后必须存在 dist/electron/main.js');
 }
@@ -329,7 +345,8 @@ function buildOnce(): void {
 function entryEnv(arm: Arm, baseUrl: string, userData: string, debugPort: number): NodeJS.ProcessEnv {
   const env: NodeJS.ProcessEnv = {
     ...process.env,
-    DISPLAY,
+    // 真实桌面平台不注入 DISPLAY（空串也会被 X 相关路径误判）。
+    ...(REAL_DESKTOP ? {} : { DISPLAY }),
     PET_NEXT_QWEN_BASE_URL: baseUrl,
     PET_NEXT_QWEN_MODEL: MODEL,
     PET_NEXT_CHAT_DEBUG_PORT: String(debugPort),
@@ -673,6 +690,8 @@ let xvfb: ChildProcess | undefined;
 let ownsXvfb = false;
 
 async function ensureDisplay(): Promise<void> {
+  // Windows/macOS 使用真实桌面：不找 socket、不 spawn Xvfb。
+  if (REAL_DESKTOP) return;
   if (existsSync(DISPLAY_SOCKET)) return;
   xvfb = spawn('Xvfb', [DISPLAY, '-screen', '0', '1280x800x24', '-nolisten', 'tcp'], { stdio: 'ignore' });
   ownsXvfb = true;
