@@ -311,6 +311,28 @@ test('占位层接管：作废旧归属，可见后不为被遮住的元素白�
   assert.equal(env.element.paused, true);
 });
 
+test('恢复在途再次隐藏并由占位层接管：晚到的 play 不得在隐藏期无归属解码', async () => {
+  const env = harness({ idlePause: true });
+  env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
+  await playThrough(env, 0);
+  env.adapter.setHidden(true);
+  const plays = env.element.playCalls;
+
+  // 恢复在途 → 再次隐藏（already-suspended，不立即补 pause）→ 占位层清掉归属。
+  env.adapter.setHidden(false);
+  env.adapter.setHidden(true);
+  env.adapter.releaseIdleLease('placeholder');
+  assert.equal(env.element.paused, false, 'play 在途时元素处于未暂停');
+
+  env.element.settle(true);
+  await flush();
+  assert.equal(env.element.playCalls, plays + 1, '只允许在途的那一次 play');
+  assert.equal(env.element.paused, true, '兑现后必须按最新隐藏状态重新暂停');
+  assert.notEqual(env.adapter.idleSuspensionState().lease, null, '应重新取得归属');
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 0);
+  assert.equal(env.adapter.idleSuspensionState().lastAction, 'pause');
+});
+
 test('dispose 后到达的恢复结果不再动作', async () => {
   const env = harness({ idlePause: true });
   env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });

@@ -79,6 +79,8 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
     // 只清标记：旧元素保持原状，绝不替它补 play。
     lease = null;
     resuming = false;
+    // 归属作废后不得把上次动作留在观测面上（否则 e2e 会把已作废的 resume 读成已恢复）。
+    lastAction = 'none';
     if (suspensionEnabled) lastSkipReason = reason;
   }
 
@@ -253,7 +255,13 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
         void element.play().then(
           () => {
             resuming = false;
-            if (disposed || !leaseStillCurrent(lease, target.generation, elementIdentity)) return;
+            if (disposed) return;
+            if (!leaseStillCurrent(lease, target.generation, elementIdentity)) {
+              // 恢复在途时归属被作废（例如再次隐藏后占位层接管）：不复活旧 owner，
+              // 但必须按最新状态收敛，否则这个晚到的 play 会让隐藏窗口继续无归属解码。
+              reconcile();
+              return;
+            }
             // 恢复完成即释放归属：此后重复的 visible 事件不会再 play 一次。
             lease = null;
             resumeCount += 1;
@@ -262,7 +270,12 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
           },
           () => {
             resuming = false;
-            if (disposed || !leaseStillCurrent(lease, target.generation, elementIdentity)) return;
+            if (disposed) return;
+            if (!leaseStillCurrent(lease, target.generation, elementIdentity)) {
+              // 旧 owner 的失败按原代次上报（reduce 会忽略非当前代次），不让新 owner 背锅。
+              dispatch({ type: 'failed', generation: target.generation, reason: 'decode-error' });
+              return;
+            }
             lease = null;
             lastAction = 'none';
             // 恢复失败沿既有失败路径：报 failed → 页面占位，不留下永久冻帧。
