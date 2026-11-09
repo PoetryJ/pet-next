@@ -1,0 +1,1 @@
+[2026-11-09T05:42:40.893Z] exit=0 真实调用 run（共 3 次） :: node tests/chat-evidence/qwen/run-acceptance.mjs --run --only=quality --rounds=1 --budget=3 --out-dir=/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/tests/chat-evidence/m39-pilot/service

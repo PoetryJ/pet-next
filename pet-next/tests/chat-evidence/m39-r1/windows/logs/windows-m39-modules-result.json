@@ -1,0 +1,18 @@
+{
+  "label": "modules",
+  "args": [
+    "C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+    "--experimental-strip-types",
+    "--test",
+    "--test-concurrency=1",
+    "core/idle-suspension/policy.test.ts",
+    "adapters/media/idle-suspension.test.ts",
+    "electron/window-visibility.test.ts"
+  ],
+  "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\中文 空格 package",
+  "pid": 42772,
+  "code": 0,
+  "timeout": false,
+  "seconds": 0.55,
+  "log": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\windows-m39-modules.log"
+}

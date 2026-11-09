@@ -1,0 +1,22 @@
+# M3-9 R1 pilot evidence — historical (2026-11-09) / backfilled (this commit)
+# userData/ Chromium caches excluded; see HISTORICAL-NOTE.txt
+6f7258fd3592df381b03d673f3cb0833a0440512e6f13809d7f3de93c9fa78bf  ./HISTORICAL-NOTE.txt
+2b33dea3fe423524e656d81d9dd14ab4517d2c87ce019f8edc5e306cfdb47631  ./SUMMARY.md
+e3b0c44298fc1c149afbf4c8996fb92427ae41e4649b934ca495991b7852b855  ./health.json
+8a041f466a1670b5a77b63b45f1d563c496dd8a102cb39d233a3f6ef7c8da2e9  ./hidden-real-2/product-stderr.log
+f6ca0c7a9b8e5979e0a217eeb056a20cd74217438c561ef11a353d618c4d6032  ./hidden-real-2/product-stdout.log
+46ab1a64be4164258494bea11b7abd07d0c0d7232616e08538ebef48ac4d692e  ./hidden-real-2/result.json
+49abfa9eb6c16414a1b0946c704f9aee5d2a8bc35f42cc349cf42632b8b94aa7  ./hidden-real-3/product-stderr.log
+f6ca0c7a9b8e5979e0a217eeb056a20cd74217438c561ef11a353d618c4d6032  ./hidden-real-3/product-stdout.log
+ca7d474b080b2e7d8b3ab4b64119c04050efec4d09905b896a9d1256c48a8b5b  ./hidden-real-3/result.json
+3046d841234341dadb2ec01261ce94caf04e5726378425a53ba2e40eba8a27c8  ./hidden-real/product-stderr.log
+f6ca0c7a9b8e5979e0a217eeb056a20cd74217438c561ef11a353d618c4d6032  ./hidden-real/product-stdout.log
+e65c6119e5d7ee86711c59559bfd9fe5291a1c162bce0d4cdc6a83b53ef81239  ./hidden-real/result.json
+0fd99298a814ea6fa8f22bace733fcf32c035bd896e29ad87ae6a9642f5f9753  ./metrics-after.txt
+b572168c9c87eedd3c9d39794c5099a8fc9304c6380fbb3a1ace15c0efcf7244  ./metrics-before.txt
+d70b967650207b6b4c7b68bbc2740998bac26e297bacac8a966c04b8b03cb69e  ./models.json
+769521e609407ad0ffba44ed27ba70d2ff6a30f44a939608897c50cc7f9f9ce9  ./probe-hidden-real.mjs
+d5c29bea56d5968729aa4cf5c29f5074a783cbf6b4efe751f1f48bc1e2821325  ./service/SUMMARY-machine.txt
+9c4ea12460da81e32fc2d6f55a21f241e27d242bededf7a43eb95e2bfea1472f  ./service/commands.txt
+15d6ecdf6ba64383dba6e1b04e048c4e754507ad91ef62e8f97fe0b2fe76f8db  ./service/run-log.ndjson
+bd84574ad37e5fbeee4bef065b3c19218a5e16a9212c01dd62e29ff383182f4f  ./service/stats.json

@@ -1,0 +1,16 @@
+{
+  "label": "idle-windows",
+  "args": [
+    "C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+    "--experimental-strip-types",
+    "--test",
+    "--test-concurrency=1",
+    "tests/idle-windows.check.ts"
+  ],
+  "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\中文 空格 package",
+  "pid": 26244,
+  "code": 1,
+  "timeout": false,
+  "seconds": 19.78,
+  "log": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\windows-m39-idle-windows.log"
+}

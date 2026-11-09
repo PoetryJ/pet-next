@@ -1,0 +1,17 @@
+{
+  "label": "idle-hide-delta",
+  "args": [
+    "C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+    "--experimental-strip-types",
+    "--test",
+    "--test-concurrency=1",
+    "--test-name-pattern=开启后",
+    "tests/idle-windows-delta.check.ts"
+  ],
+  "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\中文 空格 package",
+  "pid": 44656,
+  "code": 0,
+  "timeout": false,
+  "seconds": 9.97,
+  "log": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\windows-m39-idle-hide-delta.log"
+}

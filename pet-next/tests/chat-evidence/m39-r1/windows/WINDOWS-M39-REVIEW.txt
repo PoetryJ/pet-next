@@ -1,0 +1,55 @@
+Codex independent Windows acceptance — 2026-11-09
+Source HEAD 5f4b431bb98eb8792ae2c422460a6e90e47e6beb.
+ZIP SHA256 4b4334402aef1049869b7dc98c25445263dbcb3ab9b278b79f29ffc0fdf7f5ac, matches server manifest.
+Node24.22.1 / pinned pnpm10.33.4, independent Chinese+space extraction.
+No formal source or server changes. No real model/SSH inference, no GPU changes.
+
+Completed actual commands
+- install --frozen-lockfile exit0 (1.48s); build exit0 (3.70s).
+- Policy/media/window modules 33/33, exit0, 0 skips (0.55s).
+- Windows adapted original idle E2E: 3 cases, 2 pass/1 fail, exit1 (19.78s).
+  Default-off behavior and real native minimize/restore both passed.
+- Targeted corrected-assertion hide/show check: 1/1 exit0 (9.97s).
+  Real hide/show, blur does not hide, repeated events, rapid toggles,
+  non-idle reaction continues while hidden, back-to-idle pauses, hidden quit
+  naturally exit0 with no live tracked descendants all passed.
+
+What was adapted, and why
+The delivered E2E unconditionally starts Xvfb/openbox. It cannot run unchanged on Windows.
+Independent tests/idle-windows.check.ts is a copy of that test with only display/WM
+preparation using native Windows instead, and both arms explicitly short,behavior.
+Business assertions initially remained identical; diff is windows-driver.diff.
+No chat mode is enabled; these window tests perform zero model requests.
+No user desktop scaling/input setting was changed; only this test's Electron window
+was controlled through existing PET_NEXT_TEST window operations and CDP.
+
+Remaining test assumption, not a reproduced product bug
+The on-test hardcodes post-blur pauseCount==0 and later waits for counts >=1.
+On Windows the valid show:false startup can already pause/resume once before showing.
+Recorded before blur: revision2, hidden=false, phase=playing, idle,
+pauseCount1/resumeCount1, lease=null. After blur those values are unchanged.
+So blur did NOT pause. The absolute-zero assertion is invalid.
+The separate delta driver compares blur against its pre-blur count, and waits for
+actual hidden/visible plus increasing pause/resume counts for hide/show.
+This targeted test passed. It does not make the original test command green.
+Suggested bounded repair: Windows native display branch and relative transition
+assertions; preserve real isMinimized/isVisible, paused/lease and cleanup checks.
+Do not change product startup or disable initial-hidden handling to satisfy zero.
+
+Evidence
+- windows-m39-*.log / *-result.json: raw command logs and bounded subprocess results.
+- windows-driver.diff, windows-delta-driver.diff: exact local driver adaptations.
+- prepare_windows_driver.py / run_windows_gate.py: reproduction and120s watchdog.
+- windows-platform-raw/: tracked Electron process/exit records copied from package.
+- windows-driver-copies/: exact two local TS drivers (relative imports need APP/tests).
+Original first suite failure log retained. A logging-only intermediate diagnosis
+also failed because the replacement missed `?? 0`; its tool output showed initial
+count1. It was not a product regression and is not counted as an acceptance retry.
+Final narrow delta run is separately labeled and the original suite remains exit1.
+
+Limits
+No whole pnpm verify, launcher suite, DPI matrix, CPU/resource benchmark, real model,
+hidden chat cancel/timeout/long-response, or macOS check was run here.
+Native Windows default-off/minimize/restore and corrected hide/show path are proved;
+unmodified cross-platform official E2E still needs the bounded driver repair.
+Final process query found no node/electron/cmd belonging to this package.

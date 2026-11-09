@@ -1,0 +1,33 @@
+--- tests/idle-suspension.e2e.test.ts
++++ tests/idle-windows.check.ts
+@@ -12,10 +12,13 @@
+ 
+ // scripts/test-run-context.mjs 是无类型声明的 .mjs 工具；这里只用两个工厂。
+ // @ts-expect-error 缺少 .d.ts
+-const isolation = (await import('../scripts/test-run-context.mjs')) as {
++const isolationSource = (await import('../scripts/test-run-context.mjs')) as {
+   createRunContext(options: { label: string; kind: string }): RunContext;
+   startOwnXvfb(options: { label: string }): Promise<OwnDisplay>;
+ };
++
++// Independent Windows driver: native desktop/WM, no Xvfb/openbox.
++const isolation = { ...isolationSource, startOwnXvfb: async () => ({ display: '', stop: async () => {} }) };
+ 
+ interface RunContext {
+   dir: string;
+@@ -91,6 +94,7 @@
+     forced: null,
+     env: {
+       DISPLAY: options.display,
++      PET_NEXT_PREVIEW: 'short,behavior',
+       PET_NEXT_USER_DATA: options.userData,
+       ...(options.idlePause ? { PET_NEXT_IDLE_PAUSE: '1' } : {}),
+     },
+@@ -109,6 +113,7 @@
+  * 实测（无 WM 的 :122）minimize 后 15s 内 minimized 始终 false；:121+openbox 下立即变 true。
+  */
+ async function startWm(display: string): Promise<WindowManager> {
++  if (process.platform === 'win32') return { available: true, stop() {} };
+   const child = spawn('openbox', [], { env: { ...process.env, DISPLAY: display }, stdio: 'ignore' });
+   const spawnError = await new Promise<Error | null>((resolve) => {
+     let settled = false;
