@@ -1,0 +1,51 @@
+▶ createMediaAdapter
+  ✔ 正常播放会上报 playing 和 ended，循环片段的 ended 会重播而不是结束 (1.77639ms)
+  ✔ 加载失败、播放拒绝和超时各自失败，迟到的成功不能复活 (0.638346ms)
+  ✔ 替换会取消旧请求并在新源就绪时释放旧地址 (0.358212ms)
+  ✔ A→B→C 时旧加载、旧 play 和旧 ended 都不影响 C (0.303603ms)
+  ✔ 卸载后清理监听、计时器和已持有地址，迟到回调不能再播放 (0.406581ms)
+  ✔ 播放中的解码错误进入 failed (0.276633ms)
+✔ createMediaAdapter (4.51015ms)
+▶ createElementLoader
+  ✔ 就绪、失败、中止都会卸下监听，release 清掉地址 (0.730244ms)
+✔ createElementLoader (0.831451ms)
+✔ 默认关闭：setHidden 不产生任何暂停/恢复，也不记 lease (1.559536ms)
+✔ 隐藏时暂停当前 idle；恢复时只恢复该 owner 且不重报 playing (0.398771ms)
+✔ 重复 hidden 不重复 pause；重复 visible 不重复 resume (0.241064ms)
+✔ 加载中隐藏不暂停；兑现后按最新状态暂停 (0.188816ms)
+✔ once 动作在隐藏时不暂停，结束后再回到 idle 才暂停 (0.515008ms)
+✔ 隐藏期换素材并复用同一素材：旧归属作废，不会永久冻帧 (0.456089ms)
+✔ 旧的 play Promise 晚到不影响新 owner (0.243474ms)
+✔ 隐藏中 onended 循环不重启解码 (0.145556ms)
+✔ 恢复 play 失败走失败路径，不卡在 playing (0.349182ms)
+✔ 隐藏挂起期间解码失败：作废旧归属，可见后不把失败元素重新拉起 (0.303703ms)
+✔ 占位层接管：作废旧归属，可见后不为被遮住的元素白解码 (0.185045ms)
+✔ 恢复在途再次隐藏并由占位层接管：晚到的 play 不得在隐藏期无归属解码 (0.203595ms)
+✔ dispose 后到达的恢复结果不再动作 (0.229935ms)
+✔ 旧成功晚到且新 attempt 在途：不清后继 guard、不重复 play、后继只结算一次 (0.253485ms)
+✔ 旧失败晚到且新 attempt 在途：不清后继 guard、不误报后继失败 (0.255935ms)
+✔ 同代退 lease 后迟到成功：按当前隐藏态重新暂停收敛，不补 play (0.174306ms)
+✔ 同代退 lease 后迟到失败（无后继）：仍按原契约报 failed 一次 (0.217535ms)
+✔ 同代后继 attempt 已结算后旧失败晚到：不污染新状态 (0.169476ms)
+✔ dispose 后到达的恢复失败不再上报 (0.170587ms)
+✔ 开关关闭时永不动手 (1.117805ms)
+✔ dispose 后不再暂停或恢复 (0.116907ms)
+✔ 隐藏 + 当前 idle + playing → 暂停并取得归属 (0.152706ms)
+✔ 重复 hidden 事件不重复暂停同一 owner (0.099738ms)
+✔ 只有 idle 会被暂停：reaction / auto / once 都不行 (0.115267ms)
+✔ 加载中/未兑现 play 不暂停 (0.175236ms)
+✔ 可见且归属仍匹配 → 恢复一次 (0.127767ms)
+✔ 可见但无归属 → 不恢复（别动别的暂停） (0.084229ms)
+✔ 同 requestId 换代后旧归属失效 (0.112977ms)
+✔ 元素身份不同的归属不认 (0.188735ms)
+✔ 恢复在途不重复 play (0.91007ms)
+✔ leaseStillCurrent 只认当前代次与元素 (0.119988ms)
+ℹ tests 38
+ℹ suites 2
+ℹ pass 38
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 125.039632
+exit=0

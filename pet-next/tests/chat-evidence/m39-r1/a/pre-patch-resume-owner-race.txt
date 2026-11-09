@@ -1,0 +1,11 @@
+{"oldOutcome":"resolve","generation":2,"playCallsBefore":4,"playCallsAfter":5,"expectedAfter":4,"duplicateResume":true,"currentLease":{"generation":2,"slot":"single","elementIdentity":"single-primary"},"reports":[{"playbackId":"same-id","status":"playing"},{"playbackId":"same-id","status":"playing"}]}
+old resolve must not clear B resume-in-flight guard
+
+5 !== 4
+
+{"oldOutcome":"reject","generation":2,"playCallsBefore":4,"playCallsAfter":5,"expectedAfter":4,"duplicateResume":true,"currentLease":{"generation":2,"slot":"single","elementIdentity":"single-primary"},"reports":[{"playbackId":"same-id","status":"playing"},{"playbackId":"same-id","status":"playing"}]}
+old reject must not clear B resume-in-flight guard
+
+5 !== 4
+
+exit=1

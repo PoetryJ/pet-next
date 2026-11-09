@@ -1,0 +1,3 @@
+{"oldOutcome":"resolve","generation":2,"playCallsBefore":4,"playCallsAfter":4,"expectedAfter":4,"duplicateResume":false,"currentLease":{"generation":2,"slot":"single","elementIdentity":"single-primary"},"reports":[{"playbackId":"same-id","status":"playing"},{"playbackId":"same-id","status":"playing"}]}
+{"oldOutcome":"reject","generation":2,"playCallsBefore":4,"playCallsAfter":4,"expectedAfter":4,"duplicateResume":false,"currentLease":{"generation":2,"slot":"single","elementIdentity":"single-primary"},"reports":[{"playbackId":"same-id","status":"playing"},{"playbackId":"same-id","status":"playing"}]}
+exit=0

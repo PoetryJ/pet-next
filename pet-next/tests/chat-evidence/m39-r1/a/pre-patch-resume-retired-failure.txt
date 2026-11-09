@@ -1,0 +1,24 @@
+{"successor":false,"phase":"failed","failedReports":1,"lease":null}
+{"successor":true,"phase":"failed","failedReports":1,"lease":null}
+node:internal/modules/run_main:107
+    triggerUncaughtException(
+    ^
+
+AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
++ actual - expected
+
++ 'failed'
+- 'playing'
+
+    at run (file:///data3/DATA/project/project_meishijiang/codex-review-m39-5f4b431/probes/resume-retired-failure.mjs:26:8)
+    at async file:///data3/DATA/project/project_meishijiang/codex-review-m39-5f4b431/probes/resume-retired-failure.mjs:31:1 {
+  generatedMessage: true,
+  code: 'ERR_ASSERTION',
+  actual: 'failed',
+  expected: 'playing',
+  operator: 'strictEqual',
+  diff: 'simple'
+}
+
+Node.js v24.14.0
+exit=1
