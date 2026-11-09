@@ -1,0 +1,130 @@
+{
+  "zip": "/data3/DATA/project/project_meishijiang/m310-delivery/c/PetNext-win32-x64.zip",
+  "manifest": "/data3/DATA/project/project_meishijiang/m310-delivery/c/manifest.json",
+  "checks": {
+    "zip_sha_matches_manifest": {
+      "ok": true,
+      "detail": {
+        "actual": "48eb0dd09c0372143f1bb85f0d213a11f9aa57a9d48de45517c3565d1cb5ca1a",
+        "expected": "48eb0dd09c0372143f1bb85f0d213a11f9aa57a9d48de45517c3565d1cb5ca1a"
+      }
+    },
+    "zip_bytes_matches_manifest": {
+      "ok": true,
+      "detail": null
+    },
+    "zip_integrity": {
+      "ok": true,
+      "detail": null
+    },
+    "entries_match_manifest": {
+      "ok": true,
+      "detail": {
+        "zip": 197,
+        "manifest": 197
+      }
+    },
+    "no_forbidden_paths": {
+      "ok": true,
+      "detail": []
+    },
+    "petnext_exe_exists": {
+      "ok": true,
+      "detail": null
+    },
+    "petnext_pe64_gui": {
+      "ok": true,
+      "detail": {
+        "ok": true,
+        "machine": "0x8664",
+        "subsystem": 2,
+        "pe32plus": true
+      }
+    },
+    "app_main_is_packaged_entry": {
+      "ok": true,
+      "detail": "dist/electron/packaged-main.js"
+    },
+    "app_type_module": {
+      "ok": true,
+      "detail": null
+    },
+    "no_dev_dependencies": {
+      "ok": true,
+      "detail": null
+    },
+    "packaged_entry_exists": {
+      "ok": true,
+      "detail": null
+    },
+    "packaged_entry_imports_main": {
+      "ok": true,
+      "detail": null
+    },
+    "main_preload_exist": {
+      "ok": true,
+      "detail": null
+    },
+    "runtime_dist/app/page.html": {
+      "ok": true,
+      "detail": null
+    },
+    "runtime_dist/app/launcher.html": {
+      "ok": true,
+      "detail": null
+    },
+    "runtime_dist/app/page.js": {
+      "ok": true,
+      "detail": null
+    },
+    "runtime_dist/app/launcher.js": {
+      "ok": true,
+      "detail": null
+    },
+    "runtime_dist/assets/idle.webm": {
+      "ok": true,
+      "detail": null
+    },
+    "electron_license_LICENSE": {
+      "ok": true,
+      "detail": null
+    },
+    "electron_license_LICENSES.chromium.html": {
+      "ok": true,
+      "detail": null
+    },
+    "project_license_attribution": {
+      "ok": true,
+      "detail": null
+    },
+    "readme_attribution": {
+      "ok": true,
+      "detail": null
+    },
+    "all_file_sha_match_manifest": {
+      "ok": true,
+      "detail": []
+    }
+  },
+  "failures": [],
+  "sizes": {
+    "zip": 146564405,
+    "extracted": 367213277,
+    "json": 5
+  },
+  "manifest_summary": {
+    "gitSha": "d6e33e1f90be0d29c67d67507a4ec010dbebd97a",
+    "electronVersion": "43.3.0",
+    "packagerVersion": "20.3.0",
+    "platform": "win32",
+    "arch": "x64",
+    "appVersion": "0.1.0",
+    "buildSeconds": 63.4
+  },
+  "windows_runtime": {
+    "status": "not-run",
+    "reason": "no Windows host in this environment",
+    "required": "extract to Chinese+space path, launch PetNext.exe, config/save/probe/start/exit/reopen; PATH without node/pnpm/git"
+  },
+  "ok": true
+}
