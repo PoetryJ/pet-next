@@ -707,11 +707,10 @@ test('① 隐藏期 2s 延迟成功 + 2000/2001 字符正文（截断契约与 l
   const run = await openRun(support, ARM_MAIN, 'long-body');
   try {
     await run.fake.plan([
-      { mode: 'delay', delayMs: 2000 }, // #0 2s 延迟：隐藏期成功
-      { mode: 'long', chars: 2000 }, // #1 2000 字符：原样交付
-      { mode: 'long', chars: 2001 }, // #2 2001 字符：按契约截断到 2000
-      { mode: 'ok' }, // #3 与 #0 同文本：指纹证明超预算轮次被淘汰
-      { mode: 'length' }, // #4 finish_reason=length：只标记、不报错
+      { mode: 'delay', delayMs: 2000, chars: 2001 }, // #0 2s 延迟 + 2001 字符：隐藏期成功且截断
+      { mode: 'long', chars: 2000 }, // #1 2000 字符：边界原样交付
+      { mode: 'length', chars: 2001 }, // #2 finish_reason=length + 2001 字符：只标记、不报错
+      { mode: 'ok' }, // #3 与 #0 同文本：指纹证明超预算轮次被整轮淘汰
     ]);
 
     const opened = await openPanel(run);
@@ -721,12 +720,18 @@ test('① 隐藏期 2s 延迟成功 + 2000/2001 字符正文（截断契约与 l
     assert.equal(info.mode, 'local');
     assert.notEqual(idle, null, 'idle-pause 开启时必须有观测面');
 
-    // #0：2s 延迟，在途时真实隐藏；回复仍要在隐藏期结算到 DOM。
+    // #0：同一个请求同时覆盖「2s 延迟」+「2001 字符长正文」；在途时真实隐藏。
+    const sentAt = Date.now();
     await typeAndSend(run, '长文甲');
     await run.fake.waitForRequest(1, 15_000);
     const paused = await hideUntilPaused(run);
     const first = await waitDom(run, '2s 延迟回复未显示', (state) => state.assistantBodies.length === 1, 30_000);
-    assert.equal(first.assistantBodies[0], '隧道回复：长文甲');
+    const firstElapsed = Date.now() - sentAt;
+    assert.ok(firstElapsed >= 1900, `2s 延迟必须真实生效，实测 ${firstElapsed}ms`);
+    assert.equal(first.assistantBodies[0]?.length, MAX_RESULT_CHARS, '2001 字符必须截断到 2000（隐藏期同样生效）');
+    assert.equal(first.assistantBodies[0], '长'.repeat(MAX_RESULT_CHARS), '截断必须是前缀，不是改写');
+    assert.equal(run.fake.requests[0]?.responseText?.length, MAX_RESULT_CHARS + 1, '服务端确实给了 2001 字符');
+    assert.equal(run.fake.requests[0]?.status, 'completed', '隐藏不得阻断响应完成');
     assert.equal(first.phase, 'reply');
     assert.equal(first.feedbackKind === 'success' || first.feedbackKind === 'hidden', true, `companion 成功口径异常：${first.feedbackKind}`);
     const anchor = bodyHash(run.fake, 0);
@@ -752,15 +757,17 @@ test('① 隐藏期 2s 延迟成功 + 2000/2001 字符正文（截断契约与 l
     assert.equal(run.fake.requests[1]?.responseText?.length, MAX_RESULT_CHARS, '服务端确实给了 2000 字符');
     assert.equal(two.phase, 'reply');
 
-    // #2：2001 字符 → 界面必须截断到 2000，且是前缀。
+    // #2：finish_reason=length + 2001 字符 → 正文照常交付并截断到 2000，只标记、不报错。
     await typeAndSend(run, '长文丙');
-    const three = await waitDom(run, '2001 字符回复未显示', (state) => state.assistantBodies.length === 3, 30_000);
-    assert.equal(three.assistantBodies[2]?.length, MAX_RESULT_CHARS, '超上限必须截断到 2000 字符');
+    const three = await waitDom(run, 'length 回复未显示', (state) => state.assistantBodies.length === 3, 30_000);
+    assert.equal(run.fake.requests[2]?.finishReason, 'length', 'length 元信息必须由服务端声明并被接受');
+    assert.equal(run.fake.requests[2]?.responseText?.length, MAX_RESULT_CHARS + 1, '服务端给了 2001 字符 + length');
+    assert.equal(three.assistantBodies[2]?.length, MAX_RESULT_CHARS, 'length 轮同样按 2000 截断');
     assert.equal(three.assistantBodies[2], '长'.repeat(MAX_RESULT_CHARS), '截断必须是前缀，不是改写');
-    assert.equal(run.fake.requests[2]?.responseText?.length, MAX_RESULT_CHARS + 1, '服务端确实给了 2001 字符');
-    assert.equal(three.errorMsgs.length, 0, '截断不是错误');
+    assert.equal(three.errorMsgs.length, 0, 'finish_reason=length 不得报错');
+    assert.equal(three.phase, 'reply');
 
-    // #3：与 #0 完全同一句。历史若还留着 2000/2001 两轮，请求体指纹必然变化。
+    // #3：与 #0 完全同一句。历史若还留着 2001/2000 两轮，请求体指纹必然变化。
     await typeAndSend(run, '长文甲');
     const four = await waitDom(run, '第四句回复未显示', (state) => state.assistantBodies.length === 4, 30_000);
     assert.equal(four.assistantBodies[3], '隧道回复：长文甲');
@@ -770,17 +777,9 @@ test('① 隐藏期 2s 延迟成功 + 2000/2001 字符正文（截断契约与 l
       '超预算轮次必须整轮淘汰（同一文本、历史为空 ⇒ 请求体指纹必须与首轮相同）',
     );
 
-    // #4：finish_reason=length 只标记截断，正文照常交付。
-    await typeAndSend(run, '长文丁');
-    const five = await waitDom(run, 'length 回复未显示', (state) => state.assistantBodies.length === 5, 30_000);
-    assert.equal(five.assistantBodies[4], '截断回复：长文丁');
-    assert.equal(run.fake.requests[4]?.finishReason, 'length', 'length 元信息必须由服务端声明并被接受');
-    assert.equal(five.errorMsgs.length, 0, 'finish_reason=length 不得报错');
-    assert.equal(five.phase, 'reply');
-
-    assert.equal(run.posts(), 5, '五次业务发送必须恰 5 次 POST（无自动重试）');
+    assert.equal(run.posts(), 4, '四次业务发送必须恰 4 次 POST（无自动重试）');
     await recordArm(run);
-    run.log(`ok bodies=2000/2000 posts=${run.posts()} paused=${paused.pauseCount}`);
+    run.log(`ok elapsed=${firstElapsed}ms bodies=2000/2000 posts=${run.posts()} paused=${paused.pauseCount}`);
   } finally {
     await run.stop();
   }
@@ -793,7 +792,8 @@ test('①′ 同样素材与配置、仅 idle-pause 关闭：隐藏不影响 2s 
   if (!support) return;
   const run = await openRun(support, ARM_MAIN_NO_IDLE, 'idle-off');
   try {
-    await run.fake.plan([{ mode: 'delay', delayMs: 2000 }, { mode: 'long', chars: 2000 }]);
+    // 与 ① 同素材：2s 延迟 + 2001 字符（截断），再来一轮 2000 字符边界。
+    await run.fake.plan([{ mode: 'delay', delayMs: 2000, chars: 2001 }, { mode: 'long', chars: 2000 }]);
     await openPanel(run);
     const { info } = await recordArm(run);
     assert.equal(info.context, true, '两臂对照必须同 context');
@@ -804,7 +804,7 @@ test('①′ 同样素材与配置、仅 idle-pause 关闭：隐藏不影响 2s 
     await run.fake.waitForRequest(1, 15_000);
     await actWindow(run, 'hide');
     const first = await waitDom(run, '关闭臂 2s 回复未显示', (state) => state.assistantBodies.length === 1, 30_000);
-    assert.equal(first.assistantBodies[0], '隧道回复：关闭臂一句');
+    assert.equal(first.assistantBodies[0]?.length, MAX_RESULT_CHARS, '关闭臂同样按 2000 截断');
     assert.equal(first.phase, 'reply');
 
     const postsBefore = run.posts();
