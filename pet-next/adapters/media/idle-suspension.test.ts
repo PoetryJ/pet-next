@@ -48,6 +48,15 @@ class FakeElement implements MediaElement {
     waiter(ok);
   }
 
+  /** 指定序号的 play 兑现：恢复在途可能同时挂多个，需按归属单独结算。 */
+  settleAt(index: number, ok = true): void {
+    const waiter = this.waiters[index];
+    if (!waiter) throw new Error(`no pending play at ${index}`);
+    this.waiters.splice(index, 1);
+    if (!ok) this.paused = true;
+    waiter(ok);
+  }
+
   get pending(): number {
     return this.waiters.length;
   }
@@ -342,5 +351,141 @@ test('dispose 后到达的恢复结果不再动作', async () => {
   env.adapter.dispose();
   env.element.settle(true);
   await flush();
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 0);
+});
+
+/**
+ * M3-9 R1 恢复 attempt 归属：旧异步任务不得清理新任务的 guard。
+ * 下面每条都对应 probes/resume-owner-race.mjs、resume-retired-failure.mjs 的负控。
+ */
+test('旧成功晚到且新 attempt 在途：不清后继 guard、不重复 play、后继只结算一次', async () => {
+  const env = harness({ idlePause: true });
+  env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
+  await playThrough(env, 0);
+  env.adapter.setHidden(true);
+  env.adapter.setHidden(false); // 旧代恢复 A（play#2）悬着
+  assert.equal(env.element.pending, 1);
+
+  // 换代：begin 作废旧 attempt（不替旧元素补 play）。
+  env.adapter.begin({ playbackId: 'idle:2', url: 'idle.webm', once: false, clip: 'idle' });
+  env.loader.succeed(1, 'mem:1');
+  await flush();
+  env.element.settleAt(1, true); // 新代自身 play#3 兑现；index 0 仍是旧 A
+  await flush();
+  env.adapter.setHidden(true);
+  env.adapter.setHidden(false); // 新代恢复 B（play#4）悬着
+  assert.equal(env.element.playCalls, 4);
+  assert.equal(env.element.pending, 2);
+
+  env.element.settleAt(0, true); // 旧 A 晚到成功
+  await flush();
+  assert.equal(env.element.playCalls, 4, '旧成功不得清后继 guard 而补一次 play');
+  assert.equal(env.element.pending, 1, '后继 B 仍在途，guard 未被清');
+
+  env.element.settleAt(0, true); // B 自己结算
+  await flush();
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 1, '后继只结算一次');
+  assert.deepEqual(env.adapter.idleSuspensionState().lease, null);
+  assert.equal(env.adapter.phase, 'playing');
+});
+
+test('旧失败晚到且新 attempt 在途：不清后继 guard、不误报后继失败', async () => {
+  const env = harness({ idlePause: true });
+  env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
+  await playThrough(env, 0);
+  env.adapter.setHidden(true);
+  env.adapter.setHidden(false); // 旧代恢复 A（play#2）悬着
+
+  env.adapter.begin({ playbackId: 'idle:2', url: 'idle.webm', once: false, clip: 'idle' });
+  env.loader.succeed(1, 'mem:1');
+  await flush();
+  env.element.settleAt(1, true);
+  await flush();
+  env.adapter.setHidden(true);
+  env.adapter.setHidden(false); // 新代恢复 B（play#4）悬着
+
+  env.element.settleAt(0, false); // 旧 A 晚到失败
+  await flush();
+  assert.equal(env.element.playCalls, 4, '旧失败不得清后继 guard 而补一次 play');
+  assert.equal(env.reports.filter((event) => event.status === 'failed').length, 0);
+  assert.equal(env.adapter.phase, 'playing', '后继 attempt 不因旧失败被判失败');
+
+  env.element.settleAt(0, true);
+  await flush();
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 1);
+  assert.equal(env.adapter.phase, 'playing');
+});
+
+test('同代退 lease 后迟到成功：按当前隐藏态重新暂停收敛，不补 play', async () => {
+  const env = harness({ idlePause: true });
+  env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
+  await playThrough(env, 0);
+  env.adapter.setHidden(true);
+  const plays = env.element.playCalls;
+  env.adapter.setHidden(false); // 恢复在途（play#2）
+  env.adapter.setHidden(true); // 已在途中，不立即补 pause
+  env.adapter.releaseIdleLease('placeholder'); // 同代退 lease，attempt 被撤销
+  assert.deepEqual(env.adapter.idleSuspensionState().lease, null);
+
+  env.element.settleAt(0, true); // 迟到成功
+  await flush();
+  assert.equal(env.element.playCalls, plays + 1, '只允许在途的那一次 play');
+  assert.equal(env.element.paused, true, '迟到成功必须按当前隐藏态重新暂停');
+  assert.notEqual(env.adapter.idleSuspensionState().lease, null, '重新取得归属');
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 0);
+  assert.equal(env.adapter.idleSuspensionState().lastAction, 'pause');
+});
+
+test('同代退 lease 后迟到失败（无后继）：仍按原契约报 failed 一次', async () => {
+  const env = harness({ idlePause: true });
+  env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
+  await playThrough(env, 0);
+  env.adapter.setHidden(true);
+  env.adapter.setHidden(false); // 恢复在途（play#2）
+  env.adapter.releaseIdleLease('placeholder'); // 同代退 lease，attempt 被撤销
+
+  env.element.settleAt(0, false); // 迟到失败，且没有后继 attempt
+  await flush();
+  assert.equal(env.adapter.phase, 'failed');
+  assert.equal(env.reports.filter((event) => event.status === 'failed').length, 1, '同一 owner 只报一次失败');
+  assert.deepEqual(env.adapter.idleSuspensionState().lease, null);
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 0);
+});
+
+test('同代后继 attempt 已结算后旧失败晚到：不污染新状态', async () => {
+  const env = harness({ idlePause: true });
+  env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
+  await playThrough(env, 0);
+  env.adapter.setHidden(true);
+  env.adapter.setHidden(false); // 旧 attempt A（play#2）悬着
+  env.adapter.setHidden(true);
+  env.adapter.releaseIdleLease('placeholder'); // A 被撤销
+  env.adapter.setHidden(true); // 重新 pause，取得新归属
+  env.adapter.setHidden(false); // 同代后继 B（play#3）悬着
+  env.element.settleAt(1, true); // B 先结算
+  await flush();
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 1);
+  assert.equal(env.adapter.phase, 'playing');
+
+  env.element.settleAt(0, false); // A 晚到失败
+  await flush();
+  assert.equal(env.adapter.phase, 'playing', '旧 attempt 不得把已结算的新状态判失败');
+  assert.equal(env.reports.filter((event) => event.status === 'failed').length, 0);
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 1);
+  assert.deepEqual(env.adapter.idleSuspensionState().lease, null);
+});
+
+test('dispose 后到达的恢复失败不再上报', async () => {
+  const env = harness({ idlePause: true });
+  env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
+  await playThrough(env, 0);
+  env.adapter.setHidden(true);
+  env.adapter.setHidden(false); // 恢复在途
+  const reports = env.reports.length;
+  env.adapter.dispose();
+  env.element.settleAt(0, false);
+  await flush();
+  assert.equal(env.adapter.phase, 'disposed');
+  assert.equal(env.reports.length, reports, 'dispose 后零上报');
   assert.equal(env.adapter.idleSuspensionState().resumeCount, 0);
 });

@@ -49,7 +49,8 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
   let once = false;
   /** 只有本功能 pause 过的元素才有 lease；其它原因（cancel/cleanup）产生的暂停不登记。 */
   let lease: IdlePauseLease | null = null;
-  let resuming = false;
+  let resumeAttempt: object | null = null;
+  let lastResumeAttempt: object | null = null;
   let reconciling = false;
   let pauseCount = 0;
   let resumeCount = 0;
@@ -78,7 +79,7 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
     if (lease === null) return;
     // 只清标记：旧元素保持原状，绝不替它补 play。
     lease = null;
-    resuming = false;
+    resumeAttempt = null;
     // 归属作废后不得把上次动作留在观测面上（否则 e2e 会把已作废的 resume 读成已恢复）。
     lastAction = 'none';
     if (suspensionEnabled) lastSkipReason = reason;
@@ -235,7 +236,7 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
           once,
           phase: state.phase,
           lease,
-          resuming,
+          resuming: resumeAttempt !== null,
         },
         elementIdentity,
       );
@@ -248,14 +249,22 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
         return;
       }
       if (decision.type === 'resume') {
-        resuming = true;
+        const attempt = {};
+        resumeAttempt = attempt;
+        lastResumeAttempt = attempt;
         lastAction = 'resume';
         lastSkipReason = null;
         const target = decision.lease;
         void element.play().then(
           () => {
-            resuming = false;
             if (disposed) return;
+            // Only this attempt may release its in-flight guard or settle its lease.
+            // A retired callback may reconcile current state, but never clear a successor.
+            if (resumeAttempt !== attempt) {
+              reconcile();
+              return;
+            }
+            resumeAttempt = null;
             if (!leaseStillCurrent(lease, target.generation, elementIdentity)) {
               // 恢复在途时归属被作废（例如再次隐藏后占位层接管）：不复活旧 owner，
               // 但必须按最新状态收敛，否则这个晚到的 play 会让隐藏窗口继续无归属解码。
@@ -269,8 +278,18 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
             reconcile();
           },
           () => {
-            resuming = false;
             if (disposed) return;
+            if (resumeAttempt !== attempt) {
+              // Retiring the lease alone must not swallow this owner's failure.
+              // A newer resume attempt, even one already settled, supersedes it.
+              if (lastResumeAttempt === attempt) {
+                dispatch({ type: 'failed', generation: target.generation, reason: 'decode-error' });
+              } else {
+                reconcile();
+              }
+              return;
+            }
+            resumeAttempt = null;
             if (!leaseStillCurrent(lease, target.generation, elementIdentity)) {
               // 旧 owner 的失败按原代次上报（reduce 会忽略非当前代次），不让新 owner 背锅。
               dispatch({ type: 'failed', generation: target.generation, reason: 'decode-error' });
@@ -296,7 +315,7 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
       if (disposed) return;
       // 新绑定拥有新生命周期：旧 lease 先作废（不替旧元素补 play）。
       lease = null;
-      resuming = false;
+      resumeAttempt = null;
       clip = request.clip;
       once = request.once;
       dispatch({

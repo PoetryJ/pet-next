@@ -1,0 +1,3 @@
+{"successor":false,"phase":"failed","failedReports":1,"lease":null}
+{"successor":true,"phase":"playing","failedReports":0,"lease":null}
+exit=0
