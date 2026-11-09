@@ -56,6 +56,8 @@ export interface MediaAdapter {
   readonly phase: string;
   /** M3-9：报告窗口隐藏状态；开关关闭时是 no-op。 */
   setHidden(hidden: boolean): void;
+  /** M3-9：占位层接管时作废旧归属；开关关闭时是 no-op。 */
+  releaseIdleLease(reason?: string): void;
   /** M3-9：只读观测面。 */
   idleSuspensionState(): IdleSuspensionDebugState;
 }

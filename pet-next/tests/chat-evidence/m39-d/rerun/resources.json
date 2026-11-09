@@ -1,0 +1,3906 @@
+{
+  "meta": {
+    "task": "M3-9 待机节能预览 资源对照（第二轮：点击探针 state+DOM 双信号）",
+    "generatedAt": "2026-11-09T04:52:10.066Z",
+    "workspace": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next",
+    "head": "2d9654b",
+    "runner": "bench/idle-profile/m39-run.mjs",
+    "command": "env -u NODE_OPTIONS node bench/idle-profile/m39-run.mjs --arm=<baseline|candidate> --state=<hidden|visible> --seconds=60 --warmup=8 --display=:121 --stamp=<m39-xp1..3|m39-xv1..3>",
+    "display": ":121（Xvfb 1600x1000x24 + openbox，本轮自起）",
+    "arms": 12,
+    "failedArms": 0,
+    "environment": {
+      "nproc": 1,
+      "note": "单核机器，同机还有 vLLM worker 持续占用 CPU；每对 baseline/candidate 相邻执行，绝对延迟/RSS 被争抢放大"
+    },
+    "armDifference": "唯一差异 = candidate 臂带 PET_NEXT_IDLE_PAUSE=1；两臂同 dist、同 assets、同显示屏",
+    "probeCaliber": {
+      "restore": "restore 墙钟 = act(\"show\") → __petIdleSuspension.hidden===false 的 CDP 往返时间（软件层）；baseline 无观测面，validRestores 恒 0（hidden===null）",
+      "click": "click 墙钟 = CDP mousePressed → 判定 reaction 起播；判定 = state(clip===\"reaction\"&&phase===\"playing\") 或 DOM 回退(#clip.currentSrc 命中 /reaction/ 且非 idle)，shot.via 记录命中来源",
+      "post": "两臂都未启用聊天服务，postCount 恒 0；不能据此宣称\"隐藏不触发请求\""
+    }
+  },
+  "asset": {
+    "path": "assets/idle.webm",
+    "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "allArmsSameSha": true,
+    "perArmSha": [
+      {
+        "stamp": "m39-xp1",
+        "arm": "baseline",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xp1",
+        "arm": "candidate",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xp2",
+        "arm": "baseline",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xp2",
+        "arm": "candidate",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xp3",
+        "arm": "baseline",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xp3",
+        "arm": "candidate",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xv1",
+        "arm": "baseline",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xv1",
+        "arm": "candidate",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xv2",
+        "arm": "baseline",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xv2",
+        "arm": "candidate",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xv3",
+        "arm": "baseline",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      },
+      {
+        "stamp": "m39-xv3",
+        "arm": "candidate",
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "clipSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+      }
+    ],
+    "note": "asset 与 clip.src 的实际 sha 全部一致（12 臂）"
+  },
+  "summary": {
+    "hidden": {
+      "electronCpuPerMinuteBaselineMean": 2.81,
+      "electronCpuPerMinuteCandidateMean": 0.149,
+      "decodedFramesBaseline": [
+        1451,
+        1450,
+        1450
+      ],
+      "decodedFramesCandidate": [
+        0,
+        0,
+        0
+      ],
+      "electronCpuPercentPerPair": [
+        -95.6,
+        -94.2,
+        -94.2
+      ],
+      "judge": "隐藏期稳定下降，组间不重叠，且 decodedFrames 全部归零 → 收益存在"
+    },
+    "visible": {
+      "electronCpuPerMinuteBaselineMean": 2.843,
+      "electronCpuPerMinuteCandidateMean": 2.903,
+      "electronCpuPercentPerPair": [
+        -4.2,
+        4.7,
+        6.6
+      ],
+      "decodedFramesBaseline": [
+        1450,
+        1451,
+        1451
+      ],
+      "decodedFramesCandidate": [
+        1450,
+        1450,
+        1451
+      ],
+      "clickMedianMsBaseline": [
+        3,
+        3,
+        3
+      ],
+      "clickMedianMsCandidate": [
+        3,
+        3,
+        3
+      ],
+      "judge": "主动播放两条臂本应同负荷：CPU/decoded 在噪声内、click 中位不劣于基线 → 无回退证据"
+    },
+    "clickComparability": "两臂都通过 DOM 回退判定（via=dom 10/10），因此本轮 click 口径对 baseline 与 candidate 一致；上一轮 baseline 全 null 的问题已修复，旧 6 对（m39-r*）不进本表"
+  },
+  "limitations": [
+    "nproc=1 且同机 vLLM 占 CPU：绝对 CPU 秒/RSS/延迟受争抢放大，只做同对相对比较",
+    "validRestores 在 baseline 臂恒 0 是观测面缺失（hidden===null），不是恢复失败；restore 墙钟两臂均可测",
+    "click/restore 均为软件呈帧口径（CDP/页面状态），不是物理渲染或显示延迟",
+    "POST 恒 0：两臂都不启聊天服务，隐藏期聊天结算未测（not-run）",
+    "summary.json 不落 env 白名单；candidate 的开关状态由行为证据证明（pausedAtEnd/hiddenAtEnd/leaseAtEnd/samples_detail）",
+    "未启用 short,behavior；遮挡识别本轮不做",
+    "userData 按负责人要求保留（未删除），入库时只取 summary.json/samples.json/product-*.log"
+  ],
+  "pairs": [
+    {
+      "stamp": "m39-xp1",
+      "state": "hidden",
+      "baseline": {
+        "arm": "baseline",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xp1/hidden-baseline/summary.json",
+        "label": "m39-xp1-hidden-baseline",
+        "wallSeconds": 60.49,
+        "samples": 86,
+        "electronCpuSeconds": 2.98,
+        "electronCpuPerMinute": 2.956,
+        "totalCpuSeconds": 3.24,
+        "totalCpuPerMinute": 3.214,
+        "electronRssBytes": 334241792,
+        "electronRssMB": 318.8,
+        "totalRssBytes": 404525056,
+        "totalRssMB": 385.8,
+        "decodedFrames": 1451,
+        "pausedAtEnd": false,
+        "hiddenAtEnd": null,
+        "leaseAtEnd": null,
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 4,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            }
+          ],
+          "restoreMs": [
+            3,
+            3,
+            4,
+            3,
+            2,
+            3,
+            3,
+            2,
+            3,
+            3
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 4,
+          "restoreHiddenFlags": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            4,
+            3,
+            3
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 0,
+          "validClicks": 10
+        }
+      },
+      "candidate": {
+        "arm": "candidate",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xp1/hidden-candidate/summary.json",
+        "label": "m39-xp1-hidden-candidate",
+        "wallSeconds": 60.51,
+        "samples": 86,
+        "electronCpuSeconds": 0.13,
+        "electronCpuPerMinute": 0.129,
+        "totalCpuSeconds": 0.4,
+        "totalCpuPerMinute": 0.397,
+        "electronRssBytes": 334770176,
+        "electronRssMB": 319.3,
+        "totalRssBytes": 406011904,
+        "totalRssMB": 387.2,
+        "decodedFrames": 0,
+        "pausedAtEnd": true,
+        "hiddenAtEnd": true,
+        "leaseAtEnd": {
+          "generation": 1,
+          "slot": "single",
+          "elementIdentity": "single-primary"
+        },
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            }
+          ],
+          "restoreMs": [
+            4,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 4,
+          "restoreHiddenFlags": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 2,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 3,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 4,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 5,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 6,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 7,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 8,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 9,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 10,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 11,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            4,
+            3,
+            3,
+            4,
+            3
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 10,
+          "validClicks": 10
+        }
+      },
+      "delta": {
+        "electronCpuPerMinute": -2.827,
+        "electronCpuPercent": -95.6,
+        "totalCpuPerMinute": -2.817,
+        "decodedFrames": -1451,
+        "electronRssMB": 0.5,
+        "totalRssMB": 1.4,
+        "clickMedianMs": 0,
+        "clickMaxMs": 0,
+        "restoreMedianMs": 0
+      }
+    },
+    {
+      "stamp": "m39-xp2",
+      "state": "hidden",
+      "baseline": {
+        "arm": "baseline",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xp2/hidden-baseline/summary.json",
+        "label": "m39-xp2-hidden-baseline",
+        "wallSeconds": 60.49,
+        "samples": 86,
+        "electronCpuSeconds": 2.74,
+        "electronCpuPerMinute": 2.718,
+        "totalCpuSeconds": 3,
+        "totalCpuPerMinute": 2.976,
+        "electronRssBytes": 334766080,
+        "electronRssMB": 319.3,
+        "totalRssBytes": 405028864,
+        "totalRssMB": 386.3,
+        "decodedFrames": 1450,
+        "pausedAtEnd": false,
+        "hiddenAtEnd": null,
+        "leaseAtEnd": null,
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            }
+          ],
+          "restoreMs": [
+            3,
+            2,
+            2,
+            3,
+            3,
+            3,
+            3,
+            2,
+            3,
+            3
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 3,
+          "restoreHiddenFlags": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            3,
+            3,
+            3,
+            3,
+            4,
+            3,
+            3,
+            3,
+            3,
+            4
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 0,
+          "validClicks": 10
+        }
+      },
+      "candidate": {
+        "arm": "candidate",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xp2/hidden-candidate/summary.json",
+        "label": "m39-xp2-hidden-candidate",
+        "wallSeconds": 60.52,
+        "samples": 86,
+        "electronCpuSeconds": 0.16,
+        "electronCpuPerMinute": 0.159,
+        "totalCpuSeconds": 0.43,
+        "totalCpuPerMinute": 0.426,
+        "electronRssBytes": 335728640,
+        "electronRssMB": 320.2,
+        "totalRssBytes": 406065152,
+        "totalRssMB": 387.3,
+        "decodedFrames": 0,
+        "pausedAtEnd": true,
+        "hiddenAtEnd": true,
+        "leaseAtEnd": {
+          "generation": 1,
+          "slot": "single",
+          "elementIdentity": "single-primary"
+        },
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 5,
+              "hidden": false
+            }
+          ],
+          "restoreMs": [
+            3,
+            3,
+            3,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            5
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 5,
+          "restoreHiddenFlags": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 2,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 3,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 4,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 5,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 6,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 7,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 8,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 9,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 10,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 11,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            3,
+            3,
+            4,
+            3,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 10,
+          "validClicks": 10
+        }
+      },
+      "delta": {
+        "electronCpuPerMinute": -2.559,
+        "electronCpuPercent": -94.2,
+        "totalCpuPerMinute": -2.55,
+        "decodedFrames": -1450,
+        "electronRssMB": 0.9,
+        "totalRssMB": 1,
+        "clickMedianMs": 0,
+        "clickMaxMs": 0,
+        "restoreMedianMs": 0
+      }
+    },
+    {
+      "stamp": "m39-xp3",
+      "state": "hidden",
+      "baseline": {
+        "arm": "baseline",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xp3/hidden-baseline/summary.json",
+        "label": "m39-xp3-hidden-baseline",
+        "wallSeconds": 60.49,
+        "samples": 86,
+        "electronCpuSeconds": 2.78,
+        "electronCpuPerMinute": 2.757,
+        "totalCpuSeconds": 3.04,
+        "totalCpuPerMinute": 3.015,
+        "electronRssBytes": 333791232,
+        "electronRssMB": 318.3,
+        "totalRssBytes": 404434944,
+        "totalRssMB": 385.7,
+        "decodedFrames": 1450,
+        "pausedAtEnd": false,
+        "hiddenAtEnd": null,
+        "leaseAtEnd": null,
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            }
+          ],
+          "restoreMs": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2,
+            2
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 3,
+          "restoreHiddenFlags": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 2,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 0,
+          "validClicks": 10
+        }
+      },
+      "candidate": {
+        "arm": "candidate",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xp3/hidden-candidate/summary.json",
+        "label": "m39-xp3-hidden-candidate",
+        "wallSeconds": 60.51,
+        "samples": 86,
+        "electronCpuSeconds": 0.16,
+        "electronCpuPerMinute": 0.159,
+        "totalCpuSeconds": 0.43,
+        "totalCpuPerMinute": 0.426,
+        "electronRssBytes": 335577088,
+        "electronRssMB": 320,
+        "totalRssBytes": 406085632,
+        "totalRssMB": 387.3,
+        "decodedFrames": 0,
+        "pausedAtEnd": true,
+        "hiddenAtEnd": true,
+        "leaseAtEnd": {
+          "generation": 1,
+          "slot": "single",
+          "elementIdentity": "single-primary"
+        },
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            }
+          ],
+          "restoreMs": [
+            4,
+            3,
+            3,
+            3,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 4,
+          "restoreHiddenFlags": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 2,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 3,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 4,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 5,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 6,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 7,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 8,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 9,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 10,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 11,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            4,
+            3,
+            4,
+            3,
+            3,
+            3,
+            3,
+            4,
+            4,
+            4
+          ],
+          "clickMedianMs": 3.5,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 10,
+          "validClicks": 10
+        }
+      },
+      "delta": {
+        "electronCpuPerMinute": -2.598,
+        "electronCpuPercent": -94.2,
+        "totalCpuPerMinute": -2.589,
+        "decodedFrames": -1450,
+        "electronRssMB": 1.7,
+        "totalRssMB": 1.6,
+        "clickMedianMs": 0.5,
+        "clickMaxMs": 0,
+        "restoreMedianMs": 0
+      }
+    },
+    {
+      "stamp": "m39-xv1",
+      "state": "visible",
+      "baseline": {
+        "arm": "baseline",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xv1/visible-baseline/summary.json",
+        "label": "m39-xv1-visible-baseline",
+        "wallSeconds": 60.5,
+        "samples": 86,
+        "electronCpuSeconds": 3.09,
+        "electronCpuPerMinute": 3.065,
+        "totalCpuSeconds": 3.35,
+        "totalCpuPerMinute": 3.322,
+        "electronRssBytes": 335118336,
+        "electronRssMB": 319.6,
+        "totalRssBytes": 405442560,
+        "totalRssMB": 386.7,
+        "decodedFrames": 1450,
+        "pausedAtEnd": false,
+        "hiddenAtEnd": null,
+        "leaseAtEnd": null,
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            }
+          ],
+          "restoreMs": [
+            3,
+            3,
+            2,
+            3,
+            3,
+            2,
+            3,
+            3,
+            3,
+            3
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 3,
+          "restoreHiddenFlags": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            3,
+            3,
+            3,
+            3,
+            4,
+            3,
+            3,
+            4,
+            3,
+            3
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 0,
+          "validClicks": 10
+        }
+      },
+      "candidate": {
+        "arm": "candidate",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xv1/visible-candidate/summary.json",
+        "label": "m39-xv1-visible-candidate",
+        "wallSeconds": 60.49,
+        "samples": 86,
+        "electronCpuSeconds": 2.96,
+        "electronCpuPerMinute": 2.936,
+        "totalCpuSeconds": 3.22,
+        "totalCpuPerMinute": 3.194,
+        "electronRssBytes": 337207296,
+        "electronRssMB": 321.6,
+        "totalRssBytes": 407306240,
+        "totalRssMB": 388.4,
+        "decodedFrames": 1450,
+        "pausedAtEnd": false,
+        "hiddenAtEnd": false,
+        "leaseAtEnd": null,
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            }
+          ],
+          "restoreMs": [
+            4,
+            3,
+            3,
+            3,
+            3,
+            4,
+            4,
+            3,
+            3,
+            3
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 4,
+          "restoreHiddenFlags": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 2,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 3,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 4,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 5,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 6,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 7,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 8,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 9,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 10,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 11,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            4,
+            3,
+            4,
+            3
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 10,
+          "validClicks": 10
+        }
+      },
+      "delta": {
+        "electronCpuPerMinute": -0.129,
+        "electronCpuPercent": -4.2,
+        "totalCpuPerMinute": -0.128,
+        "decodedFrames": 0,
+        "electronRssMB": 2,
+        "totalRssMB": 1.7,
+        "clickMedianMs": 0,
+        "clickMaxMs": 0,
+        "restoreMedianMs": 0
+      }
+    },
+    {
+      "stamp": "m39-xv2",
+      "state": "visible",
+      "baseline": {
+        "arm": "baseline",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xv2/visible-baseline/summary.json",
+        "label": "m39-xv2-visible-baseline",
+        "wallSeconds": 60.51,
+        "samples": 86,
+        "electronCpuSeconds": 2.78,
+        "electronCpuPerMinute": 2.757,
+        "totalCpuSeconds": 3.04,
+        "totalCpuPerMinute": 3.014,
+        "electronRssBytes": 334385152,
+        "electronRssMB": 318.9,
+        "totalRssBytes": 404873216,
+        "totalRssMB": 386.1,
+        "decodedFrames": 1451,
+        "pausedAtEnd": false,
+        "hiddenAtEnd": null,
+        "leaseAtEnd": null,
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 4,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            }
+          ],
+          "restoreMs": [
+            4,
+            3,
+            3,
+            3,
+            2,
+            3,
+            3,
+            3,
+            3,
+            2
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 4,
+          "restoreHiddenFlags": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 2,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 2,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            3,
+            3,
+            3,
+            3,
+            3,
+            3,
+            2,
+            4,
+            3,
+            2
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 0,
+          "validClicks": 10
+        }
+      },
+      "candidate": {
+        "arm": "candidate",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xv2/visible-candidate/summary.json",
+        "label": "m39-xv2-visible-candidate",
+        "wallSeconds": 60.49,
+        "samples": 86,
+        "electronCpuSeconds": 2.91,
+        "electronCpuPerMinute": 2.886,
+        "totalCpuSeconds": 3.18,
+        "totalCpuPerMinute": 3.154,
+        "electronRssBytes": 334934016,
+        "electronRssMB": 319.4,
+        "totalRssBytes": 404975616,
+        "totalRssMB": 386.2,
+        "decodedFrames": 1450,
+        "pausedAtEnd": false,
+        "hiddenAtEnd": false,
+        "leaseAtEnd": null,
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 4,
+              "hidden": false
+            }
+          ],
+          "restoreMs": [
+            3,
+            3,
+            3,
+            3,
+            4,
+            3,
+            3,
+            3,
+            3,
+            4
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 4,
+          "restoreHiddenFlags": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 2,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 3,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 4,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 5,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 6,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 7,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 8,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 9,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 10,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 11,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            3,
+            3,
+            4,
+            3,
+            3,
+            3,
+            4,
+            4,
+            3,
+            3
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 10,
+          "validClicks": 10
+        }
+      },
+      "delta": {
+        "electronCpuPerMinute": 0.129,
+        "electronCpuPercent": 4.7,
+        "totalCpuPerMinute": 0.14,
+        "decodedFrames": -1,
+        "electronRssMB": 0.5,
+        "totalRssMB": 0.1,
+        "clickMedianMs": 0,
+        "clickMaxMs": 0,
+        "restoreMedianMs": 0
+      }
+    },
+    {
+      "stamp": "m39-xv3",
+      "state": "visible",
+      "baseline": {
+        "arm": "baseline",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xv3/visible-baseline/summary.json",
+        "label": "m39-xv3-visible-baseline",
+        "wallSeconds": 60.5,
+        "samples": 86,
+        "electronCpuSeconds": 2.73,
+        "electronCpuPerMinute": 2.708,
+        "totalCpuSeconds": 2.99,
+        "totalCpuPerMinute": 2.965,
+        "electronRssBytes": 335663104,
+        "electronRssMB": 320.1,
+        "totalRssBytes": 406380544,
+        "totalRssMB": 387.6,
+        "decodedFrames": 1451,
+        "pausedAtEnd": false,
+        "hiddenAtEnd": null,
+        "leaseAtEnd": null,
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 4,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 3,
+              "hidden": null
+            },
+            {
+              "ms": 2,
+              "hidden": null
+            }
+          ],
+          "restoreMs": [
+            4,
+            3,
+            2,
+            3,
+            2,
+            3,
+            2,
+            3,
+            3,
+            2
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 4,
+          "restoreHiddenFlags": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": null,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": null,
+                "clip": null,
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            3,
+            4,
+            4,
+            4,
+            3,
+            3,
+            3,
+            3,
+            3,
+            3
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null,
+            null
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 0,
+          "validClicks": 10
+        }
+      },
+      "candidate": {
+        "arm": "candidate",
+        "summaryPath": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/bench/idle-profile/runs/m39-xv3/visible-candidate/summary.json",
+        "label": "m39-xv3-visible-candidate",
+        "wallSeconds": 60.5,
+        "samples": 86,
+        "electronCpuSeconds": 2.91,
+        "electronCpuPerMinute": 2.886,
+        "totalCpuSeconds": 3.17,
+        "totalCpuPerMinute": 3.144,
+        "electronRssBytes": 335622144,
+        "electronRssMB": 320.1,
+        "totalRssBytes": 406532096,
+        "totalRssMB": 387.7,
+        "decodedFrames": 1451,
+        "pausedAtEnd": false,
+        "hiddenAtEnd": false,
+        "leaseAtEnd": null,
+        "postCount": 0,
+        "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+        "asset": {
+          "path": "assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "clip": {
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+        "probes": {
+          "restores": [
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 4,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 5,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            },
+            {
+              "ms": 3,
+              "hidden": false
+            }
+          ],
+          "restoreMs": [
+            3,
+            4,
+            3,
+            4,
+            3,
+            3,
+            3,
+            5,
+            3,
+            3
+          ],
+          "restoreMedianMs": 3,
+          "restoreMaxMs": 5,
+          "restoreHiddenFlags": [
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false,
+            false
+          ],
+          "restoreValidNote": "baseline 臂无 __petIdleSuspension 观测面（hidden===null），validRestores 恒 0；restore 墙钟仍可测",
+          "clicks": [
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 2,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 3,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 4,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 5,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 4,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 6,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 7,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 8,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1113,
+                "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+                "generation": 9,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 3,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 10,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+              },
+              "lastSrc": null
+            },
+            {
+              "latency": 2,
+              "error": null,
+              "shot": {
+                "bytes": 1208,
+                "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+                "generation": 11,
+                "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+                "via": "dom",
+                "phase": "loading",
+                "clip": "reaction",
+                "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+              },
+              "lastSrc": null
+            }
+          ],
+          "clickMs": [
+            4,
+            4,
+            4,
+            3,
+            4,
+            3,
+            3,
+            3,
+            3,
+            2
+          ],
+          "clickMedianMs": 3,
+          "clickMaxMs": 4,
+          "clickSignals": {
+            "dom": 10,
+            "state": 0,
+            "both": 0
+          },
+          "clickVias": [
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom",
+            "dom"
+          ],
+          "clickSrcs": [
+            "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm"
+          ],
+          "clickGenerations": [
+            2,
+            3,
+            4,
+            5,
+            6,
+            7,
+            8,
+            9,
+            10,
+            11
+          ],
+          "clickErrors": [],
+          "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+          "validRestores": 10,
+          "validClicks": 10
+        }
+      },
+      "delta": {
+        "electronCpuPerMinute": 0.178,
+        "electronCpuPercent": 6.6,
+        "totalCpuPerMinute": 0.179,
+        "decodedFrames": 0,
+        "electronRssMB": 0,
+        "totalRssMB": 0.1,
+        "clickMedianMs": 0,
+        "clickMaxMs": 0,
+        "restoreMedianMs": 0
+      }
+    }
+  ]
+}

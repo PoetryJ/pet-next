@@ -67,6 +67,9 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
     const reduction = reducePlayback(state, event);
     state = reduction.state;
     if (state.generation !== before) dropLease('generation-changed');
+    // CONTRACT 3：failed 先作废旧归属。否则恢复分支会把已失败的 owner 重新 play，
+    // 不产生任何上报，只留下白解码。
+    if (state.phase === 'failed') dropLease('failed');
     for (const effect of reduction.effects) applyEffect(effect);
     reconcile();
   }
@@ -305,6 +308,11 @@ export function createMediaAdapter(options: MediaAdapterOptions): MediaAdapter {
       }
       hidden = next;
       reconcile();
+    },
+    releaseIdleLease(reason = 'placeholder') {
+      if (!suspensionEnabled) return;
+      // CONTRACT 3：占位层接管后旧归属作废；只清标记，不替旧元素补 play。
+      dropLease(reason);
     },
     idleSuspensionState() {
       return {

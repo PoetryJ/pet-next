@@ -274,6 +274,43 @@ test('恢复 play 失败走失败路径，不卡在 playing', async () => {
   assert.deepEqual(env.adapter.idleSuspensionState().lease, null);
 });
 
+test('隐藏挂起期间解码失败：作废旧归属，可见后不把失败元素重新拉起', async () => {
+  const env = harness({ idlePause: true });
+  env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
+  await playThrough(env, 0);
+  env.adapter.setHidden(true);
+  assert.equal(env.element.paused, true);
+
+  const plays = env.element.playCalls;
+  env.element.onerror?.();
+  await flush();
+  assert.equal(env.adapter.phase, 'failed');
+  assert.deepEqual(env.adapter.idleSuspensionState().lease, null, 'failed 必须先作废旧 lease');
+
+  env.adapter.setHidden(false);
+  await flush();
+  assert.equal(env.element.playCalls, plays, '失败 owner 不得被恢复');
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 0);
+  assert.equal(env.adapter.idleSuspensionState().lastAction, 'none');
+});
+
+test('占位层接管：作废旧归属，可见后不为被遮住的元素白解码', async () => {
+  const env = harness({ idlePause: true });
+  env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });
+  await playThrough(env, 0);
+  env.adapter.setHidden(true);
+  const plays = env.element.playCalls;
+
+  env.adapter.releaseIdleLease('placeholder');
+  assert.deepEqual(env.adapter.idleSuspensionState().lease, null, 'placeholder 必须先作废旧 lease');
+
+  env.adapter.setHidden(false);
+  await flush();
+  assert.equal(env.element.playCalls, plays);
+  assert.equal(env.adapter.idleSuspensionState().resumeCount, 0);
+  assert.equal(env.element.paused, true);
+});
+
 test('dispose 后到达的恢复结果不再动作', async () => {
   const env = harness({ idlePause: true });
   env.adapter.begin({ playbackId: 'idle:1', url: 'idle.webm', once: false, clip: 'idle' });

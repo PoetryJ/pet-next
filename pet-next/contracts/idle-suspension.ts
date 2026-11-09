@@ -1,8 +1,9 @@
 /**
  * M3-9 待机节能预览的跨进程契约：显式开关、窗口可见性快照与调试观测面。
  *
- * 默认关闭。只有 `PET_NEXT_IDLE_PAUSE=1` 时主进程才装配窗口监听、预加载才暴露
- * `petWindowVisibility`，因此三个进程都用同一个常量判断，避免“一半装配”。
+ * 默认关闭。只有 `PET_NEXT_IDLE_PAUSE=1` 且单槽时主进程才装配窗口监听；预加载脚本
+ * 受窗口 sandbox 限制看不到该开关，因此静态暴露 `petWindowVisibility`，由 main 注入的
+ * `idlePause=1` 查询参数门控页面是否订阅，避免“一半装配”。
  * 本文件只放常量与纯函数，不引入 Electron、不放适配器逻辑。
  * @module pet-next/contracts/idle-suspension
  */

@@ -71,7 +71,8 @@ contextBridge.exposeInMainWorld('petLauncher', {
 
 /**
  * M3-9 节能预览：只转发"当前窗口可见性快照"。
- * 主进程在开关关闭时不注册对应 handler，页面拿到 null 即视为未启用；
+ * 主进程在开关关闭时不注册对应 handler，此时 invoke 会 reject；页面已按
+ * `idlePause=1` 门控，不会走到该分支；
  * 页面拿不到 ipcRenderer，也不能自己声明隐藏状态。
  */
 contextBridge.exposeInMainWorld('petWindowVisibility', {

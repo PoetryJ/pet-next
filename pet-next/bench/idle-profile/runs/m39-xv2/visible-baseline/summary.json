@@ -1,0 +1,1185 @@
+{
+  "arm": "baseline",
+  "state": "visible",
+  "label": "m39-xv2-visible-baseline",
+  "asset": {
+    "path": "assets/idle.webm",
+    "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+  },
+  "note": "CPU/RSS 口径见文件头；两臂唯一差异 = PET_NEXT_IDLE_PAUSE；未启用 short,behavior（见报告未证明项）",
+  "wallSeconds": 60.51,
+  "samples": 86,
+  "electronCpuSeconds": 2.78,
+  "totalCpuSeconds": 3.04,
+  "electronCpuPerMinute": 2.757,
+  "totalCpuPerMinute": 3.014,
+  "electronRssBytes": 334385152,
+  "totalRssBytes": 404873216,
+  "decodedFrames": 1451,
+  "clip": {
+    "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/idle.webm",
+    "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+  },
+  "pausedAtEnd": false,
+  "hiddenAtEnd": null,
+  "leaseAtEnd": null,
+  "postCount": 0,
+  "postNote": "两条臂都未启用聊天服务：POST 恒为 0，不能据此宣称\"隐藏不触发请求\"（该点由 e2e fake 覆盖）",
+  "samples_detail": [
+    {
+      "t": 0.003,
+      "electronCpu": 0,
+      "totalCpu": 0,
+      "electronRss": 338178048,
+      "totalRss": 405606400,
+      "decoded": 198,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 0.707,
+      "electronCpu": 0.04,
+      "totalCpu": 0.05,
+      "electronRss": 338178048,
+      "totalRss": 405876736,
+      "decoded": 215,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 1.412,
+      "electronCpu": 0.07,
+      "totalCpu": 0.08,
+      "electronRss": 338178048,
+      "totalRss": 405876736,
+      "decoded": 232,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 2.116,
+      "electronCpu": 0.12,
+      "totalCpu": 0.13,
+      "electronRss": 338178048,
+      "totalRss": 406618112,
+      "decoded": 249,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 2.82,
+      "electronCpu": 0.15,
+      "totalCpu": 0.17,
+      "electronRss": 338178048,
+      "totalRss": 406618112,
+      "decoded": 266,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 3.523,
+      "electronCpu": 0.18,
+      "totalCpu": 0.2,
+      "electronRss": 338178048,
+      "totalRss": 406618112,
+      "decoded": 282,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 4.228,
+      "electronCpu": 0.22,
+      "totalCpu": 0.24,
+      "electronRss": 338718720,
+      "totalRss": 407158784,
+      "decoded": 300,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 4.931,
+      "electronCpu": 0.27,
+      "totalCpu": 0.3,
+      "electronRss": 338718720,
+      "totalRss": 407158784,
+      "decoded": 316,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 5.635,
+      "electronCpu": 0.29,
+      "totalCpu": 0.32,
+      "electronRss": 338718720,
+      "totalRss": 407158784,
+      "decoded": 333,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 6.339,
+      "electronCpu": 0.34,
+      "totalCpu": 0.37,
+      "electronRss": 338718720,
+      "totalRss": 407158784,
+      "decoded": 350,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 7.042,
+      "electronCpu": 0.37,
+      "totalCpu": 0.4,
+      "electronRss": 338718720,
+      "totalRss": 407158784,
+      "decoded": 367,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 7.746,
+      "electronCpu": 0.4,
+      "totalCpu": 0.43,
+      "electronRss": 338731008,
+      "totalRss": 407171072,
+      "decoded": 384,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 8.45,
+      "electronCpu": 0.44,
+      "totalCpu": 0.48,
+      "electronRss": 338731008,
+      "totalRss": 407171072,
+      "decoded": 401,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 9.155,
+      "electronCpu": 0.47,
+      "totalCpu": 0.52,
+      "electronRss": 338731008,
+      "totalRss": 407171072,
+      "decoded": 418,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 9.859,
+      "electronCpu": 0.5,
+      "totalCpu": 0.55,
+      "electronRss": 338731008,
+      "totalRss": 407171072,
+      "decoded": 432,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 10.562,
+      "electronCpu": 0.54,
+      "totalCpu": 0.59,
+      "electronRss": 338731008,
+      "totalRss": 407171072,
+      "decoded": 451,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 11.266,
+      "electronCpu": 0.56,
+      "totalCpu": 0.61,
+      "electronRss": 338731008,
+      "totalRss": 407171072,
+      "decoded": 468,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 11.97,
+      "electronCpu": 0.6,
+      "totalCpu": 0.65,
+      "electronRss": 338993152,
+      "totalRss": 407433216,
+      "decoded": 485,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 12.674,
+      "electronCpu": 0.62,
+      "totalCpu": 0.68,
+      "electronRss": 338993152,
+      "totalRss": 407433216,
+      "decoded": 502,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 13.379,
+      "electronCpu": 0.65,
+      "totalCpu": 0.71,
+      "electronRss": 338993152,
+      "totalRss": 407703552,
+      "decoded": 519,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 14.083,
+      "electronCpu": 0.7,
+      "totalCpu": 0.77,
+      "electronRss": 339066880,
+      "totalRss": 407777280,
+      "decoded": 536,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 14.786,
+      "electronCpu": 0.73,
+      "totalCpu": 0.8,
+      "electronRss": 339066880,
+      "totalRss": 407777280,
+      "decoded": 552,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 15.49,
+      "electronCpu": 0.77,
+      "totalCpu": 0.84,
+      "electronRss": 339066880,
+      "totalRss": 407777280,
+      "decoded": 569,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 16.194,
+      "electronCpu": 0.81,
+      "totalCpu": 0.88,
+      "electronRss": 339066880,
+      "totalRss": 407777280,
+      "decoded": 586,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 16.899,
+      "electronCpu": 0.83,
+      "totalCpu": 0.9,
+      "electronRss": 339066880,
+      "totalRss": 408154112,
+      "decoded": 603,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 17.603,
+      "electronCpu": 0.87,
+      "totalCpu": 0.95,
+      "electronRss": 339066880,
+      "totalRss": 408154112,
+      "decoded": 620,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 18.306,
+      "electronCpu": 0.89,
+      "totalCpu": 0.98,
+      "electronRss": 339107840,
+      "totalRss": 408195072,
+      "decoded": 637,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 19.01,
+      "electronCpu": 0.93,
+      "totalCpu": 1.02,
+      "electronRss": 339107840,
+      "totalRss": 408195072,
+      "decoded": 654,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 19.714,
+      "electronCpu": 0.95,
+      "totalCpu": 1.04,
+      "electronRss": 339107840,
+      "totalRss": 408195072,
+      "decoded": 671,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 20.419,
+      "electronCpu": 0.99,
+      "totalCpu": 1.09,
+      "electronRss": 339107840,
+      "totalRss": 408195072,
+      "decoded": 688,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 21.122,
+      "electronCpu": 1.03,
+      "totalCpu": 1.13,
+      "electronRss": 339107840,
+      "totalRss": 408195072,
+      "decoded": 704,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 21.825,
+      "electronCpu": 1.06,
+      "totalCpu": 1.16,
+      "electronRss": 339107840,
+      "totalRss": 408195072,
+      "decoded": 720,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 22.528,
+      "electronCpu": 1.12,
+      "totalCpu": 1.22,
+      "electronRss": 338120704,
+      "totalRss": 407207936,
+      "decoded": 738,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 23.231,
+      "electronCpu": 1.16,
+      "totalCpu": 1.26,
+      "electronRss": 338120704,
+      "totalRss": 407478272,
+      "decoded": 755,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 23.933,
+      "electronCpu": 1.18,
+      "totalCpu": 1.28,
+      "electronRss": 338120704,
+      "totalRss": 407478272,
+      "decoded": 768,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 24.637,
+      "electronCpu": 1.22,
+      "totalCpu": 1.34,
+      "electronRss": 338120704,
+      "totalRss": 408014848,
+      "decoded": 788,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 25.34,
+      "electronCpu": 1.25,
+      "totalCpu": 1.37,
+      "electronRss": 338120704,
+      "totalRss": 408014848,
+      "decoded": 805,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 26.043,
+      "electronCpu": 1.29,
+      "totalCpu": 1.41,
+      "electronRss": 338120704,
+      "totalRss": 408014848,
+      "decoded": 822,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 26.747,
+      "electronCpu": 1.32,
+      "totalCpu": 1.44,
+      "electronRss": 338272256,
+      "totalRss": 408166400,
+      "decoded": 839,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 27.451,
+      "electronCpu": 1.35,
+      "totalCpu": 1.47,
+      "electronRss": 338272256,
+      "totalRss": 408166400,
+      "decoded": 856,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 28.154,
+      "electronCpu": 1.38,
+      "totalCpu": 1.5,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 873,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 28.858,
+      "electronCpu": 1.4,
+      "totalCpu": 1.54,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 890,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 29.562,
+      "electronCpu": 1.43,
+      "totalCpu": 1.57,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 907,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 30.266,
+      "electronCpu": 1.46,
+      "totalCpu": 1.6,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 924,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 30.969,
+      "electronCpu": 1.51,
+      "totalCpu": 1.65,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 940,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 31.672,
+      "electronCpu": 1.54,
+      "totalCpu": 1.68,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 957,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 32.375,
+      "electronCpu": 1.56,
+      "totalCpu": 1.7,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 974,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 33.078,
+      "electronCpu": 1.59,
+      "totalCpu": 1.74,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 991,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 33.781,
+      "electronCpu": 1.61,
+      "totalCpu": 1.77,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1008,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 34.485,
+      "electronCpu": 1.66,
+      "totalCpu": 1.82,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1025,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 35.189,
+      "electronCpu": 1.68,
+      "totalCpu": 1.84,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1042,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 35.893,
+      "electronCpu": 1.7,
+      "totalCpu": 1.86,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1056,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 36.596,
+      "electronCpu": 1.73,
+      "totalCpu": 1.89,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1076,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 37.299,
+      "electronCpu": 1.77,
+      "totalCpu": 1.93,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1092,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 38.002,
+      "electronCpu": 1.79,
+      "totalCpu": 1.96,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1109,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 38.706,
+      "electronCpu": 1.83,
+      "totalCpu": 2,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1126,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 39.409,
+      "electronCpu": 1.87,
+      "totalCpu": 2.05,
+      "electronRss": 338505728,
+      "totalRss": 408731648,
+      "decoded": 1143,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 40.111,
+      "electronCpu": 1.9,
+      "totalCpu": 2.08,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1160,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 40.815,
+      "electronCpu": 1.92,
+      "totalCpu": 2.1,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1177,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 41.519,
+      "electronCpu": 1.95,
+      "totalCpu": 2.13,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1194,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 42.222,
+      "electronCpu": 1.98,
+      "totalCpu": 2.17,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1210,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 42.925,
+      "electronCpu": 2.02,
+      "totalCpu": 2.21,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1227,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 43.628,
+      "electronCpu": 2.05,
+      "totalCpu": 2.24,
+      "electronRss": 338272256,
+      "totalRss": 408498176,
+      "decoded": 1244,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 44.331,
+      "electronCpu": 2.08,
+      "totalCpu": 2.27,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1261,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 45.035,
+      "electronCpu": 2.11,
+      "totalCpu": 2.31,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1278,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 45.739,
+      "electronCpu": 2.14,
+      "totalCpu": 2.35,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1294,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 46.443,
+      "electronCpu": 2.16,
+      "totalCpu": 2.37,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1312,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 47.146,
+      "electronCpu": 2.19,
+      "totalCpu": 2.4,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1328,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 47.849,
+      "electronCpu": 2.22,
+      "totalCpu": 2.43,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1344,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 48.552,
+      "electronCpu": 2.26,
+      "totalCpu": 2.47,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1362,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 49.256,
+      "electronCpu": 2.29,
+      "totalCpu": 2.5,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1379,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 49.96,
+      "electronCpu": 2.32,
+      "totalCpu": 2.54,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1392,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 50.663,
+      "electronCpu": 2.34,
+      "totalCpu": 2.56,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1413,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 51.366,
+      "electronCpu": 2.38,
+      "totalCpu": 2.61,
+      "electronRss": 338255872,
+      "totalRss": 408481792,
+      "decoded": 1430,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 52.07,
+      "electronCpu": 2.41,
+      "totalCpu": 2.64,
+      "electronRss": 334471168,
+      "totalRss": 404697088,
+      "decoded": 1446,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 52.774,
+      "electronCpu": 2.45,
+      "totalCpu": 2.68,
+      "electronRss": 334471168,
+      "totalRss": 404697088,
+      "decoded": 1463,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 53.477,
+      "electronCpu": 2.47,
+      "totalCpu": 2.71,
+      "electronRss": 334471168,
+      "totalRss": 404697088,
+      "decoded": 1480,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 54.18,
+      "electronCpu": 2.49,
+      "totalCpu": 2.73,
+      "electronRss": 334471168,
+      "totalRss": 404697088,
+      "decoded": 1497,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 54.885,
+      "electronCpu": 2.52,
+      "totalCpu": 2.76,
+      "electronRss": 334471168,
+      "totalRss": 404697088,
+      "decoded": 1514,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 55.588,
+      "electronCpu": 2.56,
+      "totalCpu": 2.8,
+      "electronRss": 334426112,
+      "totalRss": 404652032,
+      "decoded": 1531,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 56.291,
+      "electronCpu": 2.58,
+      "totalCpu": 2.83,
+      "electronRss": 334405632,
+      "totalRss": 404631552,
+      "decoded": 1548,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 56.995,
+      "electronCpu": 2.62,
+      "totalCpu": 2.87,
+      "electronRss": 334405632,
+      "totalRss": 404631552,
+      "decoded": 1565,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 57.698,
+      "electronCpu": 2.64,
+      "totalCpu": 2.9,
+      "electronRss": 334413824,
+      "totalRss": 404639744,
+      "decoded": 1582,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 58.401,
+      "electronCpu": 2.69,
+      "totalCpu": 2.95,
+      "electronRss": 334413824,
+      "totalRss": 404639744,
+      "decoded": 1598,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 59.104,
+      "electronCpu": 2.71,
+      "totalCpu": 2.97,
+      "electronRss": 334413824,
+      "totalRss": 404901888,
+      "decoded": 1615,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    },
+    {
+      "t": 59.807,
+      "electronCpu": 2.75,
+      "totalCpu": 3.01,
+      "electronRss": 334413824,
+      "totalRss": 404901888,
+      "decoded": 1632,
+      "paused": false,
+      "hidden": null,
+      "lease": null
+    }
+  ],
+  "probes": {
+    "restores": [
+      {
+        "ms": 4,
+        "hidden": null
+      },
+      {
+        "ms": 3,
+        "hidden": null
+      },
+      {
+        "ms": 3,
+        "hidden": null
+      },
+      {
+        "ms": 3,
+        "hidden": null
+      },
+      {
+        "ms": 2,
+        "hidden": null
+      },
+      {
+        "ms": 3,
+        "hidden": null
+      },
+      {
+        "ms": 3,
+        "hidden": null
+      },
+      {
+        "ms": 3,
+        "hidden": null
+      },
+      {
+        "ms": 3,
+        "hidden": null
+      },
+      {
+        "ms": 2,
+        "hidden": null
+      }
+    ],
+    "restoreMedianMs": 3,
+    "restoreMaxMs": 4,
+    "clicks": [
+      {
+        "latency": 3,
+        "error": null,
+        "shot": {
+          "bytes": 1113,
+          "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2"
+        },
+        "lastSrc": null
+      },
+      {
+        "latency": 3,
+        "error": null,
+        "shot": {
+          "bytes": 1208,
+          "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2,reaction:3"
+        },
+        "lastSrc": null
+      },
+      {
+        "latency": 3,
+        "error": null,
+        "shot": {
+          "bytes": 1113,
+          "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2,reaction:3,reaction:4"
+        },
+        "lastSrc": null
+      },
+      {
+        "latency": 3,
+        "error": null,
+        "shot": {
+          "bytes": 1208,
+          "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5"
+        },
+        "lastSrc": null
+      },
+      {
+        "latency": 3,
+        "error": null,
+        "shot": {
+          "bytes": 1113,
+          "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6"
+        },
+        "lastSrc": null
+      },
+      {
+        "latency": 3,
+        "error": null,
+        "shot": {
+          "bytes": 1208,
+          "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7"
+        },
+        "lastSrc": null
+      },
+      {
+        "latency": 2,
+        "error": null,
+        "shot": {
+          "bytes": 1113,
+          "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8"
+        },
+        "lastSrc": null
+      },
+      {
+        "latency": 4,
+        "error": null,
+        "shot": {
+          "bytes": 1208,
+          "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9"
+        },
+        "lastSrc": null
+      },
+      {
+        "latency": 3,
+        "error": null,
+        "shot": {
+          "bytes": 1208,
+          "sha256": "39e9970a967f2ec52ace494b460f8761f7fddb4b3613b4c5b0d60e49bb34b97a",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10"
+        },
+        "lastSrc": null
+      },
+      {
+        "latency": 2,
+        "error": null,
+        "shot": {
+          "bytes": 1113,
+          "sha256": "6f74ce821b9d5e3ffb9573150458ff848069ec143ef90a6e0fa5ce743a8bc2ee",
+          "generation": null,
+          "src": "file:///data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/assets/reaction.webm",
+          "via": "dom",
+          "phase": null,
+          "clip": null,
+          "trace": "idle:1,reaction:2,reaction:3,reaction:4,reaction:5,reaction:6,reaction:7,reaction:8,reaction:9,reaction:10,reaction:11"
+        },
+        "lastSrc": null
+      }
+    ],
+    "clickMedianMs": 3,
+    "clickMaxMs": 4,
+    "clickSignals": {
+      "dom": 10,
+      "state": 0,
+      "both": 0
+    },
+    "responseFrameNote": "latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源",
+    "decodedDuringProbes": null,
+    "validRestores": 0,
+    "validClicks": 10
+  }
+}

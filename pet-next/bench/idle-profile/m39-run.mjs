@@ -127,6 +127,47 @@ async function readMedia(cdp) {
   );
 }
 
+/**
+ * 点击探针的“回应起播”判定必须对两臂都成立。
+ * baseline 臂没有 `__petIdleSuspension` 观测面（开关关闭时页面不装配），只用 state 判定会让
+ * baseline 的 10 次点击全部 null、validClicks=0，无法比较延迟。故加 DOM 回退：
+ * 轮询单槽 `#clip` 的 currentSrc/src 是否指向 reaction 素材且与 idle 不同。
+ * 有 state 时仍附 generation/phase，并记录本次判定走的是哪条信号。
+ */
+const REACTION_DOM_READ = `(() => {
+  const v = document.querySelector('#clip');
+  if (!v) return { ready: false, src: '', isReaction: false, paused: null, trace: document.documentElement.dataset.trace ?? '' };
+  const src = v.currentSrc || v.src || '';
+  const idle = /idle/i.test(src);
+  return {
+    ready: true,
+    src,
+    isReaction: /reaction/i.test(src) && !idle,
+    paused: v.paused,
+    trace: document.documentElement.dataset.trace ?? '',
+  };
+})()`;
+
+async function waitReaction(cdp, timeoutMs = 8000) {
+  const deadline = Date.now() + timeoutMs;
+  let lastDom = null;
+  let lastState = null;
+  while (Date.now() < deadline) {
+    lastDom = await cdpEvaluate(cdp, REACTION_DOM_READ);
+    lastState = await readState(cdp);
+    const viaState = lastState !== null && lastState.clip === 'reaction' && lastState.phase === 'playing';
+    const viaDom = lastDom?.isReaction === true;
+    if (viaState || viaDom) {
+      return { dom: lastDom, state: lastState, via: viaState && viaDom ? 'state+dom' : viaState ? 'state' : 'dom' };
+    }
+    await delay(20);
+  }
+  const error = new Error(`reaction 起播超时（state+dom），最后 dom=${JSON.stringify(lastDom)} state=${JSON.stringify(lastState)}`);
+  error.lastDom = lastDom;
+  error.lastState = lastState;
+  throw error;
+}
+
 async function waitFor(cdp, labelText, predicate, timeoutMs = 15000) {
   const deadline = Date.now() + timeoutMs;
   let last = null;
@@ -271,18 +312,28 @@ try {
       let latency = null;
       let shot = null;
       try {
-        const reaction = await waitFor(cdp, 'reaction 起播', (value) => value !== null && value.clip === 'reaction' && value.phase === 'playing', 8000);
+        const reaction = await waitReaction(cdp, 8000);
         latency = Date.now() - t0;
         const capture = await cdp.send('Page.captureScreenshot', { format: 'png' });
         const data = String(capture.data ?? '');
         shot = {
           bytes: Buffer.from(data, 'base64').length,
           sha256: createHash('sha256').update(Buffer.from(data, 'base64')).digest('hex'),
-          generation: reaction?.generation ?? null,
+          generation: reaction.state?.generation ?? null,
+          src: reaction.dom?.src ?? null,
+          via: reaction.via,
+          phase: reaction.state?.phase ?? null,
+          clip: reaction.state?.clip ?? null,
+          trace: reaction.dom?.trace ?? null,
         };
         frames.push({ latency, shot });
       } catch (error) {
-        frames.push({ latency: null, error: String(error) });
+        frames.push({
+          latency: null,
+          error: String(error),
+          lastSrc: error.lastDom?.src ?? null,
+          lastState: error.lastState ?? null,
+        });
       }
       clicks.push(frames.at(-1));
       await delay(900);
@@ -293,10 +344,21 @@ try {
       restores,
       restoreMedianMs: median(restoreMs),
       restoreMaxMs: restoreMs.length > 0 ? Math.max(...restoreMs) : null,
-      clicks: clicks.map((item) => ({ latency: item.latency, error: item.error ?? null, shot: item.shot ?? null })),
+      clicks: clicks.map((item) => ({
+        latency: item.latency,
+        error: item.error ?? null,
+        shot: item.shot ?? null,
+        lastSrc: item.lastSrc ?? null,
+      })),
       clickMedianMs: median(clickMs),
       clickMaxMs: clickMs.length > 0 ? Math.max(...clickMs) : null,
-      responseFrameNote: 'latency = 点击 → 页面状态进入 reaction/playing 的墙钟（软件呈帧）；不是物理渲染/显示延迟',
+      clickSignals: {
+        dom: clicks.filter((item) => item.shot?.via === 'dom').length,
+        state: clicks.filter((item) => item.shot?.via === 'state').length,
+        both: clicks.filter((item) => item.shot?.via === 'state+dom').length,
+      },
+      responseFrameNote:
+        'latency = 点击 → 判定 reaction 起播的墙钟（软件呈帧），不是物理渲染/显示延迟；判定信号 = state.reaction/playing 或 #clip.src 指向 reaction.webm（DOM 回退对 baseline 臂同样生效），shot.via 记录命中来源',
       decodedDuringProbes: null,
       validRestores: restores.filter((item) => item.hidden === false).length,
       validClicks: clickMs.length,

@@ -110,6 +110,8 @@ function attachSingle(options: {
       media.begin({ playbackId: request.requestId, url: request.url, once: request.once, clip: request.clip });
     },
     showPlaceholder() {
+      // M3-9：占位层接管后不再恢复被遮住的旧元素（CONTRACT 3）。
+      media.releaseIdleLease('placeholder');
       showPlaceholder(options);
     },
     dispose() {

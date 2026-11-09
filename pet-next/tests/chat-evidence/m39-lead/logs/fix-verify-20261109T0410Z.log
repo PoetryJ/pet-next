@@ -1,0 +1,1249 @@
+
+> pet-next@0.1.0 verify /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> node scripts/preflight.mjs --require=unit,integration,cleanup,e2e && pnpm typecheck && pnpm lint && pnpm test && pnpm test:cleanup && pnpm test:integration && pnpm build && pnpm test:e2e
+
+[ready  ] unit
+  ✓ node 24.14.0
+[ready  ] integration
+  ✓ ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers
+  ✓ ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers
+  ✓ assets/idle.webm 与母带可读
+[ready  ] cleanup
+  ✓ node 24.14.0
+[ready  ] e2e
+  ✓ electron /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/node_modules/.pnpm/electron@43.3.0/node_modules/electron/dist/electron
+  ✓ DISPLAY=:98
+  ✓ xdotool version 3.20160805.1
+  ✓ xwininfo 1.1.5
+[not-run] windows
+  ✗ 非 Windows 平台（not-run）  → Windows 验收只在 Windows 上跑，其他平台不记通过。
+
+> pet-next@0.1.0 typecheck /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> tsc -p tsconfig.json --noEmit && tsc -p tsconfig.preload.json --noEmit
+
+
+> pet-next@0.1.0 lint /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> eslint .
+
+
+> pet-next@0.1.0 test /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> node scripts/unit-tests.mjs
+
+▶ createFakeChatProvider
+  ✔ complete 挂起，手动 resolve/reject 驱动结果，调用被记录 (1.736631ms)
+  ✔ abort 被观察到；abort 后迟到 resolve 不被 session 采纳 (0.817742ms)
+✔ createFakeChatProvider (3.404335ms)
+▶ startFakeChatServer
+  ✔ /healthz 返回 offline_ready；POST 正常回复带前缀与原文 (28.448147ms)
+  ✔ 长文本摘要；[error] 返回 500；[slow] 至少等待 slowMs (132.046672ms)
+  ✔ close 后端口释放，请求被拒绝 (3.346265ms)
+✔ startFakeChatServer (164.711335ms)
+▶ createHttpChatProvider
+  ✔ 成功：POST JSON {id,text}，返回响应 {text} (19.244112ms)
+  ✔ HTTP 500 -> reject（session 映射 provider-error） (3.820875ms)
+  ✔ 响应缺 text 字段 -> reject (2.361757ms)
+  ✔ 非回环地址直接拒绝（演示安全） (0.288903ms)
+  ✔ 取消/受控短超时：abort 传导到 fetch，服务端连接断开 (39.064891ms)
+✔ createHttpChatProvider (68.979105ms)
+▶ createQwenChatProvider / 请求形状
+  ✔ 200 正常：URL、method、headers、完整 JSON body 逐字匹配，返回 content (18.170086ms)
+  ✔ baseUrl 末尾斜杠被规整（不产生双斜杠），非默认端口原样保留 (0.533938ms)
+✔ createQwenChatProvider / 请求形状 (19.409388ms)
+▶ createQwenChatProvider / HTTP 与响应失败
+  ✔ HTTP 500 -> 抛错，meta 记录 status 与 error，不重试 (0.779862ms)
+  ✔ HTTP 400 -> 抛错并记录 status (0.387062ms)
+  ✔ 畸形 JSON -> 抛错并留 meta.error (1.226242ms)
+  ✔ 缺 choices / choices 为空 -> 抛错 (0.791323ms)
+  ✔ content 空串/空白/非字符串 -> 抛错（不当成空回复） (1.36128ms)
+✔ createQwenChatProvider / HTTP 与响应失败 (4.843112ms)
+▶ createQwenChatProvider / 截断与 usage
+  ✔ finish_reason=length -> 文本仍返回且 truncated=true (0.43025ms)
+  ✔ usage 存在 -> 记录三个 token 数且不标 usageUnknown (0.330233ms)
+  ✔ usage 缺失 -> usageUnknown=true（不编造数字） (0.364172ms)
+  ✔ reasoning / reasoning_content 绝不拼进正文 (0.320713ms)
+  ✔ lastMeta 每次调用覆盖为最近一次 (0.404531ms)
+✔ createQwenChatProvider / 截断与 usage (2.105703ms)
+▶ createQwenChatProvider / 取消与地址白名单
+  ✔ abort 贯穿网络：fetch 收到的 signal.aborted=true，调用抛 AbortError (0.46187ms)
+  ✔ 非 loopback baseUrl 直接拒绝 (0.279444ms)
+  ✔ http(s)://localhost 与 127.0.0.1（端口可省）都允许 (0.119818ms)
+  ✔ 注入 now()：latencyMs = 文本就绪 - 请求发出 (0.320922ms)
+  ✔ 失败路径同样记录 latencyMs 与 error (0.262054ms)
+✔ createQwenChatProvider / 取消与地址白名单 (1.649413ms)
+▶ createQwenChatProvider × 有界历史（M3-3）
+  ✔ 携带历史：固定 system → 历史 user/assistant 对 → 当前 user，顺序逐字锁定 (0.375212ms)
+  ✔ 不携带历史（undefined）：消息体与 M3-1 逐字节一致（默认关闭回归） (0.264475ms)
+  ✔ 空历史数组：与 undefined 逐字节一致 (0.253794ms)
+  ✔ 历史不改采样参数：max_tokens/temperature/chat_template_kwargs 与冻结值一致 (0.278774ms)
+  ✔ 畸形历史条目（非字符串字段）：早失败为 provider-error 语义，不发出请求 (0.185676ms)
+  ✔ UTF-8 请求体字节数随历史线性增长（对照记录用） (0.376051ms)
+✔ createQwenChatProvider × 有界历史（M3-3） (1.957297ms)
+▶ resolveTunnelConfig
+  ✔ 缺省值：只给 host/port/user 时用冻结默认 (0.600777ms)
+  ✔ 环境变量覆盖，fileConfig 优先于 env (0.139857ms)
+  ✔ 缺失主机/用户、非法端口、端口相同 → config-invalid (0.138116ms)
+✔ resolveTunnelConfig (1.552555ms)
+▶ sshArgs
+  ✔ 参数数组：-N、ExitOnForwardFailure、有界 ConnectTimeout、-L 回环转发、-p、identityFile、user@host (0.621836ms)
+✔ sshArgs (0.718414ms)
+▶ startTunnel
+  ✔ 就绪：探测通即返回句柄；stop 幂等只发一次 SIGTERM；随后 isAlive=false (38.079103ms)
+  ✔ 就绪超时 → not-ready，且本次进程被清理 (425.573882ms)
+  ✔ 本地端口被占 → port-conflict，不杀占用者、不 spawn (0.833481ms)
+  ✔ 认证失败（stderr Permission denied）→ auth-failed (20.887046ms)
+  ✔ ssh 不存在（同步 ENOENT）→ ssh-missing (0.579427ms)
+  ✔ ssh 不存在（异步 error 事件）→ ssh-missing (20.953413ms)
+  ✔ 就绪后断线：isAlive 变 false，stop 不再 kill (10.845578ms)
+  ✔ 探测成功的瞬间 ssh 已退出（认证竞态）→ auth-failed，不得返回 ok/isAlive=false 的句柄 (0.731774ms)
+  ✔ 就绪探测期间取消（AbortSignal）→ cancelled，只关闭本次 ssh，无关进程存活 (63.78886ms)
+  ✔ 并发 stop：只 kill 一次，两个调用都等到实际退出 (42.186632ms)
+✔ startTunnel (625.092513ms)
+✔ 首次启动：配置文件不存在 → config:null (4.730345ms)
+✔ 中文+空格路径下保存后再读回，字段一致且 JSON 形状受控 (2.69778ms)
+✔ identityFile 省略时不写入该键（不存私钥内容/口令） (1.610534ms)
+✔ 坏 JSON → file-unreadable（可读错误，不崩溃） (1.37717ms)
+✔ 校验失败的保存不覆盖旧文件，且不残留临时文件 (1.656803ms)
+✔ 配置路径：PET_NEXT_REMOTE_CONFIG 优先，否则 ~/.pet-next/qwen-remote.json (0.142957ms)
+✔ 真实 probeService：只发 GET /v1/models（零 POST），成功收隧道一次 (22.236995ms)
+✔ 真实 probeService：外部取消信号合并进 /models 请求，取消后不留活隧道 (1.34502ms)
+▶ createMediaAdapter
+  ✔ 正常播放会上报 playing 和 ended，循环片段的 ended 会重播而不是结束 (2.013505ms)
+  ✔ 加载失败、播放拒绝和超时各自失败，迟到的成功不能复活 (0.630446ms)
+  ✔ 替换会取消旧请求并在新源就绪时释放旧地址 (0.322073ms)
+  ✔ A→B→C 时旧加载、旧 play 和旧 ended 都不影响 C (0.301373ms)
+  ✔ 卸载后清理监听、计时器和已持有地址，迟到回调不能再播放 (0.382872ms)
+  ✔ 播放中的解码错误进入 failed (0.256484ms)
+✔ createMediaAdapter (4.756275ms)
+▶ createElementLoader
+  ✔ 就绪、失败、中止都会卸下监听，release 清掉地址 (0.737233ms)
+✔ createElementLoader (0.853711ms)
+✔ 默认关闭：setHidden 不产生任何暂停/恢复，也不记 lease (2.630432ms)
+✔ 隐藏时暂停当前 idle；恢复时只恢复该 owner 且不重报 playing (0.391021ms)
+✔ 重复 hidden 不重复 pause；重复 visible 不重复 resume (0.257325ms)
+✔ 加载中隐藏不暂停；兑现后按最新状态暂停 (0.202245ms)
+✔ once 动作在隐藏时不暂停，结束后再回到 idle 才暂停 (0.486129ms)
+✔ 隐藏期换素材并复用同一素材：旧归属作废，不会永久冻帧 (0.4547ms)
+✔ 旧的 play Promise 晚到不影响新 owner (0.276854ms)
+✔ 隐藏中 onended 循环不重启解码 (0.158177ms)
+✔ 恢复 play 失败走失败路径，不卡在 playing (0.324973ms)
+✔ 隐藏挂起期间解码失败：作废旧归属，可见后不把失败元素重新拉起 (0.309913ms)
+✔ 占位层接管：作废旧归属，可见后不为被遮住的元素白解码 (0.184336ms)
+✔ dispose 后到达的恢复结果不再动作 (0.199025ms)
+▶ createTwoSlotAdapter
+  ✔ 旧槽继续显示，新槽准备完成后才切换并暂停旧槽 (2.378627ms)
+  ✔ 旧世代的加载和 play 兑现不影响新请求 (0.376491ms)
+  ✔ 另一个槽先准备好时，不能把当前播放请求切过去 (0.42873ms)
+  ✔ 准备失败保留可见画面，并带上仍在显示的请求 (0.588237ms)
+  ✔ 进行中的预热被新播放请求接过时，仍只有一次加载且预热编号不会 playing (0.388372ms)
+  ✔ 预热不产生 playing 或 ended；同一资源换新请求编号才会播放 (0.399171ms)
+  ✔ 预热失败和准备超时都留下正在显示的画面 (0.536928ms)
+  ✔ 同一播放请求不重复加载；销毁后的回调不能再播放 (0.312663ms)
+  ✔ 旧槽迟到的 play 兑现不会给新请求发出 playing (0.393312ms)
+  ✔ 超过两个槽时直接拒绝 (0.420341ms)
+✔ createTwoSlotAdapter (7.142221ms)
+▶ twoSlotModeForPreview
+  ✔ single 不启用双槽，另外两个模式原样返回 (0.46132ms)
+✔ twoSlotModeForPreview (1.103986ms)
+▶ selectPlaySlot
+  ✔ 有画面时只准备另一槽，没有画面时优先复用已装入同一地址的槽 (0.136287ms)
+✔ selectPlaySlot (0.227815ms)
+▶ selectPreheatSlot
+  ✔ 预热不占用正在准备播放的槽 (0.138237ms)
+✔ selectPreheatSlot (0.233645ms)
+▶ canReusePreparedSource
+  ✔ 同一地址且请求编号不同可以复用资源，同一请求编号必须重新加载 (0.151847ms)
+✔ canReusePreparedSource (0.236725ms)
+▶ blocksPlaybackRequest
+  ✔ 预热编号不能当作播放请求，槽数不是两个就拒绝 (1.305131ms)
+✔ blocksPlaybackRequest (1.441707ms)
+▶ tokenIsCurrent
+  ✔ 世代和槽都符合且未销毁时采纳回调 (0.498689ms)
+  ✔ 世代不符时丢弃回调 (0.124217ms)
+  ✔ 槽身份不符时丢弃回调 (0.107427ms)
+  ✔ 已销毁或没有当前准备时丢弃回调 (0.085488ms)
+✔ tokenIsCurrent (1.510087ms)
+▶ readFailureReason
+  ✔ 未知错误按资源加载失败，播放拒绝按解码失败报告 (0.166967ms)
+✔ readFailureReason (0.262184ms)
+▶ domScreenPointToDip
+  ✔ 125% 下 48 物理像素对应的 38.4 DIP 原样返回 (0.89252ms)
+  ✔ 150% 与默认缩放的 screen 增量同样原样进入 DIP (0.126667ms)
+✔ domScreenPointToDip (1.682432ms)
+▶ readForcedDeviceScaleFactor
+  ✔ 没有开关时留给操作系统 (0.538288ms)
+  ✔ 100%、125%、150% 记为模拟条件 (0.115957ms)
+  ✔ 0 和非数字不当作模拟缩放 (0.096477ms)
+✔ readForcedDeviceScaleFactor (1.452868ms)
+▶ advanceOrigin
+  ✔ 连续 0.25 DIP 累加到未回读的原点 (1.036077ms)
+  ✔ 越界夹到工作区边缘，贴边后继续外推仍停在边缘 (0.187276ms)
+  ✔ 四舍五入出界时拉回工作区内的整数 (0.130577ms)
+✔ advanceOrigin (2.047574ms)
+▶ clampPosition
+  ✔ 工作区内部保持原位，越界夹到边缘 (1.034097ms)
+  ✔ 窗口大于工作区时钉在原点 (0.122777ms)
+✔ clampPosition (1.872328ms)
+▶ createWindowController
+  ✔ moveBy 夹紧后取整，quit 只调用宿主退出 (0.403881ms)
+  ✔ 宿主回读停在原位时，连续 DIP 增量仍按累计位置写入 (0.258015ms)
+✔ createWindowController (0.797542ms)
+✔ 演示节奏：boot 后按 cadence 挂一次性定时器，自动动作结束才重算冷却 (1.587525ms)
+✔ 日常节奏：冷却区间取样消耗随机数且落在 [45s, 900s] (0.192066ms)
+✔ 点击打断自动动作，拖动只移动窗口，失败回应指向缺失地址 (1.096836ms)
+✔ 拖动进行中定时器到期：不提议自动动作，改期重来 (0.237205ms)
+✔ 连点覆盖：旧回应未结束前新点击取代旧点击 (0.282054ms)
+✔ 长会话有界：万次点击后 trace ≤ 32，最老请求身份按未知处理 (31.264564ms)
+✔ quit 后定时器与媒体回调都不能复活会话 (0.407991ms)
+✔ 拖动打断自动动作后松手：恰有一个冷却定时器，到期再自动，quit 后清零（探针序列） (0.366452ms)
+✔ 被拖动取消的旧自动请求事后 settled：不重置冷却、不额外挂表 (0.381622ms)
+✔ 拖动结束回待机重挂冷却：冷却从松手起算，期间定时器至多一个 (0.303043ms)
+✔ reaction 待机时播一次候选短片 (0.238144ms)
+✔ reaction 忙时丢弃：不打断在播动作，也不排队 (0.161746ms)
+✔ reaction 拖动中丢弃；松手回待机后可再次接受 (0.177986ms)
+✔ reaction 在 quit 后忽略 (0.101568ms)
+✔ 1 默认收起：只剩小按钮；点击展开；指针/按键事件在面板根截停不冒泡 (1.574875ms)
+✔ 2 Enter 发送；组合输入期间（isComposing 或 composition 状态）不发送；Shift+Enter 不发送（留给换行） (0.498999ms)
+✔ 3 pending 禁发且二次 Enter/点击不产生第二次 client.send（面板层一次一个在途） (0.285154ms)
+✔ 4 取消按钮 pending 可点：调 client.cancel(id)，结果显示已取消 (0.724464ms)
+✔ 5 迟到结果隔离：取消后立即新发送，旧请求迟到 ok/error 不得覆盖新请求状态 (0.491829ms)
+✔ 6 错误显示含 code（含 client.send reject 映射），失败后可再次发送 (0.395261ms)
+✔ 7 回复区明确标注演示回复字样 (0.261874ms)
+✔ 8 空输入与超 500 字符禁发并提示 (0.237805ms)
+✔ 9 unmount：撤销在途（cancel 被调）、移除 DOM；收起按钮同样撤销在途；再次 mount 可用 (0.529308ms)
+✔ 纯函数：validateChatInput 边界与 enterShouldSend/phaseForResult 判定 (0.276104ms)
+✔ 10 视口约束：panelMaxHeight/resolveViewportHeight 边界，挂载按视口写入面板行内 max-height (0.361022ms)
+✔ 11 结构：标题/关闭/滚动正文/输入/发送/取消齐备，正文列表为中间可滚动区，data-testid 契约不变 (0.436161ms)
+✔ 12 CSS 视口方案静态校验：面板高度受 100vh 约束，仅 chat-log 滚动，固定区不收缩，预留值与 TS 常量一致 (6.631213ms)
+✔ 13 demo/local 挂载差异：demo 有假数据提示与「演示回复」，local 无提示且标签为「Qwen · 模型名」 (0.526568ms)
+✔ 14 local 无模型名时回退「Qwen · 服务器模型」，面板全文不出现「演示」字样 (0.271414ms)
+✔ 15 local 失败/超时/取消/空正文：只渲染错误或已取消，绝不出现假回复或成功态 (1.020387ms)
+✔ 16 默认关闭：无「新对话」按钮、无记忆提示、dataset.context=off（与既有面板一致） (0.098558ms)
+✔ 17 显式开启：渲染「新对话」与记忆提示，文案口径诚实（当前会话内、重启不保留） (0.112247ms)
+✔ 18 新对话：取消在途、清空展示、立即恢复可发送；旧请求迟到结果被忽略 (0.320283ms)
+✔ 19 新对话不调用 cancel（主进程 reset 语义已含取消在途），收起面板时同样可用 (0.132527ms)
+▶ feedback view
+  ✔ 初始隐藏、无 kind (0.771083ms)
+  ✔ waiting/success/error/cancelled 四类文案与 data-kind (0.256324ms)
+  ✔ hint-hide 隐藏并清空 (0.198646ms)
+  ✔ react 效果不影响视图（回应由控制器转发） (0.217855ms)
+  ✔ dispose 后 apply 不生效且节点被移除 (0.311613ms)
+✔ feedback view (2.568113ms)
+▶ feedback controller
+  ✔ send 前出现 waiting，POST 次数不增加 (2.585782ms)
+  ✔ 成功：success 提示 + onReact 恰一次 (0.171966ms)
+  ✔ 错误：error 提示且不回应 (0.155896ms)
+  ✔ cancelled 结果：cancelled 提示且不回应 (0.160616ms)
+  ✔ cancel 透传并立即提示取消（在途时） (0.224495ms)
+  ✔ reset 透传、清提示，并让旧结果迟到零动作 (0.239745ms)
+  ✔ 拖动中成功：只提示，不回应 (0.173976ms)
+  ✔ 任意时刻至多一个定时器；到期隐藏 (0.228825ms)
+  ✔ 终态提示重新挂一个定时器（成功后到期隐藏） (0.205245ms)
+  ✔ 慢回复：等待提示到期后成功仍提示且回应恰一次（2s 延迟） (0.263604ms)
+  ✔ 慢回复：等待到期后迟到 error/cancel 只提示不回应 (0.222615ms)
+  ✔ 慢回复：等待到期后 reset，迟到 ok 零动作 (0.133007ms)
+  ✔ 慢回复：等待到期后取消与迟到成功并存，先到终态为准且不回应 (0.139727ms)
+  ✔ 慢回复：拖动中等待到期后完成，只提示不补播回应 (0.168466ms)
+  ✔ dispose 释放视图与定时器，之后不再产生提示 (0.180076ms)
+✔ feedback controller (6.28778ms)
+✔ 1 加载回填：有配置时各字段回填、摘要正确、无引导、聚焦首字段 (2.787048ms)
+✔ 2 无配置：空表单 + 引导文案 + 摘要占位，选项缺省 standard/off (0.41473ms)
+✔ 3 load 失败：显示错误码与重试按钮；重试成功后进入编辑 (0.491409ms)
+✔ 4 探测中禁用：按钮文本「探测中…」且不得重复触发 (0.552097ms)
+✔ 5 探测失败：错误码 + 可读修正提示（auth/ssh/port/not-ready 各自口径） (0.834191ms)
+✔ 6 表单非法点探测：逐字段标错、不发 probe、config-invalid 提示 (0.46046ms)
+✔ 7 启动中禁用：save → start 链路按序，成功显示已启动且按钮保持禁用 (0.89439ms)
+✔ 8 启动失败可重试：显示错误码修正提示，允许修正后再次启动 (0.834262ms)
+✔ 9 保存失败停留：不调 start、显示保存失败、回到编辑态 (0.406011ms)
+✔ 10 选项缺省与显式选择：standard/off 缺省，改选后 start 收到所选值，选项本身不触发调用 (0.405951ms)
+✔ 11 回车提交当前动作：Enter 触发启动链；Shift+Enter 与中文组合输入不触发 (0.389051ms)
+✔ 12 unmount：移除 DOM；在途结果迟到不抛错 (0.263024ms)
+✔ 纯函数：parsePortField/validateForm/buildConfig/configToForm/summaryFor/错误文案边界 (0.213215ms)
+✔ 缺省、空串和含糊令牌都保持已验收路径 (0.795692ms)
+✔ 点名的策略记入请求，运行标记与已接线的令牌相同 (0.663675ms)
+✔ 短片、演示节奏与 bench 观测令牌 (0.159106ms)
+▶ createPetController
+  ✔ 开机、单击和回应结束按顺序回到新的待机请求 (1.258742ms)
+  ✔ 连续点击只让最新回应的 ended 回待机 (0.237915ms)
+  ✔ 拖动和 pointercancel 不触发点击，位移送到端口 (0.338262ms)
+  ✔ 回应失败后的待机若再失败就停在占位，重复失败不再播放 (0.217575ms)
+✔ createPetController (2.795437ms)
+▶ parseClipRequest
+  ✔ 只接受 idle 和 reaction 编号 (0.931879ms)
+✔ parseClipRequest (1.036577ms)
+▶ 素材指纹
+  ✔ 只接受成品待机和反应，候选文件不能混进来 (0.970358ms)
+  ✔ 成品字节保持已记录的哈希，任一字节变化指纹就变 (15.201722ms)
+✔ 素材指纹 (16.950313ms)
+✔ 估算字段 = 实测首帧 + 素材内回应时刻，并带说明结构 (0.687105ms)
+✔ 首帧未兑现时估算为 null，但仍保留估算说明 (0.131767ms)
+✔ 素材内回应时刻未知时估算为 null (0.128147ms)
+✔ 汇总使用 Estimate 命名：P50 = 首帧 P50 + 素材内回应时刻 (0.303243ms)
+✔ workbook 吃 fixture 全量产物：账本一致、行数 18、材料含观测点与结构 (369.669176ms)
+✔ workbook 复验预算保护：maxPosts=3 产物 attempts=3 且不越界 (141.416034ms)
+✔ 缺产物的 runId 必须报错（不静默给空表） (2.756679ms)
+[context-runner] run=selftest-replay-1794198064973-495 已完整（attempts=18，settled={"ok":18,"error":0,"cancelled":0,"other":0}）——只读复核：不新增 POST、不覆盖任何文件
+✔ fixture 全链路：18 次两臂，on 臂第三问带历史、off 臂单轮、S3 两臂 reset 后均单轮 (385.362317ms)
+✔ M3-5 完整 run 重入：只读复核（零新增 POST、既有文件 hash 与 mtime 不变） (407.183771ms)
+✔ M3-5 中断 run 重入：非零拒绝（不静默续跑、不覆盖、不另开 run） (182.06686ms)
+✔ M3-5 坏账本：行不可解析 → 非零拒绝且文件不变 (197.559045ms)
+✔ M3-5 账本与 summary 计数不一致 → 非零拒绝 (144.641492ms)
+✔ 预算封顶：maxPosts 耗尽即停，不超发 (138.750303ms)
+✔ live 预检失败：拒绝执行且不消费额度（账本文件不存在） (14.991536ms)
+✔ 冻结值：BUDGET_POSTS 必须是 18（验收授权值） (0.104718ms)
+▶ CPU 采样
+  ✔ 进程名里的括号不影响 utime 和 stime (1.279711ms)
+  ✔ 100 个 tick、1 秒、每秒 100 tick，等于一个核 (0.166857ms)
+✔ CPU 采样 (2.322489ms)
+▶ 空白时间
+  ✔ 旧画面一直在，空白是 0 (0.565118ms)
+  ✔ 空档按采样前的种类累计，没有反应画面则为 null (0.140747ms)
+  ✔ play() 兑现不会填进首帧 (0.142457ms)
+  ✔ 有首帧时两个时刻仍然分开 (0.133267ms)
+✔ 空白时间 (1.717732ms)
+✔ 正控：观测到目标回应帧才记 responseObservedMs (1.438408ms)
+✔ 负控：装载失败 → 未完成，观察字段全 null (0.186026ms)
+✔ 旧帧不算：click 之前的回应素材帧被排除 (0.217525ms)
+✔ 产品自带 bench-frame（带 requestId）优先于注入帧 (0.224545ms)
+✔ pointercancel → cancelled，不计成功 (0.178346ms)
+✔ 结束但未到目标帧 → ended-before-target，不算成功 (0.256864ms)
+✔ 覆盖后迟到帧：同素材的后续请求帧不能归到旧请求 (0.230655ms)
+✔ 取消后迟到帧：目标帧不能越过 pointercancel 计成功 (1.38526ms)
+✔ 成功之后再发生输入：已经兑现的原成功保留 (0.211055ms)
+▶ 对照条件
+  ✔ 三种模式的窗口相同，行为关闭，轮换先手 (1.005488ms)
+  ✔ 测量页不引用行为调度 (4.362363ms)
+✔ 对照条件 (6.093625ms)
+▶ 一页报告
+  ✔ 同时列出 play() 和首帧，并写明停止理由和素材边界 (0.969958ms)
+✔ 一页报告 (1.613754ms)
+▶ 分位和建议
+  ✔ P50 取第 15 个，P95 取第 29 个 (0.826272ms)
+  ✔ 收益超过波动才保留 (3.831085ms)
+  ✔ 收益落在轮间波动里就停止 (1.82762ms)
+  ✔ 重复播放变快但首次变慢、空白变多、内存升高，都停止 (4.557999ms)
+  ✔ 没有可见首帧时不把别的时刻当成提升，空白数字仍然保留 (1.229052ms)
+  ✔ 缺截图、哈希不一致或次数不够都是未测出 (2.311169ms)
+✔ 分位和建议 (15.718061ms)
+▶ proposeNextAuto
+  ✔ 假时钟决定候选是否到期，单条候选不调用 random，也不改写 requestId (1.417418ms)
+  ✔ 多条到期候选用注入随机数取下标，身份仍来自候选 (0.234755ms)
+✔ proposeNextAuto (2.526993ms)
+▶ product scheduler
+  ✔ 规则列表与实验同级排队分开，步进不读时钟 (0.857761ms)
+  ✔ 新点击覆盖旧点击，不把同级点击留在队列 (0.332913ms)
+  ✔ 点击打断自动动作，拖动本身不产生回应 (0.303533ms)
+  ✔ 拖动期间只保留最新点击，结束后才开始，且不启动自动动作 (0.235595ms)
+  ✔ 空闲时自动动作才开始；拖动中到达的自动动作在拖动结束后才开始 (0.168986ms)
+  ✔ nowMs 等于 expiresAtMs 的自动动作丢弃，活动中的请求不过期 (0.376462ms)
+  ✔ 完成或失败后只回待机，不在同一步启动待处理的自动动作 (0.329973ms)
+  ✔ 同一 requestId 在窗口内不能第二次开始 (0.192916ms)
+  ✔ 多个可开始的自动动作才调用 random，下标决定开始哪一条 (0.214086ms)
+  ✔ 重复拖动开始不重复取消 (0.126387ms)
+  ✔ 返回的状态不与入参共享数组 (0.144097ms)
+  ✔ 待处理超过 8 时丢掉最旧的自动动作，最新点击仍保留 (0.215705ms)
+  ✔ 历史超过 32 后丢掉最旧记录，窗口内的 id 仍幂等，挤出后可以再次接纳 (0.376952ms)
+  ✔ 固定脚本覆盖拖动、覆盖点击、过期和回待机 (0.244415ms)
+  ✔ 长序列保持容量，过期请求不开始，拖动期间不开始，同一 id 只开始一次 (0.787093ms)
+✔ product scheduler (5.40486ms)
+▶ desktop pet session
+  ✔ 假时钟下：空闲提议、拖动阻止、最新点击、失败回待机 (0.512059ms)
+  ✔ 拖动期间的点击等到松手，过期点击在松手时丢弃 (0.249085ms)
+  ✔ ttl 非法时抛错，端口不能重入 (0.279994ms)
+✔ desktop pet session (1.168364ms)
+▶ core/chat/history
+  ✔ push/snapshot/turns/chars 基本语义，快照保持插入顺序 (0.744343ms)
+  ✔ 冻结上界与契约一致：4 轮 / 2000 字符 (0.104087ms)
+  ✔ 超过 4 轮：按最老完整轮淘汰，只留最近 4 轮 (0.606506ms)
+  ✔ 字符上界：合计超 2000 时淘汰最老整轮，直到回到界内 (0.201036ms)
+  ✔ 单轮自身超字符上界：连本轮一起淘汰（宁空不过界，不留半轮） (0.125197ms)
+  ✔ 注入更小上界（测试用）：按注入值淘汰 (0.133527ms)
+  ✔ 快照不可变：数组与条目均冻结，改快照不影响仓库 (0.284464ms)
+  ✔ 快照隔离：取得快照后继续 push/clear，已发出的快照不变 (0.159417ms)
+  ✔ clear 后可重新累积 (0.131867ms)
+✔ core/chat/history (4.287094ms)
+▶ core/chat/session
+  ✔ 正常回复：ok、id 回显、文本原样，hasPending 归位 (2.057135ms)
+  ✔ 空输入：error/empty，不触达 provider (0.215605ms)
+  ✔ 超长输入：error/too-long，不触达 provider (0.189456ms)
+  ✔ 注入 maxInputChars 时按注入值判定超长，恰好等于上限不判长 (0.260524ms)
+  ✔ id 不匹配 CHAT_ID_PATTERN 或 text 非字符串：error/bad-request (0.213645ms)
+  ✔ 重复提交：第二个 send 立即 error/busy，complete 只被调用一次 (0.327553ms)
+  ✔ 在途时非法输入按校验优先返回 empty（校验先于 busy 判断） (0.254334ms)
+  ✔ cancel 命中在途：立即返回 cancelled，signal 已 abort，可马上发新请求 (0.392321ms)
+  ✔ cancel 未命中 id 或无在途：无任何效果 (0.306604ms)
+  ✔ 取消后迟到 resolve：旧请求保持 cancelled，绝不影响新请求结果 (0.45703ms)
+  ✔ 取消后立刻用同一个 id 重发：旧请求迟到结算不清掉新在途（引用隔离） (0.252284ms)
+  ✔ 取消后迟到 reject：同样返回 cancelled，不产生 provider-error (0.261474ms)
+  ✔ provider reject：error/provider-error，失败后重试成功 (0.146347ms)
+  ✔ 结果截断：超出 maxResultChars 截到上限，等于上限不截 (0.154076ms)
+  ✔ 总超时（真实 timer，小 timeoutMs）：abort provider 并返回 error/timeout (20.427565ms)
+  ✔ 总超时（注入时钟的懒检查）：时钟越过 deadline 后 provider 才成功，判 timeout (0.267464ms)
+  ✔ 注入时钟未到点时 provider 成功：正常 ok（超时判定以注入时钟为准） (0.115187ms)
+  ✔ timeoutMs 为 0：send 即判超时（deadline 立即到点） (0.109557ms)
+  ✔ 时钟过点后 provider 迟到 reject：判 timeout 而非 provider-error，重试仍成功 (0.148857ms)
+✔ core/chat/session (28.003277ms)
+▶ core/chat/session × 有界历史（M3-3）
+  ✔ 未注入 history（默认关闭）：complete 载荷不含 history 键，行为与旧版一致 (0.151587ms)
+  ✔ 成功轮入史：第一次请求 history 为空数组，第二次携带上一轮 user/assistant (0.389772ms)
+  ✔ 取消的请求不入史：取消后 provider 迟到成功也不 push (1.592935ms)
+  ✔ 失败的请求不入史 (0.168207ms)
+  ✔ 超时的请求不入史 (5.579896ms)
+  ✔ 截断后的文本按交付口径入史（maxResultChars 注入） (0.193906ms)
+  ✔ reset：取消在途、清空历史、旧结果隔离且立即可再发 (0.648285ms)
+  ✔ reset 后同 id 重发：旧引用隔离不误伤新请求（沿用既有语义） (0.349012ms)
+  ✔ 历史上界在会话内生效：第 6 次请求最多见到最近 4 轮 (0.256964ms)
+✔ core/chat/session × 有界历史（M3-3） (9.584737ms)
+▶ feedback reduce
+  ✔ submit 产生 waiting 提示与 deadline；token 递增 (1.317321ms)
+  ✔ ok 当前 token：success 提示 + 恰好一次 react (0.140377ms)
+  ✔ 同 token 重复终态零新动作（react 只有一次） (1.112075ms)
+  ✔ error 当前 token：错误提示、无 react、不假成功 (0.150317ms)
+  ✔ cancel 当前 token：cancelled 提示，不发 react (0.158156ms)
+  ✔ 连续提交：旧 token 的终态零效果 (0.119078ms)
+  ✔ reset 后迟到 ok/error 零效果且提示被清 (0.178856ms)
+  ✔ 拖动中完成：只提示成功，不排回应也不排队补发 (0.163177ms)
+  ✔ 拖动结束后新成功仍可回应 (0.185036ms)
+  ✔ dispose 后任何事件零效果（一次后永久静默） (0.302703ms)
+  ✔ expire 只在 token 匹配且到期时隐藏 (0.235204ms)
+  ✔ 慢回复：等待提示到期后 2s 成功仍有 success 提示与恰一次回应 (0.164886ms)
+  ✔ 慢回复：等待提示到期后迟到 error/cancel 只提示不回应 (0.186856ms)
+  ✔ 慢回复：等待到期后 reset，迟到 ok 零动作 (0.178326ms)
+  ✔ 慢回复：等待到期后重复终态仍只回应一次 (0.143546ms)
+  ✔ 慢回复：拖动中等待到期后完成，只提示成功不补播回应 (0.148157ms)
+  ✔ 终态提示到期才回 idle（success 隐藏后 token 失效） (0.166206ms)
+  ✔ 任意时刻至多一个 deadline（状态只有一个字段，后续提示覆盖旧期限） (0.118637ms)
+  ✔ 入参不可变：冻结状态与选项不报错 (0.109037ms)
+  ✔ 未知事件类型零效果不抛错 (0.085178ms)
+✔ feedback reduce (6.538575ms)
+✔ 开关关闭时永不动手 (1.187184ms)
+✔ dispose 后不再暂停或恢复 (0.130317ms)
+✔ 隐藏 + 当前 idle + playing → 暂停并取得归属 (0.152617ms)
+✔ 重复 hidden 事件不重复暂停同一 owner (0.101268ms)
+✔ 只有 idle 会被暂停：reaction / auto / once 都不行 (0.128617ms)
+✔ 加载中/未兑现 play 不暂停 (0.194655ms)
+✔ 可见且归属仍匹配 → 恢复一次 (0.123408ms)
+✔ 可见但无归属 → 不恢复（别动别的暂停） (0.090848ms)
+✔ 同 requestId 换代后旧归属失效 (0.122378ms)
+✔ 元素身份不同的归属不认 (0.179306ms)
+✔ 恢复在途不重复 play (0.161927ms)
+✔ leaseStillCurrent 只认当前代次与元素 (0.100658ms)
+▶ reduceGesture
+  ✔ 未达阈值的松开是点击，刚好达到阈值则是拖动 (1.464647ms)
+  ✔ 超过阈值后的增量从上次采样计算，阈值本身是参数 (0.225215ms)
+  ✔ 拖动松开和 pointercancel 都不点击 (0.221115ms)
+  ✔ 其它指针和按下期间的第二次按下被忽略 (0.149276ms)
+  ✔ 负阈值被拒绝 (0.321603ms)
+✔ reduceGesture (3.269318ms)
+▶ reducePetSession
+  ✔ 开机进待机，点击升成回应，只有当前回应结束才回待机 (1.061256ms)
+  ✔ 连续点击以最新请求为准，旧 ended 和 failed 都不能回待机 (0.192266ms)
+  ✔ 回应失败尝试回待机；待机失败停在占位且不再自动重试 (0.205696ms)
+✔ reducePetSession (1.652903ms)
+✔ loadConfig/saveConfig 委托给注入的配置 IO；无效配置不覆盖旧文件 (1.579905ms)
+✔ probe 成功：只走注入探测（零 POST 语义），成功也收掉本次隧道 (1.206773ms)
+✔ probe 探测失败：返回 service-unavailable 并收掉隧道 (0.261804ms)
+✔ 隧道启动失败：错误码原样透传，不产生多余 stop (0.141667ms)
+✔ 操作进行中再次 probe/start 直接 busy，不并发两套资源 (0.339792ms)
+✔ start 成功保留隧道，stop 幂等收尾且状态回 idle (0.290714ms)
+✔ stop 取消进行中的 start：返回 cancelled，隧道无残留 (0.274614ms)
+✔ 隧道已成功但 /models 未返回时 stop：取消结果、stop 恰一次、无存活句柄 (0.44535ms)
+✔ 隧道已成功但 /models 未返回时 stop：probe 也返回 cancelled 且只停一次 (0.268074ms)
+✔ 忽略 abort 的迟到成功：start/probe 仍返回 cancelled 且句柄已关闭 (0.41642ms)
+✔ probeService 抛错：返回 service-unavailable、句柄已关闭不泄漏 (0.263565ms)
+✔ 探测成功但句柄已死：返回 not-ready 并回收句柄 (0.131757ms)
+✔ 取消中并发双 stop：两个 stop 都 resolve，句柄只停一次 (0.175966ms)
+▶ reducePlayback
+  ✔ begin 只加载，loaded 只允许 play，playing 要等 play 兑现 (1.251812ms)
+  ✔ 新编号覆盖旧请求并升代，同名也要重新 load (0.272594ms)
+  ✔ 同一当前请求重复提交没有加载也没有回执 (0.198835ms)
+  ✔ 同名不同 URL、once 变化都是新请求 (0.163667ms)
+  ✔ A→B→C 后旧世代的 loaded、play 与 failed 都丢弃 (0.239525ms)
+  ✔ 加载、解码、拒绝、超时各自失败，且只有一个终态 (0.166226ms)
+  ✔ 超时不能在 play 之后把正在播的请求打成失败 (0.129877ms)
+  ✔ 取消、冻结、卸载之后旧回调不能恢复 (0.211105ms)
+  ✔ 自播在 play 兑现前去重，兑现后允许重播 (0.153977ms)
+✔ reducePlayback (4.374242ms)
+▶ isPlaybackCueEcho
+  ✔ 只有编号从有值变成 null 且 anim、once、seq 都没变才是回声 (0.190446ms)
+✔ isPlaybackCueEcho (0.280613ms)
+▶ resolveQwenConfig 默认值与覆盖
+  ✔ 环境变量全缺省时用已冻结的默认地址与模型 (0.983678ms)
+  ✔ 环境变量覆盖默认值并去掉尾部斜杠 (0.208665ms)
+  ✔ 只覆盖模型时地址仍取默认值（https loopback 也接受） (0.156626ms)
+✔ resolveQwenConfig 默认值与覆盖 (2.060384ms)
+▶ resolveQwenConfig 拒绝非法配置
+  ✔ URL 不合法 (0.985398ms)
+  ✔ 非 http(s) 协议 (0.120338ms)
+  ✔ 0.0.0.0 与外网地址都不是 loopback (0.131047ms)
+  ✔ URL 带凭据被拒绝 (0.114108ms)
+  ✔ 显式给空 model 是错误，不静默回落默认值 (0.130797ms)
+  ✔ 显式给空 baseUrl 也是错误 (0.118647ms)
+✔ resolveQwenConfig 拒绝非法配置 (1.891718ms)
+▶ probeQwenService
+  ✔ 200 且列表含配置模型：ok 并回传模型列表，请求打到 /models (0.732244ms)
+  ✔ 200 但列表缺配置模型：ok:false，并报可用模型 (0.182476ms)
+  ✔ 200 但响应体形状不对：按缺模型处理，不编造模型列表 (0.165576ms)
+  ✔ 404：ok:false 且错误里带状态码 (0.141327ms)
+  ✔ 网络错误：ok:false 且错误里带地址与原因 (0.242795ms)
+  ✔ JSON 解析失败也算不可用 (0.176056ms)
+✔ probeQwenService (1.8254ms)
+▶ parseChatSendRequest
+  ✔ 合法载荷通过；形状/形状长度不合法返回 null (1.015758ms)
+  ✔ M3-3：渲染层载荷多出任何键一律 null——不能提交权威历史或伪造 system (0.152327ms)
+✔ parseChatSendRequest (1.82161ms)
+▶ registerChatService
+  ✔ sender 非主窗口 webContents -> 忽略，session 不被调用 (0.524789ms)
+  ✔ 载荷不合法 -> bad-request，不透传 session (0.285144ms)
+  ✔ 合法 send/cancel 转发到 session；cancel 非法 id 或外来 sender 被忽略 (0.300643ms)
+  ✔ dispose：移除三个通道、退订 closed、取消最后在途 id、触发 onClose（幂等） (0.208376ms)
+  ✔ 窗口 closed -> 自动 dispose（移除通道并触发 onClose） (0.192275ms)
+  ✔ url 非回环地址 -> 注册即拒绝（演示安全在主进程构造时生效） (0.490139ms)
+✔ registerChatService (2.295458ms)
+▶ registerChatService + 真实会话：活动请求归属
+  ✔ busy 拒绝不覆盖在途 id：dispose 后原请求 signal abort 且 Promise 结算 cancelled (0.998058ms)
+  ✔ 被 empty 拒绝的输入不覆盖在途 id：dispose 后原请求确实 abort (0.295783ms)
+  ✔ 被 too-long 拒绝的输入不覆盖在途 id：dispose 后原请求确实 abort (0.347322ms)
+  ✔ 取消后发新请求：dispose abort 的是新请求，旧请求已按 cancelled 结算 (0.431501ms)
+  ✔ 同 id 取消后重发：dispose 结算重发的在途请求，迟到的旧结果被隔离 (0.329133ms)
+  ✔ M3-3 chat:reset：注册、转发到 session.reset、非主窗口忽略、dispose 移除 (0.178906ms)
+✔ registerChatService + 真实会话：活动请求归属 (2.792498ms)
+▶ launcherRunOptions companion
+  ✔ companion 补齐短片与行为令牌，并给出 companion 体验口径 (0.687575ms)
+  ✔ companion 同时打开会话时 contextEnabled 原样为 true (0.147566ms)
+✔ launcherRunOptions companion (1.732952ms)
+▶ launcherRunOptions standard
+  ✔ standard 不产生 preview 与 experience（反馈与行为都不创建） (1.254712ms)
+  ✔ standard 的 context 开关同样透传 (0.141396ms)
+✔ launcherRunOptions standard (1.583815ms)
+▶ launcherRunOptions 不读父环境变量、无副作用
+  ✔ 父进程残留 PET_NEXT_PREVIEW / PET_NEXT_EXPERIENCE 不污染 standard (0.224485ms)
+  ✔ companion 结果只来自本次选择：每次返回新对象，互不共享可变状态 (0.732353ms)
+  ✔ 不发起任何模型调用：映射前后不含网络/进程副作用 (0.176266ms)
+✔ launcherRunOptions 不读父环境变量、无副作用 (1.398149ms)
+✔ 初始快照 revision=1，可见 (1.33192ms)
+✔ hide/show 推送并递增修订号 (0.254104ms)
+✔ 最小化原因优先于不可见；restore 回到可见 (0.178326ms)
+✔ 查询只回应本窗口 (0.203045ms)
+✔ dispose 幂等：不再推送、摘掉监听 (1.092356ms)
+✔ webContents 已销毁时推送不抛错 (0.190976ms)
+✔ 窗口关闭自动 dispose (0.130847ms)
+✔ snapshotFor 组合与优先级 (0.143567ms)
+▶ createBaseline
+  ✔ 规范性例子：逐步决策和 queueLength 与契约一致 (1.688403ms)
+  ✔ step 不修改入参，返回的队列、seen 和事件都是新副本 (0.176316ms)
+  ✔ 两次 createBaseline 的 seen 不互通 (0.107458ms)
+  ✔ 已开始的动作到点也不过期，只会被更高优先级抢占 (0.172356ms)
+  ✔ timeMs 达到 expiresAtMs 时即使 now 更早也丢弃，同一 id 再投递是重复 (0.144266ms)
+  ✔ 对不上的完成回调留着当前动作，也不摘掉尚未开始的事件 (0.156616ms)
+  ✔ 没有当前动作时的完成回调是 stale-completion (0.114158ms)
+  ✔ 过期输出按 seq、timeMs、id，不按入队顺序 (0.223145ms)
+  ✔ seq 与 timeMs 相同时，过期和随后开始都按 id 的字典序 (0.157446ms)
+  ✔ 空出当前动作后，更高优先级先于更小的 seq，且一步只开始一个 (0.227675ms)
+  ✔ 抢占后的旧动作不回到队列 (0.113608ms)
+  ✔ 重复投递不改已开始事件的 seq；同一步仍先丢掉过期等待 (0.132467ms)
+  ✔ 第二条拖动不抢占第一条 (0.126977ms)
+  ✔ 点击进行中的自动提醒记为 queued-lower-rank (0.118888ms)
+✔ createBaseline (4.629177ms)
+▶ listArbiterFixtures
+  ✔ 规范性夹具沿用契约里的同一份输入和期望 (1.141274ms)
+  ✔ 持续负载：固定种子、时间步长，且没有完成回调 (0.564387ms)
+✔ listArbiterFixtures (2.348778ms)
+▶ runExperiment
+  ✔ 注入尚未实现的状态机替身时退出码为 0，并留下原始日志 (11.859296ms)
+  ✔ 两侧都实现且持续负载一致时退出码为 0，并清掉占位标记 (7.136091ms)
+  ✔ 持续负载分叉时退出码为 1 (5.956128ms)
+  ✔ 状态机抛出其他错误时退出码为 1，基线日志仍在 (2.727499ms)
+  ✔ 基线尚未实现时退出码为 2 (0.88656ms)
+  ✔ 实现改写入参时，日志里仍是原来的事件 (4.937591ms)
+  ✔ 导入入口不改退出码 (6.939806ms)
+  ✔ 直接执行入口：基线和状态机都写出日志且一致 (413.374983ms)
+✔ runExperiment (454.913489ms)
+▶ compare
+  ✔ 差异说明带夹具名和输入下标 (0.343583ms)
+✔ compare (0.513519ms)
+▶ createStateMachine
+  ✔ 规范性例子：逐步决策和 queueLength 与契约一致 (2.381817ms)
+  ✔ step 不修改入参，返回的队列、seen 和事件都是新副本 (0.266064ms)
+  ✔ 两次 createStateMachine 的 seen 不互通 (0.159506ms)
+  ✔ 同一输入回放两次，决策和 queueLength 相同 (0.264334ms)
+  ✔ 已开始的动作到点也不过期，只会被更高优先级抢占 (0.221045ms)
+  ✔ 拖动直接抢占自动提醒，同级自动提醒只入队 (0.233985ms)
+  ✔ timeMs 达到 expiresAtMs 时即使 now 更早也丢弃，同一 id 再投递是重复 (0.178006ms)
+  ✔ 对不上的完成回调留着当前动作，也不摘掉尚未开始的事件 (0.198516ms)
+  ✔ 没有当前动作时的完成回调是 stale-completion (0.175466ms)
+  ✔ 空闲但队列里已有事件时，新投递先开始，对不上的完成不放行等待者 (0.334573ms)
+  ✔ 阶段标签与活动动作不一致时，以活动动作的来源查表 (0.156037ms)
+  ✔ 过期输出按 seq、timeMs、id，不按入队顺序 (0.149447ms)
+  ✔ seq 与 timeMs 相同时，过期和随后开始都按 id 的字典序 (0.128517ms)
+  ✔ 空出当前动作后，更高优先级先于更小的 seq，且一步只开始一个 (0.137677ms)
+  ✔ 抢占后的旧动作不回到队列 (0.122137ms)
+  ✔ 重复投递不改已开始事件的 seq；同一步仍先丢掉过期等待 (0.115397ms)
+  ✔ 部分等待到期时只丢掉到期项，拖动期间的新自动提醒仍入队 (0.137907ms)
+  ✔ 第二条拖动不抢占第一条 (0.093618ms)
+  ✔ 点击进行中的自动提醒记为 queued-lower-rank (0.082848ms)
+  ✔ 持续负载：不开始已过期事件，一步最多开始一个，队列长度等于等待数 (0.841381ms)
+✔ createStateMachine (7.68629ms)
+▶ runCheck
+  ✔ 两种实现在规范性例子、持续负载和 held-out 上规则违反为 0 (48.882762ms)
+  ✔ 队列长度被改写时记下第一条分叉，不把机器耗时写进模拟等待 (26.637447ms)
+  ✔ 规范性例子的机器耗时抄日志，不使用核对器自己的计时 (28.2927ms)
+  ✔ 缺少要求中的 runner 日志时退出码为 1，并写下标 0 (26.96887ms)
+  ✔ 基线工厂抛出尚未实现时退出码为 2 (1.079356ms)
+✔ runCheck (132.890073ms)
+▶ buildDemo
+  ✔ 写出可切换的页面，素材指向现有 webm 和占位图 (5.708843ms)
+✔ buildDemo (6.390448ms)
+▶ listHeldoutSequences
+  ✔ 名字不与规范性夹具重复，混合序列使用另一颗种子并包含完成回调 (1.78921ms)
+  ✔ 基线和状态机与独立参照逐步一致 (3.116101ms)
+✔ listHeldoutSequences (5.765482ms)
+▶ arbiter metrics
+  ✔ 模拟等待用事件时间，未结束的等待用最后一步 (0.766233ms)
+  ✔ 等待期间有更高优先级开始、最终过期，记一次饥饿 (0.280173ms)
+  ✔ 开始落在已过期事件上时记过期执行 (0.124637ms)
+  ✔ 已经开始的事件，后面的重复不再延长模拟等待 (0.113068ms)
+✔ arbiter metrics (2.010955ms)
+▶ replayOracle
+  ✔ 规范性例子：决策和 queueLength 与契约一致 (1.550995ms)
+  ✔ step 不修改入参 (0.122938ms)
+  ✔ 对不上的完成先丢掉到期等待，并且不开始下一个 (0.413091ms)
+  ✔ id 的字典序先于入队顺序 (0.236175ms)
+✔ replayOracle (3.045423ms)
+▶ runDemo 启动编排
+  ✔ 半行到达的就绪记录也要等整行才启动 Electron (5.692973ms)
+  ✔ 一个 chunk 里多行时按行解析，重复就绪不重复启动 Electron (0.780923ms)
+  ✔ fake 启动失败：非零退出、不起 Electron、不报 offline_ready:true (0.478079ms)
+  ✔ fake 非零退出：先报错再清理，退出码非零 (0.204406ms)
+  ✔ Electron 启动失败：非零退出并清掉 fake (0.843561ms)
+  ✔ 正常关窗（Electron 退出码 0）：退出码 0，offline_ready 为 true，fake 收尾 (0.487759ms)
+  ✔ Ctrl-C：两个子进程都清理、退出码 130、信号 handler 被移除 (0.603897ms)
+  ✔ SIGTERM：退出码 143 且收尾干净 (0.544418ms)
+  ✔ /healthz 不是 offline_ready：不起 Electron、不报 offline_ready:true (0.400241ms)
+  ✔ health 请求抛错：非零退出并清理 fake (0.389822ms)
+  ✔ 面板加载失败（fail-load）：非零退出且 offline_ready 不为 true (0.750284ms)
+  ✔ 面板没渲染前不报 offline_ready:true（即使 Electron 已起） (1.176294ms)
+✔ runDemo 启动编排 (13.540499ms)
+▶ runDemo 冻结启动参数
+  ✔ PET_NEXT_CHAT_DEBUG_PORT 合法时传 --remote-debugging-port，userData 原样透传 (0.759423ms)
+  ✔ 未设 debug 端口不加参数；非法端口忽略并记 warn (0.698854ms)
+  ✔ Electron 路径解析不出来：非零退出，不 spawn 空命令 (0.208925ms)
+✔ runDemo 冻结启动参数 (1.80069ms)
+▶ 依赖解析
+  ✔ resolveElectronPath 取到真实可执行文件路径（回归 require(...).electron 拿到 undefined） (24.973545ms)
+  ✔ parsePort 只接受 1..65535 的整数 (0.163386ms)
+✔ 依赖解析 (25.253368ms)
+▶ 镜像常量与 contracts 一致
+  ✔ 环境变量名与默认值不漂移 (0.45978ms)
+  ✔ resolveLocalConfig 与主进程 resolveQwenConfig 同规则 (1.028487ms)
+✔ 镜像常量与 contracts 一致 (2.184021ms)
+▶ runLocal 启动编排
+  ✔ 只起一个进程（Electron），不启动 fake 服务 (1.050187ms)
+  ✔ 下发 local 开关与最终生效的 QWEN 配置，并透传 userData 与 PET_NEXT_TEST (0.233924ms)
+  ✔ 未设置 PET_NEXT_TEST 时按 1 传给 Electron（与 chat:preview 一致） (0.173006ms)
+  ✔ 合法调试端口转成 --remote-debugging-port 参数 (0.249095ms)
+  ✔ 非法调试端口不加参数，但记一条 warn (0.230465ms)
+  ✔ Electron 打印 ready 后输出 chat-local-ready（含 baseUrl/model，不含凭据） (4.351333ms)
+  ✔ 页面加载失败立即非零退出 (0.499399ms)
+  ✔ Electron 异常退出码非零 (0.220815ms)
+  ✔ Electron 被信号杀掉也算失败 (0.184036ms)
+  ✔ spawn 抛错：非零退出且不再重试 (0.276874ms)
+  ✔ Electron 路径解析失败：非零退出且不起进程 (0.166207ms)
+  ✔ 子进程 error 事件：非零退出 (0.223705ms)
+  ✔ SIGINT 清理 Electron 并返回 130 (0.225445ms)
+  ✔ SIGTERM 返回 143 (0.131987ms)
+  ✔ PET_NEXT_CHAT_PREVIEW 同时存在时记 warn（local 优先由主进程判定） (0.155626ms)
+✔ runLocal 启动编排 (8.893252ms)
+▶ runLocal 配置错误与 --probe
+  ✔ 配置非法：不起 Electron、非零退出、错误可读 (0.226245ms)
+  ✔ 默认不预检：没给 --probe 就不发任何探测请求 (0.118577ms)
+  ✔ --probe 成功：打印预检记录后照常启动 Electron (3.178679ms)
+  ✔ --probe 失败：非零退出且不起 Electron (0.180566ms)
+  ✔ --probe 探测抛错也按失败处理 (0.189506ms)
+  ✔ probeLocalService 用注入的 fetch 判定，不打真实网络 (0.44595ms)
+✔ runLocal 配置错误与 --probe (4.50252ms)
+▶ precheckRemote（经 runRemote 观察）
+  ✔ 缺构建产物 → 非零退出且给出可读中文错误 (0.957749ms)
+  ✔ Node 版本要求与 engines 对齐：22.11 不足、22.12 通过、20 被拒 (0.663795ms)
+✔ precheckRemote（经 runRemote 观察） (2.26347ms)
+▶ runRemote
+  ✔ Windows Node shim 前缀经过真实 startTunnel 到达 spawn，不能把 -N 直接传给 Node (75.201987ms)
+  ✔ 配置缺失 → config-invalid 非零，不建隧道 (0.379391ms)
+  ✔ 隧道认证失败 → auth-failed 非零 (0.247774ms)
+  ✔ 转发端 /models 缺模型 → probe-failed 非零，且隧道被关闭 (0.214116ms)
+  ✔ probe-failed 的 done 事件退出码必须与返回码一致（1，而不是 0） (0.256324ms)
+  ✔ 探测阶段 Ctrl-C：返回 130、不启动 runner、隧道关闭、记录 cancelled (0.352932ms)
+  ✔ 隧道启动阶段 Ctrl-C：返回 130、不启动 runner、隧道关闭 (0.274634ms)
+  ✔ 隧道层返回 cancelled：入口退出码 130（而非 1） (0.183406ms)
+  ✔ 运行期 SIGINT 由 runLocal 处理：退出码取 runner 的 130，隧道仍关闭 (0.245444ms)
+  ✔ 成功全链路：事件顺序、model/baseUrl 注入、退出码透传、隧道只停一次 (0.264414ms)
+  ✔ 隧道断线：监控触发杀 Electron 且退出码非零、隧道仍被关闭 (79.979621ms)
+  ✔ Ctrl-C 退出码透传（130）且隧道关闭 (0.336963ms)
+✔ runRemote (158.485044ms)
+✔ parseTrialArgs：无参数缺省 off (1.509676ms)
+✔ parseTrialArgs：--context=on / --context=off (0.162086ms)
+✔ parseTrialArgs：非法值/不带值/未知参数/位置参数 → exit 2 (0.276354ms)
+✔ parseTrialArgs：重复 --context 显式报错（防误粘） (0.230075ms)
+✔ buildTrialEnv：on 设 1；off 删除继承值；原对象不被改；其余键透传 (0.542868ms)
+✔ 入口子进程：非法参数 exit 2、stderr 含用法、未进入复用链 (52.6225ms)
+✔ 入口子进程：状态行与复用链（坏配置 exit 1）；父残留 on + 显式 off 生效；带空格目录 (311.760874ms)
+✔ parseTrialArgs：--experience=companion 与 context 独立 (0.251594ms)
+✔ parseTrialArgs：experience 非法值/重复 → exit 2 且带用法 (0.338103ms)
+✔ buildTrialEnv：companion 设体验与 short,behavior；none 清除父残留；显式 preview 不被覆盖 (0.234455ms)
+✔ isForbidden：运行现场/密钥/env 快照全命中；源码文件不命中 (1.196323ms)
+✔ collectTrialFiles：白名单目录收集、黑名单剔除、非 pet-next 前缀忽略 (0.242744ms)
+✔ collectTrialFiles：M3-7 双击试用入口全链进包（启动.cmd + launcher 各层 + 文档） (0.384082ms)
+✔ gitLsFiles：中文文件名不被 quotepath 转义（启动.cmd 真能进包；包内无 .git 时跳过） (56.094722ms)
+✔ parsePackageArgs：正常与错误 (0.858841ms)
+✔ archiveWith：后端回退（zip 不可用→python3 不可用→tar 可用） (18.804702ms)
+✔ CLI --dry-run --only-src：打印清单、退出 0、不产出压缩包 (43.230549ms)
+✔ CLI 非法参数 → exit 2 (41.423209ms)
+✔ parseComputeApps：正常/坏行 (0.849601ms)
+✔ parseGpuList：正常/坏行/空列表 fail (0.201585ms)
+✔ selectFreeGpuFromSnapshots：全空→0；一忙一闲→1；全忙→null；任一无效→fail；矛盾→fail (0.655586ms)
+✔ CLI --status：查询失败/乱码/空 GPU 列表 → unknown 且 exit 1；正常 → 不报 unknown (433.350029ms)
+✔ CLI --wait-start：查询失败 → 拒绝启动 exit 1（不选卡、无 spawn、无 identity） (2105.654375ms)
+✔ CLI --wait-start：双查询矛盾 → 拒绝启动 exit 1 (2145.739303ms)
+✔ CLI --wait-start：空闲判定成立才 spawn（假 vllm 立即退出 → "提前退出" exit 1，零真实模型） (12182.937361ms)
+✔ 导入模块零副作用：不触发任何模式（无 unknown 输出路径执行） (0.241864ms)
+✔ 每次运行目录唯一，配置/日志路径都在本轮目录内 (3.538831ms)
+✔ env 注入本轮路径与隔离变量，不继承 NODE_OPTIONS，extra 可覆盖 (2.787798ms)
+✔ freePort 每次都给不同端口，且能被同时监听；snapshot 登记全部端口 (12.302686ms)
+✔ cleanup 先写残留断言再清目录：端口仍被监听时保留目录 (3.1299ms)
+✔ cleanup 不杀树外进程（只清本轮目录） (108.182683ms)
+✔ 非法 label/kind 直接拒绝 (0.544448ms)
+✔ startOwnXvfb 起自有显示器，stop 只收本次进程 (138.705894ms)
+✔ startOwnXvfb 拒绝非法 label (0.397881ms)
+✔ 非 Windows：verify:windows 入口 exit 2 且标 not-run (35.975169ms)
+✔ 入口以脚本路径单参数传递（含空格/中文时不拼字符串） (34.849174ms)
+✔ 素材流水线纯函数套件通过 (49.874341ms)
+▶ module boundaries
+  ✔ core 只引用自己的相对模块，测试文件只能再引用 node:test 与 node:assert (154.63764ms)
+  ✔ pet-next 的源码不能指向 dsh-pet，相对导入必须留在 pet-next 内 (5309.628944ms)
+  ✔ 检查器自己能认出越界导入 (0.543308ms)
+✔ module boundaries (5465.725392ms)
+▶ integration contracts
+  ✔ 成品素材字节不变 (11.556213ms)
+  ✔ 页面指针仍走 screenX，或已接到指针适配器 (27.500638ms)
+  ✔ 现有 Electron 实测仍断言缩放 1 对照下的精确位移 (3.679239ms)
+  ✔ 产品目录不引用实验或素材流水线 (1341.086754ms)
+  ✔ 实验和素材流水线不引用 Electron，也不指向桌宠入口 (321.548596ms)
+  ✔ 基线与状态机只依赖契约，并且不读取时钟或宿主 (33.990324ms)
+  ✔ 实验与素材入口被导入时不改退出码 (153.101044ms)
+  ✔ 缩放、进程、素材和仲裁的矩阵名称保持固定 (0.347432ms)
+  ✔ 规范性例子锁住抢占、过期、旧回调和乱序 (0.225125ms)
+✔ integration contracts (1893.621282ms)
+[chat-context 对照] 第1问「我叫小林」: 单轮=373B/2msg 上下文=373B/2msg | 第2问「我喜欢蓝色」: 单轮=376B/2msg 上下文=469B/4msg | 第3问「我叫什么」: 单轮=373B/2msg 上下文=562B/6msg
+✔ 对照记录：单轮臂 vs 上下文臂的三轮请求（HTTP 次数/消息数/UTF-8 字节） (20.177811ms)
+✔ 采样参数与模型名不随历史改变 (0.619936ms)
+✔ 清空（reset）：下一问回到单轮形态、字节回落到首问基线 (1.704992ms)
+✔ 在途清空后重发：新请求不带任何旧文本，旧请求迟到成功也不入史 (3.275737ms)
+✔ 失败与取消的轮次不入史：下一问只见到成功轮 (0.855991ms)
+✔ 历史上界：第 6 问最多携带最近 4 轮，最老轮被整轮淘汰 (0.87436ms)
+✔ “重启即空”：新会话（新历史实例）第一问与单轮臂逐字节一致（内存态、不落盘） (0.44683ms)
+▶ REQUIRED_CONTRACT_CASES
+  ✔ late-loaded (3.243618ms)
+  ✔ late-ended (0.641436ms)
+  ✔ duplicate-request (0.666955ms)
+  ✔ consecutive-clicks (0.485849ms)
+  ✔ load-failure (0.944169ms)
+  ✔ callback-after-dispose (0.749404ms)
+  ✔ preheat-races-click (0.757993ms)
+  ✔ drag-blocks-auto (0.322083ms)
+  ✔ expired-action (0.353552ms)
+  ✔ bounded-history (2.080723ms)
+✔ REQUIRED_CONTRACT_CASES (11.206711ms)
+✔ 每个必需用例都登记了一次，并且已经接到真实模块 (0.112327ms)
+▶ 契约测试的边界
+  ✔ 用例只依赖契约、本目录，以及已接入的真实 B/C 工厂 (40.826222ms)
+  ✔ 本目录不使用固定 sleep (40.071588ms)
+  ✔ B 和 C 已接到真实工厂，行为目录没有契约导入、时钟或随机数 (41.942797ms)
+  ✔ 现有产品测试和实验测试都能被 verify 收集到 (2779.677339ms)
+✔ 契约测试的边界 (2903.485335ms)
+✔ PET_NEXT_PNPM_CLI 优先，且 command 是当前 Node 可执行文件 (1.315461ms)
+✔ PET_NEXT_PNPM_CLI 指向不存在文件时显式报错，不产生子进程 (0.377502ms)
+✔ 项目内 tools/ 与 node_modules/ 候选按顺序命中（Unix 布局，与宿主无关） (0.170166ms)
+✔ 项目内候选在 win32 目标平台用反斜杠拼接（与宿主无关） (0.261345ms)
+✔ 由 Node 前缀推导全局 pnpm CLI（Unix 布局） (1.115785ms)
+✔ 由 Node 前缀推导全局 pnpm CLI（win32 便携布局，C:\node\node.exe） (0.235915ms)
+✔ Windows 无任何 CLI 文件时明确报错（绝不回退 spawn pnpm/.cmd） (0.279964ms)
+✔ 非 Windows 无 CLI 文件时保留 spawn pnpm 原行为 (0.206755ms)
+✔ 中文+空格路径下真实 spawn 子进程，exit 7 透传 (38.433615ms)
+✔ 找不到 CLI 文件时解析阶段即失败（无子进程可遗留） (0.342773ms)
+✔ 启动.cmd 是纯 ASCII + CRLF，默认代码页可直接解析 (2.083943ms)
+✔ 启动.cmd 保留原有逻辑：切目录、查 node、跑 launch-trial、透传退出码 (0.325203ms)
+﹣ 真实 启动.cmd：中文+空格路径下 exit 0 原样透传 (0.066159ms) # not-run: Windows-only（本机非 win32，真实 .cmd 未执行）
+﹣ 真实 启动.cmd：受控 exit 7 原样透传（REVIEW 第 16 行的复现点） (0.062218ms) # not-run: Windows-only（本机非 win32，真实 .cmd 未执行）
+﹣ 真实 启动.cmd：node 不在 PATH 时提示并退出 1（不进 cd_fail） (0.068908ms) # not-run: Windows-only（本机非 win32，真实 .cmd 未执行）
+✔ 契约不漂移：LAUNCHER_MODE_ENV 与 contracts/launcher.ts 一致，值为 PET_NEXT_LAUNCHER (1.091795ms)
+✔ nodeVersionProblem：22.12.0/24.22.1 通过；22.11.9/20.x/乱串给出含版本号的中文错误 (0.238035ms)
+✔ buildLauncherArgs：Linux 附 --no-sandbox --disable-dev-shm-usage；win32/darwin 只有 main.js (0.163587ms)
+✔ runLaunchTrial：Node 版本不足 → 退出 1、可读中文错误、不 spawn (0.307733ms)
+✔ runLaunchTrial：dist/electron/main.js 缺失 → 退出 1、提示 pnpm install && pnpm build、不 spawn (0.227565ms)
+✔ runLaunchTrial：正常路径（Linux）→ env 含 PET_NEXT_LAUNCHER=1、参数含 --no-sandbox、stdio inherit、退出码 7 透传 (0.315023ms)
+✔ runLaunchTrial：win32 不带 --no-sandbox；父 env 残留的 ELECTRON_RUN_AS_NODE 被清掉 (0.179096ms)
+✔ runLaunchTrial：子进程被信号结束 → 透传同一信号（注入记录器验证） (0.179036ms)
+✔ runLaunchTrial：spawn 触发 error 事件（Electron 不可执行）→ 退出 1、错误可读 (0.212525ms)
+✔ runLaunchTrial：默认注入项存在性自检（真机环境不执行，仅类型与默认路径核对） (0.180206ms)
+✔ parseStatPpid 从最后一个右括号之后取 ppid（comm 可含空格与括号） (0.844791ms)
+✔ isZombieStat 只把 Z 当僵尸 (0.120427ms)
+✔ linux 注入：从 root 递归构树，pids 以 root 开头且不含树外进程 (1.603234ms)
+✔ linux 注入：整张表读不到时明确报错，不静默降级成「只有根」 (0.348202ms)
+✔ win32 注入：解析 "pid ppid" 进程表并只保留本次树 (0.276984ms)
+✔ 非法 rootPid 直接返回空快照，不读进程表 (0.168257ms)
+✔ 不支持的平台明确报错，不猜 (0.137017ms)
+✔ 空快照立即返回空 alive (0.249205ms)
+✔ 根存活时返回该 PID（超时也不抛错） (120.320753ms)
+✔ 根消失后返回空 alive (102.637407ms)
+✔ waitOwnedGone 会等到进程真正退出，不是立刻返回 (303.454309ms)
+✔ 失败优先于未跑，未跑不是通过 (0.624056ms)
+✔ Linux 上 scaleFactor 为 1 也不能写成 system-100 (0.262224ms)
+✔ 模拟缩放的证据不能记成系统缩放 (0.207916ms)
+✔ 系统 DPI 不符的行保持 not-run，匹配的行才看 Electron (0.145557ms)
+✔ default 记录实测值，不要求等于 1 (0.114808ms)
+✔ 模拟行必须对上强制值和拖动 (0.136147ms)
+✔ 已提交的矩阵没有把未跑写成通过 (7.955863ms)
+✔ 2x2 RGBA 的四角 alpha 能读回来 (1.829149ms)
+✔ F1 成功：请求体符合冻结契约，正文/finish_reason/usage/latencyMs 进 meta (26.311644ms)
+✔ F2 HTTP 500：会话映射 provider-error，meta 保留状态与错误 (6.992954ms)
+✔ F3 超时：会话短超时 → timeout，且假服务观察到客户端断开 (328.651928ms)
+✔ F4 取消后立即重发：槽位立刻释放，旧请求的迟到响应不覆盖新请求 (730.106977ms)
+✔ F5 关窗收尾：在途撤销后迟到的服务端响应不产生任何状态（无泄漏） (858.364554ms)
+✔ F6 畸形 JSON：会话映射 provider-error（不猜测正文） (3.465783ms)
+✔ F7 空 content：按失败处理，不返回空回复 (3.365835ms)
+✔ F8 finish_reason=length：文本照常返回但 meta.truncated=true（不冒充完整回复） (3.256688ms)
+✔ F9 连接被重置：会话映射 provider-error（不重试、不假装成功） (3.084101ms)
+✔ F10 服务不返回 usage：记 usageUnknown，不编造 token 数 (2.954164ms)
+✔ F11 非回环 baseUrl 一律拒绝（真实外网地址不被接受） (0.42261ms)
+✔ 进程跟踪工厂可加载，导入时不启动进程 (0.516119ms)
+✔ verify-linux-chat-remote.sh 负路径 auth-failed：判 PASS、留证据、退出码为数字 (15035.688716ms)
+✔ verify-linux-chat-remote.sh 缺真实配置：明确失败非零（不静默跳过） (379.395279ms)
+ℹ tests 630
+ℹ suites 78
+ℹ pass 627
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 3
+ℹ todo 0
+ℹ duration_ms 17185.527207
+
+> pet-next@0.1.0 test:cleanup /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> node --experimental-strip-types --test --test-reporter spec tests/cleanup.test.ts tests/support/process-tree.test.ts tests/support/process-table.test.ts tests/support/run-record.test.ts tests/support/record-cli.test.ts tests/verify-remote-scripts.test.ts
+
+✔ 启动失败：子进程还在时根进程退出，清理后树没了，无关进程还在 (746.277928ms)
+✔ 超时：就绪没有出现就结束整棵树，退出码不是成功 (800.642017ms)
+✔ 正常退出：根进程自己以 0 结束，留下的子进程仍被清掉 (545.830597ms)
+✔ 父进程的直接子进程列表包含当前进程 (3.828175ms)
+✔ 并发快照请求共享同一次查询 (1.297371ms)
+▶ descendantPids
+  ✔ 只收集根的后代：旁支进程同时出现也不会入选 (0.868191ms)
+  ✔ 父子成环时枚举会停，不会把环外的进程卷进来 (0.126438ms)
+✔ descendantPids (1.652453ms)
+▶ killOrder
+  ✔ 后发现的后代排在前面，根进程排在最后 (0.132377ms)
+✔ killOrder (0.217925ms)
+▶ windowsTerminatePlan
+  ✔ 只指向一个 PID，根进程才带 /T，不用映像名 (0.208445ms)
+  ✔ 拒绝负 PID、1 号进程和自己 (0.404531ms)
+✔ windowsTerminatePlan (1.476147ms)
+▶ proc parsers
+  ✔ children 文件按空白拆 PID，空文件就是没有子进程 (0.286524ms)
+  ✔ pid/ppid 行丢掉无法解析的内容 (0.226705ms)
+  ✔ status 只读 Pid 和 PPid，不看进程名 (0.257514ms)
+  ✔ stat 的 starttime 从最后一个括号之后数，名字里的括号不影响 (0.162567ms)
+  ✔ 父子行折成直接子进程后，仍然到不了旁支 (0.229675ms)
+✔ proc parsers (1.38821ms)
+✔ 没有命令时返回 1，不写记录 (0.642365ms)
+✔ 子进程的退出码、环境和空日志分开落盘 (34.650599ms)
+✔ 命令不存在时不以 0 结束，并且仍然留下记录 (5.87477ms)
+✔ 凭据键被换成占位符，普通环境变量保留 (0.719524ms)
+✔ 五份记录分开落盘，退出码缺失时写成 null (5.676424ms)
+✔ verify-linux-chat-remote.sh 负路径 auth-failed：判 PASS、留证据、退出码为数字 (13995.926067ms)
+✔ verify-linux-chat-remote.sh 缺真实配置：明确失败非零（不静默跳过） (370.7972ms)
+ℹ tests 22
+ℹ suites 4
+ℹ pass 22
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 14463.724051
+
+> pet-next@0.1.0 test:integration /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> node --experimental-strip-types --test --test-reporter spec tests/assets/pipeline.test.ts && pnpm assets:check
+
+✔ 背景色字符串不能把没有 alpha 的源说成通过 (307.00489ms)
+✔ 有深色前景的 alpha 源：保留通道、三背景对照，且换背景色字符串仍通过 (1557.262775ms)
+✔ 只有亮色前景时深色检查是 unobserved，结论为 fail (840.09696ms)
+✔ 容器标了 alpha_mode 但没有不透明像素时停住，不补抠 (295.607134ms)
+✔ ffprobe 不存在时是 fail，而不是 source-lacks-alpha (161.471138ms)
+ℹ tests 5
+ℹ suites 0
+ℹ pass 5
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 3249.398269
+
+> pet-next@0.1.0 assets:check /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> node --experimental-strip-types assets-pipeline/cli.ts
+
+pass	assets/idle.webm	assets-pipeline/out/report.json
+source-lacks-alpha	assets/reaction.webm	assets-pipeline/out/reaction/report.json
+
+> pet-next@0.1.0 build /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+
+
+> pet-next@0.1.0 test:e2e /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts tests/feedback/*.e2e.test.ts tests/launcher/*.e2e.test.ts
+
+[evidence] cmd: DISPLAY=:98 PET_NEXT_QWEN_BASE_URL=http://127.0.0.1:37693/v1 PET_NEXT_CHAT_CONTEXT=1 pnpm chat:local
+[evidence] panel mounted: phase=closed context=on
+[evidence] panel open: context=on hasReset=true
+[evidence] request[0].bytes=373 request[1].bytes=481
+[evidence] history injected: [{"role":"user","content":"我叫小林"},{"role":"assistant","content":"隧道回复：我叫小林"}]
+[evidence] reset ok: phase=typing status=["已开启新对话（此前内容不再带入）"]
+[evidence] after reset: bytes=370 messages=["system","user"]
+[evidence] entry exit: code=0 signal=null
+[evidence] PASS
+✔ T1 PET_NEXT_CHAT_CONTEXT=1：第二问携带第一轮，新对话后回到单轮（退出码 0） (12590.72064ms)
+[evidence] cmd: DISPLAY=:98 PET_NEXT_QWEN_BASE_URL=http://127.0.0.1:45047/v1 PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:local
+[evidence] panel mounted: phase=closed context=off
+[evidence] panel open: context=off hasReset=false
+[evidence] request[0].bytes=373 request[1].bytes=373
+[evidence] no history injected: both [system,user]
+[evidence] entry exit: code=0 signal=null
+[evidence] PASS
+✔ T2 缺省关闭：两问均为单轮形态、无「新对话」（与 M3-1 一致） (12439.081493ms)
+▶ chat:remote 正式入口（fake SSH 替身 + fake 模型）
+  ✔ T1 隧道 + 真实鼠标键盘：打开→输入→回复→取消→重发→关闭（退出码 0） (13956.271419ms)
+  ✔ T2 认证失败：入口非零退出、不起 Electron、不残留隧道 (11829.524275ms)
+  ✔ T3 空 dist 首次启动：chat:remote 自带 build，一条命令即可就绪（退出码 0） (12847.264722ms)
+  ✔ T4 隧道启动中 Ctrl-C：退出码 130、不起 Electron、不残留端口 (12078.859177ms)
+  ✔ T5 转发的模型服务缺目标模型：退出码 1、done 退出码一致、不起 Electron (12036.071449ms)
+✔ chat:remote 正式入口（fake SSH 替身 + fake 模型） (64091.969372ms)
+[trial-evidence] cmd: PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:trial --context=on
+[trial-evidence] isolated: userData=/tmp/pet-next-trial-e2e-tH7PQ6 tunnelPort=43055 debugPort=41857 fakeModel=37127
+[trial-evidence] panel mounted: mode=local context=on note=只记住当前会话内最近几轮，重启不保留。
+[trial-evidence] panel open: context=on hasReset=true
+[trial-evidence] request bodies: roles=["system","user","assistant","user"] bytes=373->481
+[trial-evidence] reset ok: status=["已开启新对话（此前内容不再带入）"]
+[trial-evidence] on-arm PASS: history injected then reset to single-turn
+[trial-evidence] entry exit: code=0 signal=null
+[trial-evidence] PASS
+✔ T1 chat:trial --context=on：状态行/历史注入请求体/新对话复位/窗口真实操作/关窗退出 0/本次进程清理 (13647.073159ms)
+[trial-evidence] cmd: PET_NEXT_CHAT_CONTEXT=1 pnpm chat:trial --context=off
+[trial-evidence] isolated: userData=/tmp/pet-next-trial-e2e-dUes1M tunnelPort=38365 debugPort=38403 fakeModel=41597
+[trial-evidence] panel mounted: mode=local context=off note=null
+[trial-evidence] panel open: context=off hasReset=false
+[trial-evidence] explicit-off PASS: both [system,user] bytes=373/373
+[trial-evidence] entry exit: code=0 signal=null
+[trial-evidence] PASS
+✔ T2 父 env 残留 PET_NEXT_CHAT_CONTEXT=1 但显式 --context=off：继承值必须被清除 (13307.057574ms)
+[trial-evidence] cmd: PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:trial --context=on
+[trial-evidence] isolated: userData=/tmp/pet-next-trial-e2e-iIHvBH tunnelPort=46245 debugPort=43021 fakeModel=41625
+[trial-evidence] panel mounted: mode=local context=on note=只记住当前会话内最近几轮，重启不保留。
+[trial-evidence] panel open: context=on hasReset=true
+[trial-evidence] pending-reset PASS: late reply dropped, resend single-turn
+[trial-evidence] entry exit: code=0 signal=null
+[trial-evidence] PASS
+✔ T3 chat:trial --context=on 在途「新对话」重发：迟到响应不上屏、新请求单轮 (16626.22727ms)
+[trial-evidence] dist/electron/main.js removed before launch
+[trial-evidence] cmd: PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:trial (no args)
+[trial-evidence] isolated: userData=/tmp/pet-next-trial-e2e-4kUdMw tunnelPort=44491 debugPort=34187 fakeModel=40135
+[trial-evidence] panel mounted: mode=local context=off note=null
+[trial-evidence] panel open: context=off hasReset=false
+[trial-evidence] empty-dist PASS: rebuilt then single-turn off
+[trial-evidence] entry exit: code=0 signal=null
+[trial-evidence] PASS
+✔ T4 空 dist + 缺省（不带参数默认 off）：一条命令自带 build 就绪 (12830.878556ms)
+[trial-evidence] spaced userData: /tmp/pet next trial 1794198259687-97856
+[trial-evidence] cmd: PET_NEXT_CHAT_CONTEXT=<unset> pnpm chat:trial --context=on
+[trial-evidence] isolated: userData=/tmp/pet next trial 1794198259687-97856 tunnelPort=42323 debugPort=33719 fakeModel=34865
+[trial-evidence] panel mounted: mode=local context=on note=只记住当前会话内最近几轮，重启不保留。
+[trial-evidence] panel open: context=on hasReset=true
+[trial-evidence] spaced-path PASS
+[trial-evidence] entry exit: code=0 signal=null
+[trial-evidence] PASS
+✔ T5 PET_NEXT_USER_DATA 带空格路径：正式入口全链可用（on 一轮） (12850.588108ms)
+[evidence] cmd: DISPLAY=:98 PET_NEXT_CHAT_DEBUG_PORT=39331 PET_NEXT_USER_DATA=/tmp/pet-next-formal-e2e-WvzbZr pnpm chat:preview
+[evidence] env: PET_NEXT_TEST=1 PET_NEXT_FAKE_CHAT_DELAY_MS=0 PET_NEXT_FAKE_CHAT_SLOW_MS=3000
+[evidence] cdp page: ws://127.0.0.1:39331/devtools/page/ED7E3DBEAFA7827CF7434897EBCE7940
+[evidence] fake chat server port: 42665
+[evidence] entry electron config: {"event":"chat-demo-electron-config","debugPort":39331,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=39331","/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/electron/main.js"],"userData":"/tmp/pet-next-formal-e2e-WvzbZr"}
+[evidence] panel mounted: phase=closed hidden=true
+[evidence] rect toggle: x=278.0 y=198.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] mouse click chat-toggle @ (295,215)
+[evidence] panel open: phase=open
+[evidence] rect toggle: x=278.0 y=66.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] rect title: x=57.0 y=108.0 43.2x14.0 视口=320x240 disabled=null
+[evidence] rect close: x=286.8 y=107.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect cancel: x=272.2 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] 截图: tests/chat-evidence/formal-entry/t1-01-panel-open.png
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard input: 你好桌面宠物
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] reply: phase=reply demoTagCount=1 assistantMsgs=["演示回复【演示回复】已收到：你好桌面宠物"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t1-02-reply.png
+[evidence] rect close: x=286.8 y=49.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] mouse click chat-close @ (295,57)
+[evidence] closed: phase=closed hidden=true
+[evidence] 截图: tests/chat-evidence/formal-entry/t1-03-closed.png
+[evidence] 关窗: 正常关窗（Runtime.evaluate window.pet.quit()）
+[evidence] entry exit: code=0 signal=null
+[evidence] stdout tail:
+…-stderr] [1244383:1109/122444.769971:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1244383:1109/122444.953171:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1244383:1109/122444.953231:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1244383:1109/122444.953267:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1244383:1109/122444.953331:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1244383:1109/122445.013273:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1244383:1109/122445.013316:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1244383:1109/122445.013345:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1244383:1109/122445.013352:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+{"event":"electron-exit","code":0,"signal":null}
+{"event":"fake-chat-server-exit","code":0,"signal":null}
+{"event":"chat-demo-done","offline_ready":true,"exit":0,"fakeUrl":"http://127.0.0.1:42665","electronStarted":true}
+
+[evidence] 残留进程（本次进程树）: []
+[evidence] 残留进程（--remote-debugging-port=39331）: []
+[evidence] PASS
+✔ T1 正式入口：打开面板→输入→发送→演示回复→关面板→关窗（退出码 0） (12554.75416ms)
+[evidence] cmd: DISPLAY=:98 PET_NEXT_CHAT_DEBUG_PORT=43819 PET_NEXT_USER_DATA=/tmp/pet-next-formal-e2e-0byqPD pnpm chat:preview
+[evidence] env: PET_NEXT_TEST=1 PET_NEXT_FAKE_CHAT_DELAY_MS=0 PET_NEXT_FAKE_CHAT_SLOW_MS=3000
+[evidence] cdp page: ws://127.0.0.1:43819/devtools/page/D8A862FCFEE663AD4915D9E672431D08
+[evidence] fake chat server port: 34033
+[evidence] entry electron config: {"event":"chat-demo-electron-config","debugPort":43819,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=43819","/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/electron/main.js"],"userData":"/tmp/pet-next-formal-e2e-0byqPD"}
+[evidence] panel mounted: phase=closed hidden=true
+[evidence] rect toggle: x=278.0 y=198.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] mouse click chat-toggle @ (295,215)
+[evidence] panel open: phase=open
+[evidence] rect toggle: x=278.0 y=66.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] rect title: x=57.0 y=108.0 43.2x14.0 视口=320x240 disabled=null
+[evidence] rect close: x=286.8 y=107.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect cancel: x=272.2 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard input: [error] 这句会失败
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] error: phase=error errorMsgs=["发送失败（provider-error）：服务不可用或连接已断开，请检查隧道后重试"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t2-01-error.png
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard clear: 13 次 Backspace
+[evidence] keyboard input: 恢复后的这句
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] recovered: phase=reply assistantMsgs=["演示回复【演示回复】已收到：恢复后的这句"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t2-02-recovered.png
+[evidence] 关窗: 正常关窗（Runtime.evaluate window.pet.quit()）
+[evidence] entry exit: code=0 signal=null
+[evidence] stdout tail:
+…p to unnecessary security risks.\n\nFor more information and help, consult\nhttps://electronjs.org/docs/tutorial/security.\nThis warning will not show up\nonce the app is packaged."}
+[electron-stderr] [1244829:1109/122457.355696:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1244829:1109/122457.355779:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1244829:1109/122457.355835:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1244829:1109/122457.355845:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1244829:1109/122457.530245:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1244829:1109/122457.530320:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1244829:1109/122457.530360:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1244829:1109/122457.530369:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+{"event":"electron-exit","code":0,"signal":null}
+{"event":"fake-chat-server-exit","code":0,"signal":null}
+{"event":"chat-demo-done","offline_ready":true,"exit":0,"fakeUrl":"http://127.0.0.1:34033","electronStarted":true}
+
+[evidence] 残留进程（本次进程树）: []
+[evidence] 残留进程（--remote-debugging-port=43819）: []
+[evidence] PASS
+✔ T2 正式入口：fake 的 [error] → 面板报错 → 恢复后再发成功 (12480.527981ms)
+[evidence] cmd: DISPLAY=:98 PET_NEXT_CHAT_DEBUG_PORT=46171 PET_NEXT_USER_DATA=/tmp/pet-next-formal-e2e-7E0Nt1 pnpm chat:preview
+[evidence] env: PET_NEXT_TEST=1 PET_NEXT_FAKE_CHAT_DELAY_MS=0 PET_NEXT_FAKE_CHAT_SLOW_MS=3000
+[evidence] cdp page: ws://127.0.0.1:46171/devtools/page/A89FD271B7D36FB0DCF01C6CCEBBE01A
+[evidence] fake chat server port: 34289
+[evidence] entry electron config: {"event":"chat-demo-electron-config","debugPort":46171,"electronArgs":["--no-sandbox","--disable-dev-shm-usage","--remote-debugging-port=46171","/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/dist/electron/main.js"],"userData":"/tmp/pet-next-formal-e2e-7E0Nt1"}
+[evidence] panel mounted: phase=closed hidden=true
+[evidence] rect toggle: x=278.0 y=198.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] mouse click chat-toggle @ (295,215)
+[evidence] panel open: phase=open
+[evidence] rect toggle: x=278.0 y=66.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] rect title: x=57.0 y=108.0 43.2x14.0 视口=320x240 disabled=null
+[evidence] rect close: x=286.8 y=107.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect cancel: x=272.2 y=206.0 30.8x20.0 视口=320x240 disabled=true
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard input: 慢速第一句 [slow]
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] pending: phase=pending status=["发送中…"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t3-01-pending.png
+[evidence] tcp open at +99ms: [{"inode":"1593823970","localPort":35294,"remotePort":34289,"pid":1245248}]
+[evidence] rect cancel: x=272.2 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-cancel @ (288,216)
+[evidence] cancelled: phase=cancelled status=["已取消"] at +135ms
+[evidence] 截图: tests/chat-evidence/formal-entry/t3-02-cancelled.png
+[evidence] tcp closed at +44ms after cancel（距发送 +179ms）
+[evidence] fake 观测文件不存在（入口 fake 未暴露观测口子），改用 /proc TCP 连接观测
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard clear: 12 次 Backspace
+[evidence] keyboard input: 第二句立刻回
+[evidence] keyboard: Enter（rawKeyDown/keyUp）
+[evidence] resend reply at +284ms: ["演示回复【演示回复】已收到：第二句立刻回"]
+[evidence] 截图: tests/chat-evidence/formal-entry/t3-03-resend.png
+[evidence] after slow deadline (+4501ms): assistantMsgs=["演示回复【演示回复】已收到：第二句立刻回"]
+[evidence] rect close: x=286.8 y=49.0 16.2x16.0 视口=320x240 disabled=false
+[evidence] mouse click chat-close @ (295,57)
+[evidence] panel closed by mouse on chat-close
+[evidence] panel mounted: phase=closed hidden=true
+[evidence] rect toggle: x=278.0 y=198.0 34.0x34.0 视口=320x240 disabled=false
+[evidence] mouse click chat-toggle @ (295,215)
+[evidence] panel open: phase=reply
+[evidence] rect input: x=57.0 y=168.0 246.0x34.0 视口=320x240 disabled=null
+[evidence] mouse click chat-input @ (180,185)
+[evidence] keyboard clear: 6 次 Backspace
+[evidence] keyboard input: 关窗前在途 [slow]
+[evidence] rect send: x=233.5 y=206.0 30.8x20.0 视口=320x240 disabled=false
+[evidence] mouse click chat-send @ (249,216)
+[evidence] tcp open before quit: [{"inode":"1593662295","localPort":35394,"remotePort":34289,"pid":1245248}]
+[evidence] 截图: tests/chat-evidence/formal-entry/t3-04-pending-before-quit.png
+[evidence] 关窗: 在途关窗（Runtime.evaluate window.pet.quit()）
+[evidence] entry exit: code=0 signal=null
+[evidence] stdout tail:
+…-stderr] [1245248:1109/122510.229948:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1245248:1109/122512.222744:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1245248:1109/122512.222802:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1245248:1109/122512.222851:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1245248:1109/122512.222944:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1245248:1109/122514.583408:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1245248:1109/122514.583485:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+[electron-stderr] [1245248:1109/122514.583523:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are "tcp" and on UNIX "unix")
+[electron-stderr] [1245248:1109/122514.583533:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type:
+{"event":"electron-exit","code":0,"signal":null}
+{"event":"fake-chat-server-exit","code":0,"signal":null}
+{"event":"chat-demo-done","offline_ready":true,"exit":0,"fakeUrl":"http://127.0.0.1:34289","electronStarted":true}
+
+[evidence] 残留进程（本次进程树）: []
+[evidence] 残留进程（--remote-debugging-port=46171）: []
+[evidence] PASS
+✔ T3 正式入口：[slow] 取消→已取消→立即重发→旧迟到回复不显示→关面板→在途关窗 (17051.378172ms)
+[evidence] cmd: DISPLAY=:98 PET_NEXT_CHAT_DEBUG_PORT=42041 PET_NEXT_FAKE_CHAT_PORT=33119 pnpm chat:preview
+[evidence] entry exit: code=1 signal=null
+[evidence] stdout tail:
+
+> pet-next@0.1.0 chat:preview /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> pnpm build && node scripts/chat-demo.mjs
+
+
+> pet-next@0.1.0 build /data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+
+[fake-stderr] node:net:1948
+[fake-stderr] const ex = new UVExceptionWithHostPort(err, 'listen', address, port);
+[fake-stderr] ^
+[fake-stderr] Error: listen EADDRINUSE: address already in use 127.0.0.1:33119
+[fake-stderr] at Server.setupListenHandle [as _listen2] (node:net:1948:16)
+[fake-stderr] at listenInCluster (node:net:2005:12)
+[fake-stderr] at node:net:2214:7
+[fake-stderr] at process.processTicksAndRejections (node:internal/process/task_queues:90:21) {
+[fake-stderr] code: 'EADDRINUSE',
+[fake-stderr] errno: -98,
+[fake-stderr] syscall: 'listen',
+[fake-stderr] address: '127.0.0.1',
+[fake-stderr] port: 33119
+[fake-stderr] }
+[fake-stderr] Node.js v24.14.0
+{"event":"fake-chat-server-exit","code":1,"signal":null}
+{"event":"chat-demo-failed","reason":"fake-exit","exit":1,"code":1,"signal":null}
+{"event":"chat-demo-done","offline_ready":false,"exit":1,"fakeUrl":null,"electronStarted":false}
+ ELIFECYCLE  Command failed with exit code 1.
+
+[evidence] stderr tail:
+chat-demo 失败：fake-exit
+
+[evidence] 失败后本次进程树存活 pid: []
+[evidence] PASS
+✔ T4 正式入口失败路径：fake 端口被占用 → 入口非零退出、无 Electron 残留 (12097.18647ms)
+✔ 无参数启动默认常驻；SIGTERM 给脚本后写日志、退出码 0、无残留 (5822.950085ms)
+✔ 产品内 Esc 退出：脚本自然收尾、退出码 0、无残留 (3843.093591ms)
+✔ --record 中子进程退出会取消剩余输入并统一收尾 (3747.371931ms)
+✔ --max-duration 到点自动收尾并写日志 (6129.483085ms)
+✔ --record 序列跑完自动收尾、步骤全过并写日志 (15996.398392ms)
+{"event":"drag-scale","label":"os-default","scaleSource":"os","forcedDeviceScaleFactor":null,"scaleFactor":1,"devicePixelRatio":1,"pointerDown":{"screenX":160,"screenY":140,"clientX":80,"clientY":60,"windowX":80,"windowY":80},"screenDelta":{"x":48,"y":24},"physicalDelta":{"x":48,"y":24},"requested":{"x":128,"y":104},"readback":{"x":128,"y":104},"clamped":{"x":0,"y":0},"workArea":{"x":0,"y":0,"width":1600,"height":1000}}
+✔ 拖动跟手、夹边且不误触点击：os-default (17596.161371ms)
+{"event":"drag-scale","label":"simulated-100","scaleSource":"simulated-chromium-flag","forcedDeviceScaleFactor":1,"scaleFactor":1,"devicePixelRatio":1,"pointerDown":{"screenX":160,"screenY":140,"clientX":80,"clientY":60,"windowX":80,"windowY":80},"screenDelta":{"x":48,"y":24},"physicalDelta":{"x":48,"y":24},"requested":{"x":128,"y":104},"readback":{"x":128,"y":104},"clamped":{"x":0,"y":0},"workArea":{"x":0,"y":0,"width":1600,"height":1000}}
+✔ 拖动跟手、夹边且不误触点击：simulated-100 (17623.402906ms)
+{"event":"drag-scale","label":"simulated-125","scaleSource":"simulated-chromium-flag","forcedDeviceScaleFactor":1.25,"scaleFactor":1.25,"devicePixelRatio":1.25,"pointerDown":{"screenX":144,"screenY":128,"clientX":64,"clientY":48,"windowX":80,"windowY":80},"screenDelta":{"x":38,"y":18.399993896484375},"physicalDelta":{"x":48,"y":24},"requested":{"x":118,"y":98},"readback":{"x":117,"y":97},"clamped":{"x":1,"y":1},"workArea":{"x":0,"y":0,"width":1280,"height":800}}
+✔ 拖动跟手、夹边且不误触点击：simulated-125 (17596.095083ms)
+{"event":"drag-scale","label":"simulated-150","scaleSource":"simulated-chromium-flag","forcedDeviceScaleFactor":1.5,"scaleFactor":1.5,"devicePixelRatio":1.5,"pointerDown":{"screenX":133.33334350585938,"screenY":120,"clientX":53.333335876464844,"clientY":40,"windowX":80,"windowY":80},"screenDelta":{"x":32,"y":15.333343505859375},"physicalDelta":{"x":48,"y":24},"requested":{"x":112,"y":95},"readback":{"x":112,"y":94},"clamped":{"x":0,"y":1},"workArea":{"x":0,"y":0,"width":1066,"height":666}}
+✔ 拖动跟手、夹边且不误触点击：simulated-150 (17627.491545ms)
+✔ electron pet idles, reacts, drags inside the work area, and exits (4568.142781ms)
+✔ missing media falls back to the placeholder and can still be dragged (923.317669ms)
+[feedback-evidence] submit=1794198451441 reply=1794198453004 reactions=0
+[feedback-evidence] PASS control-off
+✔ 对照臂 · 关闭：无反馈节点、成功不触发回应、POST=1、关窗退出 0 (16618.227488ms)
+[feedback-evidence] submit=1794198467856 waiting_ms=58 reply_ms=1571 success_ms=1572 react_ms=1572 reaction=reaction-2
+[feedback-evidence] screenshot=/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/tests/chat-evidence/feedback/companion-success/react.png
+[feedback-evidence] hint_hidden_ms=4125
+[feedback-evidence] PASS companion-success
+✔ companion · 成功：等待反馈先于回复可见、成功提示、回应恰一次、POST=1、截图 (16748.749964ms)
+[feedback-evidence] submit=1794198484472 error_ms=1565 text=发送失败
+[feedback-evidence] PASS companion-error
+✔ companion · 错误：error 提示可辨认、不假成功、零回应、POST=1 (16591.465493ms)
+[feedback-evidence] cancel_hint_ms=-32 resend_reply_ms=1546 POST=2
+[feedback-evidence] PASS companion-cancel-resend
+✔ companion · 取消后立即重发：cancelled 可辨认、新请求成功且回应一次 (16674.800939ms)
+[feedback-evidence] reset_at=1794198518158 resend_at=1794198521412 POST=2 late_dropped=true
+[feedback-evidence] PASS companion-reset-late
+✔ companion · reset 后迟到：旧回复不上屏、零回应、重发单轮 (20215.826161ms)
+[feedback-evidence] window=4194307 geo={"X":80,"Y":80,"WIDTH":320,"HEIGHT":240} center=(92,92)
+[feedback-evidence] drag_started visual=idle
+[feedback-evidence] submit=1794198537937 reply_ms=1562 success_ms=1562 reactions=0
+[feedback-evidence] PASS companion-drag
+✔ companion · 拖动中完成：结果提示保留、回应动作丢弃 (16568.226251ms)
+[feedback-evidence] second_click_at=1794198554557 POST=1
+[feedback-evidence] PASS companion-double-click
+✔ companion · 连点发送：busy 期间不产生第二个 POST (14875.155048ms)
+[feedback-evidence] submit=1794198569585 visuals=["idle"] trace=idle:idle-1,auto:reaction-2,idle:idle-3 POST=1
+[feedback-evidence] PASS companion-missing-media
+✔ companion · 素材失败：回应走既有占位、不崩溃、POST=1 (17250.819745ms)
+[feedback-evidence] submit=1794198586885 reply_ms=2589 POST=1 reactions=0
+[feedback-evidence] PASS control-slow
+✔ 对照臂 · 慢回复 2.5s：无提示无回应、POST=1、自然退出零残留 (17524.062436ms)
+[feedback-evidence] submit=1794198604218 waiting_hidden_ms=1649 reply_ms=2589 success_ms=2589 react_ms=2589 reaction=reaction-2 POST=1
+[feedback-evidence] PASS companion-slow
+✔ companion · 慢回复 2.5s：等待提示到期后成功仍提示并回应恰一次 (17656.094348ms)
+[feedback-evidence] reset_at=1794198626583 POST=2 late_cancel_reactions=0 late_reset_reactions=0
+[feedback-evidence] PASS companion-late-drop
+✔ companion · 取消/重置后迟到：零回应、POST=2 (21720.071845ms)
+[feedback-evidence] exit natural ok; debug_port=39251 closed; sentinel_pid=1252863 alive
+[feedback-evidence] PASS companion-exit-smoke
+✔ 入口冒烟（Linux/Windows 同源）：正式退出零残留、无关哨兵存活 (12501.348307ms)
+✔ 默认关闭：不创建观测面、不加窗口监听，隐藏不影响播放 (2617.09777ms)
+✔ 开启后：真实 hide/show 驱动暂停与恢复，失焦不算隐藏，点击动作不被暂停 (4570.201304ms)
+✔ 最小化：真实 minimize 算隐藏并暂停，restore 恢复且重复调用不重复计数 (2436.096822ms)
+{"event":"launcher-e2e-gate","enabled":false,"buildReady":true,"displayReady":false,"spawned":0,"listened":0,"post":0}
+﹣ 首次启动 · 无配置→填表→测试连接(GET only)→启动→app/page.html 桌宠(#pet 挂载)→launcher 销毁→退出 0 (0.649216ms) # not-run: 未显式开启 PET_NEXT_LAUNCHER_E2E=1（默认不启 GUI/替身/Xvfb）
+﹣ 再次启动 · 保存过的配置回填表单 (0.167106ms) # not-run: 未显式开启 PET_NEXT_LAUNCHER_E2E=1（默认不启 GUI/替身/Xvfb）
+﹣ 连接失败 · 可读错误、改到实际 fakePort 再次 probe 成功、旧隧道已退出、POST=0 (0.259434ms) # not-run: 未显式开启 PET_NEXT_LAUNCHER_E2E=1（默认不启 GUI/替身/Xvfb）
+﹣ 探测中关窗 · /models 等待中取消：退出 0、无桌宠窗口、隧道已收、归属进程全消失 (0.245054ms) # not-run: 未显式开启 PET_NEXT_LAUNCHER_E2E=1（默认不启 GUI/替身/Xvfb）
+﹣ 直接关 launcher 窗口 · 干净退出、无残留进程/端口、无关哨兵存活、零 POST (0.184236ms) # not-run: 未显式开启 PET_NEXT_LAUNCHER_E2E=1（默认不启 GUI/替身/Xvfb）
+﹣ 选 companion · 发 1 条 fake 消息：回复上屏、reaction 恰 1 次、POST=1、退出 0 (0.255665ms) # not-run: 未显式开启 PET_NEXT_LAUNCHER_E2E=1（默认不启 GUI/替身/Xvfb）
+﹣ 选 companion · 慢回复 2500ms：等待提示先到期、回复上屏、reaction 恰 1 次、POST=1、退出 0 (0.219555ms) # not-run: 未显式开启 PET_NEXT_LAUNCHER_E2E=1（默认不启 GUI/替身/Xvfb）
+ℹ tests 49
+ℹ suites 1
+ℹ pass 42
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 7
+ℹ todo 0
+ℹ duration_ms 539710.197181

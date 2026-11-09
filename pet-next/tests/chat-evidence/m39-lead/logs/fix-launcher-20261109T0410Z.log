@@ -1,0 +1,22 @@
+[launcher-e2e] PASS first-run-success ms=2789 POST=0 tunnel_port=35405
+✔ 首次启动 · 无配置→填表→测试连接(GET only)→启动→app/page.html 桌宠(#pet 挂载)→launcher 销毁→退出 0 (2817.171142ms)
+[launcher-e2e] PASS reopen-refill ms=2113
+✔ 再次启动 · 保存过的配置回填表单 (2121.918563ms)
+[launcher-e2e] PASS probe-fail-retry ms=22681 POST=0 tunnels=2
+✔ 连接失败 · 可读错误、改到实际 fakePort 再次 probe 成功、旧隧道已退出、POST=0 (22707.306479ms)
+[launcher-e2e] PASS probe-cancel-exit ms=2406 tunnel_port=34395 POST=0
+✔ 探测中关窗 · /models 等待中取消：退出 0、无桌宠窗口、隧道已收、归属进程全消失 (2427.389406ms)
+[launcher-e2e] PASS cancel-clean-exit ms=2110 sentinel=1254186 alive
+✔ 直接关 launcher 窗口 · 干净退出、无残留进程/端口、无关哨兵存活、零 POST (2113.335444ms)
+[launcher-e2e] PASS companion-chat ms=3790 reply_ms=47 reactions=1 POST=1
+✔ 选 companion · 发 1 条 fake 消息：回复上屏、reaction 恰 1 次、POST=1、退出 0 (3839.042724ms)
+[launcher-e2e] PASS companion-chat-slow ms=6284 reply_ms=2532 reactions=1 POST=1
+✔ 选 companion · 慢回复 2500ms：等待提示先到期、回复上屏、reaction 恰 1 次、POST=1、退出 0 (6326.496332ms)
+ℹ tests 7
+ℹ suites 0
+ℹ pass 7
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 42458.835625

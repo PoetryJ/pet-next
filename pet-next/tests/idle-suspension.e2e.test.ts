@@ -6,6 +6,7 @@
  * @module pet-next/tests/idle-suspension.e2e.test
  */
 import assert from 'node:assert/strict';
+import { spawn } from 'node:child_process';
 import test from 'node:test';
 import { aliveTracked, closePet, evaluate, mouse, openPet, type PetSession } from './platform/session.ts';
 
@@ -94,6 +95,42 @@ async function launch(options: {
       ...(options.idlePause ? { PET_NEXT_IDLE_PAUSE: '1' } : {}),
     },
   });
+}
+
+interface WindowManager {
+  /** openbox 不存在时 false：本用例会 skip，而不是把机制缺失伪装成绿灯。 */
+  available: boolean;
+  stop(): void;
+}
+
+/**
+ * 最小化必须有窗口管理器才会真正翻转 `isMinimized()`：裸 Xvfb 下
+ * `XIconifyWindow` 无人处理，`win.minimize()` 后 `isMinimized()` 仍为 false。
+ * 实测（无 WM 的 :122）minimize 后 15s 内 minimized 始终 false；:121+openbox 下立即变 true。
+ */
+async function startWm(display: string): Promise<WindowManager> {
+  const child = spawn('openbox', [], { env: { ...process.env, DISPLAY: display }, stdio: 'ignore' });
+  const spawnError = await new Promise<Error | null>((resolve) => {
+    let settled = false;
+    const finish = (error: Error | null): void => {
+      if (settled) return;
+      settled = true;
+      resolve(error);
+    };
+    child.once('error', (error) => finish(error));
+    child.once('exit', () => finish(new Error('openbox 提前退出')));
+    setTimeout(() => finish(null), 1200);
+  });
+  return {
+    available: spawnError === null && child.exitCode === null,
+    stop() {
+      try {
+        child.kill('SIGTERM');
+      } catch {
+        // 已退出。
+      }
+    },
+  };
 }
 
 test('默认关闭：不创建观测面、不加窗口监听，隐藏不影响播放', async () => {
@@ -217,6 +254,70 @@ test('开启后：真实 hide/show 驱动暂停与恢复，失焦不算隐藏，
     assert.equal((await aliveTracked(session.tracked)).length, 0, '退出后不得有存活子进程');
   } finally {
     if (session !== undefined && !exited) await closePet(session);
+    await xvfb.stop();
+    await ctx.cleanup({ keepDir: true });
+  }
+});
+
+test('最小化：真实 minimize 算隐藏并暂停，restore 恢复且重复调用不重复计数', async (t) => {
+  const ctx = isolation.createRunContext({ label: 'm39-min', kind: 'e2e' });
+  const xvfb = await isolation.startOwnXvfb({ label: 'm39-min' });
+  const wm = await startWm(xvfb.display);
+  let session: PetSession | undefined;
+  try {
+    if (!wm.available) {
+      t.skip('openbox 不可用：裸 Xvfb 下 isMinimized() 不翻转，机制未证明');
+      return;
+    }
+    session = await launch({ label: 'm39-min', display: xvfb.display, userData: `${ctx.dir}/userData`, idlePause: true });
+
+    await waitState(session, 'min playing', (state) => state.phase === 'playing' && state.clip === 'idle');
+    // 先证明初始态可观测：未最小化、未暂停。
+    const initial = await act(session, 'state');
+    assert.equal(initial.minimized, false);
+    assert.equal((await readState(session))?.hidden, false);
+    assert.equal(await clipPaused(session), false);
+
+    // 真实 minimize：主进程 isMinimized() 必须真的翻转，页面才收到 hidden=true。
+    await act(session, 'minimize');
+    const paused = await waitState(session, 'minimized paused', (state) => state.hidden === true && state.pauseCount >= 1);
+    const minimized = await act(session, 'state');
+    assert.equal(minimized.minimized, true, '真实最小化后 isMinimized() 必须为 true');
+    assert.equal(minimized.visible, false);
+    const snapshot = await evaluate<{ hidden: boolean; reason: string }>(
+      session.cdp,
+      'window.petWindowVisibility.query()',
+    );
+    assert.equal(snapshot.hidden, true);
+    assert.equal(snapshot.reason, 'minimized', '最小化原因必须可区分于普通隐藏');
+    assert.ok(paused.lease !== null, '最小化暂停也必须有归属');
+    assert.equal(await clipPaused(session), true);
+
+    // 重复 minimize 不重复暂停。
+    await act(session, 'minimize');
+    await delay(300);
+    assert.equal((await readState(session))?.pauseCount, paused.pauseCount);
+
+    // 真实 restore：恢复可见、回到 playing、clip 继续播。
+    await act(session, 'restore');
+    const resumed = await waitState(session, 'restored', (state) => state.hidden === false && state.resumeCount >= 1);
+    const restored = await act(session, 'state');
+    assert.equal(restored.minimized, false);
+    assert.equal(restored.visible, true);
+    assert.equal(resumed.phase, 'playing');
+    assert.equal(resumed.clip, 'idle');
+    assert.equal(await clipPaused(session), false);
+
+    // 重复 restore 不重复 resume。
+    await act(session, 'restore');
+    await delay(300);
+    const after = await readState(session);
+    assert.equal(after?.resumeCount, resumed.resumeCount);
+    assert.equal(after?.hidden, false);
+    assert.equal(await clipPaused(session), false);
+  } finally {
+    if (session !== undefined) await closePet(session);
+    wm.stop();
     await xvfb.stop();
     await ctx.cleanup({ keepDir: true });
   }
