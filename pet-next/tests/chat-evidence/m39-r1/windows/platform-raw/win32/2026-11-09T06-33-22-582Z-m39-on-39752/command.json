@@ -1,0 +1,12 @@
+{
+  "executable": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\中文 空格 package\\node_modules\\.pnpm\\electron@43.3.0\\node_modules\\electron\\dist\\electron.exe",
+  "args": [
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+    "--remote-allow-origins=*",
+    "--remote-debugging-port=53676",
+    "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\中文 空格 package\\dist\\electron\\main.js"
+  ],
+  "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\中文 空格 package",
+  "platform": "win32"
+}

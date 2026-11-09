@@ -1,0 +1,34 @@
+M3-9 先导证据归档标注（historical / backfilled）
+=================================================
+
+状态：historical（2026-11-09 先导，非本轮产生）+ backfilled（本轮入库）
+来源：/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/tests/chat-evidence/m39-pilot/
+      该目录此前未提交到仓库；本次为只读复制，源目录保留、未改动。
+入库位置：pet-next/tests/chat-evidence/m39-r1/pilot/
+
+1. 6 次真实 POST 的时间与口径
+   - 6 次 = 质量抽检 3 次 + 隐藏期聊天结算 3 次，全部发生于 2026-11-09 先导实验，
+     服务 http://127.0.0.1:18872/v1，model qwen3.8-27b，严格串行、无重试。
+   - 这是【历史记录】，不是"发前持久账本"：没有任何在发送前写入的额度/账本文件，
+     不能据此实施预算硬上限，也不能把本轮之后的调用记到这份记录上。
+   - 本轮（M3-9 R1）零新增真实 POST：没有访问 127.0.0.1:18872，没有重跑模型。
+
+2. 证据范围（只证明这些，不更多）
+   - 隐藏期聊天结算 n=3：标准聊天、context=false、无 companion；
+     真实 BrowserWindow.hide()/show()，隐藏期回复上屏 1 条，每轮恰 1 POST，恢复不重发。
+   - 未证明：其它模式/上下文入史/companion 反馈动画不重播、长回复、断网、取消、
+     资源与 DPI。n=3 不作 P95 或质量泛化结论。
+   - GPU/服务指标只作一致性旁证（成功 +6、prompt +352、generation +146），
+     不代替逐请求归属。
+
+3. 复制口径
+   - 保留：SUMMARY.md、service/（SUMMARY-machine.txt、commands.txt、run-log.ndjson、stats.json）、
+     hidden-real{,-2,-3}/result.json + product-stdout.log + product-stderr.log、
+     metrics-before.txt、metrics-after.txt、models.json、probe-hidden-real.mjs、health.json。
+   - 排除：hidden-real*/userData/ 下的 Chromium/Electron 生成缓存
+     （DawnGraphiteCache、GPUCache、Code Cache、Cache、Session Storage、
+     Shared Dictionary、Crashpad、Preferences 等），共约 6.6 MB；这些是运行时缓存，
+     不是结果证据，入库只会膨胀仓库。
+   - health.json 在源目录即为 0 字节空文件；照原样保留，未补写内容。
+   - 所有文件字节与源目录一致，已用 diff -r（排除 userData）核对；
+     见本目录 SHA256SUMS 与 ../README.md 的哈希清单。

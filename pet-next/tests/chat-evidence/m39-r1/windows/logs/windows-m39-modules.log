@@ -1,0 +1,41 @@
+✔ 默认关闭：setHidden 不产生任何暂停/恢复，也不记 lease (1.8899ms)
+✔ 隐藏时暂停当前 idle；恢复时只恢复该 owner 且不重报 playing (0.6494ms)
+✔ 重复 hidden 不重复 pause；重复 visible 不重复 resume (0.2438ms)
+✔ 加载中隐藏不暂停；兑现后按最新状态暂停 (0.1896ms)
+✔ once 动作在隐藏时不暂停，结束后再回到 idle 才暂停 (0.7873ms)
+✔ 隐藏期换素材并复用同一素材：旧归属作废，不会永久冻帧 (0.5001ms)
+✔ 旧的 play Promise 晚到不影响新 owner (0.4774ms)
+✔ 隐藏中 onended 循环不重启解码 (0.1633ms)
+✔ 恢复 play 失败走失败路径，不卡在 playing (0.4637ms)
+✔ 隐藏挂起期间解码失败：作废旧归属，可见后不把失败元素重新拉起 (0.2565ms)
+✔ 占位层接管：作废旧归属，可见后不为被遮住的元素白解码 (0.1431ms)
+✔ 恢复在途再次隐藏并由占位层接管：晚到的 play 不得在隐藏期无归属解码 (0.25ms)
+✔ dispose 后到达的恢复结果不再动作 (0.181ms)
+✔ 开关关闭时永不动手 (1.0745ms)
+✔ dispose 后不再暂停或恢复 (0.1513ms)
+✔ 隐藏 + 当前 idle + playing → 暂停并取得归属 (0.1492ms)
+✔ 重复 hidden 事件不重复暂停同一 owner (0.0784ms)
+✔ 只有 idle 会被暂停：reaction / auto / once 都不行 (0.1053ms)
+✔ 加载中/未兑现 play 不暂停 (0.6908ms)
+✔ 可见且归属仍匹配 → 恢复一次 (0.1208ms)
+✔ 可见但无归属 → 不恢复（别动别的暂停） (0.073ms)
+✔ 同 requestId 换代后旧归属失效 (0.1285ms)
+✔ 元素身份不同的归属不认 (0.1517ms)
+✔ 恢复在途不重复 play (0.0955ms)
+✔ leaseStillCurrent 只认当前代次与元素 (0.0781ms)
+✔ 初始快照 revision=1，可见 (1.2422ms)
+✔ hide/show 推送并递增修订号 (0.1963ms)
+✔ 最小化原因优先于不可见；restore 回到可见 (0.1246ms)
+✔ 查询只回应本窗口 (0.2132ms)
+✔ dispose 幂等：不再推送、摘掉监听 (0.1123ms)
+✔ webContents 已销毁时推送不抛错 (0.1491ms)
+✔ 窗口关闭自动 dispose (0.0899ms)
+✔ snapshotFor 组合与优先级 (0.0898ms)
+ℹ tests 33
+ℹ suites 0
+ℹ pass 33
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 436.8624

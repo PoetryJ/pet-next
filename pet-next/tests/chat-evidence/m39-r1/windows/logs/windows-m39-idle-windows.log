@@ -1,0 +1,31 @@
+Downloading Electron binary...
+✔ 默认关闭：不创建观测面、不加窗口监听，隐藏不影响播放 (11837.8625ms)
+✖ 开启后：真实 hide/show 驱动暂停与恢复，失焦不算隐藏，点击动作不被暂停 (3768.4798ms)
+✔ 最小化：真实 minimize 算隐藏并暂停，restore 恢复且重复调用不重复计数 (3973.453ms)
+ℹ tests 3
+ℹ suites 0
+ℹ pass 2
+ℹ fail 1
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 19706.2992
+
+✖ failing tests:
+
+test at tests\idle-windows.check.ts:165:1
+✖ 开启后：真实 hide/show 驱动暂停与恢复，失焦不算隐藏，点击动作不被暂停 (3768.4798ms)
+  AssertionError [ERR_ASSERTION]: Expected values to be strictly equal:
+  
+  1 !== 0
+  
+      at TestContext.<anonymous> (file:///C:/Users/Administrator/Documents/ChatGPT/%E5%B7%A5%E4%BD%9C%E5%AD%A6%E4%B9%A0/dsh-pet-research/m39-5f4b431/%E4%B8%AD%E6%96%87%20%E7%A9%BA%E6%A0%BC%20package/tests/idle-windows.check.ts:188:12)
+      at async Test.run (node:internal/test_runner/test:1409:7)
+      at async Test.processPendingSubtests (node:internal/test_runner/test:974:7) {
+    generatedMessage: true,
+    code: 'ERR_ASSERTION',
+    actual: 1,
+    expected: 0,
+    operator: 'strictEqual',
+    diff: 'simple'
+  }

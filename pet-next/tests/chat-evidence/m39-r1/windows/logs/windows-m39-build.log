@@ -1,0 +1,4 @@
+
+> pet-next@0.1.0 build C:\Users\Administrator\Documents\ChatGPT\工作学习\dsh-pet-research\m39-5f4b431\中文 空格 package
+> tsc -p tsconfig.json && tsc -p tsconfig.preload.json && node scripts/copy-static.mjs
+

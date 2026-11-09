@@ -1,0 +1,25 @@
+Lockfile is up to date, resolution step is skipped
+Progress: resolved 1, reused 0, downloaded 0, added 0
+Packages: +108
+++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++
+
+   ╭──────────────────────────────────────────╮
+   │                                          │
+   │   Update available! 10.33.4 → 12.18.0.   │
+   │   Changelog: https://pnpm.io/v/12.18.0   │
+   │     To update, run: pnpm add -g pnpm     │
+   │                                          │
+   ╰──────────────────────────────────────────╯
+
+Progress: resolved 108, reused 108, downloaded 0, added 107
+Progress: resolved 108, reused 108, downloaded 0, added 108, done
+
+devDependencies:
++ @eslint/js 10.0.1
++ @types/node 22.20.5
++ electron 43.3.0
++ eslint 10.13.0
++ typescript 5.9.3
++ typescript-eslint 8.72.1
+
+Done in 1.3s using pnpm v10.33.4

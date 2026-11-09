@@ -1,0 +1,14 @@
+{
+  "label": "build",
+  "args": [
+    "C:\\Users\\Administrator\\.cache\\codex-runtimes\\codex-primary-runtime\\dependencies\\node\\bin\\node.EXE",
+    "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m36-r1-b8eaf23\\tools\\node_modules\\pnpm\\bin\\pnpm.cjs",
+    "build"
+  ],
+  "cwd": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\中文 空格 package",
+  "pid": 25248,
+  "code": 0,
+  "timeout": false,
+  "seconds": 3.7,
+  "log": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\m39-5f4b431\\windows-m39-build.log"
+}

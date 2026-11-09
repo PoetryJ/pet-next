@@ -1,0 +1,11 @@
+M39_INITIAL {"enabled":true,"revision":2,"hidden":false,"generation":1,"phase":"playing","clip":"idle","lease":null,"pauseCount":1,"resumeCount":1,"lastAction":"none","lastSkipReason":"no-lease"}
+M39_BLURRED {"enabled":true,"revision":2,"hidden":false,"generation":1,"phase":"playing","clip":"idle","lease":null,"pauseCount":1,"resumeCount":1,"lastAction":"none","lastSkipReason":"no-lease"}
+✔ 开启后：真实 hide/show 驱动暂停与恢复，失焦不算隐藏，点击动作不被暂停 (9387.9161ms)
+ℹ tests 1
+ℹ suites 0
+ℹ pass 1
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 9517.8264

@@ -1,0 +1,33 @@
+--- idle-windows.check.ts
++++ idle-windows-delta.check.ts
+@@ -180,17 +180,19 @@
+     assert.equal(playing.hidden, false);
+     assert.equal(await clipPaused(session), false);
+ 
++    console.log(`M39_INITIAL ${JSON.stringify(playing)}`);
+     // 失焦不是隐藏。
+     await act(session, 'blur');
+     await delay(400);
+     const blurred = await readState(session);
+     assert.equal(blurred?.hidden, false);
+-    assert.equal(blurred?.pauseCount ?? 0, 0);
++    console.log(`M39_BLURRED ${JSON.stringify(blurred)}`);
++    assert.equal(blurred?.pauseCount, playing.pauseCount);
+ 
+     // 真实 hide → 只暂停当前 idle 并取得归属。
+     const hiddenInfo = await act(session, 'hide');
+     assert.equal(hiddenInfo.visible, false);
+-    const paused = await waitState(session, 'idle paused', (state) => state.pauseCount >= 1);
++    const paused = await waitState(session, 'idle paused', (state) => state.hidden === true && state.pauseCount > playing.pauseCount);
+     assert.equal(paused.hidden, true);
+     assert.ok(paused.lease !== null, '必须有暂停归属');
+     assert.equal(paused.lease?.elementIdentity, 'single-primary');
+@@ -204,7 +206,7 @@
+     // 真实 show → 只恢复该 owner，且不重报 playing。
+     const shownInfo = await act(session, 'show');
+     assert.equal(shownInfo.visible, true);
+-    const resumed = await waitState(session, 'idle resumed', (state) => state.resumeCount >= 1);
++    const resumed = await waitState(session, 'idle resumed', (state) => state.hidden === false && state.resumeCount > paused.resumeCount);
+     assert.equal(resumed.hidden, false);
+     assert.equal(resumed.phase, 'playing');
+     assert.equal(await clipPaused(session), false);

@@ -1,0 +1,108 @@
+{
+  "startedAt": "2026-11-09T05:43:54.190Z",
+  "display": ":123",
+  "upstream": "http://127.0.0.1:18872/v1",
+  "proxy": "http://127.0.0.1:18901/v1",
+  "model": "qwen3.8-27b",
+  "initial": {
+    "state": {
+      "enabled": true,
+      "revision": 2,
+      "hidden": false,
+      "generation": 1,
+      "phase": "playing",
+      "clip": "idle",
+      "lease": null,
+      "pauseCount": 0,
+      "resumeCount": 0,
+      "lastAction": "none",
+      "lastSkipReason": "no-lease"
+    },
+    "paused": false,
+    "chatInfo": {
+      "mode": "local",
+      "model": "qwen3.8-27b",
+      "transport": "direct",
+      "context": false
+    }
+  },
+  "hide": {
+    "visible": false,
+    "minimized": false,
+    "focused": false
+  },
+  "reply": {
+    "ms": 1398,
+    "hiddenMs": 1370,
+    "messages": [
+      "Qwen · qwen3.8-27b现在最适合伸个懒腰，喝口水，让眼睛和身体都放松一下啦。"
+    ]
+  },
+  "hidden": {
+    "state": {
+      "enabled": true,
+      "revision": 3,
+      "hidden": true,
+      "generation": 1,
+      "phase": "playing",
+      "clip": "idle",
+      "lease": {
+        "generation": 1,
+        "slot": "single",
+        "elementIdentity": "single-primary"
+      },
+      "pauseCount": 1,
+      "resumeCount": 0,
+      "lastAction": "pause",
+      "lastSkipReason": null
+    },
+    "paused": true
+  },
+  "afterShow": {
+    "state": {
+      "enabled": true,
+      "revision": 4,
+      "hidden": false,
+      "generation": 1,
+      "phase": "playing",
+      "clip": "idle",
+      "lease": null,
+      "pauseCount": 1,
+      "resumeCount": 1,
+      "lastAction": "none",
+      "lastSkipReason": "no-lease"
+    },
+    "messages": [
+      "Qwen · qwen3.8-27b现在最适合伸个懒腰，喝口水，让眼睛和身体都放松一下啦。"
+    ],
+    "paused": false
+  },
+  "post": {
+    "beforeShow": 1,
+    "afterShow": 1,
+    "total": 1,
+    "getModels": 0
+  },
+  "forwards": [
+    {
+      "method": "POST",
+      "url": "/v1/chat/completions",
+      "status": 200,
+      "ms": 1329,
+      "bytes": 786
+    }
+  ],
+  "checks": {
+    "hiddenStateTrue": true,
+    "hiddenClipPaused": true,
+    "replyWhileHidden": true,
+    "singleReply": true,
+    "singlePost": true,
+    "resumedNotPaused": true,
+    "resumedVisible": true,
+    "noReplay": true
+  },
+  "ok": true,
+  "stdout": "{\"event\":\"chat-mode\",\"mode\":\"local\",\"model\":\"qwen3.8-27b\",\"transport\":\"direct\",\"context\":false}\n{\"event\":\"window-visibility\",\"revision\":2,\"hidden\":false,\"reason\":\"visible\"}\n{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1600,\"height\":1000},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1600,\"height\":1000},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"{\\\"event\\\":\\\"applied\\\",\\\"revision\\\":2,\\\"hidden\\\":false,\\\"reason\\\":\\\"visible\\\"}\"}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"window-visibility\",\"revision\":3,\"hidden\":true,\"reason\":\"hidden\"}\n{\"event\":\"console\",\"message\":\"{\\\"event\\\":\\\"applied\\\",\\\"revision\\\":3,\\\"hidden\\\":true,\\\"reason\\\":\\\"hidden\\\"}\"}\n{\"event\":\"window-visibility\",\"revision\":4,\"hidden\":false,\"reason\":\"visible\"}\n{\"event\":\"console\",\"message\":\"{\\\"event\\\":\\\"applied\\\",\\\"revision\\\":4,\\\"hidden\\\":false,\\\"reason\\\":\\\"visible\\\"}\"}\n",
+  "stderr": "[1334978:1109/134354.282121:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory\n[1334978:1109/134354.452398:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[1334978:1109/134354.452549:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory\n[1334978:1109/134354.452593:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Failed to connect to socket /run/dbus/system_bus_socket: No such file or directory\n[1334978:1109/134354.515034:ERROR:content/browser/zygote_host/zygote_host_impl_linux.cc:279] Failed to adjust OOM score of renderer with pid 1335008: Permission denied (13)\n\nDevTools listening on ws://127.0.0.1:42659/devtools/browser/6f92b132-c8fa-49e1-ab3b-27a0d491885d\n[1334978:1109/134354.539162:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[1334978:1109/134354.547623:ERROR:content/browser/zygote_host/zygote_host_impl_linux.cc:279] Failed to adjust OOM score of renderer with pid 1335028: Permission denied (13)\n[1334978:1109/134354.560372:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[1334978:1109/134354.560481:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[1334978:1109/134354.563506:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[1334978:1109/134357.751341:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[1334978:1109/134357.751391:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n[1334978:1109/134357.751417:ERROR:dbus/bus.cc:405] Failed to connect to the bus: Could not parse server address: Unknown address type (examples of valid types are \"tcp\" and on UNIX \"unix\")\n[1334978:1109/134357.751423:ERROR:dbus/object_proxy.cc:572] Failed to call method: org.freedesktop.DBus.NameHasOwner: object_path= /org/freedesktop/DBus: unknown error type: \n"
+}

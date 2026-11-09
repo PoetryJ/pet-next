@@ -1,0 +1,12 @@
+{
+  "executable": "/data3/DATA/project/project_meishijiang/m38-wt-lead/pet-next/node_modules/.pnpm/electron@43.3.0/node_modules/electron/dist/electron",
+  "args": [
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+    "--remote-allow-origins=*",
+    "--remote-debugging-port=37103",
+    "/data3/DATA/project/project_meishijiang/m39r1-wt-d/pet-next/dist/electron/main.js"
+  ],
+  "cwd": "/data3/DATA/project/project_meishijiang/m39r1-wt-d/pet-next",
+  "platform": "linux"
+}

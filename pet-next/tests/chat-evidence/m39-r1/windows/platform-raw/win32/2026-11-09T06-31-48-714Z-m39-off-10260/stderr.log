@@ -1,0 +1,7 @@
+
+DevTools listening on ws://127.0.0.1:57560/devtools/browser/607eaf76-2154-457e-91d4-4360b0b37f55
+Error occurred in handler for 'pet:window-visibility:query': Error: No handler registered for 'pet:window-visibility:query'
+    at Session.<anonymous> (node:electron/js2c/browser_init:2:120643)
+    at Session.emit (node:events:509:28)
+[10260:1109/143153.533:ERROR:content\browser\network_service_instance_impl.cc:721] Network service crashed or was terminated, restarting service.
+[10260:1109/143153.970:ERROR:content\browser\gpu\gpu_process_host.cc:1089] GPU process exited unexpectedly: exit_code=1

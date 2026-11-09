@@ -1,0 +1,22 @@
+# M3-9 R1 D：Linux 本机环境与被跑命令（真实记录）
+date_utc: 2026-11-09T07:15:22Z
+host: Linux 5.4.119-19.0009.28 x86_64
+node: v24.14.0
+platform: linux x64
+xvfb: /usr/bin/Xvfb
+openbox: /usr/bin/openbox
+git_head: 5f4b431bb98eb8792ae2c422460a6e90e47e6beb
+git_branch: agent/m39r1-d
+
+## 构建（e2e 需要 dist/electron/main.js）
+node_modules/typescript/bin/tsc -p tsconfig.json      # exit 0
+node_modules/typescript/bin/tsc -p tsconfig.preload.json  # exit 0
+node scripts/copy-static.mjs                          # exit 0
+
+## 正式 e2e（正式测试文件，非临时 check 文件）
+env -u NODE_OPTIONS node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/idle-suspension.e2e.test.ts
+# exit 0 / tests 3 / pass 3 / fail 0 / skipped 0 / duration_ms 9827.332033
+
+## 显示器
+Linux：每个用例自起独占 Xvfb（scripts/test-run-context.mjs，跳过 :94 与 :95-:97），minimize 用例另起 openbox。
+win32：原生桌面，startOwnXvfb 返回空 display + no-op stop，startWm 直接 available=true。

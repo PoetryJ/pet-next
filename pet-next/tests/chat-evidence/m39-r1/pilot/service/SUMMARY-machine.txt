@@ -1,0 +1,35 @@
+M3-1 Qwen 真实调用 —— 机器统计（人工判定见 SUMMARY.txt）
+================================================
+生成时间: 2026-11-09T05:42:40.873Z
+base_url: http://127.0.0.1:18872/v1   model: qwen3.8-27b
+
+一、调用计数（按类型）
+  预检 GET /models: 0
+  质量 chat: 3
+  产品/E2E: 0
+  合计: 3 / 预算 3
+  结果分布: {"ok":3}
+
+二、链路指标
+  有效回复率（HTTP200 且非空）: 100.0%
+  截断率（finish_reason=length / 有效回复）: 0.0%
+  完整回复延迟 P50/P95: 2229ms / 5815ms（质量调用 n=3）
+  全调用延迟 P50/P95: 2229ms / 5815ms（n=3，min=1990 max=5815）
+  15s 内完成率（质量调用）: 100.0%
+  usage 字段可得率: 100.0%
+  延迟口径: 完整回复延迟（请求发出 → 响应文本就绪，stream=false），不是首 token 延迟
+  成本: unknown（服务未提供账单字段；GPU 占用为非零成本，不折算人民币）
+  GPU: unknown（脚本不采集 GPU 指标）
+
+三、逐条（序号 / 题 / 结果 / HTTP / 延迟 / 回复字数 / finish_reason / 启发式标记）
+  #01 quality/greeting r1 ok http=200 5815ms 42字 finish=stop
+  #02 quality/tired r1 ok http=200 2229ms 53字 finish=stop
+  #03 quality/chat r1 ok http=200 1990ms 47字 finish=stop
+
+四、回复原文（逐条，未改写）
+--- #1 quality/greeting r1 prompt="你好呀，今天过得怎么样？"
+    reply="我过得很好呀，谢谢关心！今天天气不错，希望你也能保持好心情，有什么想聊的随时找我哦。"
+--- #2 quality/tired r1 prompt="我今天加班到很晚，感觉特别累，什么都不想做。"
+    reply="辛苦了，快放下手机好好休息吧。今晚就允许自己彻底“躺平”，什么都不用想，好好补个觉，明天再元气满满地出发！"
+--- #3 quality/chat r1 prompt="你平时喜欢做什么？"
+    reply="我就喜欢趴在屏幕角落，看你敲代码或刷网页，偶尔伸个懒腰。只要你不嫌我占地方，我就一直陪着你呀～"
