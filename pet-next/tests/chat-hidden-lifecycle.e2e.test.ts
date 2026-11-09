@@ -19,6 +19,9 @@
  * 两臂：idle-pause 开 / 关，同素材同配置；主组合 context=on + companion，
  * 另留标准/context-off 成功对照。每臂实际 context/experience 由 `window.petChat.info()` 读取并记录。
  *
+ * 三层证据分开记，不互相冒充：会话结算（DOM/结果）／上游 HTTP 断开（fake clientAborted + 代理
+ * abortedUpstream）／fake 工作结束（fake stats）。本文件**不**由这些推出「真实 GPU 已停止」。
+ *
  * 就绪屏障：fake.waitForRequest / waitForCompletion / release、DOM 轮询、进程退出等待；
  * 固定 sleep 只用于“断言某件事不应发生”的观察窗口，不当作就绪条件。
  * 每个测试有总时限，只清理本次进程树与本次 display。
@@ -139,22 +142,28 @@ interface HiddenChatSupport {
   startCountingProxy(options: { targetPort: number; allowedPorts: number[] }): Promise<CountingProxy> | CountingProxy;
 }
 
-/** B 的模块尚未合入时返回 null；由用例显式 skip，绝不伪造通过。 */
+/**
+ * B 的模块尚未合入（文件不存在）时返回 null，由用例显式 skip，绝不伪造通过；
+ * 文件存在但导入失败/导出缺失一律抛出——那是真实失败，不能被 skip 掩盖。
+ */
 async function loadSupport(): Promise<HiddenChatSupport | null> {
   const fakeSpec = './support/hidden-chat-fake-server.mjs';
   const proxySpec = './support/counting-proxy.mjs';
-  try {
-    const fakeModule = (await import(fakeSpec)) as { startHiddenChatFakeServer?: HiddenChatSupport['startHiddenChatFakeServer'] };
-    const proxyModule = (await import(proxySpec)) as { startCountingProxy?: HiddenChatSupport['startCountingProxy'] };
-    if (typeof fakeModule.startHiddenChatFakeServer !== 'function') return null;
-    if (typeof proxyModule.startCountingProxy !== 'function') return null;
-    return {
-      startHiddenChatFakeServer: fakeModule.startHiddenChatFakeServer,
-      startCountingProxy: proxyModule.startCountingProxy,
-    };
-  } catch {
-    return null;
+  const present = (spec: string): boolean => existsSync(fileURLToPath(new URL(spec, import.meta.url)));
+  if (!present(fakeSpec) || !present(proxySpec)) return null;
+
+  const fakeModule = (await import(fakeSpec)) as { startHiddenChatFakeServer?: HiddenChatSupport['startHiddenChatFakeServer'] };
+  const proxyModule = (await import(proxySpec)) as { startCountingProxy?: HiddenChatSupport['startCountingProxy'] };
+  if (typeof fakeModule.startHiddenChatFakeServer !== 'function') {
+    throw new Error(`${fakeSpec} 存在但未导出 startHiddenChatFakeServer`);
   }
+  if (typeof proxyModule.startCountingProxy !== 'function') {
+    throw new Error(`${proxySpec} 存在但未导出 startCountingProxy`);
+  }
+  return {
+    startHiddenChatFakeServer: fakeModule.startHiddenChatFakeServer,
+    startCountingProxy: proxyModule.startCountingProxy,
+  };
 }
 
 async function supportOrSkip(t: TestContext): Promise<HiddenChatSupport | null> {
@@ -352,6 +361,11 @@ async function connectCdp(url: string): Promise<Cdp> {
     socket.addEventListener('open', () => resolve());
     socket.addEventListener('error', () => reject(new Error(`CDP 连接失败：${url}`)));
   });
+  socket.addEventListener('close', () => {
+    // 窗口退出时调试连接先断：把所有等待者显式拒掉，避免 promise 永久挂起（关窗用例依赖这条）。
+    for (const waiter of pending.values()) waiter.reject(new Error('CDP 连接已关闭'));
+    pending.clear();
+  });
   socket.addEventListener('message', (event) => {
     const message = JSON.parse(String(event.data)) as { id?: number; result?: unknown; error?: { message?: string } };
     if (message.id === undefined) return;
@@ -522,6 +536,18 @@ async function typeAndSend(run: Run, text: string): Promise<void> {
   await run.cdp.send('Input.insertText', { text });
   const armed = await waitDom(run, '发送按钮未就绪', (state) => state.rects.send.disabled === false, 10_000);
   await clickRect(run.cdp, armed.rects.send);
+}
+
+/**
+ * 触发关窗（真实 `pet:quit`）。窗口可能在 CDP 回包前就消失，所以这里不把“回包”当成前提：
+ * 发出后最多等 1.5s，随后一律以进程退出等待为准，避免整个用例挂在丢失的调试回包上。
+ */
+async function quitWindow(run: Run): Promise<void> {
+  const sent = evaluate(run.cdp, 'window.pet.quit()').then(
+    () => undefined,
+    () => undefined,
+  );
+  await Promise.race([sent, delay(1500)]);
 }
 
 /** 真实 BrowserWindow.hide()/show()（主进程只在 PET_NEXT_TEST=1 注册该通道）。 */
@@ -1039,7 +1065,7 @@ test('⑥ 在途隐藏关窗 → 自然退出（exit 0）、本次 PID 与调试
     await hideUntilPaused(run);
     assert.equal(run.posts(), 1);
 
-    await evaluate(run.cdp, 'window.pet.quit()');
+    await quitWindow(run);
     const exit = await run.entry.untilExit(20_000);
     assert.equal(exit.timedOut, false, '在途关窗必须自然退出，不得超时强杀');
     assert.equal(exit.exitCode, 0, `关窗退出码必须 0，实际 ${String(exit.exitCode)}；${run.output().slice(-1500)}`);
