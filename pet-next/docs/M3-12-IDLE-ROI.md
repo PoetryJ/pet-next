@@ -106,3 +106,29 @@ size = (crop.width * s, crop.height * s)
 | 负责人 | `package.json`、`tsconfig*`、`docs/**`、`app/**`、`electron/**`、`contracts/**`、`assets-pipeline/**` |
 
 跨角色需要改文件时，提 diff 给负责人，不抢路径。所有提交只含自己路径；不 push、不 reset/clean、不改默认开关。
+
+## 10. 本轮结论（2026-11-10）：停接线
+
+| 门 | 结果 |
+|---|---|
+| 全片覆盖（ROI 外 alpha>1 = 0） | pass（48/48 帧，三臂均 0） |
+| 时间轴/循环（逐帧 PTS、帧数、duration） | pass（maxPtsDelta 0、48 帧、≤1ms） |
+| 位置/边缘（包围盒、质心、逐帧） | pass（偏移 0） |
+| F–C（同参数重编码，只差分辨率） | pass（合成 max 2 LSB、alpha max 1） |
+| O–C（对照原片） | **fail**（前景 MAE 1.218 LSB、P99 3；门 ≤1/≤2） |
+| 负控（裁入前景 / 偏移 1 DIP） | 均被拒 |
+| 三臂 CPU/RSS/首回应 | **not-run**（画质门未过，按阶段门不进入性能） |
+
+归因：O→F（不裁不置零）MAE 1.218，O→C 同样 1.218 → **裁边额外损失 0.000**；
+O→O 自往返（444 crf0）下限 1.151/3。1 LSB 的门被 8-bit YUV 重编码往返吃掉，
+与 ROI 无关——任何重编码候选都过不了这条门。
+
+据此停止接线：`app/page.ts`、`app/page.css`、`electron/main.ts` 与 `contracts/` 回到基线 `dfeca20`；
+纯实现落在 `experiments/idle-roi/core.ts`，`layout.ts`/`adapter.ts` 只 re-export；
+画质门与三臂产物在 `tests/idle-roi/`、`experiments/idle-roi/out{,-v2}/`，性能装置在 `bench/idle-roi/`。
+门默认"记录判定"，硬断言需 `PET_NEXT_IDLE_ROI_STRICT_GATE=1`。
+
+代价：v2（lossless）F 728,356 B、C 730,551 B，约为原片 78,419 B 的 9.3 倍；
+C 比 F 还大 2,195 B——ROI 省解码面积（28.05%），不省体积。
+
+未证明：三臂性能、Windows、物理呈帧、真实系统 DPI。
