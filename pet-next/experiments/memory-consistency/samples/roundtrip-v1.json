@@ -1,0 +1,29 @@
+{
+  "schemaVersion": "memory-roundtrip/v1",
+  "note": "G0 冻结样例：一条 user.statement 进，契约层摘要出。期望值由写入时固定，不由被测代码生成。",
+  "event": {
+    "schemaVersion": "memory-event/v1",
+    "eventId": "evt-g0-0001",
+    "sessionId": "sess-g0",
+    "sessionEpoch": 1,
+    "sequence": 1,
+    "occurredAt": "2026-11-10T12:00:00.000Z",
+    "observedAt": "2026-11-10T12:00:00.050Z",
+    "source": "user",
+    "kind": "user.statement",
+    "payload": {
+      "text": "以后周报先给我看草稿，不要直接发出去。",
+      "scripted": {
+        "subjectKey": "pref:weekly-report",
+        "valueText": "先给草稿，不直接发送",
+        "kindHint": "preference"
+      }
+    }
+  },
+  "expected": {
+    "requiredIdsPresent": true,
+    "payloadHash": "209c1858304c9f3eb1d6452aacacc2851560b931d2f18efc758ab1cc9ea8c241",
+    "canonicalUtf16": 368,
+    "canonicalUtf8": 426
+  }
+}
