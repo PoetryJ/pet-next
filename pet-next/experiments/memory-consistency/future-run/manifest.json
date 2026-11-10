@@ -1,0 +1,69 @@
+{
+  "schemaVersion": "memory-future-manifest/v1",
+  "purpose": "下一轮真实模型实验的计划草案；本文件不包含任何可执行传输，runner 只做无网络 dry-run。",
+  "frozen": {
+    "samples": 24,
+    "evidenceTrack": "cases/dev + cases/new（只读引用，不在本轮运行模型）",
+    "characterBudgets": {
+      "contextUtf16Units": 2000,
+      "responseUtf16Units": 512,
+      "noteUtf16Units": 240
+    },
+    "note": "预算单位是 JS UTF-16 code units。没有真实 tokenizer，因此不报价、不称 token。",
+    "totalUtf16BudgetPerArm": 80000
+  },
+  "arms": [
+    {
+      "id": "A-strong-ledger",
+      "evidenceConstraint": true,
+      "backgroundConsolidation": true,
+      "role": "baseline"
+    },
+    {
+      "id": "B-constrained-nobg",
+      "evidenceConstraint": true,
+      "backgroundConsolidation": false,
+      "role": "factor"
+    },
+    {
+      "id": "C-free-nobg",
+      "evidenceConstraint": false,
+      "backgroundConsolidation": false,
+      "role": "factor"
+    },
+    {
+      "id": "D-free-bg",
+      "evidenceConstraint": false,
+      "backgroundConsolidation": true,
+      "role": "factor"
+    },
+    {
+      "id": "E-strong-ledger-nobg",
+      "evidenceConstraint": true,
+      "backgroundConsolidation": false,
+      "role": "control"
+    }
+  ],
+  "callsPerSample": {
+    "read": 1,
+    "retrieve": 1,
+    "memoryWrite": 1,
+    "consolidate": {
+      "whenBackground": 1,
+      "otherwise": 0
+    },
+    "score": 1
+  },
+  "reservationPolicy": {
+    "reserveBeforeCall": true,
+    "implicitRetries": 0,
+    "failureCountsAsAttempt": true,
+    "overBudgetExitCode": 3,
+    "note": "每次调用前先占用预算；失败只计 attempt，不自动重试。"
+  },
+  "decisionsNeededFromOwner": [
+    "选用哪个真实模型与版本（本轮不探测地址、不读密钥）",
+    "判定是否允许把合成轨迹与真实模块回放混合计分",
+    "每臂允许的样本数与总调用预算上限"
+  ]
+}

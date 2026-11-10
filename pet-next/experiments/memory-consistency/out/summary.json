@@ -1,9 +1,9 @@
 {
   "schemaVersion": "memory-run/v1",
-  "generatedAt": "2026-11-10T12:28:46.597Z",
+  "generatedAt": "2026-11-10T12:33:26.961Z",
   "node": "v24.14.0",
   "platform": "linux x64",
-  "gitHead": "075d325f41e20828a91de70b92b89913fc22ce41",
+  "gitHead": "de94d8cc73a613a7b73268868eea25098a3ab534",
   "dirtyExperimentFiles": 12,
   "mode": "run",
   "suites": [
@@ -12,7 +12,7 @@
       "title": "契约冻结自检",
       "status": "pass",
       "exitCode": 0,
-      "elapsedMs": 135,
+      "elapsedMs": 138,
       "tests": {
         "passed": 7,
         "failed": 0
@@ -25,7 +25,7 @@
       "title": "账本与补丁",
       "status": "pass",
       "exitCode": 0,
-      "elapsedMs": 186,
+      "elapsedMs": 209,
       "tests": {
         "passed": 37,
         "failed": 0
@@ -38,7 +38,7 @@
       "title": "四策略与预算",
       "status": "pass",
       "exitCode": 0,
-      "elapsedMs": 479,
+      "elapsedMs": 444,
       "tests": {
         "passed": 9,
         "failed": 0
@@ -51,7 +51,7 @@
       "title": "磁盘日志与快照",
       "status": "pass",
       "exitCode": 0,
-      "elapsedMs": 199,
+      "elapsedMs": 218,
       "tests": {
         "passed": 12,
         "failed": 0
@@ -64,7 +64,7 @@
       "title": "进程崩溃恢复",
       "status": "pass",
       "exitCode": 0,
-      "elapsedMs": 1141,
+      "elapsedMs": 1147,
       "tests": {
         "passed": 7,
         "failed": 0
@@ -77,7 +77,7 @@
       "title": "独立评分与负控",
       "status": "pass",
       "exitCode": 0,
-      "elapsedMs": 726,
+      "elapsedMs": 767,
       "tests": {
         "passed": 20,
         "failed": 0
@@ -90,13 +90,65 @@
       "title": "产品纯模块回放",
       "status": "pass",
       "exitCode": 0,
-      "elapsedMs": 228,
+      "elapsedMs": 277,
       "tests": {
         "passed": 10,
         "failed": 0
       },
       "log": "logs/replay.log",
       "command": "node --experimental-strip-types --test --test-reporter=spec product-replay/replay.test.ts"
+    },
+    {
+      "id": "demo",
+      "title": "离线演示生成物",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 1291,
+      "tests": {
+        "passed": 6,
+        "failed": 0
+      },
+      "log": "logs/demo.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec demo/demo.test.ts"
+    },
+    {
+      "id": "queue",
+      "title": "有界整理队列",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 175,
+      "tests": {
+        "passed": 6,
+        "failed": 0
+      },
+      "log": "logs/queue.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec maintenance/queue.test.ts"
+    },
+    {
+      "id": "future",
+      "title": "未来 runner dry-run",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 200,
+      "tests": {
+        "passed": 7,
+        "failed": 0
+      },
+      "log": "logs/future.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec future-run/runner.test.ts"
+    },
+    {
+      "id": "studies",
+      "title": "成本与平台",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 196,
+      "tests": {
+        "passed": 11,
+        "failed": 0
+      },
+      "log": "logs/studies.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec studies/cost.test.ts platform/checks.test.ts"
     }
   ],
   "gates": [
@@ -105,7 +157,7 @@
       "title": "开发轨迹 + 独立评分 + 负控 + 零外呼",
       "status": "pass",
       "exitCode": 0,
-      "elapsedMs": 408,
+      "elapsedMs": 512,
       "stdout": "PASS G1 tracks=48 checks=143 failed=0",
       "resultFile": "g1.json",
       "command": "node --experimental-strip-types experiments/memory-consistency/runner/g1.ts"
@@ -115,7 +167,7 @@
       "title": "新模板 + 泄漏审计 + 反事实恢复",
       "status": "pass",
       "exitCode": 0,
-      "elapsedMs": 538,
+      "elapsedMs": 595,
       "stdout": "PASS P1 new=16/47 leak=0 replay=true",
       "resultFile": "p1.json",
       "command": "node --experimental-strip-types experiments/memory-consistency/runner/p1.ts"
@@ -123,8 +175,12 @@
     {
       "id": "P2",
       "title": "固定规模成本 + 平台 + 未来 runner dry-run",
-      "status": "not_run",
-      "reason": "missing runner/p2.ts"
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 15455,
+      "stdout": "PASS P2 mechanism=true platform=true future=528calls/0",
+      "resultFile": "p2.json",
+      "command": "node --experimental-strip-types experiments/memory-consistency/runner/p2.ts"
     }
   ],
   "zeroLiveModelCalls": true,

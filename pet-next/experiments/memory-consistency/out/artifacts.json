@@ -1,15 +1,15 @@
 {
-  "generatedAt": "2026-11-10T12:28:46.968Z",
+  "generatedAt": "2026-11-10T12:33:27.544Z",
   "artifacts": [
     {
       "file": "artifacts.json",
-      "bytes": 800,
-      "sha256": "fac283368d9e9cac61a09056a19cac5ac21205b87872b2eba49cb8efbedb7bf8"
+      "bytes": 941,
+      "sha256": "6cea02d76e8fad05d0a15856d738ba88314c3fbaf535b4e560e7b52bf20047f6"
     },
     {
       "file": "demo/index.html",
       "bytes": 29437,
-      "sha256": "127e1bf0e7212eeacdfb88340f7f2d1bd18e663cf5bc27e7c209d81ace32383d"
+      "sha256": "a32f90a6c491ecd8f2d4a5d7bb0aee37e4f236812a945a0fdcf78c563da182f5"
     },
     {
       "file": "g1.json",
@@ -22,9 +22,14 @@
       "sha256": "107ae43ed63f7cdd283257c356f4bf6fdf3b0ee988601924c370e4a2aa8235de"
     },
     {
+      "file": "p2.json",
+      "bytes": 5058,
+      "sha256": "3881ea3e9000fe146740ac920e9dd76fd19949c2596690023e07538a4efd7f93"
+    },
+    {
       "file": "summary.json",
-      "bytes": 3798,
-      "sha256": "b24db9fa87c387648865f591b085e89c90a861182f6f7f3b2f0fe090a7681209"
+      "bytes": 5395,
+      "sha256": "a82e919ea1b072a529672b06d92925d09d04677a9c8d517430f2bc7cf8fa5347"
     }
   ]
 }
