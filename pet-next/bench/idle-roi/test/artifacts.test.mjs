@@ -158,6 +158,36 @@ describe('stageCommittedAssets：显式 subpath 必须准确', () => {
     for (const file of provenance.files) assert.equal(file.sha256, shaOf(path.join(staged.assetsDir, file.relative)));
   });
 
+  test('v3 命名（F3.webm/C3.webm）按臂名映射识别，SHA 仍逐文件核验', () => {
+    const { root, repo } = newRepo('v3names');
+    const rel = 'experiments/idle-roi/out-v3-yuva';
+    const dir = path.join(repo, 'pet-next', rel);
+    mkdirSync(dir, { recursive: true });
+    const o = 'O-v3';
+    const f = 'F3-bytes';
+    const c = 'C3-bytes';
+    const manifest = {
+      schemaVersion: 1,
+      kind: 'idle-roi',
+      sourceSha256: sha(Buffer.from(o, 'utf8')),
+      candidateSha256: sha(Buffer.from(c, 'utf8')),
+      revision: { 'v3-yuva': { version: 'v3-yuva', route: 'native-yuva' } },
+    };
+    writeFileSync(path.join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    writeFileSync(path.join(dir, 'O.webm'), o);
+    writeFileSync(path.join(dir, 'F3.webm'), f);
+    writeFileSync(path.join(dir, 'C3.webm'), c);
+    const ref = commit(repo, 'v3 naming');
+    const staged = stageCommittedAssets({ repo, ref, dest: path.join(root, 'd'), subpath: rel });
+    assert.equal(staged.ok, true, staged.error);
+    assert.equal(staged.verification.measured.candidateSha, sha(Buffer.from(c, 'utf8')));
+    assert.equal(staged.verification.measured.fullCanvasSha, sha(Buffer.from(f, 'utf8')));
+    assert.equal(staged.verification.checks.cMatchesCandidate, true);
+    // 名字进了映射表，SHA 校验不放松：改一个字节必须失败
+    writeFileSync(path.join(staged.assetsDir, 'C3.webm'), 'tampered');
+    assert.equal(verifyAssetsDir(staged.assetsDir).code, 'sha-mismatch');
+  });
+
   test('同 dest 先 v1 后 v2：第二次拿到 v2，旧 v1 与外来文件都不被清理', () => {
     const { root, repo, v1, v2 } = standardRepo();
     const dest = path.join(root, 'mixed');

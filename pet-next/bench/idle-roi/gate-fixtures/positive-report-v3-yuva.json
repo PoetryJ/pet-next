@@ -1,0 +1,70 @@
+{
+ "schemaVersion": 1,
+ "kind": "idle-roi-quality",
+ "status": "passed",
+ "thresholds": {
+  "frameCount": 48,
+  "roiOutsideOpaque": 0,
+  "ptsDeltaMs": 1,
+  "durationDeltaMs": 1,
+  "fToCChannelMaxLsb": 2,
+  "fToCAlphaMaxLsb": 2,
+  "ocMaeLsb": 1,
+  "ocP99Lsb": 2,
+  "bboxDeltaPx": 1,
+  "centroidDeltaPx": 0.5,
+  "alphaThreshold": 1
+ },
+ "arms": {
+  "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+  "fSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+  "candidateSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+ },
+ "manifest": {
+  "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+  "candidateSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+ },
+ "provenance": {
+  "assetCommit": "07278fd",
+  "sourceRepoPath": "pet-next/experiments/idle-roi/out-v3-yuva",
+  "files": {
+   "O.webm": {
+    "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+   },
+   "F3.webm": {
+    "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1"
+   },
+   "C3.webm": {
+    "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+   }
+  }
+ },
+ "gates": [
+  {
+   "id": "coverage",
+   "pass": true
+  },
+  {
+   "id": "timeline",
+   "pass": true
+  },
+  {
+   "id": "layout",
+   "pass": true
+  },
+  {
+   "id": "f-to-c",
+   "pass": true
+  },
+  {
+   "id": "o-to-c",
+   "pass": true
+  }
+ ],
+ "verdict": {
+  "status": "passed",
+  "pass": true,
+  "failed": []
+ },
+ "note": "合成夹具：v3 三臂真实字节 SHA（O/F3/C3），只用于 preflight 正控，不是画质结论"
+}

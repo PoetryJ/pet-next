@@ -1,0 +1,14 @@
+$ # 干跑：v3 素材（07278fd）+ C 当前工作区的报告（未提交，仅 preflight 允许外部报告）
+$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-ref=07278fd --assets-subpath=experiments/idle-roi/out-v3-yuva --quality-report=<C 的 tests/idle-roi/out/quality-report.json> --display=:157
+
+[idle-roi] assets-ref=07278fd(?) subpath=experiments/idle-roi/out-v3-yuva -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-c-report-dry/assets-committed
+/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-c-report-dry/gate.json
+{
+  "gate": {
+    "ok": true,
+    "code": 0,
+    "errors": []
+  }
+}
+
+EXIT=0

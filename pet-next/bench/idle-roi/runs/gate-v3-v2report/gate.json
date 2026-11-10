@@ -1,0 +1,285 @@
+{
+  "ok": false,
+  "code": 5,
+  "errors": [
+    "verdict.status=failed（不是 passed）；失败门：o-to-c（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）",
+    "verdict.pass=false（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）",
+    "门 o-to-c 未通过（pass=false）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）",
+    "F: 报告内部素材 SHA 自相矛盾 → b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673 | 2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0（来源：report.arms.fSha256=b1c3e8cf, report.provenance.files[F.webm].sha256=2ca492a9）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）",
+    "C: 报告内部素材 SHA 自相矛盾 → 81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e | 08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c | 195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c（来源：report.arms.candidateSha256=81c8a2f2, report.manifest.candidateSha256=81c8a2f2, report.provenance.files[C.webm].sha256=08a80ac4, staged-manifest.candidateSha256=195ae6aa）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）"
+  ],
+  "evidence": {
+    "checkedAt": "2026-11-10T10:27:58.643Z",
+    "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
+    "subpath": "experiments/idle-roi/out-v3-yuva",
+    "strictReport": false,
+    "assetsDir": {
+      "subpath": "experiments/idle-roi/out-v3-yuva",
+      "subpathName": "out-v3-yuva",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-v2report/assets-committed",
+      "assetsDirArg": null,
+      "expectedDir": null,
+      "expected": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-v2report/assets-committed/out-v3-yuva",
+      "artifactsResolveAssetsDir": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-v2report/assets-committed/out-v3-yuva",
+      "errors": [],
+      "armFiles": [
+        "O.webm",
+        "F3.webm",
+        "C3.webm"
+      ]
+    },
+    "qualityReport": {
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json",
+      "relPath": "pet-next/tests/idle-roi/out/quality-report.json",
+      "sha256": "5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8",
+      "bytes": 127499,
+      "found": true,
+      "error": null,
+      "provenance": {
+        "tracked": null,
+        "clean": null,
+        "commit": null,
+        "external": true,
+        "errors": []
+      },
+      "status": {
+        "reported": "failed",
+        "passed": false,
+        "signals": [
+          {
+            "path": "verdict.pass",
+            "value": false
+          },
+          {
+            "path": "status",
+            "value": "failed"
+          }
+        ],
+        "gates": [
+          {
+            "id": "coverage",
+            "pass": true
+          },
+          {
+            "id": "timeline",
+            "pass": true
+          },
+          {
+            "id": "layout",
+            "pass": true
+          },
+          {
+            "id": "f-to-c",
+            "pass": true
+          },
+          {
+            "id": "o-to-c",
+            "pass": false
+          }
+        ],
+        "errors": [
+          "verdict.status=failed（不是 passed）；失败门：o-to-c",
+          "verdict.pass=false",
+          "门 o-to-c 未通过（pass=false）"
+        ]
+      },
+      "thresholds": {
+        "ok": true,
+        "rows": [
+          {
+            "key": "frameCount",
+            "value": 48,
+            "baseline": 48,
+            "ok": true
+          },
+          {
+            "key": "roiOutsideOpaque",
+            "value": 0,
+            "baseline": 0,
+            "ok": true
+          },
+          {
+            "key": "ptsDeltaMs",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "durationDeltaMs",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "fToCChannelMaxLsb",
+            "value": 2,
+            "baseline": 2,
+            "ok": true
+          },
+          {
+            "key": "fToCAlphaMaxLsb",
+            "value": 2,
+            "baseline": 2,
+            "ok": true
+          },
+          {
+            "key": "ocMaeLsb",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "ocP99Lsb",
+            "value": 2,
+            "baseline": 2,
+            "ok": true
+          },
+          {
+            "key": "bboxDeltaPx",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "centroidDeltaPx",
+            "value": 0.5,
+            "baseline": 0.5,
+            "ok": true
+          },
+          {
+            "key": "alphaThreshold",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          }
+        ],
+        "errors": []
+      }
+    },
+    "armShaClaims": {
+      "ok": false,
+      "claims": {
+        "O": {
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "distinct": [
+            "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+          ],
+          "claims": [
+            {
+              "source": "report.arms.sourceSha256",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            },
+            {
+              "source": "report.manifest.sourceSha256",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            },
+            {
+              "source": "report.provenance.files[O.webm].sha256",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            },
+            {
+              "source": "staged-manifest.sourceSha256",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            }
+          ]
+        },
+        "F": {
+          "sha256": null,
+          "distinct": [
+            "b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673",
+            "2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0"
+          ],
+          "claims": [
+            {
+              "source": "report.arms.fSha256",
+              "sha256": "b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673"
+            },
+            {
+              "source": "report.provenance.files[F.webm].sha256",
+              "sha256": "2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0"
+            }
+          ]
+        },
+        "C": {
+          "sha256": null,
+          "distinct": [
+            "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e",
+            "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c",
+            "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+          ],
+          "claims": [
+            {
+              "source": "report.arms.candidateSha256",
+              "sha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e"
+            },
+            {
+              "source": "report.manifest.candidateSha256",
+              "sha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e"
+            },
+            {
+              "source": "report.provenance.files[C.webm].sha256",
+              "sha256": "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c"
+            },
+            {
+              "source": "staged-manifest.candidateSha256",
+              "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+            }
+          ]
+        }
+      },
+      "errors": [
+        "F: 报告内部素材 SHA 自相矛盾 → b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673 | 2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0（来源：report.arms.fSha256=b1c3e8cf, report.provenance.files[F.webm].sha256=2ca492a9）",
+        "C: 报告内部素材 SHA 自相矛盾 → 81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e | 08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c | 195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c（来源：report.arms.candidateSha256=81c8a2f2, report.manifest.candidateSha256=81c8a2f2, report.provenance.files[C.webm].sha256=08a80ac4, staged-manifest.candidateSha256=195ae6aa）"
+      ]
+    },
+    "arms": {
+      "O": {
+        "arm": "O",
+        "expectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "chosen": {
+          "name": "O.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-v2report/assets-committed/out-v3-yuva/O.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "bytes": 78419,
+          "matchesExpected": true,
+          "origin": "staged"
+        },
+        "candidates": [
+          {
+            "name": "O.webm",
+            "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-v2report/assets-committed/out-v3-yuva/O.webm",
+            "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+            "bytes": 78419,
+            "matchesExpected": true,
+            "origin": "staged"
+          }
+        ],
+        "fallback": null,
+        "reason": null
+      },
+      "F": {
+        "arm": "F",
+        "expectedSha256": null,
+        "chosen": null,
+        "reason": "报告没有该臂 SHA，无法核对，拒绝放行"
+      },
+      "C": {
+        "arm": "C",
+        "expectedSha256": null,
+        "chosen": null,
+        "reason": "报告没有该臂 SHA，无法核对，拒绝放行"
+      }
+    },
+    "staging": {
+      "assetsRepo": "/data3/DATA/project/project_meishijiang/m312r1-wt-d",
+      "assetsRef": "07278fd",
+      "commit": null,
+      "subpath": "experiments/idle-roi/out-v3-yuva",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-v2report/assets-committed",
+      "archiveOk": true,
+      "archiveCode": null,
+      "namingOnlyFailure": null,
+      "note": "namingOnlyFailure 非空表示 A 的候选名不含 F3/C3，但不是取素材失败；本门逐臂按报告 SHA 核验"
+    }
+  }
+}

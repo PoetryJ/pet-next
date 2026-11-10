@@ -29,8 +29,9 @@ export const ARCHIVE_SUBPATH = `${REPO_SUBTREE}/${DEFAULT_ASSETS_SUBPATH}`;
 export const ARCHIVE_SUBPATH_V2 = `${REPO_SUBTREE}/experiments/idle-roi/out-v2`;
 
 const O_FILE = 'O.webm';
-const F_FILES = ['F.webm', 'full.webm', 'F-full.webm'];
-const C_FILES = ['C.webm', 'roi.webm', 'C-roi.webm'];
+// 臂名映射表：v1/v2 是 F/C，v3（原生 YUVA）是 F3/C3。名字只是定位，SHA 仍逐文件核验。
+const F_FILES = ['F3.webm', 'F.webm', 'full.webm', 'F-full.webm'];
+const C_FILES = ['C3.webm', 'C.webm', 'roi.webm', 'C-roi.webm'];
 /** 没有任何显式目录时的最后回退（只读已提交工作区，不跨版本混用）。 */
 const F_CANDIDATES = F_FILES.map((name) => `${DEFAULT_ASSETS_SUBPATH}/${name}`);
 const C_CANDIDATES = C_FILES.map((name) => `${DEFAULT_ASSETS_SUBPATH}/${name}`);

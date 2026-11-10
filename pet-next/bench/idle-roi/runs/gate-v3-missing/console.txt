@@ -1,0 +1,7 @@
+$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-ref=HEAD --assets-subpath=experiments/idle-roi/out-v3-yuva --display=:157
+
+[idle-roi] assets-ref=HEAD subpath=experiments/idle-roi/out-v3-yuva -> 失败：fatal: pathspec 'pet-next/experiments/idle-roi/out-v3-yuva' did not match any files
+git archive 取已提交素材失败：git -C /data3/DATA/project/project_meishijiang/m312r1-wt-d archive HEAD pet-next/experiments/idle-roi/out-v3-yuva | tar -x -C /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-missing/assets-committed --strip-components=3
+fatal: pathspec 'pet-next/experiments/idle-roi/out-v3-yuva' did not match any files
+
+EXIT=4

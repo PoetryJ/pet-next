@@ -1,0 +1,10 @@
+{
+  "ok": false,
+  "stage": "stage-committed-assets",
+  "assetsRepo": "/data3/DATA/project/project_meishijiang/m312r1-wt-d",
+  "assetsRef": "HEAD",
+  "assetsSubpath": "experiments/idle-roi/out-v3-yuva",
+  "command": "git -C /data3/DATA/project/project_meishijiang/m312r1-wt-d archive HEAD pet-next/experiments/idle-roi/out-v3-yuva | tar -x -C /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-missing/assets-committed --strip-components=3",
+  "error": "fatal: pathspec 'pet-next/experiments/idle-roi/out-v3-yuva' did not match any files",
+  "checkedAt": "2026-11-10T10:21:13.274Z"
+}

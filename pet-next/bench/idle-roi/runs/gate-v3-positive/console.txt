@@ -1,0 +1,13 @@
+$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-ref=07278fd --assets-subpath=experiments/idle-roi/out-v3-yuva --quality-report=bench/idle-roi/gate-fixtures/positive-report-v3-yuva.json --stamp=gate-v3-positive --display=:157
+
+[idle-roi] assets-ref=07278fd(?) subpath=experiments/idle-roi/out-v3-yuva -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-positive/assets-committed
+/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-positive/gate.json
+{
+  "gate": {
+    "ok": true,
+    "code": 0,
+    "errors": []
+  }
+}
+
+EXIT=0
