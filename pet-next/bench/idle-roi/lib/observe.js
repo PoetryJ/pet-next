@@ -53,6 +53,12 @@
         } catch {
           q = null;
         }
+        var fit;
+        try {
+          fit = getComputedStyle(v).objectFit;
+        } catch {
+          fit = null;
+        }
         return {
           id: v.id,
           src: shortName(v),
@@ -60,6 +66,7 @@
           hidden: v.hidden,
           loop: v.loop,
           readyState: v.readyState,
+          objectFit: fit,
           currentTime: Math.round(v.currentTime * 1000) / 1000,
           videoWidth: v.videoWidth,
           videoHeight: v.videoHeight,
@@ -72,6 +79,8 @@
       return {
         now: Math.round(performance.now()),
         visibility: document.visibilityState,
+        // ROI 接线生效时页面会给 body 加 idle-roi 类；缺席时不能把“不在稳态 idle”当成接线失败。
+        bodyIdleRoi: document.body.classList.contains('idle-roi'),
         viewport: { width: window.innerWidth, height: window.innerHeight, dpr: window.devicePixelRatio },
         frames: S.frames,
         bySrc: S.bySrc,

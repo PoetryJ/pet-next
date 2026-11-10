@@ -47,6 +47,17 @@ PET_NEXT_IDLE_URL=<staged>/out/C.webm        # F 臂换成 F.webm
 产品 `dist` 必须来自含该接线的提交；工具会检查 `dist/electron/main.js` 里是否有
 `PET_NEXT_IDLE_ROI_MANIFEST`，没有就拒绝跑（避免把“文件裁过但没接线”的 C 当成采用候选）。
 
+**只比 rect 会漏判**（B 指出 830b7cb 的 `page.css` 是 `object-fit: none`）：盒子可以正好
+是 104/56/113/143，但 226×286 的候选按原尺寸画进 113×143 盒 → 宠物 2 倍大并溢出。
+所以 C 臂的 `roiLayoutWired` 同时要求三件事：
+
+1. `rect` 与公式一致（容差 1.5 DIP）；
+2. `videoWidth/Height === crop.width/height`（C 应为 226×286）；
+3. `getComputedStyle(#clip).objectFit !== 'none'`，且 `body.idle-roi` 为真（稳态 idle）。
+
+O/F 臂反向固定基线：`rect 0,0,320×240`、intrinsic `640×360`、`objectFit === 'contain'`；
+不符即记失败，避免拿“被接线改坏的 O”去和 C 比。
+
 C 的**几何**收益依赖 B 的布局接线（契约第 4 节公式）。接线未落地时产品仍用
 `object-fit: contain` 把裁剪后的视频铺满窗口——此时 C 只是“裁过的文件”，不是采用候选。
 工具会在每支 C 臂上用页面 `getBoundingClientRect()` + `videoWidth/Height` 对照公式核对：
@@ -90,7 +101,8 @@ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=analyze --run=bench/idle-
 - **PSS**：`/proc/<pid>/smaps_rollup` `Pss` 求和（读不到写 `null`，不用 RSS 冒充）。
 - **真实解码帧**：页面 `video.getVideoPlaybackQuality().totalVideoFrames` 的 1s 增量；
   另外记录 `droppedVideoFrames`、rVFC 计数与 `currentTime`，用来确认时间轴在走。
-- **视频尺寸**：`videoWidth × videoHeight`（O=640×360；C 应为 ROI 宽高）。
+- **视频尺寸**：`videoWidth × videoHeight`（O=640×360；C 应为 ROI 宽高），并记 `rect`、
+  `objectFit`、`body.idle-roi` 类，用来区分“几何接错”和“几何对但内容缩放错”。
 - **首个回应软件时延**：合成点击（CDP Input）→ 注入观察器看到该请求的第一个 reaction
   呈帧（rVFC）。**软件呈帧证据，不是物理屏幕/物理输入延迟**；每次原始值与中位数都落盘。
 - **主机负载**：每个样本都写 `/proc/loadavg`，summary 记各臂 1 分钟负载中位/最大值与
@@ -143,27 +155,35 @@ C 布局未接线时额外否决（见第 2 节）。
 - **单核共享**：所有臂串行；同一时刻只允许一个 bench（`runs/.lock`）。
 - **数据来源**：结论只认 `summary.json.sources` 里 SHA 对应的已提交字节，不用未提交
   工作区快照。
+- **体积/面积/重编码都不能当 CPU 收益**（A 的硬数据）：C 225952B > F 188075B > O 78419B，
+  C 是 O 的 2.88 倍；像素面积保留 64636/230400 = 28.05% 只是名义值；C 的 `alpha>1`
+  前景比 O 裁框内少 3448 px（-0.177%），所以 **C-O 含“重编码损失 + 几何裁剪”两部分，
+  C-F 才是纯几何**。本工具只用量到的进程树 CPU 说话。
+- **alpha 形态**：C 带 `alpha_mode=1`，ffprobe 容器仍报 `pix_fmt=yuv420p`，属 VP9 alpha
+  正常形态；`colorTags` 三臂一致（`unknown/unknown/bt709/tv`），不是异常。
 
-## 9. 阶段一自检结果（2026-11-10，`selfcheck-O-committed-20261110-161658`）
+## 9. 阶段一自检结果（2026-11-10，`selfcheck-O-committed-20261110-162352`）
 
 工具自证，**不是产品结论**（只有 O 臂，无 F/C 对照）。素材用
 `git archive 9dc035e` 抽取，O=`out/O.webm` SHA `6ebca6b2…`（78419B，与
 `assets/idle.webm` 同字节，`provenance.oMatchesShipped=true`）；F/C 的 SHA 也一并记录
 （F `2ca492a9…` 188075B、C `08a80ac4…` 225952B），但**本轮未运行**它们。
+A 的提交 `da02255` 与负责人集成提交 `9dc035e` 的三臂字节逐字节相同（已用两棵
+`git archive` 各算一次 SHA 验证）。
 
-- O 臂 60 个 measure 样本（预热 8 个单列），窗口 63.65s：
-  **3.262 CPU 秒/分钟**（中位 5.1%，P90 6.9%），RSS 求和 379.65MB（最大 380.83）、PSS 191.45MB；
-  真实解码 1526 帧 / 63.65s = **23.97 fps**，视频 intrinsic 640×360、rect 0,0,320,240（contain 基线）。
-- 同期 `/proc/loadavg` 1 分钟中位 **13.31**（起 13.65 → 止 14.95），主机 CPU busy 中位 3.3%。
+- O 臂 60 个 measure 样本（预热 8 个单列），窗口 63.63s：
+  **3.413 CPU 秒/分钟**（中位 5.9%，P90 6.9%），RSS 求和 379.12MB（最大 379.93）、PSS 190.58MB；
+  真实解码 1522 帧 / 63.63s = **23.92 fps**，intrinsic 640×360、
+  rect 0,0,320,240、`objectFit=contain`、`body.idle-roi=false`（O 必须走原路径）。
+- 同期 `/proc/loadavg` 1 分钟中位 **14.2**（起 15.16 → 止 14.04），主机 CPU busy 中位 3.6%。
   该 CPU 数值只能与 loadavg 一起读，不能与空闲机器的历史数字横比。
-- 10 次合成点击：10/10 有回应、0 漏；软件首回应中位 **93.45ms**
-  （原始 92/86/95/**327**/86/**259**/96/90/**143**/89；三个百毫秒级离群落在
-  loadavg 13–16 的窗口内，原样保留不剔除），每次点击后均回到 idle。
+- 10 次合成点击：10/10 有回应、0 漏；软件首回应中位 **87.85ms**
+  （原始 80/81/87/88/95/93/92/**798**/79/88；798ms 那条落在 loadavg 15–16 的窗口内，
+  原样保留不剔除），每次点击后均回到 idle。
 - 读到产品 `{"event":"ready"}`（transparent=true，bounds 320×240 @80,80，scaleFactor=1）；
-  Escape 退出码 0，退出后残留进程 0；构建 up-to-date；electron v43.3.0；
-  运行后核对产品路径改动 0（`git status -uno -- app electron core adapters contracts scripts package.json` 为空）；
-  summary 里 `dirtyFiles=4` 是本 bench 工具自身当时的未提交改动（本轮才加上的
-  `productDirtyFiles` 字段不在这份历史 summary 里）。
+  Escape 退出码 0，退出后残留进程 0；构建 up-to-date；electron v43.3.0。
+- 产品源码改动 0（`productDirtyFiles=0`，只算 `app/electron/core/adapters/contracts/scripts/package.json`）；
+  `dirtyFiles=3` 是本 bench 工具自身当时的未提交改动。
 - 工具覆盖已自证：已提交字节抽取与 SHA 记账、进程树 CPU/RSS/PSS、真实解码帧与视频尺寸、
   10 次点击原始值、loadavg、ready/退出码/残留、warmup/measure 分列、raw.ndjson + summary.json。
 

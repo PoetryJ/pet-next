@@ -2,20 +2,24 @@
   "schemaVersion": 1,
   "task": "M3-12-D",
   "kind": "idle-roi-bench",
-  "stamp": "selfcheck-O-committed-20261110-161658",
+  "stamp": "selfcheck-O-committed-20261110-162352",
   "mode": "selfcheck",
-  "generatedAt": "2026-11-10T08:18:44.589Z",
-  "command": "node bench/idle-roi/run.mjs --mode=selfcheck --seconds=60 --warmup=8 --probe=click --clicks=10 --assets-ref=9dc035e --stamp=selfcheck-O-committed-20261110-161658",
+  "generatedAt": "2026-11-10T08:25:40.687Z",
+  "command": "node bench/idle-roi/run.mjs --mode=selfcheck --seconds=60 --warmup=8 --probe=click --clicks=10 --assets-ref=9dc035e --stamp=selfcheck-O-committed-20261110-162352",
   "host": "nb-1696310541880511232-d0ww0enxobgg",
   "platform": "linux 5.4.119-19.0009.28 x64",
   "cpus": 384,
   "node": "v24.14.0",
   "electron": "43.3.0",
   "electronPreflight": "v43.3.0",
-  "head": "9bc6b33eeee07cd2c19ea14c7fcbb97a0a81c8d3",
+  "head": "7e725149a50c80206555415339bf8092f4f2da39",
   "branch": "agent/m312-d",
-  "dirtyFiles": 4,
-  "dirtyNote": "只统计已跟踪文件的改动（不含未跟踪的 bench 产物）；产品源码应为 0",
+  "productRoot": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next",
+  "productRootSource": "tool-location",
+  "productRef": "",
+  "dirtyFiles": 3,
+  "productDirtyFiles": 0,
+  "dirtyNote": "dirtyFiles=已跟踪文件改动数（含本 bench 工具自身）；productDirtyFiles 只算 app/electron/core/adapters/contracts/scripts/package.json，应为 0",
   "display": ":154",
   "xvfbOwned": false,
   "window": {
@@ -33,23 +37,23 @@
   },
   "loadavg": {
     "start": {
-      "one": 13.65,
-      "five": 15.59,
-      "fifteen": 16.49,
-      "running": 12,
+      "one": 15.16,
+      "five": 15.27,
+      "fifteen": 16.02,
+      "running": 11,
       "threads": 12194
     },
     "end": {
-      "one": 14.95,
-      "five": 15.39,
-      "fifteen": 16.31,
-      "running": 13,
-      "threads": 12191
+      "one": 14.04,
+      "five": 14.86,
+      "fifteen": 15.8,
+      "running": 11,
+      "threads": 12231
     },
     "note": "本机 1 核共享；外部 eval 常把 load 拉到 10+，所有 CPU 数值必须与 loadavg 同时解读"
   },
   "manifest": {
-    "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/manifest.json",
+    "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/manifest.json",
     "found": true,
     "error": null,
     "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
@@ -73,7 +77,7 @@
   "sources": {
     "O": {
       "arm": "O",
-      "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/O.webm",
+      "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/O.webm",
       "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
       "exists": true,
       "optional": false,
@@ -87,7 +91,7 @@
     },
     "F": {
       "arm": "F",
-      "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/F.webm",
+      "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/F.webm",
       "label": "F 全画布重编码（与 C 同预处理/编码/PTS）",
       "exists": true,
       "optional": true,
@@ -101,7 +105,7 @@
     },
     "C": {
       "arm": "C",
-      "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/C.webm",
+      "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/C.webm",
       "label": "C ROI 裁剪（编码分辨率=ROI 宽高）",
       "exists": true,
       "optional": true,
@@ -121,7 +125,7 @@
       "tag": "O-r0",
       "idleSource": {
         "arm": "O",
-        "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/O.webm",
+        "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/O.webm",
         "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
         "exists": true,
         "optional": false,
@@ -133,8 +137,8 @@
         "matchesShipped": true,
         "bytes": 78419
       },
-      "pid": 300588,
-      "wallSec": 72.033,
+      "pid": 327856,
+      "wallSec": 71.831,
       "readyEvent": {
         "event": "ready",
         "alwaysOnTop": true,
@@ -176,6 +180,11 @@
           "width": 640,
           "height": 360
         },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
         "viewport": {
           "width": 320,
           "height": 240,
@@ -208,20 +217,20 @@
       "summary": {
         "samples": 60,
         "warmupSamples": 8,
-        "windowSec": 63.65,
-        "cpuSeconds": 3.46,
-        "cpuSecondsPerMinute": 3.262,
-        "cpuPercentMedian": 5.1,
+        "windowSec": 63.63,
+        "cpuSeconds": 3.62,
+        "cpuSecondsPerMinute": 3.413,
+        "cpuPercentMedian": 5.9,
         "cpuPercentP90": 6.9,
-        "cpuPercentMean": 5.425,
-        "rssSumMbMedian": 379.65,
-        "rssSumMbMax": 380.83,
-        "pssSumMbMedian": 191.45,
-        "loadavg1Median": 13.31,
-        "loadavg1Max": 15.16,
-        "hostCpuBusyMedian": 3.3,
-        "decodedFrames": 1526,
-        "decodedFps": 23.97,
+        "cpuPercentMean": 5.687,
+        "rssSumMbMedian": 379.12,
+        "rssSumMbMax": 379.93,
+        "pssSumMbMedian": 190.58,
+        "loadavg1Median": 14.2,
+        "loadavg1Max": 15.68,
+        "hostCpuBusyMedian": 3.6,
+        "decodedFrames": 1522,
+        "decodedFps": 23.92,
         "videoSize": {
           "width": 640,
           "height": 360,
@@ -231,7 +240,7 @@
             "width": 320,
             "height": 240
           },
-          "currentTime": 0.156
+          "currentTime": 1.957
         }
       },
       "probes": {
@@ -243,23 +252,23 @@
           "requested": 10,
           "observed": 10,
           "missed": 0,
-          "medianMs": 93.44999885559082,
-          "minMs": 86,
-          "maxMs": 326.5999984741211,
+          "medianMs": 87.84999942779541,
+          "minMs": 79.10000038146973,
+          "maxMs": 798,
           "samples": [
             {
               "sample": 1,
-              "latencyMs": 92.19999885559082,
+              "latencyMs": 80.19999885559082,
               "src": "reaction.webm",
               "mediaTimeMs": 42,
-              "wallMs": 115,
+              "wallMs": 106,
               "visualBefore": "idle",
               "visualAfter": "reaction",
               "returnedToIdle": true
             },
             {
               "sample": 2,
-              "latencyMs": 86.29999923706055,
+              "latencyMs": 81.29999923706055,
               "src": "reaction.webm",
               "mediaTimeMs": 42,
               "wallMs": 104,
@@ -269,57 +278,17 @@
             },
             {
               "sample": 3,
-              "latencyMs": 94.69999885559082,
+              "latencyMs": 87.10000038146973,
               "src": "reaction.webm",
               "mediaTimeMs": 42,
-              "wallMs": 115,
+              "wallMs": 108,
               "visualBefore": "idle",
               "visualAfter": "reaction",
               "returnedToIdle": true
             },
             {
               "sample": 4,
-              "latencyMs": 326.5999984741211,
-              "src": "reaction.webm",
-              "mediaTimeMs": 42,
-              "wallMs": 358,
-              "visualBefore": "idle",
-              "visualAfter": "reaction",
-              "returnedToIdle": true
-            },
-            {
-              "sample": 5,
-              "latencyMs": 86,
-              "src": "reaction.webm",
-              "mediaTimeMs": 42,
-              "wallMs": 107,
-              "visualBefore": "idle",
-              "visualAfter": "reaction",
-              "returnedToIdle": true
-            },
-            {
-              "sample": 6,
-              "latencyMs": 258.6999988555908,
-              "src": "reaction.webm",
-              "mediaTimeMs": 42,
-              "wallMs": 275,
-              "visualBefore": "idle",
-              "visualAfter": "reaction",
-              "returnedToIdle": true
-            },
-            {
-              "sample": 7,
-              "latencyMs": 95.5,
-              "src": "reaction.webm",
-              "mediaTimeMs": 42,
-              "wallMs": 116,
-              "visualBefore": "idle",
-              "visualAfter": "reaction",
-              "returnedToIdle": true
-            },
-            {
-              "sample": 8,
-              "latencyMs": 89.69999885559082,
+              "latencyMs": 87.69999885559082,
               "src": "reaction.webm",
               "mediaTimeMs": 42,
               "wallMs": 104,
@@ -328,21 +297,61 @@
               "returnedToIdle": true
             },
             {
-              "sample": 9,
-              "latencyMs": 143.39999961853027,
+              "sample": 5,
+              "latencyMs": 94.5,
               "src": "reaction.webm",
               "mediaTimeMs": 42,
-              "wallMs": 185,
+              "wallMs": 115,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 6,
+              "latencyMs": 92.69999885559082,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 113,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 7,
+              "latencyMs": 91.69999885559082,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 111,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 8,
+              "latencyMs": 798,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 833,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 9,
+              "latencyMs": 79.10000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
               "visualBefore": "idle",
               "visualAfter": "reaction",
               "returnedToIdle": true
             },
             {
               "sample": 10,
-              "latencyMs": 88.89999961853027,
+              "latencyMs": 88,
               "src": "reaction.webm",
               "mediaTimeMs": 42,
-              "wallMs": 111,
+              "wallMs": 109,
               "visualBefore": "idle",
               "visualAfter": "reaction",
               "returnedToIdle": true
@@ -353,13 +362,13 @@
         "exit": {
           "exitCode": 0,
           "signal": null,
-          "ms": 2001
+          "ms": 2000
         }
       },
       "exit": {
         "exitCode": 0,
         "signal": null,
-        "ms": 2001
+        "ms": 2000
       },
       "leftovers": [],
       "failures": [],
@@ -370,24 +379,24 @@
   "perArm": {
     "O": {
       "reps": 1,
-      "cpuSecondsPerMinuteMedian": 3.262,
+      "cpuSecondsPerMinuteMedian": 3.413,
       "cpuSecondsPerMinuteValues": [
-        3.262
+        3.413
       ],
-      "rssSumMbMedian": 379.65,
+      "rssSumMbMedian": 379.12,
       "rssSumMbValues": [
-        379.65
+        379.12
       ],
-      "loadavg1Median": 13.31,
+      "loadavg1Median": 14.2,
       "loadavg1Values": [
-        13.31
+        14.2
       ]
     }
   },
   "pairs": [
     {
       "rep": 0,
-      "o": 3.262,
+      "o": 3.413,
       "cVsOPercent": null,
       "cVsFPercent": null
     }
@@ -414,7 +423,7 @@
     ],
     "note": "工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读"
   },
-  "rawNdjson": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/raw.ndjson",
+  "rawNdjson": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/raw.ndjson",
   "failures": [],
   "notRun": [],
   "roiWiring": {
@@ -427,42 +436,42 @@
       "ok": true,
       "repo": "/data3/DATA/project/project_meishijiang/m312-wt-d",
       "ref": "9dc035e",
-      "dest": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed",
-      "command": "git -C /data3/DATA/project/project_meishijiang/m312-wt-d archive 9dc035e pet-next/experiments/idle-roi/out | tar -x -C /data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed --strip-components=3",
+      "dest": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed",
+      "command": "git -C /data3/DATA/project/project_meishijiang/m312-wt-d archive 9dc035e pet-next/experiments/idle-roi/out | tar -x -C /data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed --strip-components=3",
       "files": [
         {
-          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/C.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/C.webm",
           "sha256": "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c",
           "bytes": 225952
         },
         {
-          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/F.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/F.webm",
           "sha256": "2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0",
           "bytes": 188075
         },
         {
-          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/O.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/O.webm",
           "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
           "bytes": 78419
         },
         {
-          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/README.md",
+          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/README.md",
           "sha256": "bb7902a434ff7698d3664480d7837fe09bcea91aa710bce02109dff8e816bf51",
           "bytes": 3168
         },
         {
-          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/build-report.json",
+          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/build-report.json",
           "sha256": "45742476ac16b8bb2365e392620b64ffa08b2f18ce7af7419142cb3a011713ae",
           "bytes": 7250
         },
         {
-          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out/manifest.json",
+          "path": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out/manifest.json",
           "sha256": "369feac4cbea18726de37e26182eb1dce986ef69be58ecbad7a802efe671ae15",
           "bytes": 1013
         }
       ]
     },
-    "assetsDir": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-161658/assets-committed/out",
+    "assetsDir": "/data3/DATA/project/project_meishijiang/m312-wt-d/pet-next/bench/idle-roi/runs/selfcheck-O-committed-20261110-162352/assets-committed/out",
     "oSourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
     "fSourceSha256": "2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0",
     "cSourceSha256": "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c",

@@ -244,11 +244,21 @@ export function verifyLayout(page, manifest, { expectRoi = false } = {}) {
     Math.abs(rectDelta.y) <= tolerance &&
     Math.abs(rectDelta.width) <= tolerance &&
     Math.abs(rectDelta.height) <= tolerance;
+  // 盒子位置对 ≠ 画面正确：object-fit:none 会把 226×286 按原尺寸塞进 113×143 盒
+  // （B 指出 830b7cb 的 page.css 正是 none）。O/F 基线要求 contain，C 要求非 none。
+  const objectFit = video.objectFit ?? null;
+  const contentScalingOk = expectRoi ? objectFit !== null && objectFit !== 'none' : objectFit === 'contain';
+  const bodyIdleRoi = page.bodyIdleRoi ?? null;
   return {
     checked: true,
     applicable: expectRoi ? 'roi' : 'contain',
     videoSrc: video.src,
     videoIntrinsic: { width: video.videoWidth, height: video.videoHeight },
+    objectFit,
+    objectFitExpected: expectRoi ? 'not-none' : 'contain',
+    contentScalingOk,
+    bodyIdleRoiClass: bodyIdleRoi,
+    videoHidden: video.hidden,
     viewport: page.viewport,
     rect: video.rect,
     expected: expected
@@ -263,7 +273,7 @@ export function verifyLayout(page, manifest, { expectRoi = false } = {}) {
     toleranceDip: tolerance,
     intrinsicMatchesExpectation: sizeMatches,
     cropSizeMatches: expectRoi ? sizeMatches : null,
-    layoutMatches: Boolean(rectMatches && sizeMatches),
-    roiLayoutWired: expectRoi ? Boolean(rectMatches && sizeMatches) : null,
+    layoutMatches: Boolean(rectMatches && sizeMatches && contentScalingOk),
+    roiLayoutWired: expectRoi ? Boolean(rectMatches && sizeMatches && contentScalingOk) : null,
   };
 }

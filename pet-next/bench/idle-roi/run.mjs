@@ -290,13 +290,22 @@ async function runArm(context, { arm, rep }) {
     // 布局核对：只有 C 需要 ROI；F/O 只记录实际 rect 供比对。
     if (context.manifest) {
       result.layout = verifyLayout(page, context.manifest, { expectRoi: arm === 'C' });
+      const layoutDigest = result.layout.checked
+        ? `rect=${JSON.stringify(result.layout.rect)} expected=${JSON.stringify(result.layout.expected)} objectFit=${String(result.layout.objectFit)} bodyIdleRoi=${String(result.layout.bodyIdleRoiClass)}`
+        : String(result.layout.reason ?? 'unchecked');
       if (arm === 'C' && result.layout.checked && !result.layout.roiLayoutWired) {
         result.notRun.push('roi-layout-not-wired');
-        recordFailure(`${tag}: C 的 ROI 布局未生效（rect/尺寸不符，见 summary.arms[].layout）；该臂 CPU 数据不能当作采用收益`);
+        recordFailure(`${tag}: C 的 ROI 布局未生效（${layoutDigest}）；该臂 CPU 数据不能当作采用收益`);
       }
       if (arm === 'C' && !result.layout.checked) {
         result.notRun.push('roi-layout-unchecked');
         recordFailure(`${tag}: C 的 ROI 布局无法核对（没有视频快照或 manifest 无效）`);
+      }
+      if (arm === 'C' && result.layout.checked && result.layout.bodyIdleRoiClass === false) {
+        recordFailure(`${tag}: body.idle-roi 类缺失——页面没有进入 ROI 稳态，不能当接线成功`);
+      }
+      if (arm !== 'C' && result.layout.checked && result.layout.layoutMatches === false) {
+        recordFailure(`${tag}: ${arm} 的 contain 基线不符（${layoutDigest}），该臂不能与后续 C 直接比较`);
       }
     }
 
