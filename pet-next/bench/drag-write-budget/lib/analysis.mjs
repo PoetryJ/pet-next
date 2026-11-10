@@ -285,23 +285,28 @@ export function projectBudget(timestamps, budgetMs = 8) {
   if (timestamps.length === 0) return { budgetMs, inputWrites: 0, projectedWrites: 0, reduction: null };
   let written = 0;
   let lastWrite = null;
-  let pending = null;
+  let pending = false;
   for (const at of timestamps) {
+    // 上一次 pending 的定时器到点：按契约在 lastWrite+budget 处写出（顺序仍在当前 submit 之前）。
+    if (pending && lastWrite !== null && at >= lastWrite + budgetMs) {
+      written += 1;
+      lastWrite += budgetMs;
+      pending = false;
+    }
     if (lastWrite === null || at - lastWrite >= budgetMs) {
       written += 1;
       lastWrite = at;
-      pending = null;
     } else {
-      pending = at;
+      pending = true;
     }
   }
-  if (pending !== null) written += 1;
+  if (pending) written += 1;
   return {
     budgetMs,
     inputWrites: timestamps.length,
     projectedWrites: written,
     reduction: round(1 - written / timestamps.length, 4),
-    note: '纸面投影（忽略 timer 调度延迟），不是候选实现实测',
+    note: '纸面投影（timer 视为准点触发，忽略系统调度延迟），不是候选实现实测',
   };
 }
 

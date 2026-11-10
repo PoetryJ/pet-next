@@ -114,8 +114,10 @@ test('同 8ms 窗口判定：严格小于，恰好 8ms 不算', () => {
 
 test('离线 8ms 投影：首写即时、按预算写 pending、结束 flush（纸面值）', () => {
   assert.equal(projectBudget([], 8).projectedWrites, 0);
-  // 0 立即写；1/2/3 只更新 pending；20 距上次 >=8 立即写 → 2 次。
-  assert.equal(projectBudget([0, 1, 2, 3, 20], 8).projectedWrites, 2);
+  // 0 立即写；1/2/3 进 pending；定时器在 8 写出 3；20 距 8 有 12ms 再写 → 3 次。
+  assert.equal(projectBudget([0, 1, 2, 3, 20], 8).projectedWrites, 3);
+  // 成对突发的真实形状：写 0；timer@8 写 pending；8.4 进 pending；timer@16 写；结束 flush 17.1。
+  assert.equal(projectBudget([0, 0.3, 8.4, 8.7, 16.8, 17.1], 8).projectedWrites, 4);
   // 0 立即写；2/4/6 都进 pending，序列结束 flush 一次 → 2 次。
   assert.equal(projectBudget([0, 2, 4, 6], 8).projectedWrites, 2);
   // 60Hz 输入本来就不该被合并。

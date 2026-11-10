@@ -773,6 +773,8 @@ async function main() {
       platform: `${process.platform} ${os.release()} ${os.arch()}`,
       host: os.hostname(),
       cores: os.cpus().length,
+      // 同机可能有别的 agent 在跑 GUI：CPU 结论必须带负载一起看。
+      loadavg: os.loadavg().map((value) => round(value, 2)),
       node: process.version,
       electron: electronVersion(),
       electronPreflight: preflight.version,
