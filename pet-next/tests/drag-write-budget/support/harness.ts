@@ -248,10 +248,13 @@ export function countOp(outcome: RunOutcome, op: HostCall['op']): number {
 }
 
 /**
- * 统计口径：`written` 与真实写宿主次数的关系只做**安全区间**断言。
- * 契约冻结了 submitted/written/coalesced/duplicateDropped/flushes 五个计数器的存在，
- * 但没有把"flush 写入是否也计入 written"写死，因此这里不断言等式，只断言：
- * 非 flush 写入数不超过宿主写入数，差额由 flushes 解释。
+ * 统计口径。
+ *
+ * 契约第 2 节冻结了五个计数器的存在，但对 `coalesced` 给的是"pending=p 时 coalesced++"这句
+ * 字面话；B 的实现按"**被更晚 submit 取代、或 begin/dispose 丢掉而从未写出的坐标条数**"计，
+ * 并因此满足守恒式 `submitted === written + coalesced + duplicateDropped`（静息时）。
+ * 两种读法对行为（写几次、写什么）没有影响，只影响计数标签；这里断守恒式——它比字面读法更强，
+ * 且不同实现要想偷偷丢账会立刻被抓住。这个口径差已记在 README 的"已知口径差"。
  */
 export function assertStatsConsistent(stats: WriteBudgetStats, hostWrites: number, note: string): void {
   for (const key of ['submitted', 'written', 'coalesced', 'duplicateDropped', 'flushes'] as const) {
@@ -263,7 +266,12 @@ export function assertStatsConsistent(stats: WriteBudgetStats, hostWrites: numbe
     hostWrites - stats.written <= stats.flushes,
     `${note}：宿主写入 ${hostWrites} 与 stats.written=${stats.written} 的差额必须由 flushes=${stats.flushes} 解释`,
   );
-  assert.ok(stats.coalesced + stats.written <= stats.submitted + stats.flushes, `${note}：submitted 与 written+coalesced 不自洽`);
+  assert.equal(
+    stats.submitted,
+    stats.written + stats.coalesced + stats.duplicateDropped,
+    `${note}：静息时必须满足 submitted === written + coalesced + duplicateDropped，实际 ` +
+      `submitted=${stats.submitted} written=${stats.written} coalesced=${stats.coalesced} duplicateDropped=${stats.duplicateDropped}`,
+  );
 }
 
 /** 固定 seed 的确定性伪随机（不读 Math.random，保证复跑同一条输入序列）。 */

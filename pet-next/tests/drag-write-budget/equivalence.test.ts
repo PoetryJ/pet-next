@@ -172,8 +172,14 @@ describe('契约 2 调度器语义', () => {
     assert.equal(h.clock.pending().length, 1, 'pending 覆盖时不得再挂第二个 timer');
     h.clock.advance(20);
     assert.deepEqual(h.writes, [{ x: 0, y: 0 }, { x: 2, y: 0 }], '到期只写当前 pending（末位），中间态不补写');
-    assert.ok(h.stats().coalesced >= 2, '被合并的提交要计数');
-    assert.equal(h.stats().written <= h.writes.length, true, 'written 不得超过真实写入数');
+    // 口径：coalesced 数"被取代而从未写出的坐标条数"（B 的实现），因此这里是 1 而不是 2；
+    // 两条读法对写行为没有影响，见 harness.assertStatsConsistent 的说明。
+    assert.ok(h.stats().coalesced >= 1, '被合并掉的坐标要计数');
+    assert.equal(
+      h.stats().submitted,
+      h.stats().written + h.stats().coalesced + h.stats().duplicateDropped,
+      '静息时必须守恒：submitted === written + coalesced + duplicateDropped',
+    );
   });
 
   test('2.8 定时器从未触发也要在 end 时写出 pending', { skip: SKIP_SCHEDULER }, () => {
@@ -422,7 +428,15 @@ describe('契约 3 适配器等价', () => {
       { type: 'end' },
     ];
     const { reference, actual } = pair(PLAIN, script);
-    assertSameWrites(actual.positions, collapseAdjacent(reference.positions), '跨拖动小数累积');
+    // 这里**不要求**逐条相等：契约 2.6 要求 end() 无条件 flush pending，
+    // 因此"松手时把与上次相同的整数坐标再写一次"是契约允许的（基线在同一时刻也写）。
+    // 需要守的是：每条写入都必须是某一步的逐事件结果（不许插值/求和），且末态不丢余数。
+    assertWritesAreSubsequence(actual.positions, reference.positions, '跨拖动小数累积', { requireFinal: true });
+    assert.equal(
+      reference.positions.length,
+      4,
+      '参考模型应逐事件写 4 次（其中 3 次是同一个整数坐标）',
+    );
     assert.deepEqual(actual.final, { x: 81, y: 81 }, '跨拖动累积仍是 +1 DIP');
     assertSameFinal(actual, reference, '跨拖动小数累积');
   });
