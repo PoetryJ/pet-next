@@ -25,7 +25,7 @@
 | 等价性门 · 终态 | 密集/随机输入下每条写入必须是**某一步的逐事件结果**（子序列，不得插值），收尾 flush 后末写 = 参考末态 | 同上 · 密集随机 240 步（seed `0x5eed`） | 待依赖 |
 | 等价性门 · 生命周期 | 首动即时（不挂 timer）、松手/取消 flush、旧 timer 不写、dispose 不写、跨拖动余数不丢、工作区变更加 passthrough 回退 | 同上 · 契约 2/3 | 待依赖 |
 | 点击语义 | 无位移不写宿主、不读几何；真实拖动不产生 reaction | `equivalence.test.ts` + `two-arm.e2e.test.ts` | 待依赖 |
-| 机制门 | 500Hz 压力下主进程 `setPosition` 减少 **≥50%**（纯 trace + CDP 合成两条） | `equivalence.test.ts` · 500Hz / `two-arm.e2e.test.ts` · CDP 压力臂 | 待依赖 |
+| 机制门 | 500Hz 压力下主进程 `setPosition` 减少 **≥50%**（纯 trace + 合成指针两条） | `equivalence.test.ts` · 500Hz / `two-arm.e2e.test.ts` · 压力臂 | 待依赖 |
 | 常规输入不退化 | 60/125Hz 真实指针：首写/末写/中位时延，开启臂不得比关闭臂**新增 >8ms 主动等待**；首/末写不等 timer | `two-arm.e2e.test.ts` · 时延用例 | 待依赖 |
 | 两臂落点一致 | 同轨迹下两臂最终窗口位置（DIP）完全相等 | `two-arm.e2e.test.ts` · 落点用例 | 待依赖 |
 | 退出与残留 | 退出码 0、调试端口释放、无残留进程、拖动结束后无迟到写入（timer 不泄漏） | 同上（每个用例的 `finally`） | 关闭臂已通过；候选臂待依赖 |
@@ -56,8 +56,30 @@
 | 退出 | 退出码 0、端口释放、无残留进程、`writesAfterQuit == writesAtQuit` |
 | 拖动结束后 200ms | 零迟到写入 |
 
-这组数只说明"启动 / 真实指针 / 写入计数 / 时延配对 / 退出清理"这套装置可用，
+压力臂（`dispatchPointerBurst`，页面内合成 PointerEvent，CDP `Runtime.evaluate` 注入）在关闭臂上的实测：
+
+| 项 | 值 |
+|---|---|
+| 有效速率 | 500 Hz（500 条 / 1001 ms；`setTimeout(2)` 实测只有 247Hz，故改为 `performance.now()` 自旋） |
+| 主进程写入 | 496 条（500 条事件 − 前 4 条未越过 5px 阈值） |
+| 落点 | 80 → 580 DIP（500 步 × 1 DIP，精确） |
+
+这组数只说明"启动 / 真实指针 / 写入计数 / 时延配对 / 压力注入 / 退出清理"这套装置可用，
 **不能**当作候选臂的收益证据。
+
+### 为什么压力臂不用 `Input.dispatchMouseEvent`
+
+按契约要求先试过 CDP 视口事件，实测两条硬伤（已在本机复现，不是推测）：
+
+1. **到不了 500Hz**：每条 `Input.dispatchMouseEvent` 都要一次 CDP 往返，400 条耗 **6667ms ≈ 60Hz**。
+   60Hz 下 16.7ms 的间隔远大于 8ms 预算，候选根本没有可合并的写入 —— 机制门会变成假阴性。
+2. **screenX 正反馈**：视口事件的 `screenX` 由（正在被产品移动的）窗口原点推出，
+   而产品又按 `screenX` 再移动窗口，形成自激。实测 400 条 ×1px 的输入把窗口从 80 DIP
+   一路推到工作区右边缘 **1600 DIP**，位移口径已失真。
+
+所以压力臂改为"保留产品真实链路（`#pet` 监听 → 手势归约 → `window.pet.moveBy` → 主进程控制器 →
+`setPosition`），只把指针来源换成页面内合成 PointerEvent，`screenX` 由测试给定"，
+这样既有 500Hz 的可控密度，也没有窗口反馈污染。**它仍然不等于物理鼠标**，只用于机制门。
 
 ### 候选臂
 
@@ -66,8 +88,9 @@
 ## 证据分层（不许互相冒充）
 
 1. **真实指针**：`xdotool` 驱动 X11 → 真实 Chromium 输入、真实窗口移动。落点/点击/自主动作/时延只用这一层。
-2. **CDP 合成**：`Input.dispatchMouseEvent` 视口事件 → **只用于 500Hz 写入条数机制门**。
-   合成事件的 `screenX` 由（正在被产品移动的）窗口原点推出，与物理鼠标不同口径，落点不做门。
+2. **合成指针**：页面内 `PointerEvent`（由 CDP `Runtime.evaluate` 注入，500Hz，`screenX` 由测试给定）
+   → **只用于 500Hz 写入条数机制门**。`Input.dispatchMouseEvent` 已实测不可用（速率只有 60Hz、
+   `screenX` 随窗口正反馈），见上一节。
 3. **纯 trace**：固定 seed 的确定性输入序列 → 正确性/机制门，不依赖真实负载。
 4. **软件提交 ≠ 物理呈帧**：`{event:'bounds'}` 只证明 `setPosition` 已返回。
 
@@ -86,7 +109,7 @@
 ```
 tests/drag-write-budget/
 ├── equivalence.test.ts        # 纯单元：调度器语义 + 适配器 vs 产品控制器等价（不需要 Xvfb）
-├── two-arm.e2e.test.ts        # 正式入口两臂（真实 Electron + 真实指针 + CDP 压力臂）
+├── two-arm.e2e.test.ts        # 正式入口两臂（真实 Electron + 真实指针 + 500Hz 合成指针臂）
 ├── cost-compare.ts            # 交替各 N 轮成本对照 → runs/<stamp>/raw.ndjson + summary.json
 ├── selfcheck-off-arm.ts       # 基础设施自检（只跑关闭臂）
 ├── support/

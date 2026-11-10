@@ -27,7 +27,7 @@ import { test } from 'node:test';
 import { fileURLToPath } from 'node:url';
 
 import {
-  dragWithCdp,
+  dispatchPointerBurst,
   delay,
   installPointerSampler,
   latencyEdges,
@@ -101,8 +101,14 @@ async function close(session: Session): Promise<Awaited<ReturnType<typeof stopAp
 
 const realDrag = realPointerDrag;
 
+/**
+ * 行为模式的 trace 形如 `idle:idle-1,reaction:click-2,auto:auto-6`
+ * （`${clip}:${requestId}`，requestId 的前缀是触发来源：click/auto/reaction/fail）。
+ * 只数"以 reaction 播出的条目"，避免把 requestId 里的字样当剪辑名。
+ */
 function countClips(trace: string, clip: 'reaction' | 'auto'): number {
-  return (trace.match(clip === 'reaction' ? /reaction-\d+/g : /\bauto-\d+/g) ?? []).length;
+  const pattern = clip === 'reaction' ? /reaction:[a-z]+-\d+/g : /auto:[a-z]+-\d+/g;
+  return (trace.match(pattern) ?? []).length;
 }
 
 test('两臂真实指针拖动：最终窗口位置一致（DIP）、无 timer 残留、干净退出', { timeout: 240000, skip: SKIP }, async () => {
@@ -204,6 +210,8 @@ test('拖动后 standard 自主动作恢复（拖动不再永久停摆）', { ti
       const session = await open(arm, `auto-standard-${arm}`, {}, BEHAVIOR_PREVIEW);
       try {
         await waitFor('待机首帧', () => readVisual(session.app.cdp), (state) => state.visual === 'idle', 15000);
+        // 拖动前可能已经有过自主动作：必须比"新增"，否则断言会被历史条目白送。
+        const autoBefore = countClips(await readTrace(session.app.cdp), 'auto');
         const steps: Point[] = [];
         for (let step = 0; step < 6; step += 1) steps.push({ x: 6, y: 3 });
         await realDrag(session, { steps, stepDelayMs: 20, settleMs: 60 });
@@ -212,7 +220,7 @@ test('拖动后 standard 自主动作恢复（拖动不再永久停摆）', { ti
         const recovered = await waitFor(
           '拖动后自主动作',
           async () => ({ trace: await readTrace(session.app.cdp), visual: await readVisual(session.app.cdp) }),
-          (value) => countClips(value.trace, 'auto') > 0,
+          (value) => countClips(value.trace, 'auto') > autoBefore,
           AUTO_RECOVERY_MS,
         );
         console.log(
@@ -246,13 +254,14 @@ test('拖动后 companion 自主动作恢复（模型只走本地 fake，零真�
           );
           assert.ok(mode.includes('"experience":"companion"'), `companion 臂必须真的进入 companion 体验：${mode.slice(-300)}`);
           await waitFor('待机首帧', () => readVisual(session.app.cdp), (state) => state.visual === 'idle', 15000);
+          const autoBefore = countClips(await readTrace(session.app.cdp), 'auto');
           const steps: Point[] = [];
           for (let step = 0; step < 6; step += 1) steps.push({ x: 6, y: 3 });
           await realDrag(session, { steps, stepDelayMs: 20, settleMs: 60 });
           const recovered = await waitFor(
             '拖动后 companion 自主动作',
             () => readTrace(session.app.cdp),
-            (trace) => countClips(trace, 'auto') > 0,
+            (trace) => countClips(trace, 'auto') > autoBefore,
             AUTO_RECOVERY_MS,
           );
           assert.equal(await fake.posts(), 0, '本轮不得有任何模型 POST（自主动作不经过模型）');
@@ -275,51 +284,80 @@ test('拖动后 companion 自主动作恢复（模型只走本地 fake，零真�
   });
 });
 
-test('500Hz CDP 合成压力臂：主进程写入减少 ≥50%（仅机制门，不等于物理鼠标）', { timeout: 240000, skip: SKIP }, async () => {
+test('500Hz 合成指针压力臂：主进程写入减少 ≥50%、落点不变（仅机制门，不等于物理鼠标）', { timeout: 240000, skip: SKIP }, async () => {
   await serial(async () => {
-    const observed: Record<Arm, { dispatched: number; writes: number; final: Point | null }> = {
-      off: { dispatched: 0, writes: 0, final: null },
-      on: { dispatched: 0, writes: 0, final: null },
+    const EVENTS = 500;
+    const observed: Record<Arm, { dispatched: number; hz: number; writes: number; final: Point | null }> = {
+      off: { dispatched: 0, hz: 0, writes: 0, final: null },
+      on: { dispatched: 0, hz: 0, writes: 0, final: null },
     };
+    const expected: Record<Arm, Point> = { off: { x: 0, y: 0 }, on: { x: 0, y: 0 } };
+
     for (const arm of ['off', 'on'] as const) {
       const session = await open(arm, `stress-${arm}`);
       try {
+        const scale = session.app.ready.scaleFactor > 0 ? session.app.ready.scaleFactor : 1;
+        const base = session.app.boundsLines().at(-1)?.requested ?? {
+          x: session.app.ready.bounds.x,
+          y: session.app.ready.bounds.y,
+        };
         const before = session.app.boundsLines().length;
-        const steps: Point[] = [];
-        for (let step = 0; step < 400; step += 1) steps.push({ x: 1, y: 0 });
-        const run = await dragWithCdp(session.app.cdp, { from: { x: 40, y: 100 }, steps, stepDelayMs: 2 });
-        await delay(250);
+        const burst = await dispatchPointerBurst(session.app.cdp, {
+          events: EVENTS,
+          intervalMs: 2,
+          screenStartX: Math.round(base.x * scale),
+          screenY: Math.round(base.y * scale) + 100,
+          clientX: 100,
+          clientY: 100,
+        });
+        await delay(300);
         const lines = session.app.boundsLines().slice(before);
-        observed[arm] = { dispatched: run.dispatched, writes: lines.length, final: lines.at(-1)?.requested ?? null };
+        expected[arm] = { x: base.x + Math.round(EVENTS / scale), y: base.y };
+        observed[arm] = {
+          dispatched: burst.dispatched,
+          hz: burst.effectiveHz,
+          writes: lines.length,
+          final: lines.at(-1)?.requested ?? null,
+        };
         console.log(
           JSON.stringify({
             event: 'stress-500hz',
             arm,
-            synthetic: 'cdp-Input.dispatchMouseEvent',
-            dispatched: run.dispatched,
+            synthetic: 'in-page PointerEvent via CDP Runtime.evaluate',
+            dispatched: burst.dispatched,
+            effectiveHz: burst.effectiveHz,
             mainWrites: lines.length,
-            elapsedMs: run.endedAt - run.startedAt,
+            elapsedMs: Math.round(burst.elapsedMs),
+            expected: expected[arm],
             final: observed[arm].final,
           }),
+        );
+        assert.deepEqual(
+          observed[arm].final,
+          expected[arm],
+          `臂 ${arm}：500 步 ×1 DIP 的落点必须精确（合成 screenX 由测试给定，不存在窗口反馈）`,
         );
       } finally {
         await close(session);
       }
     }
-    assert.ok(observed.off.dispatched > 300, '基线臂必须真的收到压力事件');
+
+    assert.ok(observed.off.dispatched >= EVENTS, '基线臂必须真的收到压力事件');
+    assert.ok(observed.off.hz >= 300, `压力臂有效速率必须接近 500Hz（实测 ${observed.off.hz}Hz），否则机制门没有意义`);
     assert.ok(observed.off.writes > 0, '基线臂必须真的有写入');
     const reduction = 1 - observed.on.writes / observed.off.writes;
     assert.ok(
       reduction >= 0.5,
       `机制门未过：开启臂写入 ${observed.on.writes} / 基线 ${observed.off.writes}（减少 ${(reduction * 100).toFixed(1)}%，要求 ≥50%）`,
     );
+    assert.deepEqual(observed.on.final, observed.off.final, '两臂落点必须一致');
     console.log(
       JSON.stringify({
         event: 'stress-500hz-summary',
         off: observed.off,
         on: observed.on,
         reductionPercent: Number((reduction * 100).toFixed(1)),
-        note: 'CDP 合成输入；screenX 由窗口原点推出，与物理鼠标不同口径，仅用于机制门',
+        note: '合成指针（页面内 PointerEvent，CDP 注入）；有效速率与 screenX 由测试给定，仅用于机制门，不等于物理鼠标',
       }),
     );
   });

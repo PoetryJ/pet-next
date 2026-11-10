@@ -565,39 +565,74 @@ export function dragWithPointer(display: string, options: PointerDragOptions): P
 }
 
 // ---------------------------------------------------------------------------
-// CDP 合成输入（只用于压力/机制门）
+// 500Hz 压力臂（合成指针，只用于机制门）
 // ---------------------------------------------------------------------------
 
 /**
- * 视口合成拖动：`Input.dispatchMouseEvent`，**明确不等于物理鼠标**。
- * 合成事件的 screenX 由窗口原点推出，窗口自身还在被产品移动，因此这条路径的坐标口径
- * 与真实指针不同；这里只用它统计"同一串事件下主进程写入条数"。
+ * 页面内合成指针脉冲：由 CDP `Runtime.evaluate` 注入，在 `#pet` 上按固定节拍 dispatch
+ * `PointerEvent`，`screenX` 由测试给定（每一步 +1 DIP）。
+ *
+ * **不等同于物理鼠标，也不等同于 CDP `Input.dispatchMouseEvent`。** 为什么不用后者：
+ * 1. 每条 `Input.dispatchMouseEvent` 都要一次 CDP 往返，实测 400 条耗 6667ms
+ *    （≈60Hz），根本到不了 500Hz，机制门会变成"60Hz 下没有可合并写入"的假阴性；
+ * 2. 它的 `screenX` 由**正在被产品移动的**窗口原点推出，形成正反馈：
+ *    同一段 400 条输入会把窗口一路推到工作区右边缘（实测 80 → 1600 DIP），
+ *    位移口径已失真。
+ *
+ * 这里保留产品真实链路（`#pet` 监听 → 手势归约 → `window.pet.moveBy` → 主进程控制器 →
+ * `setPosition`），只替换"指针从哪来"，因此可以稳定给出 500Hz 与可控的 screenX。
  */
-export async function dragWithCdp(
+export async function dispatchPointerBurst(
   cdp: Cdp,
-  options: { readonly from: Point; readonly steps: readonly Point[]; readonly stepDelayMs: number },
-): Promise<{ dispatched: number; startedAt: number; endedAt: number }> {
-  let x = options.from.x;
-  let y = options.from.y;
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseMoved', x, y, button: 'none', clickCount: 0 });
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mousePressed', x, y, button: 'left', clickCount: 1 });
-  const startedAt = Date.now();
-  let dispatched = 0;
-  for (const step of options.steps) {
-    x = Math.round(x + step.x);
-    y = Math.round(y + step.y);
-    await cdp.send('Input.dispatchMouseEvent', {
-      type: 'mouseMoved',
-      x,
-      y,
-      button: 'left',
-      buttons: 1,
-    });
-    dispatched += 1;
-    if (options.stepDelayMs > 0) await delay(options.stepDelayMs);
-  }
-  await cdp.send('Input.dispatchMouseEvent', { type: 'mouseReleased', x, y, button: 'left', clickCount: 1 });
-  return { dispatched, startedAt, endedAt: Date.now() };
+  options: {
+    readonly events: number;
+    readonly intervalMs: number;
+    readonly screenStartX: number;
+    readonly screenY: number;
+    readonly clientX: number;
+    readonly clientY: number;
+  },
+): Promise<{ dispatched: number; elapsedMs: number; effectiveHz: number }> {
+  const result = await cdp.evaluate<{ dispatched: number; elapsedMs: number }>(`(async () => {
+    const el = document.querySelector('#pet');
+    if (!(el instanceof HTMLElement)) throw new Error('missing pet');
+    const send = (type, screenX, buttons) => {
+      el.dispatchEvent(new PointerEvent(type, {
+        bubbles: true,
+        cancelable: true,
+        composed: true,
+        pointerId: 7,
+        pointerType: 'mouse',
+        isPrimary: true,
+        button: type === 'pointermove' ? -1 : 0,
+        buttons,
+        clientX: ${options.clientX},
+        clientY: ${options.clientY},
+        screenX,
+        screenY: ${options.screenY},
+      }));
+    };
+    // 2ms 级节拍不能用 setTimeout：Chromium 的嵌套定时器实际会被夹到 ~4ms（实测 247Hz）。
+    // 这里用 performance.now() 自旋保证间距；自旋发生在渲染层，主进程 CPU 口径不受影响。
+    const pace = (ms) => {
+      const end = performance.now() + ms;
+      while (performance.now() < end) { /* spin */ }
+    };
+    const startedAt = performance.now();
+    send('pointerdown', ${options.screenStartX}, 1);
+    for (let index = 1; index <= ${options.events}; index += 1) {
+      send('pointermove', ${options.screenStartX} + index, 1);
+      pace(${options.intervalMs});
+    }
+    send('pointerup', ${options.screenStartX} + ${options.events}, 0);
+    return { dispatched: ${options.events}, elapsedMs: performance.now() - startedAt };
+  })()`, 60000);
+  const elapsedMs = Math.max(1, result.elapsedMs);
+  return {
+    dispatched: result.dispatched,
+    elapsedMs,
+    effectiveHz: Math.round((result.dispatched / elapsedMs) * 1000),
+  };
 }
 
 /**
