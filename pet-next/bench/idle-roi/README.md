@@ -235,6 +235,11 @@ A 的提交 `da02255` 与负责人集成提交 `9dc035e` 的三臂字节逐字�
 - **dist 可能是旧的（已加证据）**：`build.distCss` 记录 `dist/app/page.css` 与源
   `app/page.css` 的 SHA 是否相同（`copy-static` 原样复制，不同即未重建），并抓出
   `object-fit` 行号与文本，避免把旧 dist 的 `none` 误判成“没接线”。
+- **只在元素上查 computed style 也不够（已加文本层预检）**：ROI 规则整块被删时，
+  `#clip` 会退回默认 `contain` 而“碰巧通过”。`build.distCss` 另记
+  `roiRulePresent` / `roiRuleObjectFitContain` / `objectFitNoneLines` / `preflightWarnings`：
+  dfeca20 基线是“无 `body.idle-roi` 规则块”（正常）；接线落地后应出现该规则且其
+  `object-fit: contain`，最终判定仍以运行时 computed style 为准。
 - 工具覆盖已自证：已提交字节抽取与 SHA 记账、进程树 CPU/RSS/PSS、真实解码帧与视频尺寸、
   10 次点击原始值、loadavg、ready/退出码/残留、warmup/measure 分列、raw.ndjson + summary.json。
 

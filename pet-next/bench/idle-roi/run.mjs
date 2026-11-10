@@ -602,6 +602,20 @@ function distCssEvidence() {
     if (line.includes('object-fit')) objectFitLines.push({ line: index + 1, text: line.trim() });
     if (line.includes('idle-roi')) idleRoiLines.push({ line: index + 1, text: line.trim() });
   });
+  // 只看 computed style 不够：ROI 规则整块被删时，#clip 会退回默认 contain 而“碰巧通过”。
+  // 这里在 CSS 文本层面查 ROI 规则是否存在、是否还有 object-fit:none。
+  const roiBlock = /body\.idle-roi[^{]*\{[^}]*\}/.exec(text)?.[0] ?? null;
+  const preflightWarnings = [];
+  if (roiBlock === null) {
+    preflightWarnings.push('dist CSS 里没有 body.idle-roi 规则块（dfeca20 基线正常；接线落地后应出现，届时仍缺即整块丢失）');
+  }
+  else if (!/object-fit\s*:\s*contain/.test(roiBlock)) {
+    preflightWarnings.push(`body.idle-roi 规则没有 object-fit: contain：${roiBlock.replace(/\s+/g, ' ').slice(0, 200)}`);
+  }
+  const objectFitNoneLines = objectFitLines.filter((item) => /object-fit\s*:\s*none/.test(item.text));
+  if (objectFitNoneLines.length > 0) {
+    preflightWarnings.push(`dist CSS 仍有 object-fit: none（行 ${objectFitNoneLines.map((item) => item.line).join(',')}）`);
+  }
   return {
     exists: true,
     path: file,
@@ -610,8 +624,12 @@ function distCssEvidence() {
     sourceSha256: sourceSha,
     matchesSource: sourceSha === null ? null : distSha === sourceSha,
     objectFitLines,
+    objectFitNoneLines,
     idleRoiLines: idleRoiLines.slice(0, 20),
-    note: 'copy-static 原样复制；matchesSource=false 说明 dist 未重建',
+    roiRulePresent: roiBlock !== null,
+    roiRuleObjectFitContain: roiBlock !== null && /object-fit\s*:\s*contain/.test(roiBlock),
+    preflightWarnings,
+    note: 'copy-static 原样复制；matchesSource=false 说明 dist 未重建；roiRule* 是文本层预检，最终仍以运行时 computed style 为准',
   };
 }
 
