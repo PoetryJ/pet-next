@@ -2,21 +2,23 @@
   "ok": false,
   "code": 4,
   "errors": [
-    "resolveAssetsDir 选中了别的目录：/tmp/tmp.ZeLjl6TJXQ/dup/out（本次应为 /tmp/tmp.ZeLjl6TJXQ/dup/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材"
+    "resolveAssetsDir 选中了别的目录：/tmp/tmp.BoA1Tu5UZz/dup/out（本次应为 /tmp/tmp.BoA1Tu5UZz/dup/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材"
   ],
   "evidence": {
-    "checkedAt": "2026-11-10T10:22:48.951Z",
+    "checkedAt": "2026-11-10T10:27:47.433Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v2",
+    "strictReport": false,
     "assetsDir": {
       "subpath": "experiments/idle-roi/out-v2",
       "subpathName": "out-v2",
       "dest": null,
-      "assetsDirArg": "/tmp/tmp.ZeLjl6TJXQ/dup/out-v2",
-      "expected": "/tmp/tmp.ZeLjl6TJXQ/dup/out-v2",
-      "artifactsResolveAssetsDir": "/tmp/tmp.ZeLjl6TJXQ/dup/out",
+      "assetsDirArg": "/tmp/tmp.BoA1Tu5UZz/dup/out-v2",
+      "expectedDir": null,
+      "expected": "/tmp/tmp.BoA1Tu5UZz/dup/out-v2",
+      "artifactsResolveAssetsDir": "/tmp/tmp.BoA1Tu5UZz/dup/out",
       "errors": [
-        "resolveAssetsDir 选中了别的目录：/tmp/tmp.ZeLjl6TJXQ/dup/out（本次应为 /tmp/tmp.ZeLjl6TJXQ/dup/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材"
+        "resolveAssetsDir 选中了别的目录：/tmp/tmp.BoA1Tu5UZz/dup/out（本次应为 /tmp/tmp.BoA1Tu5UZz/dup/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材"
       ],
       "armFiles": [
         "O.webm",
@@ -228,7 +230,7 @@
         "expectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
         "chosen": {
           "name": "O.webm",
-          "path": "/tmp/tmp.ZeLjl6TJXQ/dup/out-v2/O.webm",
+          "path": "/tmp/tmp.BoA1Tu5UZz/dup/out-v2/O.webm",
           "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
           "bytes": 78419,
           "matchesExpected": true,
@@ -237,7 +239,7 @@
         "candidates": [
           {
             "name": "O.webm",
-            "path": "/tmp/tmp.ZeLjl6TJXQ/dup/out-v2/O.webm",
+            "path": "/tmp/tmp.BoA1Tu5UZz/dup/out-v2/O.webm",
             "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
             "bytes": 78419,
             "matchesExpected": true,
@@ -252,7 +254,7 @@
         "expectedSha256": "b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673",
         "chosen": {
           "name": "F.webm",
-          "path": "/tmp/tmp.ZeLjl6TJXQ/dup/out-v2/F.webm",
+          "path": "/tmp/tmp.BoA1Tu5UZz/dup/out-v2/F.webm",
           "sha256": "b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673",
           "bytes": 728356,
           "matchesExpected": true,
@@ -261,7 +263,7 @@
         "candidates": [
           {
             "name": "F.webm",
-            "path": "/tmp/tmp.ZeLjl6TJXQ/dup/out-v2/F.webm",
+            "path": "/tmp/tmp.BoA1Tu5UZz/dup/out-v2/F.webm",
             "sha256": "b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673",
             "bytes": 728356,
             "matchesExpected": true,
@@ -276,7 +278,7 @@
         "expectedSha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e",
         "chosen": {
           "name": "C.webm",
-          "path": "/tmp/tmp.ZeLjl6TJXQ/dup/out-v2/C.webm",
+          "path": "/tmp/tmp.BoA1Tu5UZz/dup/out-v2/C.webm",
           "sha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e",
           "bytes": 730551,
           "matchesExpected": true,
@@ -285,7 +287,7 @@
         "candidates": [
           {
             "name": "C.webm",
-            "path": "/tmp/tmp.ZeLjl6TJXQ/dup/out-v2/C.webm",
+            "path": "/tmp/tmp.BoA1Tu5UZz/dup/out-v2/C.webm",
             "sha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e",
             "bytes": 730551,
             "matchesExpected": true,
@@ -295,6 +297,17 @@
         "fallback": null,
         "reason": null
       }
+    },
+    "staging": {
+      "assetsRepo": "/data3/DATA/project/project_meishijiang/m312r1-wt-d",
+      "assetsRef": "",
+      "commit": null,
+      "subpath": "experiments/idle-roi/out-v2",
+      "dest": null,
+      "archiveOk": null,
+      "archiveCode": null,
+      "namingOnlyFailure": null,
+      "note": "namingOnlyFailure 非空表示 A 的候选名不含 F3/C3，但不是取素材失败；本门逐臂按报告 SHA 核验"
     }
   }
 }

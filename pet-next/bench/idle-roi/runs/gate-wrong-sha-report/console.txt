@@ -1,6 +1,6 @@
 $ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-ref=HEAD --assets-subpath=experiments/idle-roi/out-v2 --quality-report=bench/idle-roi/gate-fixtures/wrong-sha-report.json --stamp=gate-wrong-sha-report --display=:157
 
-[idle-roi] assets-ref=HEAD subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-wrong-sha-report/assets-committed
+[idle-roi] assets-ref=HEAD(?) subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-wrong-sha-report/assets-committed
 [idle-roi] 阶段门拒绝（code=5）：1 项
   - F: 报告内部素材 SHA 自相矛盾 → 0000000000000000000000000000000000000000000000000000000000000000 | b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673（来源：report.arms.fSha256=00000000, report.provenance.files[F.webm].sha256=b1c3e8cf）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/wrong-sha-report.json，sha256=9e5c0c725376d4cde571f0cfb43b0fa5afbdf7f3c1686df8fa5f544d36bcd31b）
   质量报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/wrong-sha-report.json（sha256=9e5c0c725376d4cde571f0cfb43b0fa5afbdf7f3c1686df8fa5f544d36bcd31b）

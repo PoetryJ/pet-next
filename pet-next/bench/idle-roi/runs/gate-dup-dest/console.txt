@@ -1,7 +1,7 @@
-$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-dir=/tmp/tmp.ZeLjl6TJXQ/dup/out-v2 --assets-subpath=experiments/idle-roi/out-v2 --quality-report=bench/idle-roi/gate-fixtures/positive-report.json --stamp=gate-dup-dest --display=:157
+$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-dir=/tmp/tmp.BoA1Tu5UZz/dup/out-v2 --assets-subpath=experiments/idle-roi/out-v2 --quality-report=bench/idle-roi/gate-fixtures/positive-report.json --stamp=gate-dup-dest --display=:157
 
 [idle-roi] 阶段门拒绝（code=4）：1 项
-  - resolveAssetsDir 选中了别的目录：/tmp/tmp.ZeLjl6TJXQ/dup/out（本次应为 /tmp/tmp.ZeLjl6TJXQ/dup/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材
+  - resolveAssetsDir 选中了别的目录：/tmp/tmp.BoA1Tu5UZz/dup/out（本次应为 /tmp/tmp.BoA1Tu5UZz/dup/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材
   质量报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/positive-report.json（sha256=d7b8a5f1f45cdab73c2c2d746ca6509b8d6c6bd020cb522411512d73d8580232）
   素材 subpath：experiments/idle-roi/out-v2；判定细节见 /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-dup-dest/gate.json
 

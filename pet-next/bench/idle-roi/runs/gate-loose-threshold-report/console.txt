@@ -1,6 +1,6 @@
 $ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-ref=HEAD --assets-subpath=experiments/idle-roi/out-v2 --quality-report=bench/idle-roi/gate-fixtures/loose-threshold-report.json --stamp=gate-loose-threshold-report --display=:157
 
-[idle-roi] assets-ref=HEAD subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-loose-threshold-report/assets-committed
+[idle-roi] assets-ref=HEAD(?) subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-loose-threshold-report/assets-committed
 [idle-roi] 阶段门拒绝（code=5）：1 项
   - thresholds.ocP99Lsb=3 比冻结基线 2 更松（放水）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/loose-threshold-report.json）
   质量报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/loose-threshold-report.json（sha256=b61e44f60f14ed9f9ba6193fc5c07a4cc6b363e79c5268126d94a9b07c2e9f14）

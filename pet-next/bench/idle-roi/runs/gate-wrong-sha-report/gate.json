@@ -5,14 +5,16 @@
     "F: 报告内部素材 SHA 自相矛盾 → 0000000000000000000000000000000000000000000000000000000000000000 | b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673（来源：report.arms.fSha256=00000000, report.provenance.files[F.webm].sha256=b1c3e8cf）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/wrong-sha-report.json，sha256=9e5c0c725376d4cde571f0cfb43b0fa5afbdf7f3c1686df8fa5f544d36bcd31b）"
   ],
   "evidence": {
-    "checkedAt": "2026-11-10T10:22:43.613Z",
+    "checkedAt": "2026-11-10T10:27:41.412Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v2",
+    "strictReport": false,
     "assetsDir": {
       "subpath": "experiments/idle-roi/out-v2",
       "subpathName": "out-v2",
       "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-wrong-sha-report/assets-committed",
       "assetsDirArg": null,
+      "expectedDir": null,
       "expected": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-wrong-sha-report/assets-committed/out-v2",
       "artifactsResolveAssetsDir": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-wrong-sha-report/assets-committed/out-v2",
       "errors": [],
@@ -278,6 +280,17 @@
         "fallback": null,
         "reason": null
       }
+    },
+    "staging": {
+      "assetsRepo": "/data3/DATA/project/project_meishijiang/m312r1-wt-d",
+      "assetsRef": "HEAD",
+      "commit": null,
+      "subpath": "experiments/idle-roi/out-v2",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-wrong-sha-report/assets-committed",
+      "archiveOk": true,
+      "archiveCode": null,
+      "namingOnlyFailure": null,
+      "note": "namingOnlyFailure 非空表示 A 的候选名不含 F3/C3，但不是取素材失败；本门逐臂按报告 SHA 核验"
     }
   }
 }

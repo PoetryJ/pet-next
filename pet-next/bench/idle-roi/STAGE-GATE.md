@@ -19,6 +19,10 @@
 | 原 CPU 收益门 | **未触发**（没有可用数据） |
 | 产品接线 / 默认开关 | **未动**（0 行改动） |
 
+素材侧已就绪：B 的 `07278fd` 的 `experiments/idle-roi/out-v3-yuva` 能被门精确取到，
+正控放行（EXIT=0）、旧报告拒跑（EXIT=5），见 §5。**唯一 blocker** 是 C 的严格全片门报告
+还没以 `verdict.status=passed` 提交。
+
 本轮没有起过 Xvfb `:157`、没有起过 Electron 长跑；门的所有自检都在
 `--mode=preflight`（或 perf 模式的门阶段）里完成，过程见
 `runs/gate-*/console.txt`、`runs/gate-*/gate.json`。
@@ -72,7 +76,7 @@
 ```bash
 export PATH=/root/.workbuddy/binaries/node/versions/24.14.0/bin:$PATH
 cd /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next
-ASSETS_REF=<B 提交 out-v3-yuva 的 commit SHA>      # 只认已提交字节
+ASSETS_REF=07278fd   # B 的 v3（负责人分支）；只认已提交字节，脚本可换 V3_REF
 SUB=experiments/idle-roi/out-v3-yuva
 # :157 由 ensureDisplay 自动拉起（Xvfb :157 -screen 0 1920x1080x24 -nolisten tcp）
 
@@ -124,6 +128,8 @@ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=analyze \
 | 7 | 空目录当素材目录 | `--assets-dir=<tmp>/empty/out-v2`（脚本临时造） | **4** |
 | 8 | 把仓内报告临时改成 passed（未提交）后跑 perf | `--mode=perf` | **5** |
 | 9 | 本轮 B 的 `out-v3-yuva` 还没提交 | `--assets-subpath=experiments/idle-roi/out-v3-yuva` | **4** |
+| 10 | 本轮 v3 素材（B 的 `07278fd`）+ 仓内旧 v2 报告 | `--assets-ref=07278fd --assets-subpath=…out-v3-yuva` | **5** |
+| 11 | v3 素材 + v3 正控（O/F3/C3 实测 SHA） | `--quality-report=…positive-report-v3-yuva.json` | **0**（放行） |
 
 ### 原始输出（节选，全文见各 `console.txt`）
 
@@ -231,7 +237,47 @@ $ … --display=:156     → 显示号只能是 :157 / :154
    门对命名是宽容的（SHA 优先），但对字节是严格的。
 4. **负责人**：`--display` 默认已改为 `:157`，`:154` 仅保留给上一轮归档证据。
 
-## 5. 红线（本轮仍成立）
+## 5. 与集成分支对接（B=`07278fd`，A=`ccc883b`）
+
+素材取法（本轮预置）：
+
+```bash
+env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight \
+  --assets-ref=07278fd --assets-subpath=experiments/idle-roi/out-v3-yuva --display=:157
+```
+
+逐字节实测（`git cat-file -p 07278fd:<path> | sha256sum`）：
+
+| 臂 | 文件 | 字节 | SHA-256 |
+|---|---|---|---|
+| O | `out-v3-yuva/O.webm` | 78,419 | `6ebca6b2…df1a` |
+| F3 | `out-v3-yuva/F3.webm` | 625,108 | `08afc852…b4a1` |
+| C3 | `out-v3-yuva/C3.webm` | 631,169 | `195ae6aa…eb7c`（= `manifest.candidateSha256`） |
+
+v3 的 `manifest.json` 顶层只有 `sourceSha256` / `candidateSha256`，**没有 F 的 SHA**；
+`revision.v2.arms[*]` 是历史版本记录（`b1c3e8cf…` / `81c8a2f2…`），我按"版本不混用"只当历史、不当作主张。
+因此 **F3 的 SHA 只能由 C 的报告提供**：报告里没有 F sha，门会以"报告没有该臂 SHA"拒跑（不会拿 manifest 里的 v2 F 顶上）。
+
+A 的 `ccc883b` 带来两个契约变化，我这边已适配（`run.mjs` + `gate.mjs`）：
+
+1. `stageCommittedAssets` 改成 `tar --strip-components=1` 并返回 `assetsDir`
+   （`<dest>/experiments/idle-roi/out-v3-yuva`）。门优先用 `archive.assetsDir` 作 expectedDir，
+   没有该字段（旧版）时才回退 `<dest>/<subpath 末段>`；`resolveAssetsDir` 交叉核对仍照做。
+2. `verifyAssetsDir` 的候选名仍只有 `F.webm/full.webm/F-full.webm`、`C.webm/roi.webm/C-roi.webm`，
+   遇到本轮的 `F3.webm`/`C3.webm` 会返回 `ok:false, code:missing-file`（字节其实已经解出来）。
+   门对"只缺命名"不静默、也不硬退：记 `evidence.staging.namingOnlyFailure`，再逐臂按**报告 SHA** 核验
+   （有候选但对不上 → 5；连候选都没有 → 4）。**建议 A 把 F3/C3 加进候选**，否则 stage 2 每次都带一条 warning。
+
+实证（临时把 A 的 `ccc883b` artifacts.mjs 放进工作区跑，跑完还原、未提交）：
+`runs/gate-v3-a-fix/console.txt` —— 负控（v2 报告）`EXIT=5`；正控（v3 夹具）`EXIT_POSITIVE=0`，
+`gate.json` 里 `assetsDir.expected = <dest>/experiments/idle-roi/out-v3-yuva`、
+`staging.namingOnlyFailure.code = missing-file`。
+
+**仍未放行**：仓内 `quality-report.json` 还是 `652cb63` 的 v2 报告（`status=failed`，
+且 `provenance.files` 与 `arms` 互相矛盾）。C 的严格全片门出结果并**提交**后，我先跑 #10/#11
+两条 preflight，确认 `verdict.status=passed` 且三臂 SHA 对齐，再等负责人说"可以跑性能"。
+
+## 6. 红线（本轮仍成立）
 
 零真实模型 POST（bench 的 `sanitizedEnv` 删掉 chat/Qwen/SSH 变量）；不访问 18872；
 不动 GPU/模型参数；不改默认开关、不碰产品代码；性能数据没有 → 不给结论；

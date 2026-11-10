@@ -6,6 +6,8 @@
 - positive-report.json        ：status=passed、阈值=冻结基线、三臂 SHA 全对齐（门应放行，EXIT=0）
 - wrong-sha-report.json       ：把 F 的 SHA 改成全 0（门应拒绝，EXIT=5）
 - loose-threshold-report.json ：把 ocP99Lsb 放宽到 3（门应拒绝，EXIT=5）
+- positive-report-v3-yuva.json ：同上，但三臂 SHA 换成 v3（07278fd）实测的 O/F3/C3
+  （6ebca6b2… / 08afc852… / 195ae6aa…）；用来证明「门 + v3 素材」这条链本身是通的
 
 口径说明：
 1. 它们**永远不能**当放行依据。perf/behavior 模式会拒绝 `--quality-report`

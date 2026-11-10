@@ -3,14 +3,16 @@
   "code": 0,
   "errors": [],
   "evidence": {
-    "checkedAt": "2026-11-10T10:22:38.084Z",
+    "checkedAt": "2026-11-10T10:27:35.968Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v2",
+    "strictReport": false,
     "assetsDir": {
       "subpath": "experiments/idle-roi/out-v2",
       "subpathName": "out-v2",
       "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-positive-report/assets-committed",
       "assetsDirArg": null,
+      "expectedDir": null,
       "expected": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-positive-report/assets-committed/out-v2",
       "artifactsResolveAssetsDir": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-positive-report/assets-committed/out-v2",
       "errors": [],
@@ -291,6 +293,17 @@
         "fallback": null,
         "reason": null
       }
+    },
+    "staging": {
+      "assetsRepo": "/data3/DATA/project/project_meishijiang/m312r1-wt-d",
+      "assetsRef": "HEAD",
+      "commit": null,
+      "subpath": "experiments/idle-roi/out-v2",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-positive-report/assets-committed",
+      "archiveOk": true,
+      "archiveCode": null,
+      "namingOnlyFailure": null,
+      "note": "namingOnlyFailure 非空表示 A 的候选名不含 F3/C3，但不是取素材失败；本门逐臂按报告 SHA 核验"
     }
   }
 }

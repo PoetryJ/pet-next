@@ -1,6 +1,6 @@
 $ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-ref=HEAD --assets-subpath=experiments/idle-roi/out-v2 --quality-report=bench/idle-roi/gate-fixtures/positive-report.json --stamp=gate-positive-report --display=:157
 
-[idle-roi] assets-ref=HEAD subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-positive-report/assets-committed
+[idle-roi] assets-ref=HEAD(?) subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-positive-report/assets-committed
 /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-positive-report/gate.json
 {
   "gate": {

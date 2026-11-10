@@ -1,6 +1,6 @@
 $ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-ref=HEAD --assets-subpath=experiments/idle-roi/out-v2 --stamp=gate-neg1-failed-report --display=:157
 
-[idle-roi] assets-ref=HEAD subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-neg1-failed-report/assets-committed
+[idle-roi] assets-ref=HEAD(?) subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-neg1-failed-report/assets-committed
 [idle-roi] 阶段门拒绝（code=5）：5 项
   - verdict.status=failed（不是 passed）；失败门：o-to-c（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
   - verdict.pass=false（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）

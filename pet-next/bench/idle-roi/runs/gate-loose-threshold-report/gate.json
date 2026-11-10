@@ -5,14 +5,16 @@
     "thresholds.ocP99Lsb=3 比冻结基线 2 更松（放水）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/loose-threshold-report.json）"
   ],
   "evidence": {
-    "checkedAt": "2026-11-10T10:22:48.808Z",
+    "checkedAt": "2026-11-10T10:27:47.292Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v2",
+    "strictReport": false,
     "assetsDir": {
       "subpath": "experiments/idle-roi/out-v2",
       "subpathName": "out-v2",
       "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-loose-threshold-report/assets-committed",
       "assetsDirArg": null,
+      "expectedDir": null,
       "expected": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-loose-threshold-report/assets-committed/out-v2",
       "artifactsResolveAssetsDir": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-loose-threshold-report/assets-committed/out-v2",
       "errors": [],
@@ -295,6 +297,17 @@
         "fallback": null,
         "reason": null
       }
+    },
+    "staging": {
+      "assetsRepo": "/data3/DATA/project/project_meishijiang/m312r1-wt-d",
+      "assetsRef": "HEAD",
+      "commit": null,
+      "subpath": "experiments/idle-roi/out-v2",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-loose-threshold-report/assets-committed",
+      "archiveOk": true,
+      "archiveCode": null,
+      "namingOnlyFailure": null,
+      "note": "namingOnlyFailure 非空表示 A 的候选名不含 F3/C3，但不是取素材失败；本门逐臂按报告 SHA 核验"
     }
   }
 }

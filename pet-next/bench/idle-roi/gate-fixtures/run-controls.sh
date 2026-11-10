@@ -74,6 +74,15 @@ cp "$FX/positive-report.json" "$REPORT"
 run gate-dirty-report --mode=perf --assets-ref="$REF" --assets-subpath="$SUB" \
   --stamp=gate-dirty-report --display=:157
 restore
+# 10) 本轮 v3 素材（B 的 07278fd）+ 仓内旧（v2）报告：status failed，且三臂字节与报告冲突
+V3_REF="${V3_REF:-07278fd}"
+V3_SUB=experiments/idle-roi/out-v3-yuva
+run gate-v3-v2report --mode=preflight --assets-ref="$V3_REF" --assets-subpath="$V3_SUB" \
+  --stamp=gate-v3-v2report --display=:157
+# 11) v3 素材 + v3 正控报告（O/F3/C3 实测 SHA）→ 门放行，证明 v3 接线本身通
+run gate-v3-positive --mode=preflight --assets-ref="$V3_REF" --assets-subpath="$V3_SUB" \
+  --quality-report="$FX/positive-report-v3-yuva.json" --stamp=gate-v3-positive --display=:157
+
 echo
 echo "汇总："
 grep -H "EXIT=" "$BENCH"/runs/gate-*/console.txt | sed "s#$BENCH/runs/##"

@@ -5,14 +5,16 @@
     "质量报告有未提交改动（M pet-next/tests/idle-roi/out/quality-report.json），不能作为放行依据"
   ],
   "evidence": {
-    "checkedAt": "2026-11-10T10:22:53.206Z",
+    "checkedAt": "2026-11-10T10:27:53.711Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v2",
+    "strictReport": true,
     "assetsDir": {
       "subpath": "experiments/idle-roi/out-v2",
       "subpathName": "out-v2",
       "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-dirty-report/assets-committed",
       "assetsDirArg": null,
+      "expectedDir": null,
       "expected": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-dirty-report/assets-committed/out-v2",
       "artifactsResolveAssetsDir": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-dirty-report/assets-committed/out-v2",
       "errors": [],
@@ -295,6 +297,17 @@
         "fallback": null,
         "reason": null
       }
+    },
+    "staging": {
+      "assetsRepo": "/data3/DATA/project/project_meishijiang/m312r1-wt-d",
+      "assetsRef": "HEAD",
+      "commit": null,
+      "subpath": "experiments/idle-roi/out-v2",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-dirty-report/assets-committed",
+      "archiveOk": true,
+      "archiveCode": null,
+      "namingOnlyFailure": null,
+      "note": "namingOnlyFailure 非空表示 A 的候选名不含 F3/C3，但不是取素材失败；本门逐臂按报告 SHA 核验"
     }
   }
 }

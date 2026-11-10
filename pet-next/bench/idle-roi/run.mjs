@@ -874,21 +874,35 @@ function runStageGate() {
 
   let archive = null;
   let dest = null;
+  let namingOnlyFailure = null;
   if (assetsRef !== '') {
     dest = path.join(outDir, 'assets-committed');
     archive = stageCommittedAssets({ repo: assetsRepo, ref: assetsRef, dest, subpath: assetsSubpath });
-    printStatus(`assets-ref=${assetsRef} subpath=${assetsSubpath} -> ${archive.ok ? dest : `失败：${archive.error}`}`);
+    printStatus(
+      `assets-ref=${assetsRef}(${archive.commit ?? '?'}) subpath=${assetsSubpath} -> ${archive.ok ? archive.assetsDir ?? dest : `失败：${archive.error}`}`,
+    );
     if (!archive.ok) {
-      writeFileSync(
-        path.join(outDir, 'gate.json'),
-        JSON.stringify({ ok: false, stage: 'stage-committed-assets', assetsRepo, assetsRef, assetsSubpath, command: archive.command, error: archive.error, checkedAt: new Date().toISOString() }, null, 2),
+      // A 的实现在候选名里只认 F.webm/C.webm；本轮臂叫 F3.webm/C3.webm 时它会报 missing-file，
+      // 但字节已经解出来了。这种情况不当作"取素材失败"放行，而是交给阶段门逐臂按报告 SHA 核验；
+      // 判定理由原样写进 gate.json（命名不符是我们自己的账，不藏）。
+      const extractedDir = archive.assetsDir && existsSync(archive.assetsDir) ? archive.assetsDir : null;
+      namingOnlyFailure = archive.code === 'missing-file' && extractedDir ? { code: archive.code, error: archive.error, assetsDir: extractedDir } : null;
+      if (!namingOnlyFailure) {
+        writeFileSync(
+          path.join(outDir, 'gate.json'),
+          JSON.stringify({ ok: false, stage: 'stage-committed-assets', code: archive.code ?? null, assetsRepo, assetsRef, assetsSubpath, command: archive.command, error: archive.error, checkedAt: new Date().toISOString() }, null, 2),
+        );
+        console.error(`git archive 取已提交素材失败：${archive.command}\n${archive.error}`);
+        process.exit(4);
+      }
+      printStatus(
+        `  注意：A 的 verifyAssetsDir 因候选名不含 F3/C3 判 ${archive.code}（${archive.error}）；门会用 ${extractedDir} 逐臂核验并记账`,
       );
-      console.error(`git archive 取已提交素材失败：${archive.command}\n${archive.error}`);
-      process.exit(4);
     }
   }
 
-  const candidateDir = dest ? path.join(dest, path.basename(assetsSubpath)) : path.resolve(assetsDirArg);
+  const candidateDir = namingOnlyFailure?.assetsDir
+    ?? (dest ? path.join(dest, path.basename(assetsSubpath)) : path.resolve(assetsDirArg));
   const stagedManifest = loadManifest(path.join(candidateDir, 'manifest.json')).manifest;
   const reportPath = qualityReportArg === '' ? path.join(petRoot, QUALITY_REPORT_REL) : path.resolve(qualityReportArg);
   const reportRel = qualityReportArg === '' ? `pet-next/${QUALITY_REPORT_REL}` : null;
@@ -898,12 +912,24 @@ function runStageGate() {
     subpath: assetsSubpath,
     dest,
     assetsDirArg: assetsDirArg === '' ? null : assetsDirArg,
+    expectedDir: namingOnlyFailure?.assetsDir ?? null,
     qualityReportPath: reportPath,
     qualityReportRel: reportRel,
     strictReport,
     stagedManifest,
     petRootDir: petRoot,
   });
+  gate.evidence.staging = {
+    assetsRepo,
+    assetsRef,
+    commit: archive?.commit ?? null,
+    subpath: assetsSubpath,
+    dest,
+    archiveOk: archive?.ok ?? null,
+    archiveCode: archive?.code ?? null,
+    namingOnlyFailure,
+    note: 'namingOnlyFailure 非空表示 A 的候选名不含 F3/C3，但不是取素材失败；本门逐臂按报告 SHA 核验',
+  };
   writeFileSync(path.join(outDir, 'gate.json'), JSON.stringify(gate, null, 2));
 
   if (!gate.ok) {

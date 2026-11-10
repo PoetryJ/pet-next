@@ -235,14 +235,23 @@ export function checkReportProvenance({ repo, relPath }) {
  *   - 与 artifacts.resolveAssetsDir 的结果交叉核对，两者不一致就拒跑
  *     （同 dest 先 out 后 out-v2 时旧实现会选回 out，这就是要挡的）。
  */
-export function resolveAssetsDirExact({ dest, subpath, assetsDirArg = null }) {
+export function resolveAssetsDirExact({ dest, subpath, assetsDirArg = null, expectedDir = null }) {
   const subpathName = path.basename(String(subpath).replace(/\/+$/, ''));
-  const expected = assetsDirArg ? path.resolve(assetsDirArg) : dest ? path.join(dest, subpathName) : null;
+  // expectedDir：A 的 stageCommittedAssets 现在用 `--strip-components=1` 保留完整子路径，
+  // 并直接返回由 subpath 唯一决定的 assetsDir —— 有它就以它为准（布局变了也不猜）。
+  const expected = expectedDir
+    ? path.resolve(expectedDir)
+    : assetsDirArg
+      ? path.resolve(assetsDirArg)
+      : dest
+        ? path.join(dest, subpathName)
+        : null;
   const evidence = {
     subpath: String(subpath),
     subpathName,
     dest: dest ?? null,
     assetsDirArg: assetsDirArg ?? null,
+    expectedDir: expectedDir ? path.resolve(expectedDir) : null,
     expected,
     artifactsResolveAssetsDir: null,
     errors: [],
@@ -324,6 +333,7 @@ export function evaluateStageGate({
   subpath,
   dest = null,
   assetsDirArg = null,
+  expectedDir = null,
   qualityReportPath,
   qualityReportRel = QUALITY_REPORT_REL,
   strictReport = true,
@@ -332,9 +342,9 @@ export function evaluateStageGate({
 }) {
   const errors = [];
   const codes = new Set();
-  const evidence = { checkedAt: new Date().toISOString(), petRoot: petRootDir, subpath };
+  const evidence = { checkedAt: new Date().toISOString(), petRoot: petRootDir, subpath, strictReport };
 
-  const dirCheck = resolveAssetsDirExact({ dest, subpath, assetsDirArg });
+  const dirCheck = resolveAssetsDirExact({ dest, subpath, assetsDirArg, expectedDir });
   evidence.assetsDir = dirCheck.evidence;
   if (!dirCheck.ok) {
     errors.push(...dirCheck.evidence.errors);
@@ -411,8 +421,10 @@ export function evaluateStageGate({
       allowShippedFallback: arm === 'O',
     });
     if (!picks[arm].chosen) {
-      errors.push(`${arm}: ${picks[arm].reason}`);
-      codes.add(4);
+      // 有候选文件但都对不上 = SHA 冲突（5）；连候选都没有 = 素材缺失（4）。
+      const sawCandidates = picks[arm].candidates.length > 0 || Boolean(picks[arm].fallback);
+      errors.push(`${arm}: ${picks[arm].reason}${sawCandidates ? '（文件存在但与报告 SHA 冲突）' : ''}`);
+      codes.add(sawCandidates ? 5 : 4);
     } else if (picks[arm].chosen.sha256 !== expected) {
       errors.push(`${arm}: 加载的 ${picks[arm].chosen.path} sha256=${picks[arm].chosen.sha256} 与报告 ${expected} 不一致`);
       codes.add(5);
