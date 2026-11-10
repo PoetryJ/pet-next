@@ -2,5 +2,7 @@
 # Electron 的 user-data 是每臂临时产物，体积大且可再生，不入库。
 runs/**/user-data/
 runs/**/user-data-failure/
+# git archive 抽出的已提交素材（SHA 已写进 summary，二进制不重复入库）
+runs/**/assets-committed/
 runs/.lock
 runs/**/summary.recomputed.json

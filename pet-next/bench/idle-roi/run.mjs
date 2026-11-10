@@ -32,7 +32,7 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 
 import { connectCdp, delay, freePort, waitForPageSocket } from './lib/cdp.mjs';
-import { loadManifest, resolveArmSource, verifyLayout } from './lib/artifacts.mjs';
+import { loadManifest, resolveArmSource, resolveAssetsDir, stageCommittedAssets, verifyLayout } from './lib/artifacts.mjs';
 import { probeClicks, probeDrag, probeExit, probeHidden } from './lib/probes.mjs';
 import {
   findProcessesMatching,
@@ -172,6 +172,23 @@ async function injectObserver(cdp) {
   if (applied !== 'ok' && applied !== 'already') recordFailure(`注入 observe.js 返回 ${String(applied)}`);
 }
 
+/** 从产品 stdout 里找最后一条 `{"event":"ready",...}`（窗口/透明/边界证据）。 */
+function parseReadyEvent(stdout) {
+  if (!stdout) return null;
+  let found = null;
+  for (const line of stdout.split('\n')) {
+    const text = line.trim();
+    if (!text.startsWith('{')) continue;
+    try {
+      const event = JSON.parse(text);
+      if (event.event === 'ready') found = event;
+    } catch {
+      /* 非 JSON 行忽略 */
+    }
+  }
+  return found;
+}
+
 /** 当前正在播放的 idle 视频（按 src 短名匹配，避免把 reaction 的帧算进 idle）。 */
 function idleVideoOf(page, idleBase) {
   if (!page) return null;
@@ -229,6 +246,7 @@ async function runArm(context, { arm, rep }) {
     idleUrl: pathToFileURL(source.path).href,
     reactionUrl: context.reactionUrl ? pathToFileURL(context.reactionUrl).href : null,
     roiLayout: context.roiLayout,
+    roiManifest: context.manifestInfo?.found ? context.manifestInfo.path : null,
     logTag: tag,
   });
   cleanupHooks.push(() => product.kill());
@@ -262,10 +280,13 @@ async function runArm(context, { arm, rep }) {
     result.firstFrame = firstVideo
       ? { src: firstVideo.src, width: firstVideo.videoWidth, height: firstVideo.videoHeight, rect: firstVideo.rect }
       : null;
+    // 主进程 ready 事件是“窗口真的起来了”的独立证据（stdout 单行 JSON）。
+    result.readyEvent = parseReadyEvent(product.stdout());
+    if (result.readyEvent === null) armFail('stdout 里没有读到 {event:"ready"}');
 
     // 布局核对：只有 C 需要 ROI；F/O 只记录实际 rect 供比对。
     if (context.manifest) {
-      result.layout = verifyLayout(page, context.manifest);
+      result.layout = verifyLayout(page, context.manifest, { expectRoi: arm === 'C' });
       if (arm === 'C' && result.layout.checked && !result.layout.roiLayoutWired) {
         result.notRun.push('roi-layout-not-wired');
         recordFailure(`${tag}: C 的 ROI 布局未生效（rect/尺寸不符，见 summary.arms[].layout）；该臂 CPU 数据不能当作采用收益`);
@@ -323,6 +344,7 @@ async function runArm(context, { arm, rep }) {
         arm,
         rep,
         phase: index <= warmupSec ? 'warmup' : 'measure',
+        sourceSha256: source.sha256,
         t: index,
         at,
         wallMs,
@@ -458,6 +480,7 @@ async function runMissingIdleProbe({ arm, rep, source, armDir, context }) {
       idleUrl: pathToFileURL(probeCopy).href,
       reactionUrl: context.reactionUrl ? pathToFileURL(context.reactionUrl).href : null,
       roiLayout: context.roiLayout,
+      roiManifest: context.manifestInfo?.found ? context.manifestInfo.path : null,
       logTag: `${arm}-failure`,
     });
     const socket = await waitForPageSocket(debugPort, () => product.exitCode !== null, Date.now() + 60000);
@@ -554,7 +577,21 @@ async function writeSummary(context, armResults) {
     electronPreflight: context.preflight?.version ?? null,
     head: gitOut(['rev-parse', 'HEAD']),
     branch: gitOut(['rev-parse', '--abbrev-ref', 'HEAD']),
-    dirtyFiles: gitOut(['status', '--porcelain']).split('\n').filter(Boolean).length,
+    dirtyFiles: gitOut(['status', '--porcelain', '--untracked-files=no']).split('\n').filter(Boolean).length,
+    productDirtyFiles: gitOut([
+      'status',
+      '--porcelain',
+      '--untracked-files=no',
+      '--',
+      'app',
+      'electron',
+      'core',
+      'adapters',
+      'contracts',
+      'scripts',
+      'package.json',
+    ]).split('\n').filter(Boolean).length,
+    dirtyNote: 'dirtyFiles=已跟踪文件改动数（含本 bench 工具自身）；productDirtyFiles 只算 app/electron/core/adapters/contracts/scripts/package.json，应为 0',
     display,
     xvfbOwned,
     window: WINDOW,
@@ -588,6 +625,7 @@ async function writeSummary(context, armResults) {
       idleSource: entry.idleSource,
       pid: entry.pid ?? null,
       wallSec: entry.wallSec ?? null,
+      readyEvent: entry.readyEvent ?? null,
       layout: entry.layout,
       summary: entry.summary,
       probes: entry.probes,
@@ -603,10 +641,23 @@ async function writeSummary(context, armResults) {
     rawNdjson: rawPath,
     failures,
     notRun,
+    roiWiring: {
+      enabledByFlag: context.roiLayout === true,
+      productSupportsWiring: context.productSupportsRoiWiring ?? null,
+      env: context.roiLayout
+        ? {
+            PET_NEXT_IDLE_ROI: '1',
+            PET_NEXT_IDLE_ROI_MANIFEST: context.manifestInfo?.path ?? null,
+          }
+        : null,
+    },
     provenance: {
+      assetArchive: context.archive ?? null,
+      assetsDir: context.assetsDir ?? null,
       oSourceSha256: context.sources.O?.sha256 ?? null,
       fSourceSha256: context.sources.F?.sha256 ?? null,
       cSourceSha256: context.sources.C?.sha256 ?? null,
+      oMatchesShipped: context.sources.O?.matchesShipped ?? null,
       note: '数据来自以上 SHA 的已提交字节；未提交工作区快照不作为结论依据',
     },
   };
@@ -670,15 +721,21 @@ async function main() {
       byKey.get(key).samples.push(sample);
     }
     for (const entry of armResults) entry.summary = summarizeArm(entry.samples);
+    const localManifest = loadManifest(
+      summaryRaw?.manifest?.found && summaryRaw?.manifest?.path ? summaryRaw.manifest.path : undefined,
+    );
     const context = {
-      manifestInfo: loadManifest(),
+      manifestInfo: localManifest,
       sources: summaryRaw?.sources ?? {},
-      manifest: loadManifest().manifest,
+      manifest: localManifest.manifest,
+      archive: null,
+      assetsDir: summaryRaw?.provenance?.assetsDir ?? null,
+      productSupportsRoiWiring: summaryRaw?.roiWiring?.productSupportsWiring ?? null,
       reactionUrl: summaryRaw?.reaction?.path ?? null,
       order: summaryRaw?.plan ?? [],
       preflight: { version: summaryRaw?.electronPreflight ?? null },
       loadavgStart: summaryRaw?.loadavg?.start ?? null,
-      roiLayout: false,
+      roiLayout: summaryRaw?.roiWiring?.enabledByFlag ?? false,
     };
     const summary = await writeSummary(context, armResults);
     console.log(summaryPath);
@@ -709,12 +766,32 @@ async function main() {
   const preflight = electronPreflight();
   printStatus(`electron=${preflight.version} attempts=${preflight.attempt ?? preflight.attempts ?? '?'}`);
 
-  const manifestInfo = loadManifest();
+  // 素材只认已提交字节：--assets-ref=<ref> 用 git archive 抽到 runs/<stamp>/assets-committed，
+  // 不读任何人的未提交工作区；--assets-dir 用于直接给出已解出的 out 目录。
+  const assetsRef = value('assets-ref', '');
+  const assetsRepo = value('assets-repo', path.resolve(petRoot, '..'));
+  const assetsDirArg = value('assets-dir', '');
+  let archive = null;
+  let assetsDir = null;
+  if (assetsDirArg !== '') {
+    assetsDir = resolveAssetsDir(path.resolve(assetsDirArg));
+  } else if (assetsRef !== '') {
+    const dest = path.join(outDir, 'assets-committed');
+    archive = stageCommittedAssets({ repo: assetsRepo, ref: assetsRef, dest });
+    printStatus(`assets-ref=${assetsRef} -> ${archive.ok ? dest : `失败：${archive.error}`}`);
+    if (!archive.ok) {
+      console.error(`git archive 取已提交素材失败：${archive.command}\n${archive.error}`);
+      cleanupAll();
+      process.exit(4);
+    }
+    assetsDir = resolveAssetsDir(dest);
+  }
+  const manifestInfo = loadManifest(assetsDir ? path.join(assetsDir, 'manifest.json') : undefined);
   const manifest = manifestInfo.manifest;
   const sources = {
-    O: resolveArmSource('O', overrides, manifest),
-    F: resolveArmSource('F', overrides, manifest),
-    C: resolveArmSource('C', overrides, manifest),
+    O: resolveArmSource('O', overrides, manifest, assetsDir),
+    F: resolveArmSource('F', overrides, manifest, assetsDir),
+    C: resolveArmSource('C', overrides, manifest, assetsDir),
   };
   // 阶段一自检只跑 O；A 的产物缺失时默认硬失败，不静默只跑 O。
   const requestedArms = mode === 'selfcheck' ? ['O'] : value('plan', 'O,F,C').split(',').map((item) => item.trim()).filter(Boolean);
@@ -732,9 +809,33 @@ async function main() {
     process.exit(4);
   }
   if (missing.length > 0) notRun.push(`missing-artifacts: ${missing.join(' | ')}`);
-  // C 的布局接线：负责人落地开关前，roiLayout 一律 false。
+  // C 的布局接线（负责人 830b7cb + 9dc035e）：--roi-layout=on 会设
+  // PET_NEXT_IDLE_ROI=1 + PET_NEXT_IDLE_ROI_MANIFEST=<staged>/manifest.json。
   const roiLayout = value('roi-layout', 'off') !== 'off';
-  if (roiLayout) notRun.push('roi-layout-assumed-on-by-flag');
+  let productSupportsRoiWiring = null;
+  if (roiLayout) {
+    let mainJs;
+    try {
+      mainJs = readFileSync(path.join(petRoot, 'dist/electron/main.js'), 'utf8');
+    } catch {
+      mainJs = '';
+    }
+    productSupportsRoiWiring = mainJs.includes('PET_NEXT_IDLE_ROI_MANIFEST');
+    if (!productSupportsRoiWiring) {
+      console.error(
+        '当前 dist 不含 ROI 接线（找不到 PET_NEXT_IDLE_ROI_MANIFEST）：产品建自本 worktree 的 dfeca20。\n' +
+          '阶段二若要在 C 上用几何接线，先用含 830b7cb/9dc035e 的已提交源码构建（或让负责人给出该提交的 worktree），再重跑。',
+      );
+      cleanupAll();
+      process.exit(4);
+    }
+    if (!manifestInfo.found) {
+      console.error('--roi-layout=on 需要有效 manifest；当前 manifest 不存在。');
+      cleanupAll();
+      process.exit(4);
+    }
+    notRun.push('roi-layout-on-by-flag');
+  }
 
   const reactionOverride = value('reaction', '');
   const reactionUrl = reactionOverride === '' ? path.join(petRoot, 'assets/reaction.webm') : path.resolve(reactionOverride);
@@ -749,6 +850,9 @@ async function main() {
     sources,
     manifest,
     manifestInfo,
+    archive,
+    assetsDir,
+    productSupportsRoiWiring,
     reactionUrl,
     roiLayout,
     preflight,

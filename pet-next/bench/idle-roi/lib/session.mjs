@@ -160,6 +160,7 @@ export function sanitizedEnv(extra) {
     'PET_NEXT_IDLE_URL',
     'PET_NEXT_REACTION_URL',
     'PET_NEXT_IDLE_ROI',
+    'PET_NEXT_IDLE_ROI_MANIFEST',
     'FAKE_SSH_LOG',
     'FAKE_SSH_MODE',
     'FAKE_SSH_TARGET_PORT',
@@ -184,9 +185,12 @@ export function launchProduct(options) {
   };
   if (options.idleUrl) extra.PET_NEXT_IDLE_URL = options.idleUrl;
   if (options.reactionUrl) extra.PET_NEXT_REACTION_URL = options.reactionUrl;
-  // A/B 的公共接线若落地为独立开关，由负责人指定变量名；未落地时这里不设，
-  // summary 会据实写 roiLayoutWired=false，绝不假装 C 的布局已经生效。
-  if (options.roiLayout === true) extra.PET_NEXT_IDLE_ROI = '1';
+  // 负责人已落地（830b7cb + 9dc035e）：PET_NEXT_IDLE_ROI=1 且
+  // PET_NEXT_IDLE_ROI_MANIFEST=<abs>/manifest.json 才注入几何；缺 manifest 时产品应回原路径。
+  if (options.roiLayout === true) {
+    extra.PET_NEXT_IDLE_ROI = '1';
+    if (options.roiManifest) extra.PET_NEXT_IDLE_ROI_MANIFEST = options.roiManifest;
+  }
   const args = [
     '--no-sandbox',
     '--disable-dev-shm-usage',

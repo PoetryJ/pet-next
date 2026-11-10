@@ -7,53 +7,23 @@
     "requested": 10,
     "observed": 10,
     "missed": 0,
-    "medianMs": 95.45000076293945,
-    "minMs": 79.70000076293945,
-    "maxMs": 542.1000003814697,
+    "medianMs": 93.44999885559082,
+    "minMs": 86,
+    "maxMs": 326.5999984741211,
     "samples": [
       {
         "sample": 1,
-        "latencyMs": 97.70000076293945,
+        "latencyMs": 92.19999885559082,
         "src": "reaction.webm",
         "mediaTimeMs": 42,
-        "wallMs": 121,
+        "wallMs": 115,
         "visualBefore": "idle",
         "visualAfter": "reaction",
         "returnedToIdle": true
       },
       {
         "sample": 2,
-        "latencyMs": 118,
-        "src": "reaction.webm",
-        "mediaTimeMs": 42,
-        "wallMs": 146,
-        "visualBefore": "idle",
-        "visualAfter": "reaction",
-        "returnedToIdle": true
-      },
-      {
-        "sample": 3,
-        "latencyMs": 130.10000038146973,
-        "src": "reaction.webm",
-        "mediaTimeMs": 42,
-        "wallMs": 145,
-        "visualBefore": "idle",
-        "visualAfter": "reaction",
-        "returnedToIdle": true
-      },
-      {
-        "sample": 4,
-        "latencyMs": 95.4000015258789,
-        "src": "reaction.webm",
-        "mediaTimeMs": 42,
-        "wallMs": 117,
-        "visualBefore": "idle",
-        "visualAfter": "reaction",
-        "returnedToIdle": true
-      },
-      {
-        "sample": 5,
-        "latencyMs": 88.20000076293945,
+        "latencyMs": 86.29999923706055,
         "src": "reaction.webm",
         "mediaTimeMs": 42,
         "wallMs": 104,
@@ -62,51 +32,81 @@
         "returnedToIdle": true
       },
       {
-        "sample": 6,
-        "latencyMs": 79.70000076293945,
+        "sample": 3,
+        "latencyMs": 94.69999885559082,
         "src": "reaction.webm",
         "mediaTimeMs": 42,
-        "wallMs": 103,
+        "wallMs": 115,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 4,
+        "latencyMs": 326.5999984741211,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 358,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 5,
+        "latencyMs": 86,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 107,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 6,
+        "latencyMs": 258.6999988555908,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 275,
         "visualBefore": "idle",
         "visualAfter": "reaction",
         "returnedToIdle": true
       },
       {
         "sample": 7,
-        "latencyMs": 87.70000076293945,
+        "latencyMs": 95.5,
         "src": "reaction.webm",
         "mediaTimeMs": 42,
-        "wallMs": 109,
+        "wallMs": 116,
         "visualBefore": "idle",
         "visualAfter": "reaction",
         "returnedToIdle": true
       },
       {
         "sample": 8,
-        "latencyMs": 93.60000038146973,
+        "latencyMs": 89.69999885559082,
         "src": "reaction.webm",
         "mediaTimeMs": 42,
-        "wallMs": 114,
+        "wallMs": 104,
         "visualBefore": "idle",
         "visualAfter": "reaction",
         "returnedToIdle": true
       },
       {
         "sample": 9,
-        "latencyMs": 542.1000003814697,
+        "latencyMs": 143.39999961853027,
         "src": "reaction.webm",
         "mediaTimeMs": 42,
-        "wallMs": 560,
+        "wallMs": 185,
         "visualBefore": "idle",
         "visualAfter": "reaction",
         "returnedToIdle": true
       },
       {
         "sample": 10,
-        "latencyMs": 95.5,
+        "latencyMs": 88.89999961853027,
         "src": "reaction.webm",
         "mediaTimeMs": 42,
-        "wallMs": 117,
+        "wallMs": 111,
         "visualBefore": "idle",
         "visualAfter": "reaction",
         "returnedToIdle": true
@@ -117,6 +117,6 @@
   "exit": {
     "exitCode": 0,
     "signal": null,
-    "ms": 2000
+    "ms": 2001
   }
 }

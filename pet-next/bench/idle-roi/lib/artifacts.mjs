@@ -6,7 +6,8 @@
  * 不一致时 summary 记 `shaMatched:false` 并拒绝把该臂当有效数据（不静默使用）。
  * @module pet-next/bench/idle-roi/lib/artifacts
  */
-import { existsSync, readFileSync, statSync } from 'node:fs';
+import { spawnSync } from 'node:child_process';
+import { existsSync, mkdirSync, readFileSync, readdirSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { petRoot, sha256 } from './session.mjs';
 
@@ -23,13 +24,72 @@ const C_CANDIDATES = [
   'experiments/idle-roi/out/C-roi.webm',
 ];
 
-export function loadManifest() {
-  if (!existsSync(MANIFEST_PATH)) return { found: false, path: MANIFEST_PATH, manifest: null, error: 'manifest.json 不存在' };
+/** `--assets-ref` 只提取这个子树；strip 3 层后得到 `<dest>/out/*`。 */
+export const ARCHIVE_SUBPATH = 'pet-next/experiments/idle-roi/out';
+
+/**
+ * 从**已提交** ref 取三臂素材（不读别人的未提交工作区）。
+ * 等价命令：`git -C <repo> archive <ref> pet-next/experiments/idle-roi/out |
+ *            tar -x -C <dest> --strip-components=3`。
+ * @param {{repo:string, ref:string, dest:string}} options
+ */
+export function stageCommittedAssets({ repo, ref, dest }) {
+  mkdirSync(dest, { recursive: true });
+  const head = spawnSync('git', ['-C', repo, 'cat-file', '-t', ref], { encoding: 'utf8' });
+  if (head.status !== 0) {
+    return { ok: false, command: `git -C ${repo} cat-file -t ${ref}`, error: (head.stderr || head.stdout || '').trim() };
+  }
+  const archive = spawnSync('git', ['-C', repo, 'archive', ref, ARCHIVE_SUBPATH], { maxBuffer: 256 * 1024 * 1024 });
+  if (archive.status !== 0) {
+    return {
+      ok: false,
+      command: `git -C ${repo} archive ${ref} ${ARCHIVE_SUBPATH}`,
+      error: String(archive.stderr ?? '').trim(),
+    };
+  }
+  const tar = spawnSync('tar', ['-x', '-C', dest, '--strip-components=3'], { input: archive.stdout, maxBuffer: 256 * 1024 * 1024 });
+  if (tar.status !== 0) {
+    return {
+      ok: false,
+      command: `git -C ${repo} archive ${ref} ${ARCHIVE_SUBPATH} | tar -x -C ${dest} --strip-components=3`,
+      error: String(tar.stderr ?? '').trim(),
+    };
+  }
+  const files = [];
+  const walk = (dir) => {
+    for (const entry of readdirSync(dir, { withFileTypes: true })) {
+      const full = path.join(dir, entry.name);
+      if (entry.isDirectory()) walk(full);
+      else files.push({ path: full, sha256: sha256(full), bytes: statSync(full).size });
+    }
+  };
+  walk(dest);
+  return {
+    ok: true,
+    repo,
+    ref,
+    dest,
+    command: `git -C ${repo} archive ${ref} ${ARCHIVE_SUBPATH} | tar -x -C ${dest} --strip-components=3`,
+    files,
+  };
+}
+
+/** staged 目录既可能是 `<dest>/out`，也可能是调用方直接给的 `out` 目录。 */
+export function resolveAssetsDir(dir) {
+  if (!dir) return null;
+  const nested = path.join(dir, 'out');
+  if (existsSync(path.join(nested, 'manifest.json'))) return nested;
+  if (existsSync(path.join(dir, 'manifest.json'))) return dir;
+  return nested;
+}
+
+export function loadManifest(manifestPath = MANIFEST_PATH) {
+  if (!existsSync(manifestPath)) return { found: false, path: manifestPath, manifest: null, error: 'manifest.json 不存在' };
   try {
-    const manifest = JSON.parse(readFileSync(MANIFEST_PATH, 'utf8'));
-    return { found: true, path: MANIFEST_PATH, manifest, error: null };
+    const manifest = JSON.parse(readFileSync(manifestPath, 'utf8'));
+    return { found: true, path: manifestPath, manifest, error: null };
   } catch (error) {
-    return { found: false, path: MANIFEST_PATH, manifest: null, error: String(error?.message ?? error) };
+    return { found: false, path: manifestPath, manifest: null, error: String(error?.message ?? error) };
   }
 }
 
@@ -41,34 +101,53 @@ function pickFirst(candidates) {
   return null;
 }
 
+function pickStaged(assetsDir, names) {
+  if (!assetsDir) return null;
+  for (const name of names) {
+    const full = path.join(assetsDir, name);
+    if (existsSync(full)) return full;
+  }
+  return null;
+}
+
 /**
  * 解析某臂实际的 idle 源文件。
  * @param {'O'|'F'|'C'} arm
  * @param {{src?:string, fSrc?:string, cSrc?:string}} overrides 显式覆盖（阶段二 A 产物命名不同时）
  * @param {any|null} manifest
  */
-export function resolveArmSource(arm, overrides = {}, manifest = null) {
+export function resolveArmSource(arm, overrides = {}, manifest = null, assetsDir = null) {
   if (arm === 'O') {
-    const file = overrides.src ? path.resolve(overrides.src) : path.join(petRoot, 'assets/idle.webm');
-    return describe(arm, file, manifest?.sourceSha256 ?? null, 'assets/idle.webm（原字节）');
+    const staged = pickStaged(assetsDir, ['O.webm']);
+    const file = overrides.src
+      ? path.resolve(overrides.src)
+      : staged ?? path.join(petRoot, 'assets/idle.webm');
+    return describe(
+      arm,
+      file,
+      manifest?.sourceSha256 ?? null,
+      staged ? '已提交 out/O.webm（manifest.sourceSha 对应）' : 'assets/idle.webm（原字节）',
+      false,
+      path.join(petRoot, 'assets/idle.webm'),
+    );
   }
   if (arm === 'F') {
     const file = overrides.fSrc
       ? path.resolve(overrides.fSrc)
       : overrides.src
         ? path.resolve(overrides.src)
-        : pickFirst(F_CANDIDATES);
-    return describe(arm, file, null, 'experiments/idle-roi/out F 全画布重编码', true);
+        : pickStaged(assetsDir, ['F.webm', 'full.webm', 'F-full.webm']) ?? pickFirst(F_CANDIDATES);
+    return describe(arm, file, null, 'F 全画布重编码（与 C 同预处理/编码/PTS）', true);
   }
   const file = overrides.cSrc
     ? path.resolve(overrides.cSrc)
     : overrides.src
       ? path.resolve(overrides.src)
-      : pickFirst(C_CANDIDATES);
-  return describe(arm, file, manifest?.candidateSha256 ?? null, 'experiments/idle-roi/out C ROI 裁剪', true);
+      : pickStaged(assetsDir, ['C.webm', 'roi.webm', 'C-roi.webm']) ?? pickFirst(C_CANDIDATES);
+  return describe(arm, file, manifest?.candidateSha256 ?? null, 'C ROI 裁剪（编码分辨率=ROI 宽高）', true);
 }
 
-function describe(arm, file, expectedSha, label, optional = false) {
+function describe(arm, file, expectedSha, label, optional = false, shippedPath = null) {
   if (file === null || !existsSync(file)) {
     return {
       arm,
@@ -85,6 +164,7 @@ function describe(arm, file, expectedSha, label, optional = false) {
   }
   const actual = sha256(file);
   const size = statSafe(file);
+  const shippedSha = shippedPath && existsSync(shippedPath) ? sha256(shippedPath) : null;
   return {
     arm,
     path: file,
@@ -94,6 +174,9 @@ function describe(arm, file, expectedSha, label, optional = false) {
     sha256: actual,
     expectedSha,
     shaMatched: expectedSha ? actual === expectedSha : null,
+    shippedPath,
+    shippedSha256: shippedSha,
+    matchesShipped: shippedSha ? shippedSha === actual : null,
     bytes: size,
   };
 }
@@ -122,17 +205,30 @@ export function expectedRoiRect(manifest, viewport) {
 }
 
 /**
- * 用页面实际 rect + videoWidth/videoHeight 核对 ROI 接线是否真的生效。
- * 未接线时 rect.width 会是整个视口（contain 放大到窗口），据此判定 roiLayoutWired=false。
+ * 用页面实际 rect + videoWidth/videoHeight 核对布局。
+ * - `expectRoi=true`（C 臂）：对照契约第 4 节公式，未接线时 rect 会是整个视口 → roiLayoutWired=false；
+ * - `expectRoi=false`（O/F 臂）：应保持全窗口 contain（320×240 视口 → rect 0,0,320,240，
+ *   视频 intrinsic 为 640×360），仅作基线记录，不参与 ROI 判定。
  */
-export function verifyLayout(page, manifest) {
+export function verifyLayout(page, manifest, { expectRoi = false } = {}) {
   if (!page) return { checked: false, reason: '没有页面快照' };
   const videos = page.videos.filter((video) => video.readyState >= 1 && video.videoWidth > 0);
   if (videos.length === 0) return { checked: false, reason: '没有已加载的视频' };
   const video = videos.find((item) => !item.paused) ?? videos[0];
-  const expected = expectedRoiRect(manifest, page.viewport);
+  const expected = expectRoi
+    ? expectedRoiRect(manifest, page.viewport)
+    : page.viewport
+      ? { x: 0, y: 0, width: page.viewport.width, height: page.viewport.height, scale: null }
+      : null;
   const crop = manifest?.crop;
-  const sizeMatches = crop ? video.videoWidth === crop.width && video.videoHeight === crop.height : null;
+  const canvas = manifest?.originalCanvas;
+  const sizeMatches = !expectRoi
+    ? canvas
+      ? video.videoWidth === canvas.width && video.videoHeight === canvas.height
+      : null
+    : crop
+      ? video.videoWidth === crop.width && video.videoHeight === crop.height
+      : null;
   const rectDelta = expected
     ? {
         x: Math.round((video.rect.x - expected.x) * 100) / 100,
@@ -150,6 +246,7 @@ export function verifyLayout(page, manifest) {
     Math.abs(rectDelta.height) <= tolerance;
   return {
     checked: true,
+    applicable: expectRoi ? 'roi' : 'contain',
     videoSrc: video.src,
     videoIntrinsic: { width: video.videoWidth, height: video.videoHeight },
     viewport: page.viewport,
@@ -164,7 +261,9 @@ export function verifyLayout(page, manifest) {
       : null,
     rectDelta,
     toleranceDip: tolerance,
-    cropSizeMatches: sizeMatches,
-    roiLayoutWired: Boolean(rectMatches && sizeMatches),
+    intrinsicMatchesExpectation: sizeMatches,
+    cropSizeMatches: expectRoi ? sizeMatches : null,
+    layoutMatches: Boolean(rectMatches && sizeMatches),
+    roiLayoutWired: expectRoi ? Boolean(rectMatches && sizeMatches) : null,
   };
 }
