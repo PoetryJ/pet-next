@@ -210,7 +210,8 @@ describe('integration contracts', () => {
     assert.equal(unitTests.includes('.e2e.test.ts'), true);
     assert.equal(
       scripts.scripts['test:e2e'],
-      'node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts tests/feedback/*.e2e.test.ts tests/launcher/*.e2e.test.ts',
+      // M3-11：新增拖动写入预算两臂 suite；默认只在显式开关下跑真实窗口，收集范围随实现同步。
+      'node --experimental-strip-types --test --test-concurrency=1 --test-reporter spec tests/*.e2e.test.ts tests/feedback/*.e2e.test.ts tests/launcher/*.e2e.test.ts tests/drag-write-budget/*.e2e.test.ts',
     );
     // R1：统一走 Node 入口（pwsh7 预检 + 仅进程级 Bypass），不再直接调用 Windows PowerShell 5。
     assert.equal(scripts.scripts['verify:windows'], 'node scripts/verify-windows.mjs');
