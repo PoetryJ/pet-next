@@ -22,17 +22,57 @@
 | F | 已提交 `out/F.webm` | A 的全画布重编码；也接受 `full.webm` / `F-full.webm` |
 | C | 已提交 `out/C.webm` | A 的 ROI 裁剪；也接受 `roi.webm` / `C-roi.webm` |
 
-**素材只认已提交字节**：`--assets-ref=<ref>` 会执行
+**素材只认已提交字节，目录由本次 subpath 唯一决定**：`--assets-ref=<ref>` 先
+`git rev-parse --verify <ref>^{commit}`，再执行
 
 ```bash
-git -C <worktree> archive <ref> pet-next/experiments/idle-roi/out |
-  tar -x -C runs/<stamp>/assets-committed --strip-components=3
+git -C <repo> archive <commit> pet-next/<subpath> |
+  tar -x -C runs/<stamp>/assets-committed --strip-components=1
 ```
 
-并把这些文件的 SHA-256 写进 `summary.provenance.assetArchive.files`；每行 raw.ndjson
-还带 `sourceSha256`，`summary.sources` 有三个臂的路径/字节数/SHA。不读任何人的未提交
-工作区快照。路径也可用 `--src= --f-src= --c-src= --assets-dir=` 覆盖；SHA 与 manifest
-不符时该臂记 `sha-mismatch` 并**不产生**可用数据。
+- 解出目录 = `runs/<stamp>/assets-committed/<subpath>`（**由本次调用唯一决定**，不再遍历
+  dest 找“第一个 manifest”）。`--assets-subpath` 默认 `experiments/idle-roi/out`；v2 用
+  `--assets-subpath=experiments/idle-roi/out-v2`。
+- 同一个 dest 先取 v1 再取 v2 时两个目录并存、各自准确；工具**不清理** dest 里不属于本次
+  调用的内容（旧 `out/` 不删，也不会被当成 v2）。
+- 只有**没有显式 subpath** 时（`--assets-dir=<dir>`）才允许向下扫描 `manifest.json`：
+  0 个候选或 ≥2 个候选都直接失败（`manifest-not-found` / `ambiguous-assets-dir`），不猜。
+- 路径校验：只接受 `pet-next/` 下的仓库相对路径（前缀可省略）。绝对路径、盘符（`C:/…`）、
+  反斜杠路径、`.`/`..` 组件、空路径/空组件、pathspec 通配（`*`、`?`）一律拒绝
+  （`invalid-subpath`）。
+
+失败语义：下面每种情况都是**非零退出**（`run.mjs` 退出 4，不启动 GUI），不存在
+`ok:true` 的空产物。
+
+| 情况 | code |
+|---|---|
+| 非法 subpath（绝对/盘符/反斜杠/`..`/空/通配） | `invalid-subpath` |
+| ref 不存在或不是提交 | `bad-ref` |
+| 子路径不存在（`git archive` 报 pathspec 不匹配） | `archive-failed` |
+| 子路径没有 `manifest.json` | `manifest-missing` |
+| 缺 `O.webm` / `F*.webm` / `C*.webm` | `missing-file` |
+| 实测 SHA 与 manifest 声明不符 | `sha-mismatch` |
+| 子路径指向文件而不是目录 | `assets-dir-missing` |
+| `--assets-dir` 下多个候选 | `ambiguous-assets-dir` |
+
+`O.webm` 必须等于 `manifest.sourceSha256`，`C.webm` 必须等于 `manifest.candidateSha256`；
+`F.webm` 若 manifest 声明了 `revision.<ver>.F.sha256`（`<ver>` = `C.sha256 ===
+candidateSha256` 的那一版）也必须一致——v1/v2 的 F 不同，不能拿 v1 的 F 校验 v2 的字节。
+
+`summary.provenance`（`schemaVersion: 2`）全部字段从**实际取出的文件**重算，不手填：
+
+| 字段 | 含义 |
+|---|---|
+| `assetCommit` | 素材来源提交（`--assets-ref` 解析出的完整 SHA） |
+| `assetRef` / `assetSubpath` / `assetsDir` | 请求的 ref、仓库相对子路径、本次实际解出目录 |
+| `evaluationCodeCommit` / `evaluationCodeRepo` | 跑评测的仓库 HEAD（与 `assetCommit` 不同不是错误） |
+| `sourceVideoSha` / `fullCanvasSha` / `candidateSha` | 三臂实际会播放的字节 SHA |
+| `manifestSha256` / `declared` / `checks` | manifest 字节 SHA、声明值、逐项是否一致 |
+| `files[]` | 素材目录里每个文件的 `relative/bytes/sha256`（实测） |
+
+每行 raw.ndjson 还带 `sourceSha256`，`summary.sources` 有三个臂的路径/字节数/SHA。
+不读任何人的未提交工作区快照。`--src= --f-src= --c-src=` 仍可人工覆盖单文件；给了本次
+素材目录后**缺文件就报 missing，不回退到仓库里另一版本的 F/C**（避免 v1 字节混进 v2 数据）。
 
 ### C 的几何接线（负责人 830b7cb + 9dc035e，默认关闭）
 
@@ -41,8 +81,8 @@ git -C <worktree> archive <ref> pet-next/experiments/idle-roi/out |
 ```
 # 只给 C 臂：
 PET_NEXT_IDLE_ROI=1
-PET_NEXT_IDLE_ROI_MANIFEST=<staged>/out/manifest.json
-PET_NEXT_IDLE_URL=<staged>/out/C.webm
+PET_NEXT_IDLE_ROI_MANIFEST=<assetsDir>/manifest.json
+PET_NEXT_IDLE_URL=<assetsDir>/C.webm
 
 # O/F 臂：两个 ROI env 都不设（不是设 0）。sha 门比对的是 assets/idle.webm，
 # 开着开关播 O 也会套上 ROI 盒，O 基线会“假失败”。
@@ -113,8 +153,15 @@ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --plan=O,F,C --reps=3 --seconds=
 env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=behavior --plan=O,F,C --seconds=0 --warmup=4 \
   --probe=click,drag,hidden,failure --clicks=12 --assets-ref=9dc035e --roi-layout=on --display=:154
 
+# v2 素材（编码域裁剪）：显式 subpath；assetsDir = runs/<stamp>/assets-committed/experiments/idle-roi/out-v2
+env -u NODE_OPTIONS node bench/idle-roi/run.mjs --plan=O,F,C --seconds=60 --warmup=10 \
+  --assets-ref=b9c2f61 --assets-subpath=experiments/idle-roi/out-v2 --display=:154
+
 # 只复算已有目录（不启动 GUI）
 env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=analyze --run=bench/idle-roi/runs/<stamp>
+
+# 素材入口回归（纯文件系统，不启动 Electron；含真实 out-v2 一次）
+env -u NODE_OPTIONS node --test bench/idle-roi/test/artifacts.test.mjs
 ```
 
 前置：`pnpm install` + `pnpm build`（脚本会按 `dist/electron/main.js` 的 mtime 自动补构建，
@@ -154,6 +201,7 @@ bench/idle-roi/runs/<stamp>/
     product-stdout.log        # 产品原始输出（含 ready/bounds 事件）
     product-stderr.log
     probes.json               # 点击原始值/拖动/隐藏恢复/失败占位/退出
+  assets-committed/<subpath>/ # --assets-ref 解出的已提交素材；目录由本次 subpath 决定（gitignore）
   arms/<arm>-r<rep>/user-data/  # 每臂临时 profile，gitignore
 ```
 
@@ -201,7 +249,7 @@ C 布局未接线时额外否决（见第 2 节）。
 
 工具自证，**不是产品结论**（只有 O 臂，无 F/C 对照）。素材用
 `git archive 9dc035e` 抽取，O=`out/O.webm` SHA `6ebca6b2…`（78419B，与
-`assets/idle.webm` 同字节，`provenance.oMatchesShipped=true`）；F/C 的 SHA 也一并记录
+`assets/idle.webm` 同字节，`provenance.sourceVideoMatchesShipped=true`）；F/C 的 SHA 也一并记录
 （F `2ca492a9…` 188075B、C `08a80ac4…` 225952B），但**本轮未运行**它们。
 A 的提交 `da02255` 与负责人集成提交 `9dc035e` 的三臂字节逐字节相同（已用两棵
 `git archive` 各算一次 SHA 验证）。
@@ -240,6 +288,16 @@ A 的提交 `da02255` 与负责人集成提交 `9dc035e` 的三臂字节逐字�
   `roiRulePresent` / `roiRuleObjectFitContain` / `objectFitNoneLines` / `preflightWarnings`：
   dfeca20 基线是“无 `body.idle-roi` 规则块”（正常）；接线落地后应出现该规则且其
   `object-fit: contain`，最终判定仍以运行时 computed style 为准。
+- **同 dest 的 v1/v2 会选错臂（已修，R1-A）**：原实现 stage 成功后用 `resolveAssetsDir(dest)`
+  遍历一级子目录找 manifest，同 dest 先 `out` 后 `out-v2` 会选回旧 `out/`（Codex smoke 复现：
+  `ok=true` 但 candidateSha 是 v1 的 `08a80ac4…`）。现在 assetsDir = `<dest>/<subpath>` 由本次
+  调用唯一决定；只有无显式 subpath 才扫描，且 ≥2 个候选报 `ambiguous-assets-dir` 而不是猜。
+- **非法/空路径曾经返回 ok（已修，R1-A）**：`../README.md` 原实现 `ok=true` 且零素材（git
+  规范化到仓库根 README）。现在 `..`/绝对/盘符/反斜杠/通配一律 `invalid-subpath`；子路径没有
+  manifest/O/F/C 或实测 SHA 与声明不符都非零失败，空产物不得 `ok`。
+- **provenance 曾残留 v1 字段（已修，R1-A）**：`summary.provenance` 改为 `schemaVersion: 2`，
+  `assetCommit`/`evaluationCodeCommit`/`sourceVideoSha`/`candidateSha`/`manifestSha256` 与
+  `files[].sha256` 全部从实际取出的文件重算（字段表见第 2 节）。
 - 工具覆盖已自证：已提交字节抽取与 SHA 记账、进程树 CPU/RSS/PSS、真实解码帧与视频尺寸、
   10 次点击原始值、loadavg、ready/退出码/残留、warmup/measure 分列、raw.ndjson + summary.json。
 
