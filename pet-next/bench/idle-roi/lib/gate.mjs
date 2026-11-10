@@ -126,9 +126,29 @@ export function evaluateStatus(report) {
   for (const row of gateRows) {
     if (row.pass !== true) errors.push(`门 ${row.id ?? '(未命名)'} 未通过（pass=${String(row.pass)}）`);
   }
+  // R1 C 的分层结论：候选门（verdict.candidates）+ 前置（verdict.prerequisites，例如原生 YUVA
+  // 直通自对照）都必须绿；`verdict.historical` 是历史版本记录，失败不等于候选失败，只记账。
+  const candidates = report?.verdict?.candidates ?? null;
+  const prerequisites = Array.isArray(report?.verdict?.prerequisites) ? report.verdict.prerequisites : [];
+  if (candidates && typeof candidates.pass === 'boolean') {
+    add('verdict.candidates.pass', candidates.pass);
+    if (candidates.pass !== true) errors.push(`verdict.candidates.pass=${String(candidates.pass)}（候选门未通过）`);
+    if (Array.isArray(candidates.failed) && candidates.failed.length > 0) {
+      errors.push(`候选门失败项：${candidates.failed.join(',')}`);
+    }
+  }
+  for (const row of prerequisites) {
+    if (row?.pass !== true && row?.status !== 'passed') {
+      errors.push(`前置 ${row?.category ?? '(未命名)'} 未通过（status=${String(row?.status)}, pass=${String(row?.pass)}）`);
+    }
+  }
   return {
     reported: status,
     passed: errors.length === 0 && status === 'passed',
+    subject: report?.verdict?.subject ?? candidates?.category ?? null,
+    candidates: candidates ? { category: candidates.category ?? null, status: candidates.status ?? null, pass: candidates.pass ?? null, failed: candidates.failed ?? [] } : null,
+    prerequisites: prerequisites.map((row) => ({ category: row?.category ?? null, status: row?.status ?? null, pass: row?.pass ?? null })),
+    historicalFailed: Array.isArray(report?.verdict?.historicalFailed) ? report.verdict.historicalFailed : [],
     signals,
     gates: gateRows,
     errors,
@@ -167,6 +187,19 @@ export function collectArmShaClaims(report, stagedManifest = null) {
     claims[arm].push({ source, sha256: text });
   };
   add('O', 'report.arms.sourceSha256', report?.arms?.sourceSha256);
+  // R1 C 的报告格式：`verdict.candidates.sha256.{O,F,C}` 才是"本次被测候选臂"的字节，
+  // `verdict.historical` / 其他 `variants` 是历史与自对照，**不能**当同一臂的第二个主张。
+  const candidateShas = report?.verdict?.candidates?.sha256 ?? null;
+  for (const arm of ['O', 'F', 'C']) add(arm, `report.verdict.candidates.sha256.${arm}`, candidateShas?.[arm]);
+  const candidateCategory = report?.verdict?.candidates?.category ?? null;
+  if (candidateCategory !== null) {
+    for (const [index, variant] of (report?.variants ?? []).entries()) {
+      if (variant?.category !== candidateCategory) continue;
+      for (const arm of ['O', 'F', 'C']) {
+        add(arm, `report.variants[${index}].arms.sha256.${arm}`, variant?.arms?.sha256?.[arm]);
+      }
+    }
+  }
   add('F', 'report.arms.fSha256', report?.arms?.fSha256);
   add('C', 'report.arms.candidateSha256', report?.arms?.candidateSha256);
   add('O', 'report.manifest.sourceSha256', report?.manifest?.sourceSha256);

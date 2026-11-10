@@ -273,6 +273,23 @@ A 的 `ccc883b` 带来两个契约变化，我这边已适配（`run.mjs` + `gat
 `gate.json` 里 `assetsDir.expected = <dest>/experiments/idle-roi/out-v3-yuva`、
 `staging.namingOnlyFailure.code = missing-file`。
 
+### C 的 R1 报告格式（门已适配，干跑放行）
+
+C 这一版报告分层了，门现在读这些字段（旧格式仍然认）：
+
+- 结论：`verdict.status`（只认 `passed`）+ `verdict.pass`；
+- 候选门：`verdict.candidates.{status,pass,failed}` 必须绿，`verdict.prerequisites[]` 必须绿
+  （例如 `yuva-selfcontrol` 原生 YUVA 直通自对照）；
+- 臂 SHA：`verdict.candidates.sha256.{O,F,C}`，并与 `variants[category === candidates.category].arms.sha256`
+  交叉核对；`verdict.historical` 与其他 variants（v2、自对照）**只记账**，不当同一臂的第二个主张；
+- 阈值：顶层 `thresholds` 逐项比对冻结基线（R1 报告与基线完全一致）。
+
+干跑（v3 素材 `07278fd` + C 当前**未提交**的报告）：`runs/gate-c-report-dry/console.txt` → `EXIT=0`，
+选中 `O.webm 6ebca6b2…` / `F3.webm 08afc852…` / `C3.webm 195ae6aa…`，`verdict.subject=f3c3`，
+`verdict.historicalFailed=['v2-rgba/o-to-c']`（历史 v2 失败不阻塞候选，但原样记账）。
+
+**这不算放行性能**：那份报告还没提交，strict 模式（perf/behavior）会以"未提交改动"拒跑。
+
 **仍未放行**：仓内 `quality-report.json` 还是 `652cb63` 的 v2 报告（`status=failed`，
 且 `provenance.files` 与 `arms` 互相矛盾）。C 的严格全片门出结果并**提交**后，我先跑 #10/#11
 两条 preflight，确认 `verdict.status=passed` 且三臂 SHA 对齐，再等负责人说"可以跑性能"。
