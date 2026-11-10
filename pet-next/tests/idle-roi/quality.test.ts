@@ -1,40 +1,50 @@
 /**
- * M3-12 画质门（C 的独立判定）。
+ * M3-12 R1 画质门（C 的独立判定）。
  *
- * 只认 `experiments/idle-roi/out/` 里已提交的字节：O/F/C 三个 webm 加 manifest。
- * 全 48 帧独立解码（显式 `-c:v libvpx-vp9 -pix_fmt rgba`），不抽样、不只看首末帧。
+ * 三类**分列**，各自一套门、各自一套数字，不许混写：
+ * - `v2-rgba`：旧 RGBA 路径候选（out-v2 / fixtures 字节），历史结论保留；
+ * - `yuva-selfcontrol`：out-v3-yuva 的原生 YUVA 直通自对照（Y/U/V/A 与解码 RGB）；
+ * - `f3c3`：out-v3-yuva 的 F3/C3，本轮唯一转正候选。
  *
- * 判据逐条来自 `docs/M3-12-IDLE-ROI.md` 第 6 节，写在 `lib/gates.ts` 的 GATE_THRESHOLDS 里。
- * 门不过就让测试红，并把逐帧数值写进 `out/quality-report.json`——不放宽阈值、不改断言。
+ * 全 48 帧独立解码（显式 `-c:v libvpx-vp9`），不抽样。判据来自
+ * `docs/M3-12-IDLE-ROI.md` 第 6 节，写在 `lib/gates.ts` 的 GATE_THRESHOLDS 里，本轮不放宽。
+ *
+ * `PET_NEXT_IDLE_ROI_STRICT_GATE=1` 才是硬门：任一类别未过或未评测都让测试红。
+ * 普通 `verify` 绿只证明装置跑通了，不授权进入性能阶段。
  */
 import assert from 'node:assert/strict';
 import { execFile } from 'node:child_process';
-import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, statSync } from 'node:fs';
+import { mkdirSync, readdirSync, rmSync } from 'node:fs';
 import { mkdtemp, rm } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import test from 'node:test';
 
-import { fixtureArmsDir, loadRealArms, petRoot, resolveArmsDir, type Arms } from './lib/arms.ts';
-import {
-  GATE_THRESHOLDS,
-  coverageGate,
-  fToCGate,
-  layoutGate,
-  measureReencodeBaseline,
-  ocGate,
-  overallVerdict,
-  timelineGate,
-  type GateResult,
-} from './lib/gates.ts';
+import { petRoot, type Arms } from './lib/arms.ts';
+import { GATE_THRESHOLDS, type GateResult } from './lib/gates.ts';
 import { openRaw } from './lib/media.ts';
 import { compositeFrame, restoreCrop } from './lib/pixels.ts';
-import { writeCroppedCompositePng, writeErrorMapPng, writeJson } from './lib/report.ts';
+import { assembleReport, gateSummary, writeReport, type ComparisonRow } from './lib/quality-report.ts';
+import { gitState, harnessFingerprint, toolVersion } from './lib/reference.ts';
+import { writeCroppedCompositePng, writeErrorMapPng } from './lib/report.ts';
 import { measureRoundtripFloor } from './lib/roundtrip.ts';
+import { VARIANT_DEFINITIONS, evaluateVariant, type VariantEvaluation } from './lib/variants.ts';
 
 const OUT = path.join(petRoot(), 'tests', 'idle-roi', 'out');
 const FRAMES = path.join(OUT, 'frames');
+const REPORT = path.join(OUT, 'quality-report.json');
 const RERUN = 'env -u NODE_OPTIONS node --experimental-strip-types --test --test-reporter spec tests/idle-roi/*.test.ts';
+const STRICT = process.env['PET_NEXT_IDLE_ROI_STRICT_GATE'] === '1';
+/**
+ * 严格门覆盖「本轮要判的路线」＝候选 + 它的前置（自对照）。
+ *
+ * 历史类别（v2）仍然全量测量并全部写进报告，但它的失败默认不把测试染红——
+ * 那些字节是上一轮已被拒绝的候选，让它永久把严格门钉死等于让严格门失去作用。
+ * 想让历史类别也硬失败时置 PET_NEXT_IDLE_ROI_STRICT_INCLUDE_HISTORICAL=1。
+ */
+const STRICT_INCLUDE_HISTORICAL = process.env['PET_NEXT_IDLE_ROI_STRICT_INCLUDE_HISTORICAL'] === '1';
+/** 旧 RGBA 路径的自往返默认不跑：它测的是另一条链，不参与本轮判定。 */
+const RUN_ROUNDTRIP = process.env['PET_NEXT_IDLE_ROI_ROUNDTRIP'] === '1';
 
 function ffmpegVersion(): Promise<string> {
   return new Promise((resolve) => {
@@ -45,14 +55,16 @@ function ffmpegVersion(): Promise<string> {
   });
 }
 
+/** 判定文字由 gate 的实测字段生成：过了就写判据，不过就写失败项，不共用一句模板。 */
 function gateFailureText(gate: GateResult): string {
-  const head = `${gate.id}（${gate.title}）不过：判据「${gate.criteria}」`;
-  const shown = gate.failures.slice(0, 12).join('\n  ');
-  const more = gate.failures.length > 12 ? `\n  …还有 ${gate.failures.length - 12} 条` : '';
-  return `${head}\n  ${shown}${more}\n  实测：${JSON.stringify(gate.metrics).slice(0, 1500)}`;
+  const head = `${gate.id}（${gate.title}）${gate.pass ? '通过' : '不过'}：判据「${gate.criteria}」`;
+  if (gate.pass) return head;
+  const shown = gate.failures.slice(0, 10).join('\n  ');
+  const more = gate.failures.length > 10 ? `\n  …还有 ${gate.failures.length - 10} 条` : '';
+  return `${head}\n  ${shown}${more}`;
 }
 
-/** 关键帧证据：深色底上的原片/候选对照 + 误差放大图，共 3 张，只裁 crop 区域。 */
+/** 关键帧证据：深色底上原片/候选对照 + 误差放大图，最多 3 张小 PNG，只裁 crop 区域。 */
 function writeKeyFrameEvidence(arms: Arms, frame: number): string[] {
   const { width, height } = arms.originalCanvas;
   const crop = arms.crop;
@@ -66,7 +78,11 @@ function writeKeyFrameEvidence(arms: Arms, frame: number): string[] {
   try {
     originalReader.read(frame, original);
     candidateReader.read(frame, candidate);
-    restoreCrop(candidate, crop, width, height, restored);
+    if (arms.C.raw.width !== width || arms.C.raw.height !== height) {
+      restoreCrop(candidate, crop, width, height, restored);
+    } else {
+      restored.set(candidate);
+    }
     compositeFrame(original, width, height, 'black', left);
     compositeFrame(restored, width, height, 'black', right);
     const tag = `frame-${String(frame).padStart(2, '0')}-crop${crop.x}x${crop.y}-black`;
@@ -83,146 +99,145 @@ function writeKeyFrameEvidence(arms: Arms, frame: number): string[] {
   }
 }
 
-test('M3-12 画质门：O/F/C 全 48 帧独立解码', async (t) => {
+/** 候选类别（f3c3）优先；它没评测时退回 v2，图只用于人工看边缘。 */
+function keyFrameSource(variants: readonly VariantEvaluation[]): { variant: VariantEvaluation; frame: number } | null {
+  const order = ['f3c3', 'v2-rgba', 'yuva-selfcontrol'];
+  for (const category of order) {
+    const variant = variants.find((item) => item.category === category && item.status === 'evaluated');
+    if (!variant) continue;
+    const key = Object.keys(variant.measurements).find((id) => /^o-to-c/.test(id)) ?? Object.keys(variant.measurements)[0];
+    const measurement = key === undefined ? undefined : variant.measurements[key];
+    if (measurement === undefined) continue;
+    // 证据图要落在真有误差的地方：优先边缘最差帧（O–C 的残差集中在半透明边），
+    // 前景已经全 0 时再退回前景最差帧——那不是"最差"，只是"有代表意义的一帧"。
+    const worst = measurement.worstAcrossFramesAndPlates;
+    const frame = worst.edgeMae.mae > 0 ? worst.edgeMae.frame : worst.foregroundMae.frame;
+    if (frame >= 0) return { variant, frame };
+  }
+  return null;
+}
+
+test('M3-12 画质门：三类分列、全 48 帧独立解码', async (t) => {
   const workDir = await mkdtemp(path.join(os.tmpdir(), 'm312c-quality-'));
   try {
-    const armsDir = resolveArmsDir();
-    const loaded = await loadRealArms(armsDir, workDir);
-    if (!loaded.arms) {
-      writeJson(path.join(OUT, 'quality-report.json'), {
-        schemaVersion: 1,
-        kind: 'idle-roi-quality',
-        status: 'not-run',
-        generatedAt: new Date().toISOString(),
-        reason: loaded.problems,
-        armsDir,
-        rerun: RERUN,
-      });
-      t.skip(`三臂未就绪：${loaded.problems.join('；')}`);
-      return;
-    }
-    const arms = loaded.arms;
-    const fToC = fToCGate(arms);
-    const oc = ocGate(arms);
-    const gates: GateResult[] = [coverageGate(arms), timelineGate(arms), layoutGate(arms), fToC, oc];
-    const verdict = overallVerdict(gates);
-    // 三样东西要分开：重编码往返的固有损失（O→F）、裁边的额外损失（O→C 减 O→F）、编码下限（O 自往返）。
-    const oToF = measureReencodeBaseline(arms, 'F');
-    const oToC = measureReencodeBaseline(arms, 'C');
-    const roundtrip = await measureRoundtripFloor(workDir);
-    const cropOnlyDelta = oToC.foreground.mae - oToF.foreground.mae;
-    const firstFloor = roundtrip.variants[0];
-    const bestFloor = firstFloor === undefined ? null : roundtrip.variants.reduce((best, item) => (item.foreground.mae < best.foreground.mae ? item : best), firstFloor);
+    // 阈值不是本轮可调项：先把判据钉死，跑之前就知道不许改。
+    assert.equal(GATE_THRESHOLDS.frameCount, 48, '全片必须是 48 帧');
+    assert.equal(GATE_THRESHOLDS.ocMaeLsb, 1, 'O–C 前景 MAE 门被改动');
+    assert.equal(GATE_THRESHOLDS.ocP99Lsb, 2, 'O–C P99 门被改动');
+    assert.equal(GATE_THRESHOLDS.fToCChannelMaxLsb, 2, 'F–C 每通道门被改动');
+    assert.equal(GATE_THRESHOLDS.fToCAlphaMaxLsb, 2, 'F–C alpha 门被改动');
+    assert.equal(GATE_THRESHOLDS.alphaThreshold, 1, 'alpha 阈值不是契约固定的 1');
 
-    const worstFrame = Math.max(0, (oc.metrics.worstForeground as { frame?: number } | undefined)?.frame ?? 0);
-    // 每次重写，避免旧帧号的图混进来把 PNG 预算撑破。
+    const gatedCategories = new Set<string>([
+      'f3c3',
+      ...VARIANT_DEFINITIONS.filter((definition) => definition.prerequisiteOf === 'f3c3').map((definition) => definition.category),
+    ]);
+    const variants: VariantEvaluation[] = [];
+    for (const definition of VARIANT_DEFINITIONS) variants.push(await evaluateVariant(definition, workDir));
+
+    // 关键帧证据（预算 ≤3 张）：先清空，避免旧帧号混进来。
     rmSync(FRAMES, { recursive: true, force: true });
     mkdirSync(FRAMES, { recursive: true });
-    const frames = writeKeyFrameEvidence(arms, worstFrame);
+    const source = keyFrameSource(variants);
+    const pngs =
+      source === null || source.variant.armsObject === null
+        ? []
+        : writeKeyFrameEvidence(source.variant.armsObject, Math.max(0, source.frame));
     const pngCount = readdirSync(FRAMES).filter((name) => name.endsWith('.png')).length;
 
-    const bytesOf = (file: string): number => statSync(file).size;
-    const bytes = { O: bytesOf(arms.O.file), F: bytesOf(arms.F.file), C: bytesOf(arms.C.file) };
-    const cropArea = arms.crop.width * arms.crop.height;
-    const canvasArea = arms.originalCanvas.width * arms.originalCanvas.height;
-    const provenanceFile = path.join(fixtureArmsDir(), 'SOURCE.json');
-    const provenance = existsSync(provenanceFile) ? (JSON.parse(readFileSync(provenanceFile, 'utf8')) as unknown) : null;
-    const colorTags = arms.manifest?.colorTags ?? null;
-    const colorTagsConsistent =
-      colorTags !== null &&
-      [arms.O, arms.F, arms.C].every((arm) => arm.stream.color.matrix === colorTags.matrix && arm.stream.color.range === colorTags.range);
-
-    writeJson(path.join(OUT, 'quality-report.json'), {
-      schemaVersion: 1,
-      kind: 'idle-roi-quality',
-      status: verdict.pass ? 'passed' : 'failed',
-      generatedAt: new Date().toISOString(),
-      armsDir,
-      thresholds: GATE_THRESHOLDS,
-      provenance,
-      arms: {
-        sourceSha256: arms.O.sha256,
-        candidateSha256: arms.C.sha256,
-        fSha256: arms.F.sha256,
-        frameCount: { O: arms.O.raw.frameCount, F: arms.F.raw.frameCount, C: arms.C.raw.frameCount },
-        stream: { O: arms.O.stream, F: arms.F.stream, C: arms.C.stream },
-      },
-      manifest: arms.manifest,
-      colorTagsConsistent,
-      cost: {
-        bytes,
-        bytesVsSource: { F: bytes.F - bytes.O, C: bytes.C - bytes.O },
-        candidateVsFullCanvas: { deltaBytes: bytes.C - bytes.F, ratio: Number((bytes.C / bytes.F).toFixed(4)) },
-        decodedArea: { cropArea, canvasArea, retainedRatio: Number((cropArea / canvasArea).toFixed(6)) },
-        note: `ROI 省的是解码像素面积，不是文件体积：C ${bytes.C} 字节 > F ${bytes.F} 字节，多 ${bytes.C - bytes.F} 字节（+${((bytes.C / bytes.F - 1) * 100).toFixed(1)}%）；相对源片 O 则是 ${bytes.C - bytes.O} 字节/+${((bytes.C / bytes.O - 1) * 100).toFixed(1)}%。`,
-      },
-      comparison: {
-        unit: 'LSB (1 LSB = 1/255 of full scale)',
-        note: 'O→F 与 O→C 用同一套掩码、同一批帧、三种底；C↔F 只差裁边',
-        rows: [
-          { id: 'O->F', note: '纯重编码：全画布编码，不裁边，保留 alpha<=1 的背景', unit: 'LSB', ...oToF },
-          { id: 'O->C', note: '重编码 + 裁边：实际采用的候选臂', unit: 'LSB', ...oToC },
-          {
-            id: 'C<->F',
-            note: '只差裁边：C 按 crop 还原到 640×360 后与 F 比（就是 f-to-c 门）',
-            unit: 'LSB',
-            compositeMax: fToC.metrics.worstCompositeMax,
-            alphaMax: fToC.metrics.worstAlphaMax,
-            samplesOver2: fToC.metrics.samplesOver2,
-          },
-        ],
-      },
-      roundtripFloor: roundtrip,
-      attribution: {
-        verdict: 'f-to-c 与 o-to-c 不过，归因于 8-bit yuva420p 重编码往返，不是 ROI 裁边',
-        numbers: {
-          oToFMicroForegroundMaeLsb: oToF.foreground.mae,
-          oToCMicroForegroundMaeLsb: oToC.foreground.mae,
-          cropOnlyDeltaMaeLsb: Number(cropOnlyDelta.toFixed(4)),
-          bestSelfRoundtrip: bestFloor === null ? null : { id: bestFloor.id, foregroundMaeLsb: bestFloor.foreground.mae, p99Lsb: bestFloor.foreground.p99, maxLsb: bestFloor.foreground.max },
-        },
-        evidence: [
-          `O→F（不裁）：前景 MAE ${oToF.foreground.mae.toFixed(3)} LSB、P99 ${oToF.foreground.p99}、max ${oToF.foreground.max}；边缘 MAE ${oToF.edge.mae.toFixed(3)} LSB`,
-          `O→C（裁边）：前景 MAE ${oToC.foreground.mae.toFixed(3)} LSB、P99 ${oToC.foreground.p99}、max ${oToC.foreground.max}；边缘 MAE ${oToC.edge.mae.toFixed(3)} LSB`,
-          `两者之差 ${cropOnlyDelta.toFixed(3)} LSB 才是裁边的额外损失`,
-          bestFloor === null ? '自往返对照没跑出来' : `O 自往返下限（不裁边、不置零，${bestFloor.id}）：前景 MAE ${bestFloor.foreground.mae.toFixed(3)} LSB、P99 ${bestFloor.foreground.p99}、max ${bestFloor.foreground.max}`,
-          roundtrip.geometry === null ? '几何对照没跑出来' : `几何对照（444 无损、同参数、只差分辨率）：F–C max ${roundtrip.geometry.fToC.maxComposite} LSB、alpha max ${roundtrip.geometry.fToC.maxAlpha}`,
-        ],
-        cropErrorAgainstF: `几何本身为 0（见 roundtripFloor.geometry）；但这批 v1 字节用的是 crf 12，F–C max 实际是 ${fToC.metrics.worstCompositeMax} LSB，所以「裁边误差=0」只在同参数无损成对时成立`,
-      },
-      gates,
-      verdict: { pass: verdict.pass, failed: verdict.failed },
-      environment: { ffmpeg: await ffmpegVersion(), node: process.version },
-      keyFrame: { frame: worstFrame, pngs: frames.map((file) => path.relative(petRoot(), file)), pngCount },
+    const git = gitState();
+    const harness = harnessFingerprint();
+    const assembled = assembleReport({
+      variants,
+      git,
+      harness,
+      environment: { ffmpeg: await ffmpegVersion(), ffprobe: toolVersion('ffprobe'), node: process.version, platform: `${process.platform}/${process.arch}` },
       rerun: RERUN,
+      keyFrame: source === null ? null : { frame: Math.max(0, source.frame), pngs: pngs.map((file) => path.relative(petRoot(), file)), pngCount, category: source.variant.category },
+      roundtrip: RUN_ROUNDTRIP
+        ? {
+            ran: true,
+            reason: '按 PET_NEXT_IDLE_ROI_ROUNDTRIP=1 显式回看：这是 RGBA→YUV 旧链的自往返，只用来看旧结论 1.151 的来源，不参与本轮判定',
+            data: await measureRoundtripFloor(workDir),
+          }
+        : {
+            ran: false,
+            reason:
+              'RGBA 路径的合成自往返本轮未跑：它测的是「YUV→RGB→YUV」这条旧链，已被 yuva-selfcontrol（原生平面直通）与 F3–C3（真实字节成对）取代；置 PET_NEXT_IDLE_ROI_ROUNDTRIP=1 可回看，不参与本轮判定',
+          },
     });
+    writeReport(REPORT, assembled.report);
 
-    // 门的判定是**本轮的数据**（结论是 fail），不是测试自身的不变式：
-    // 默认只记录，避免"候选不达标"把整套 verify 染红；要把它当硬门时设 PET_NEXT_IDLE_ROI_STRICT_GATE=1。
-    const strict = process.env['PET_NEXT_IDLE_ROI_STRICT_GATE'] === '1';
-    for (const gate of gates) {
-      await t.test(`${gate.id}: ${gate.title}`, (sub) => {
-        if (strict) assert.equal(gate.pass, true, gateFailureText(gate));
-        else sub.diagnostic(`${gate.id}: ${gate.pass ? 'pass' : 'FAIL'} — ${gateFailureText(gate)}`);
+    for (const variant of variants) {
+      await t.test(`[${variant.category}] ${variant.label}`, async (sub) => {
+        if (variant.status !== 'evaluated') {
+          if (STRICT) assert.fail(`[${variant.category}] 未评测：${variant.reasons.join('；')}`);
+          sub.diagnostic(`未评测：${variant.reasons.join('；')}`);
+          return;
+        }
+        // 反抽样：每个比较都必须有 48 帧的逐帧记录。
+        for (const [id, measurement] of Object.entries(variant.measurements)) {
+          assert.equal(measurement.perFrame.length, GATE_THRESHOLDS.frameCount, `${variant.category}/${id} 只有 ${measurement.perFrame.length} 帧逐帧记录`);
+        }
+        const gated = gatedCategories.has(variant.category) || STRICT_INCLUDE_HISTORICAL;
+        for (const gate of variant.gates) {
+          await sub.test(`${gate.id}: ${gate.title}`, (child) => {
+            if (STRICT && gated) assert.equal(gate.pass, true, gateFailureText(gate));
+            else if (STRICT) child.diagnostic(`历史类别（不计入本轮严格门）${gate.id}: ${gate.pass ? 'pass' : 'FAIL'} — ${gateFailureText(gate)}`);
+            else child.diagnostic(`${gate.id}: ${gate.pass ? 'pass' : 'FAIL'} — ${gateFailureText(gate)}`);
+          });
+        }
       });
     }
-    await t.test('几何对照：同参数无损成对时，裁边本身要在 F–C 门内', () => {
-      const geometry = roundtrip.geometry;
-      assert.ok(geometry !== null, '几何对照没跑出来');
-      assert.ok(
-        geometry.fToC.maxComposite <= GATE_THRESHOLDS.fToCChannelMaxLsb,
-        `几何对照 F–C max ${geometry.fToC.maxComposite} LSB > ${GATE_THRESHOLDS.fToCChannelMaxLsb} LSB，说明裁边/还原本身有问题`,
-      );
-      assert.ok(
-        geometry.fToC.maxAlpha <= GATE_THRESHOLDS.fToCAlphaMaxLsb,
-        `几何对照 alpha max ${geometry.fToC.maxAlpha} LSB > ${GATE_THRESHOLDS.fToCAlphaMaxLsb} LSB`,
-      );
+
+    await t.test('机器可读判定与失败项', (sub) => {
+      const rows = assembled.report['comparisons'] as readonly ComparisonRow[];
+      assert.ok(rows.length > 0, '三类分列表为空');
+      for (const row of rows) {
+        assert.notEqual(row.worstAcrossFramesAndPlates, undefined, `${row.category}/${row.comparison} 缺 worstAcrossFramesAndPlates 口径`);
+        assert.notEqual(row.meanOverAllSamples, undefined, `${row.category}/${row.comparison} 缺 meanOverAllSamples 口径`);
+        assert.notEqual(
+          row.worstAcrossFramesAndPlates.foregroundMae,
+          undefined,
+          `${row.category}/${row.comparison} 的 worst 与 mean 必须是两个字段，不能合并成一个「平均值」`,
+        );
+      }
+      const performance = assembled.performance;
+      if (STRICT) {
+        assert.equal(assembled.verdict.status, 'passed', `候选未过：${assembled.verdict.decidedBy}`);
+        assert.equal(performance.allowed, true, `性能被阻断：${performance.reason}`);
+      } else {
+        sub.diagnostic(`候选判定 ${assembled.verdict.status}：${assembled.verdict.decidedBy}`);
+        sub.diagnostic(`性能 allowed=${String(performance.allowed)}：${performance.reason}`);
+      }
+      assert.equal(performance.allowed, assembled.verdict.status === 'passed', 'performance.allowed 必须与候选判定一致');
+      // failed[] 必须是能回到具体门的限定 id（`类别/门`），否则下游没法定位。
+      for (const id of [...assembled.verdict.failed, ...assembled.verdict.historicalFailed]) {
+        const [category, gate] = id.split('/');
+        assert.ok(category !== undefined && category.length > 0, `失败项 ${id} 缺类别前缀`);
+        assert.ok(gate !== undefined && gate.length > 0, `失败项 ${id} 缺门名`);
+        const variant = variants.find((item) => item.category === category);
+        assert.ok(variant !== undefined, `失败项 ${id} 指向不存在的类别`);
+        assert.ok(variant.gates.some((item) => item.id === gate), `失败项 ${id} 在报告里找不到对应门`);
+      }
+      assert.equal(typeof assembled.report['status'], 'string', 'status 必须是机器可读字符串');
     });
-    await t.test('总判定与证据预算', (sub) => {
+
+    await t.test('证据预算', () => {
       assert.ok(pngCount <= 3, `out/frames 里有 ${pngCount} 张 PNG，上限 3`);
-      if (strict) assert.equal(verdict.pass, true, `不过的门：${verdict.failed.join(', ')}`);
-      else sub.diagnostic(`总判定 ${verdict.pass ? 'pass' : 'FAIL'}：${verdict.pass ? '-' : verdict.failed.join(', ')}`);
     });
+
+    // 一页纸用的控制台摘要：每门 pass/fail + 两个口径的数值。
+    for (const variant of variants) {
+      if (variant.status !== 'evaluated') {
+        process.stderr.write(`[${variant.category}] not-run: ${variant.reasons.join('；')}\n`);
+        continue;
+      }
+      process.stderr.write(`[${variant.category}] ${variant.localStatus.pass ? 'PASS' : 'FAIL'} ${variant.localStatus.failed.join(',')}\n`);
+      for (const gate of gateSummary(variant)) {
+        process.stderr.write(`  ${gate.pass ? 'pass' : 'FAIL'} ${gate.id} (${gate.kind}) ${JSON.stringify(gate.keyNumbers)}\n`);
+      }
+    }
   } finally {
     await rm(workDir, { recursive: true, force: true });
   }

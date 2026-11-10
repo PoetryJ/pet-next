@@ -247,24 +247,56 @@ export interface LoadResult {
 
 /** 从目录里读 O/F/C + manifest。缺文件或 sha 对不上就返回 problems，不猜。 */
 export async function loadRealArms(dir: string, workDir: string): Promise<LoadResult> {
+  return loadNamedArms(dir, workDir, { O: 'O.webm', F: 'F.webm', C: 'C.webm' });
+}
+
+export interface NamedArmFiles {
+  readonly O: string;
+  readonly F: string;
+  readonly C: string;
+}
+
+export interface LoadNamedOptions {
+  /** 报告里的臂名（S / C3 这类），只影响 label。 */
+  readonly label?: string;
+  /**
+   * 是否要求 C 槽位文件的 sha 等于 `manifest.candidateSha256`。
+   *
+   * f3c3 这类「C3 就是 manifest 里那个候选」的目录要校验；
+   * 原生 YUVA 自对照的 S 不是候选，硬套这条只会得到一个假结论。
+   */
+  readonly verifyCandidateSha?: boolean;
+}
+
+/**
+ * 按显式文件名读三臂 + manifest。
+ *
+ * 为什么不用「遍历目录找首个 manifest」：v3 目录里同时有自对照与 C3，
+ * 谁对应哪个角色必须由调用方写明，不能靠目录里第一个匹配。
+ */
+export async function loadNamedArms(dir: string, workDir: string, files: NamedArmFiles, options: LoadNamedOptions = {}): Promise<LoadResult> {
   const problems: string[] = [];
-  const files = { O: path.join(dir, 'O.webm'), F: path.join(dir, 'F.webm'), C: path.join(dir, 'C.webm') };
+  // 允许绝对路径：自对照的复现文件落在临时目录里，不在 armsDir 下。
+  const resolve = (name: string): string => (path.isAbsolute(name) ? name : path.join(dir, name));
+  const paths = { O: resolve(files.O), F: resolve(files.F), C: resolve(files.C) };
   const manifestPath = path.join(dir, 'manifest.json');
-  for (const [key, file] of Object.entries(files)) {
-    if (!existsSync(file)) problems.push(`缺 ${key}.webm（${file}）`);
+  for (const [key, file] of Object.entries(paths)) {
+    if (!existsSync(file)) problems.push(`缺 ${key}（${path.relative(petRoot(), file)}）`);
   }
-  if (!existsSync(manifestPath)) problems.push(`缺 manifest.json（${manifestPath}）`);
+  if (!existsSync(manifestPath)) problems.push(`缺 manifest.json（${path.relative(petRoot(), manifestPath)}）`);
   if (problems.length > 0) return { arms: null, problems };
   const parsed = parseManifest(JSON.parse(readFileSync(manifestPath, 'utf8')));
   if (parsed.manifest === null) return { arms: null, problems: parsed.problems };
   const manifest = parsed.manifest;
-  const [O, F, C] = await Promise.all([loadArm('O', files.O, workDir), loadArm('F', files.F, workDir), loadArm('C', files.C, workDir)]);
-  if (O.sha256 !== manifest.sourceSha256) problems.push(`O.webm sha ${O.sha256} != manifest.sourceSha256 ${manifest.sourceSha256}`);
-  if (C.sha256 !== manifest.candidateSha256) problems.push(`C.webm sha ${C.sha256} != manifest.candidateSha256 ${manifest.candidateSha256}`);
+  const [O, F, C] = await Promise.all([loadArm('O', paths.O, workDir), loadArm('F', paths.F, workDir), loadArm('C', paths.C, workDir)]);
+  if (O.sha256 !== manifest.sourceSha256) problems.push(`O sha ${O.sha256} != manifest.sourceSha256 ${manifest.sourceSha256}`);
+  if (options.verifyCandidateSha !== false && C.sha256 !== manifest.candidateSha256) {
+    problems.push(`C sha ${C.sha256} != manifest.candidateSha256 ${manifest.candidateSha256}`);
+  }
   if (problems.length > 0) return { arms: null, problems };
   return {
     arms: {
-      label: 'real',
+      label: options.label ?? 'real',
       originalCanvas: manifest.originalCanvas,
       crop: manifest.crop,
       alphaThreshold: manifest.alphaThreshold,

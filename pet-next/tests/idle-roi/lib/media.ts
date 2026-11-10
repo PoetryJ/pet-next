@@ -54,19 +54,7 @@ const DECODE_TIMEOUT_MS = 180_000;
 
 /** 读第一条视频流。 */
 export async function probeStream(file: string): Promise<StreamInfo> {
-  const command = [
-    'ffprobe',
-    '-v',
-    'error',
-    '-select_streams',
-    'v:0',
-    '-show_entries',
-    'stream=width,height,codec_name,pix_fmt,color_range,color_space,color_primaries,color_transfer:stream_tags=alpha_mode',
-    '-of',
-    'json',
-    file,
-  ];
-  const result = await runMediaTool(command, PROBE_TIMEOUT_MS);
+  const result = await runMediaTool(probeStreamCommand(file), PROBE_TIMEOUT_MS);
   const parsed = JSON.parse(result.stdout.toString('utf8')) as {
     streams?: Array<Record<string, unknown> & { tags?: Record<string, unknown> }>;
   };
@@ -134,6 +122,35 @@ function toMs(value: unknown): number | null {
 }
 
 /**
+ * 解码成裸 RGBA 的实际命令行。报告里要落盘「评测自己怎么解的」，
+ * 所以命令由这里生成一次，测试与报告引用同一份，不各写一套。
+ */
+export function decodeRgbaCommand(file: string, rawPath: string): string[] {
+  return ['ffmpeg', '-y', '-v', 'error', '-an', '-c:v', 'libvpx-vp9', '-i', file, '-fps_mode', 'passthrough', '-f', 'rawvideo', '-pix_fmt', 'rgba', rawPath];
+}
+
+/** 解码成裸 yuva420p 平面的实际命令行。 */
+export function decodePlanesCommand(file: string, rawPath: string): string[] {
+  return ['ffmpeg', '-y', '-v', 'error', '-an', '-c:v', 'libvpx-vp9', '-i', file, '-fps_mode', 'passthrough', '-f', 'rawvideo', '-pix_fmt', 'yuva420p', rawPath];
+}
+
+/** probe 命令（流信息：pix_fmt/range/matrix/alpha_mode）。 */
+export function probeStreamCommand(file: string): string[] {
+  return [
+    'ffprobe',
+    '-v',
+    'error',
+    '-select_streams',
+    'v:0',
+    '-show_entries',
+    'stream=width,height,codec_name,pix_fmt,color_range,color_space,color_primaries,color_transfer:stream_tags=alpha_mode',
+    '-of',
+    'json',
+    file,
+  ];
+}
+
+/**
  * 全片解码成裸 RGBA。一条 ffmpeg 出全部帧，`-fps_mode passthrough` 禁止补帧丢帧。
  *
  * @param workDir - 裸帧落盘的目录（不入库）。
@@ -143,30 +160,71 @@ export async function decodeAllFrames(file: string, workDir: string, label: stri
   if (!existsSync(workDir)) mkdirSync(workDir, { recursive: true });
   const rawPath = path.join(workDir, `${label}.rgba`);
   const frameBytes = stream.width * stream.height * 4;
-  const command = [
-    'ffmpeg',
-    '-y',
-    '-v',
-    'error',
-    '-an',
-    '-c:v',
-    'libvpx-vp9',
-    '-i',
-    file,
-    '-fps_mode',
-    'passthrough',
-    '-f',
-    'rawvideo',
-    '-pix_fmt',
-    'rgba',
-    rawPath,
-  ];
-  await runMediaTool(command, DECODE_TIMEOUT_MS);
+  await runMediaTool(decodeRgbaCommand(file, rawPath), DECODE_TIMEOUT_MS);
   const bytes = statSync(rawPath).size;
   if (bytes === 0 || bytes % frameBytes !== 0) {
     throw new Error(`${label}: 解码字节 ${bytes} 不是 ${stream.width}x${stream.height} RGBA 的整数帧`);
   }
   return { file, rawPath, width: stream.width, height: stream.height, frameCount: bytes / frameBytes, frameBytes, bytes };
+}
+
+/** yuva420p 一帧里各平面的偏移与长度。 */
+export interface PlaneLayout {
+  readonly width: number;
+  readonly height: number;
+  readonly chromaWidth: number;
+  readonly chromaHeight: number;
+  readonly frameBytes: number;
+  readonly y: { readonly offset: number; readonly length: number };
+  readonly u: { readonly offset: number; readonly length: number };
+  readonly v: { readonly offset: number; readonly length: number };
+  readonly a: { readonly offset: number; readonly length: number };
+}
+
+export function planeLayout(width: number, height: number): PlaneLayout {
+  const chromaWidth = Math.ceil(width / 2);
+  const chromaHeight = Math.ceil(height / 2);
+  const luma = width * height;
+  const chroma = chromaWidth * chromaHeight;
+  return {
+    width,
+    height,
+    chromaWidth,
+    chromaHeight,
+    frameBytes: luma * 2 + chroma * 2,
+    y: { offset: 0, length: luma },
+    u: { offset: luma, length: chroma },
+    v: { offset: luma + chroma, length: chroma },
+    a: { offset: luma + chroma * 2, length: luma },
+  };
+}
+
+/**
+ * 全片解码成 **yuva420p 平面**（不经 RGB）。
+ *
+ * 为什么另开一条：原生 YUVA 直通的自对照要问的是「Y/U/V/A 平面本身变没变」。
+ * 先转 RGBA 再比，就把 YUV→RGB 的那次转换混进来了，等于用一个转换后的量去证明另一个转换没发生。
+ * `-c:v libvpx-vp9` 仍然要显式给：默认解码器不带 alpha 平面。
+ */
+export async function decodeAllPlanes(file: string, workDir: string, label: string): Promise<RawVideo> {
+  const stream = await probeStream(file);
+  if (!existsSync(workDir)) mkdirSync(workDir, { recursive: true });
+  const rawPath = path.join(workDir, `${label}.yuva420p`);
+  const layout = planeLayout(stream.width, stream.height);
+  await runMediaTool(decodePlanesCommand(file, rawPath), DECODE_TIMEOUT_MS);
+  const bytes = statSync(rawPath).size;
+  if (bytes === 0 || bytes % layout.frameBytes !== 0) {
+    throw new Error(`${label}: 平面字节 ${bytes} 不是 ${stream.width}x${stream.height} yuva420p 的整数帧（每帧 ${layout.frameBytes}）`);
+  }
+  return {
+    file,
+    rawPath,
+    width: stream.width,
+    height: stream.height,
+    frameCount: bytes / layout.frameBytes,
+    frameBytes: layout.frameBytes,
+    bytes,
+  };
 }
 
 /** 逐帧读裸文件的读头。调用方自己复用同一块缓冲。 */
