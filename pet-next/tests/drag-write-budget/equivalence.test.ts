@@ -172,9 +172,11 @@ describe('契约 2 调度器语义', () => {
     assert.equal(h.clock.pending().length, 1, 'pending 覆盖时不得再挂第二个 timer');
     h.clock.advance(20);
     assert.deepEqual(h.writes, [{ x: 0, y: 0 }, { x: 2, y: 0 }], '到期只写当前 pending（末位），中间态不补写');
-    // 口径：coalesced 数"被取代而从未写出的坐标条数"（B 的实现），因此这里是 1 而不是 2；
-    // 两条读法对写行为没有影响，见 harness.assertStatsConsistent 的说明。
-    assert.ok(h.stats().coalesced >= 1, '被合并掉的坐标要计数');
+    // 计数口径（契约：每条被接受的 submit 只落一个结局）：
+    // write(0,0) 与 到期写(2,0) 是 written；只有 (1,0) 被取代且从未写出 → coalesced=1（不是 2）。
+    assert.equal(h.stats().written, 2, 'written 必须是 2（即时写 + 到期写）');
+    assert.equal(h.stats().coalesced, 1, 'coalesced 必须是 1（只有 (1,0) 从未写出）');
+    assert.equal(h.stats().duplicateDropped, 0, '本例没有重复坐标');
     assert.equal(
       h.stats().submitted,
       h.stats().written + h.stats().coalesced + h.stats().duplicateDropped,
@@ -439,6 +441,45 @@ describe('契约 3 适配器等价', () => {
     );
     assert.deepEqual(actual.final, { x: 81, y: 81 }, '跨拖动累积仍是 +1 DIP');
     assertSameFinal(actual, reference, '跨拖动小数累积');
+  });
+
+  /**
+   * 已知冗余（显式记录，不许被 collapse 悄悄抹掉）：
+   * 契约 2.2「`begin()` → `lastWriteAt=null` → 本次拖动首写必然即时」
+   * 与 2.6「`end()` 先 flush 本次仍有效的 pending（即使距上次 <budget）」组合起来，
+   * 会让**每次拖动边界最多多写 1 次同坐标**：上一段松手 flush 写了一次，
+   * 下一段首条 moveBy 位置没变也要立刻写一次（基线在同样的两个时刻也会写）。
+   * 这是已知的、上限为 1 的冗余，不是余数重置 —— final 仍然是 81/81。
+   */
+  test('拖动边界同坐标会多写 1 次（已知冗余，上限 1）', { skip: SKIP_CANDIDATE }, () => {
+    const script: ScriptEntry[] = [
+      { type: 'move', dx: 0.125, dy: 0.125, gapMs: 10 },
+      { type: 'move', dx: 0.125, dy: 0.125, gapMs: 10 },
+      { type: 'end' },
+      { type: 'move', dx: 0.125, dy: 0.125, gapMs: 10 },
+      { type: 'move', dx: 0.125, dy: 0.125, gapMs: 10 },
+      { type: 'end' },
+    ];
+    const { reference, actual } = pair(PLAIN, script);
+    // 4 次 moveBy 的逐事件结果是 80,80,80,81（0.125 累加四次才 +1 DIP）。
+    assert.deepEqual(
+      reference.positions,
+      [{ x: 80, y: 80 }, { x: 80, y: 80 }, { x: 80, y: 80 }, { x: 81, y: 81 }],
+      '参考模型：四次 +0.125 只累计出 +1 DIP',
+    );
+    // 候选：首写 80 → 松手 flush 80 → 下一段首写又 80 → 末次 81。
+    assert.deepEqual(
+      actual.positions,
+      [{ x: 80, y: 80 }, { x: 80, y: 80 }, { x: 81, y: 81 }],
+      '候选在拖动边界多写一次同坐标（契约 2.2 + 2.6 的组合结果）',
+    );
+    assert.equal(
+      actual.positions.length - collapseAdjacent(reference.positions).length,
+      1,
+      '冗余上限是 1 次，不能随拖动次数增长',
+    );
+    assert.deepEqual(actual.final, { x: 81, y: 81 }, '多写不改变末态');
+    assertSameFinal(actual, reference, '拖动边界冗余');
   });
 
   test('工作区变更：先 flush，再本拖动内回退逐事件直写', { skip: SKIP_CANDIDATE }, () => {

@@ -16,6 +16,7 @@
  * @module pet-next/tests/drag-write-budget/cost-compare
  */
 import { execFileSync } from 'node:child_process';
+import { cpus, loadavg } from 'node:os';
 import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -27,9 +28,11 @@ import {
   median,
   openSession,
   readCpuJiffies,
+  readVisual,
   realPointerDrag,
   requireDisplay,
   stopApp,
+  waitFor,
   waitQuietWrites,
   wiringPresent,
   type Arm,
@@ -38,19 +41,20 @@ import {
 
 const PET_ROOT = fileURLToPath(new URL('../..', import.meta.url));
 
-/** 固定轨迹：60Hz 常规输入，30 步 × 2px = 60px 右移。 */
-const TRAJECTORY = {
-  label: 'real-pointer-60hz-30x2px',
-  steps: Array.from({ length: 30 }, () => ({ x: 2, y: 0 })) as readonly Point[],
-  stepDelayMs: 16,
-  settleMs: 40,
-};
-
 function argValue(name: string): string | undefined {
   const prefix = `--${name}=`;
   const found = process.argv.slice(2).find((item) => item.startsWith(prefix));
   return found?.slice(prefix.length);
 }
+
+/** 常规输入速率；`--hz=125` 可复跑另一档。轨迹固定为 30 步 × 2px = 60px 右移。 */
+const HZ = Number(argValue('hz') ?? '60') || 60;
+const TRAJECTORY = {
+  label: `real-pointer-${HZ}hz-30x2px`,
+  steps: Array.from({ length: 30 }, () => ({ x: 2, y: 0 })) as readonly Point[],
+  stepDelayMs: Math.round(1000 / HZ),
+  settleMs: 40,
+};
 
 const ROUNDS = Math.max(1, Number(argValue('rounds') ?? '5') || 5);
 const STAMP = new Date().toISOString().replace(/[:.]/g, '-');
@@ -70,6 +74,8 @@ interface LaunchRecord {
   readonly latencyLast: number;
   readonly latencyMedian: number;
   readonly latencyMatched: number;
+  /** 实测输入速率（pointermove 间隔反推），标称 Hz 只是计划值。 */
+  readonly inputHz: number;
   readonly latencyUnmatched: number;
   readonly quietExtraWrites: number;
   readonly exitCode: number | null;
@@ -101,6 +107,9 @@ async function measure(arm: Arm, round: number, order: number, firstLaunch: bool
   const startedAt = Date.now();
   const session = await openSession({ arm, label: `cost-r${round}-${order}-${arm}` });
   try {
+    // 主进程的 ready 只代表窗口可显示：page.ts 还没装 #pet 监听时按下拖动会打空，
+    // 结果就是"0 次写入"的假失败（本轮已实际踩到）。必须等首帧 idle。
+    await waitFor('页面就绪', () => readVisual(session.app.cdp), (state) => state.visual === 'idle', 15000);
     await installPointerSampler(session.app.cdp);
     const pid = session.app.child.pid;
     const cpuBefore = pid === undefined ? null : readCpuJiffies(pid);
@@ -108,6 +117,11 @@ async function measure(arm: Arm, round: number, order: number, firstLaunch: bool
     const quiet = await waitQuietWrites(session.app, 200);
     const cpuAfter = pid === undefined ? null : readCpuJiffies(pid);
     const edge = latencyEdges(dragged.lines, dragged.samples);
+    const moves = dragged.samples.filter((sample) => sample.t === 'pointermove' && sample.buttons === 1);
+    const firstMove = moves[0];
+    const lastMove = moves.at(-1);
+    const spanMs = firstMove === undefined || lastMove === undefined ? 0 : lastMove.at - firstMove.at;
+    const inputHz = spanMs > 0 ? Math.round(((moves.length - 1) / spanMs) * 1000) : 0;
     const exit = await stopApp(session.app);
     const cpuJiffies = cpuBefore === null || cpuAfter === null ? null : cpuAfter - cpuBefore;
     return {
@@ -125,6 +139,7 @@ async function measure(arm: Arm, round: number, order: number, firstLaunch: bool
       latencyMedian: median([edge.first, edge.last]),
       latencyMatched: edge.moves,
       latencyUnmatched: 0,
+      inputHz,
       quietExtraWrites: quiet.after - quiet.before,
       exitCode: exit.exitCode,
       exitTimedOut: exit.timedOut,
@@ -150,6 +165,7 @@ async function measure(arm: Arm, round: number, order: number, firstLaunch: bool
       latencyMedian: Number.NaN,
       latencyMatched: 0,
       latencyUnmatched: 0,
+      inputHz: 0,
       quietExtraWrites: 0,
       exitCode: exit.exitCode,
       exitTimedOut: exit.timedOut,
@@ -200,13 +216,14 @@ function summarise(arm: Arm, records: readonly LaunchRecord[]): ArmSummary {
 }
 
 function verdictOf(off: ArmSummary, on: ArmSummary): { code: string; note: string } {
+  const label = TRAJECTORY.label;
   const reduction = off.writesMedian === 0 ? Number.NaN : 1 - on.writesMedian / off.writesMedian;
   const cpuDelta = on.cpuMsMedian - off.cpuMsMedian;
   const latencyDelta = on.latencyMedianOfMedians - off.latencyMedianOfMedians;
   if (!Number.isFinite(reduction) || reduction < 0.05) {
     return {
       code: 'no-real-write-reduction',
-      note: `真实 60Hz 轨迹下写入没有可重复减少（中位 ${off.writesMedian} → ${on.writesMedian}）。按阶段门，不建议为这个开关转正。`,
+      note: `${label}：真实写入没有可重复减少（中位 ${off.writesMedian} → ${on.writesMedian}）。按阶段门"真实路径没有可消除的写入就停接线"，不建议为这个开关转正。`,
     };
   }
   if (Number.isFinite(cpuDelta) && cpuDelta < 0 && latencyDelta <= 0) {
@@ -217,7 +234,7 @@ function verdictOf(off: ArmSummary, on: ArmSummary): { code: string; note: strin
   }
   return {
     code: 'reduction-without-reproducible-benefit',
-    note: `写入减少 ${(reduction * 100).toFixed(1)}%，但 CPU 中位差 ${cpuDelta.toFixed(0)}ms、提交时延中位差 ${latencyDelta.toFixed(1)}ms 未显示可复现收益（差值在波动内也算这类）。按阶段门不建议转正。`,
+    note: `${label}：写入减少 ${(reduction * 100).toFixed(1)}%，但 CPU 中位差 ${cpuDelta.toFixed(0)}ms、提交时延中位差 ${latencyDelta.toFixed(1)}ms 未显示可复现收益（差值在波动内也算这类）。按阶段门不建议转正。`,
   };
 }
 
@@ -306,6 +323,12 @@ async function main(): Promise<void> {
     generatedAt: new Date().toISOString(),
     head: gitHead(),
     dirty: gitDirty(),
+    // 复核用：产品文件取自哪个 ref（D 分支本身不含候选接线，验证时临时签出集成分支的文件）。
+    productRef: process.env['PET_NEXT_COST_PRODUCT_REF'] ?? '',
+    // 同机采集：1/5/15 分钟负载，说明这组数是在什么负载下量的。
+    loadAvg: loadavg().map((value) => Number(value.toFixed(2))),
+    cpuModel: cpus()[0]?.model ?? 'unknown',
+    cpuCount: cpus().length,
     platform: process.platform,
     display,
     rounds: ROUNDS,

@@ -377,6 +377,8 @@ export interface StopResult {
   readonly alivePids: readonly number[];
   readonly writesAtQuit: number;
   readonly writesAfterQuit: number;
+  /** 该 pid 的窗口是否已消失（起下一臂前必须为真，否则会拖到旧窗口上）。 */
+  readonly windowGone: boolean;
 }
 
 export async function stopApp(app: AppHandle, options: StopOptions = {}): Promise<StopResult> {
@@ -429,6 +431,8 @@ export async function stopApp(app: AppHandle, options: StopOptions = {}): Promis
     }
   }
   await delay(120);
+  // 下一臂启动前必须确认这一臂的窗口真的没了，否则名字搜索会拿到旧窗口 id。
+  const windowGone = pid === undefined ? false : await waitWindowsGone(requireDisplay(), pid, 2000);
   const alivePids = [...tracked].filter((item) => pidIsAlive(item));
   const portClosed = await portIsFree(app.port);
   const writesAfterQuit = app.writeCount();
@@ -441,6 +445,7 @@ export async function stopApp(app: AppHandle, options: StopOptions = {}): Promis
     alivePids,
     writesAtQuit,
     writesAfterQuit,
+    windowGone,
   };
 }
 
@@ -497,14 +502,89 @@ export function xdotool(display: string, args: readonly string[]): string {
   });
 }
 
-export function petWindowId(display: string): string {
-  const found = xdotool(display, ['search', '--name', 'pet-next'])
+/**
+ * 列出某 pid 名下的窗口 id。
+ * 两臂在同一个测试进程里串行跑，**不能**用"名字匹配的第一个/最后一个窗口"定位：
+ * 上一臂残留的窗口会让拖动打在不收事件的窗口上（实测症状是 0 次写入但退出码 0）。
+ */
+export function windowIdsForPid(display: string, pid: number): string[] {
+  // xdotool search 匹配不到窗口时是**非零退出**，不是查询失败；这里必须区分二者，
+  // 否则"窗口已经消失"会被误判成"查不到"。
+  let out: string;
+  try {
+    out = execFileSync('xdotool', ['search', '--onlyvisible', '--pid', String(pid)], {
+      encoding: 'utf8',
+      env: { ...process.env, DISPLAY: display },
+      stdio: ['ignore', 'pipe', 'ignore'],
+    });
+  } catch (error) {
+    const code = (error as NodeJS.ErrnoException).code;
+    if (code === 'ENOENT') throw new Error('xdotool 未安装或不在 PATH', { cause: error });
+    // 其余（含 exit 1 = 没有匹配窗口）按空结果处理。
+    out = String((error as { stdout?: string }).stdout ?? '');
+  }
+  return out
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0);
-  const id = found.at(-1);
-  if (id === undefined) throw new Error('未找到 pet-next 窗口（xdotool search --name pet-next）');
-  return id;
+}
+
+/**
+ * 取**本会话子进程**的窗口。优先按 `_NET_WM_PID` 绑定；绑定不到时退回按名字匹配，
+ * 但要求名字匹配唯一（多于一个直接失败，不再"取最后一个"猜）。
+ */
+export function petWindowId(display: string, pid?: number): string {
+  if (pid !== undefined) {
+    const byPid = windowIdsForPid(display, pid).filter((id) => id.length > 0);
+    const named = byPid.filter((id) => windowName(display, id).includes('pet-next'));
+    const chosen = named.at(-1) ?? byPid.at(-1);
+    if (chosen !== undefined) return chosen;
+  }
+  const found = xdotool(display, ['search', '--onlyvisible', '--name', 'pet-next'])
+    .split('\n')
+    .map((line) => line.trim())
+    .filter((line) => line.length > 0);
+  if (found.length === 0) throw new Error('未找到 pet-next 窗口（xdotool search --name pet-next）');
+  if (found.length > 1) {
+    throw new Error(
+      `按名字找到 ${found.length} 个 pet-next 窗口（${found.join(',')}），无法确定本会话窗口；` +
+        '按 pid 绑定也失败，拒绝继续以免拖到别的窗口上',
+    );
+  }
+  return found[0] as string;
+}
+
+/** 窗口的 `_NET_WM_PID`：用来确认拿到的是**本会话子进程**的窗口（X 会复用窗口 id，不能靠 id 唯一性判断）。 */
+export function windowPid(display: string, id: string): number {
+  const text = xdotool(display, ['getwindowpid', id]).trim();
+  const pid = Number(text);
+  if (!Number.isFinite(pid) || pid <= 0) throw new Error(`xdotool getwindowpid ${id} 返回 "${text}"`);
+  return pid;
+}
+
+function windowName(display: string, id: string): string {
+  try {
+    return xdotool(display, ['getwindowname', id]).trim();
+  } catch {
+    return '';
+  }
+}
+
+/** 有界等待：某 pid 的窗口全部消失（进程退出后窗口应当一起销毁）。 */
+export async function waitWindowsGone(display: string, pid: number, timeoutMs: number): Promise<boolean> {
+  const deadline = Date.now() + timeoutMs;
+  for (;;) {
+    let remaining: string[];
+    try {
+      remaining = windowIdsForPid(display, pid);
+    } catch {
+      // xdotool 本身失败（比如 X 连接抖动）不当成"窗口还在"，交给调用方的残留断言。
+      return false;
+    }
+    if (remaining.length === 0) return true;
+    if (Date.now() >= deadline) return false;
+    await delay(50);
+  }
 }
 
 export function windowGeometry(display: string, winId: string): Bounds {
@@ -727,49 +807,33 @@ export interface Session {
   readonly geometry: Bounds;
 }
 
-/**
- * 等页面真正接上手势：`#pet` 存在且 boot 后已写入 `data-visual`。
- * 只看 `{event:'ready'}` 不够——那是窗口级就绪，渲染层监听可能还差几秒。
- */
-export async function waitForPetWired(cdp: Cdp, deadlineMs = 20000): Promise<void> {
-  const deadline = Date.now() + deadlineMs;
-  let last = 'unknown';
-  while (Date.now() < deadline) {
-    try {
-      const state = await cdp.evaluate<{ pet: boolean; visual: string | null }>(
-        `(() => {
-          const el = document.querySelector('#pet');
-          return { pet: el instanceof HTMLElement, visual: document.documentElement.dataset.visual ?? null };
-        })()`,
-        4000,
-      );
-      last = JSON.stringify(state);
-      if (state.pet && state.visual !== null && state.visual !== '') return;
-    } catch (error) {
-      last = error instanceof Error ? error.message : String(error);
-    }
-    await delay(100);
-  }
-  throw new Error(`页面未完成指针装配（#pet/data-visual 缺失）：${last}`);
-}
-
 /** 起一个真实窗口并激活（裸 Xvfb 无 WM 时激活降级，指针仍按坐标命中）。 */
 export async function openSession(options: LaunchOptions & { readonly preview?: string }): Promise<Session> {
   const env: NodeJS.ProcessEnv = { ...(options.extraEnv ?? {}) };
   if (options.preview !== undefined && options.preview !== '') env['PET_NEXT_PREVIEW'] = options.preview;
   const app = await launchApp({ ...options, extraEnv: env });
-  // `{event:'ready'}` 只证明 BrowserWindow 起来了；页面脚本（#pet 监听、boot 后的 visual 标记）
-  // 可能还在装配。共享 1 核容器被外部评测压到 load 10-17 时，这个窗口能有好几秒；
-  // 不等就会把"还没接上手势"误判成"拖动不写宿主"。
-  await waitForPetWired(app.cdp);
   const display = requireDisplay();
-  const windowId = petWindowId(display);
-  const geometry = windowGeometry(display, windowId);
+  // 按本会话子进程 pid 绑定窗口：两臂串行时不能靠名字猜。
+  // 窗口刚映射时 geometry 可能还是 0×0，拖动会打在窗口外（症状：0 次写入但退出码 0）。
+  let windowId = petWindowId(display, app.child.pid);
+  let geometry = windowGeometry(display, windowId);
+  for (let attempt = 0; attempt < 20 && (geometry.width <= 0 || geometry.height <= 0); attempt += 1) {
+    await delay(50);
+    windowId = petWindowId(display, app.child.pid);
+    geometry = windowGeometry(display, windowId);
+  }
+  if (geometry.width <= 0 || geometry.height <= 0) {
+    throw new Error(`窗口 ${windowId} 未映射出可见尺寸（geometry=${JSON.stringify(geometry)}）`);
+  }
   try {
     xdotool(display, ['windowactivate', '--sync', windowId]);
   } catch {
     // 裸 Xvfb 没有窗口管理器。
   }
+  // 主进程 ready-to-show 只代表窗口可显示，**早于** page.ts 绑定 #pet 监听。
+  // 不等这一步就按下拖动，事件会打空（症状：0 次写入、退出码 0、页面 trace 正常）——
+  // 这是本轮实际踩到的竞态，必须在这里统一等，而不是让每个用例各自记得等。
+  await waitFor('页面就绪', () => readVisual(app.cdp), (state) => state.visual === 'idle', 20000);
   return { app, windowId, geometry };
 }
 

@@ -135,9 +135,31 @@ export function createBudgetedWindowController(
 export PATH=/root/.workbuddy/binaries/node/versions/24.14.0/bin:$PATH
 Xvfb :95 -screen 0 1920x1080x24 -nolisten tcp & export DISPLAY=:95
 cd pet-next
-env -u NODE_OPTIONS pnpm test          # 纯单元（含 scheduler/adapter 等价）
+env -u NODE_OPTIONS pnpm test          # 纯单元（含 scheduler 语义 22 例）
 env -u NODE_OPTIONS pnpm build
-env -u NODE_OPTIONS PET_NEXT_DRAG_WRITE_BUDGET=1 node --experimental-strip-types --test \
+env -u NODE_OPTIONS node --experimental-strip-types --test \
     --test-concurrency=1 --test-reporter spec tests/drag-write-budget/*.e2e.test.ts
-node bench/drag-write-budget/run.mjs --arm=baseline|baseline|...   # 见 A 的 README
+node bench/drag-write-budget/run.mjs --arm=baseline --source=cdp|fixture --hz=60|125|500
 ```
+
+## 9. 结论与归档（2026-11-10）
+
+**阶段门 1 的答案是“否”，因此停接线；产品侧保持 `3daebc6` 原样。**
+
+| 证据 | 数值 |
+|---|---|
+| 真实 60Hz 拖动，两臂写入 | 27→27（5 轮交替中位）；28→28（D 的 60Hz 档） |
+| Chromium 投递 | 2ms×30 的 mousemove 只变成 4~5 条 pointermove（按帧合并） |
+| 125Hz 观测 | 约 47–48% 的写入落在 8ms 内，但 8ms 预算的**纸面投影只省 2–3%** |
+| 500Hz（仅页面内注入） | 496 → 125（−74.8%），落点不变——**不是物理鼠标** |
+| 单次写入成本 | setPosition 中位约 16µs；重复坐标 0 次 |
+| 5 轮成本 | 写入 27→27、主进程 CPU 30→30ms、时延中位 31→27.5ms（噪声内） |
+
+保留物（可复跑，不进产品）：
+- `experiments/drag-write-budget/scheduler.ts`：纯调度器（零 import、注入时钟），22 例单测；
+- `experiments/drag-write-budget/WIRING-ARCHIVE.md`：接线方案与负结果归档；
+- `tests/drag-write-budget/`：等价装置（缺候选时带原因 skip）、两臂 e2e（`wiringPresent()` 为 false 时 skip）、
+  成本对照与 `runs/**` 原始值；
+- `bench/drag-write-budget/`：A 的观测器与 9 组原始数据。
+
+**不要**据此宣传任何用户可见收益；Windows 物理鼠标是否也按帧合并**没有数据**（not-run）。

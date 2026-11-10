@@ -7,17 +7,7 @@ import { app, BrowserWindow, ipcMain, screen } from 'electron';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createWindowController } from '../adapters/window/controller.ts';
-import {
-  createBudgetedWindowController,
-  type BudgetedWindowController,
-} from '../adapters/window/drag-write-budget.ts';
-import type { WindowBounds, WindowController, WindowHost, WorkArea } from '../adapters/window/types.ts';
-import {
-  DRAG_BUDGET_MS,
-  DRAG_BUDGET_QUERY,
-  DRAG_END_CHANNEL,
-  dragBudgetEnabled,
-} from '../contracts/drag-budget.ts';
+import type { WindowBounds, WorkArea } from '../adapters/window/types.ts';
 import { createQwenChatProvider } from '../adapters/chat/qwen-provider.ts';
 import { createChatHistory } from '../core/chat/history.ts';
 import { createChatSession } from '../core/chat/session.ts';
@@ -206,10 +196,7 @@ function createWindow(chatOverride?: LocalChatOverride): void {
     });
   }
 
-  // M3-11：拖动写入预算（默认关闭）。关闭时 controller 与原实现逐字相同：
-  // 不建调度器、不挂 timer、不注册新通道，基线臂没有任何额外成本。
-  let budgeted: BudgetedWindowController | null = null;
-  const host: WindowHost = {
+  const controller = createWindowController({
     getBounds: () => win.getBounds(),
     setPosition(x, y) {
       win.setPosition(x, y);
@@ -224,14 +211,9 @@ function createWindow(chatOverride?: LocalChatOverride): void {
     },
     workAreaFor,
     quit() {
-      // 窗口要关了：只清待写槽与 timer，不补写已经关闭的窗口。
-      budgeted?.dispose();
       app.quit();
     },
-  };
-  const controller: WindowController = dragBudgetEnabled(process.env)
-    ? (budgeted = createBudgetedWindowController(host, { budgetMs: DRAG_BUDGET_MS }))
-    : createWindowController(host);
+  });
 
   ipcMain.on('pet:move-by', (_event, payload: unknown) => {
     if (!isMove(payload)) return;
@@ -240,18 +222,6 @@ function createWindow(chatOverride?: LocalChatOverride): void {
   ipcMain.on('pet:quit', () => {
     controller.quit();
   });
-
-  if (budgeted !== null) {
-    const budget = budgeted;
-    // 拖动结束/取消：flush 本次最后一个有效位置并结束 epoch（旧 timer 之后无权写）。
-    ipcMain.on(DRAG_END_CHANNEL, () => budget.endDrag());
-    // 工作区/显示器/尺寸变化：先 flush 有效 pending，本次拖动回退逐事件直写。
-    const onGeometryChanged = (): void => budget.noteGeometryChanged();
-    screen.on('display-metrics-changed', onGeometryChanged);
-    screen.on('display-added', onGeometryChanged);
-    screen.on('display-removed', onGeometryChanged);
-    win.on('closed', () => budget.dispose());
-  }
 
   win.webContents.on('did-fail-load', (_event, code, description) => {
     console.log(JSON.stringify({ event: 'fail-load', code, description }));
@@ -282,8 +252,6 @@ function createWindow(chatOverride?: LocalChatOverride): void {
   if (preview !== undefined && preview !== '') query[PREVIEW_QUERY] = preview;
   // M3-9：只有单槽且开关打开才通知页面订阅窗口快照（页面据此决定是否创建节能对象）。
   if (idlePauseApplies) query[IDLE_PAUSE_QUERY] = '1';
-  // M3-11：只有候选臂才让页面知道可以上报拖动结束；关闭时页面不发、主进程不收。
-  if (budgeted !== null) query[DRAG_BUDGET_QUERY] = '1';
   // M3-6：体验预览缺省 undefined（页面不创建反馈对象，原路径不变）。
   // M3-7：launcher 启动时以用户显式选择为准（standard 显式为 undefined）；否则仍只由 env 决定。
   const experience: ChatExperience | undefined = chatOverride

@@ -387,8 +387,8 @@ test('electron pet idles, reacts, drags inside the work area, and exits', { time
     });
     assert.equal(idle.bodyBackground, 'rgba(0, 0, 0, 0)');
     assert.equal(idle.hasPet, true);
-    // M3-11：桥面新增 dragEnd（拖动结束/取消信号）；仍不暴露 ipcRenderer，也没有其他通道。
-    assert.deepEqual(idle.exposedKeys.sort(), ['dragEnd', 'moveBy', 'quit']);
+    // M3-11 停接线：preload 不暴露 dragEnd，桥面回到两键（与 preload.ts 成对）。
+    assert.deepEqual(idle.exposedKeys.sort(), ['moveBy', 'quit']);
     assert.equal(idle.nodeIntegration, false);
 
     await evaluate(app.cdp, pointerScript([['pointerdown', 0, 0], ['pointerup', 2, 1]]));

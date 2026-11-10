@@ -1,4 +1,12 @@
-# M3-11 接线说明（C → 负责人）
+# M3-11 接线说明（已归档：候选未被采用）
+
+> **状态：停接线。** 阶段门 1 的答案是“否”——真实/CDP 路径没有值得消除的写入
+> （60Hz 两臂 27→27/28→28；Chromium 把 2ms×30 的 mousemove 合并成 4~5 条 pointermove），
+> 只有“页面内直接注入 PointerEvent”才出现 496→125（−74.8%），属“只 synthetic 变好”。
+> 因此产品侧已回退到 `3daebc6` 原样：`electron/main.ts`、`electron/preload.ts`、`app/page.ts`、
+> `app/bridge.ts` 零改动，`contracts/drag-budget.ts`、`core/drag-write-budget/scheduler.ts`、
+> `adapters/window/drag-write-budget.*` 均不入库。本文件只作为负结果与接线方案的证据保留，
+> 若将来在 Windows 1000Hz 鼠标上测到真实多写，可按此方案重开。
 
 本文件只给 diff 文本与说明，不改任何公共文件。适配器本身只有 `drag-write-budget.ts`
 （+ `.test.ts`），开关、IPC、screen 监听全部由负责人落地。
