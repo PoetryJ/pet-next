@@ -18,7 +18,16 @@ import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { connectCdp, delay, freePort, waitForPageSocket } from './cdp.mjs';
 
-export const petRoot = path.resolve(fileURLToPath(new URL('../../..', import.meta.url)));
+/**
+ * 产品根默认是本 worktree 的 pet-next；阶段二若要在“含接线的已提交源码”上跑，
+ * 用 `PET_NEXT_BENCH_ROOT=<另一份从 git archive 解出并 build 过的 pet-next>` 指过去。
+ * bench 自己的产物仍写在工具所在目录（run.mjs 的 resultsRoot），不会跑到被测树里。
+ */
+const envRoot = process.env.PET_NEXT_BENCH_ROOT;
+export const petRoot = envRoot
+  ? path.resolve(envRoot)
+  : path.resolve(fileURLToPath(new URL('../../..', import.meta.url)));
+export const petRootSource = envRoot ? 'env:PET_NEXT_BENCH_ROOT' : 'tool-location';
 export const electronBinary = path.join(petRoot, 'node_modules/electron/dist/electron');
 
 /** 产品自身的最大窗口（与 M3-8/契约同一 320x240 视口口径）。 */

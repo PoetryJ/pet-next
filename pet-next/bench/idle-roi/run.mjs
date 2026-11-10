@@ -29,7 +29,7 @@ import { execFileSync } from 'node:child_process';
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
-import { pathToFileURL } from 'node:url';
+import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { connectCdp, delay, freePort, waitForPageSocket } from './lib/cdp.mjs';
 import { loadManifest, resolveArmSource, resolveAssetsDir, stageCommittedAssets, verifyLayout } from './lib/artifacts.mjs';
@@ -49,6 +49,7 @@ import {
   launchProduct,
   loadavgText,
   petRoot,
+  petRootSource,
   sha256,
   sleep,
   WINDOW,
@@ -92,11 +93,13 @@ const clickCount = Number(value('clicks', '12'));
 const overrides = { src: value('src', ''), fSrc: value('f-src', ''), cSrc: value('c-src', '') };
 const allowMissing = has('allow-missing');
 
-let outDir = path.join(petRoot, 'bench/idle-roi/runs', stamp);
+/** 证据永远写在工具所在目录（被测产品根可能是另一份已提交源码）。 */
+const resultsRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)));
+let outDir = path.join(resultsRoot, 'runs', stamp);
 let armsDir = path.join(outDir, 'arms');
 let rawPath = path.join(outDir, 'raw.ndjson');
 let summaryPath = path.join(outDir, 'summary.json');
-const lockPath = path.join(petRoot, 'bench/idle-roi/runs/.lock');
+const lockPath = path.join(resultsRoot, 'runs/.lock');
 
 const failures = [];
 const notRun = [];
@@ -577,6 +580,9 @@ async function writeSummary(context, armResults) {
     electronPreflight: context.preflight?.version ?? null,
     head: gitOut(['rev-parse', 'HEAD']),
     branch: gitOut(['rev-parse', '--abbrev-ref', 'HEAD']),
+    productRoot: petRoot,
+    productRootSource: petRootSource,
+    productRef: context.productRef ?? null,
     dirtyFiles: gitOut(['status', '--porcelain', '--untracked-files=no']).split('\n').filter(Boolean).length,
     productDirtyFiles: gitOut([
       'status',
@@ -852,6 +858,7 @@ async function main() {
     manifestInfo,
     archive,
     assetsDir,
+    productRef: value('product-ref', ''),
     productSupportsRoiWiring,
     reactionUrl,
     roiLayout,
