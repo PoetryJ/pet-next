@@ -142,6 +142,36 @@ describe('拖动写入预算调度器', () => {
     assertStatsClosed(budget, writes);
   });
 
+  test('end() 无 pending 时不写也不计 flush；begin() 丢弃的 pending 记 coalesced 不记 written', () => {
+    const { clock, writes, budget } = createBudgetHarness();
+    budget.begin();
+    budget.submit({ x: 0, y: 0 }); // 写
+    budget.submit({ x: 1, y: 0 }); // 同一时刻过密 → pending
+    clock.advance(1);
+    budget.submit({ x: 2, y: 0 }); // 取代上一条 pending
+    assert.equal(budget.stats.coalesced, 1); // {1,0} 已被取代
+
+    budget.begin(); // 丢弃 {2,0}：不写、撤 timer、epoch++
+    const afterBegin = budget.stats;
+    assert.deepEqual(writes, [{ x: 0, y: 0 }]); // 丢弃 pending 不产生 write
+    assert.equal(afterBegin.written, 1); // {2,0} 不计 written
+    assert.equal(afterBegin.coalesced, 2); // {1,0} 被取代 + {2,0} 被 begin 丢弃
+    assert.equal(afterBegin.flushes, 0);
+    assert.equal(clock.armedCount(), 0);
+    assertStatsClosed(budget, writes);
+
+    const beforeEnd = budget.stats;
+    budget.end(); // 无 pending：只撤 timer / epoch++
+    assert.deepEqual(writes, [{ x: 0, y: 0 }]); // 无 write
+    assert.deepEqual(budget.stats, beforeEnd); // 所有计数一条不变（含 flushes=0）
+    assert.equal(budget.stats.flushes, 0);
+    assertStatsClosed(budget, writes);
+
+    budget.cancel(); // 同样没有 pending
+    assert.deepEqual(writes, [{ x: 0, y: 0 }]);
+    assert.equal(budget.stats.flushes, 0);
+  });
+
   test('end/cancel 后旧 timer 即使被触发也无权写，且不补写已提交目标', () => {
     const { clock, writes, budget } = createBudgetHarness();
     budget.begin();
