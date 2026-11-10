@@ -1,12 +1,14 @@
 /**
- * 「门的下限」对照：不裁边、不做阈值，只把 O 原样重编码再解回来，量它离 O 有多远。
+ * 【旧装置的保留件，本轮不参与判定】RGBA 路径的自往返测量。
  *
- * 目的只有一个：把「重编码往返的固有损失」和「裁边的额外损失」分开。
- * 如果连 O→O（同画布、同尺寸、不裁不阈值）都过不了 MAE≤1 LSB / P99≤2 LSB，
- * 那 o-to-c 不过就是编码格式的下限，不是 ROI 的错。
+ * 它把 O 解码成 RGBA，再以 `-f rawvideo -pix_fmt rgba` 重新编码，最后量离 O 有多远。
+ * **这条链必然经过 YUV→RGB→YUV**，所以它测出来的差是「这条 RGBA 路径的往返损失」，
+ * 不能外推成「任何重编码都过不了门」，也不构成编码格式的数学下界。
  *
- * 另外给一份几何对照：444 无损的 F/C 成对（预处理相同、只差分辨率），
- * F–C 的 max 就是「裁边本身」的误差。
+ * 为什么还留着：报告里要能回答「旧结论 1.151 是怎么来的」。现在这条职责由两件更直接的事取代——
+ * `out-v3-yuva` 的原生 YUVA 直通自对照（不经 RGB，看平面本身变不变）
+ * 与 F3–C3 真实字节成对（同参数、只差 crop，看裁边本身）。
+ * 因此 `quality.test.ts` 默认不跑它，只在 `PET_NEXT_IDLE_ROI_ROUNDTRIP=1` 时回看。
  *
  * 产物全写进调用方给的临时目录（os.tmpdir），不入库。
  */
@@ -91,6 +93,9 @@ function frameError(original: Buffer, candidate: Buffer, width: number, height: 
 
 /**
  * 跑完所有对照。`workDir` 是临时目录（裸帧与 webm 都落这里，不提交）。
+ *
+ * 结论口径（报告里也必须这么说）：这些变体都经过 RGBA→YUV，"过不了门"只说明
+ * 当前这条含 RGB 转换的路径及所试参数过不了，不是所有编码参数/所有路线的下界。
  */
 export async function measureRoundtripFloor(workDir: string, specs: readonly VariantSpec[] = DEFAULT_ROUNDTRIP_SPECS): Promise<RoundtripReport> {
   const source = path.join(petRoot(), 'assets', 'idle.webm');

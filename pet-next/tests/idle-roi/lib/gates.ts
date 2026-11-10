@@ -5,22 +5,19 @@
  * 这样失败时能直接指出是哪一帧、哪个通道、超过阈值的样本数。
  */
 import {
-  alphaStats,
   accumulateAlphaBox,
   boxRect,
   compositeFrame,
-  countOpaqueByCrop,
-  diffStats,
   dilateMask,
   edgeMask,
   emptyAlphaBox,
-  foregroundMask,
   restoreCrop,
   type AlphaBox,
   type PlateId,
   type Rect,
 } from './pixels.ts';
 import { openRaw, type RawReader } from './media.ts';
+import { countCoverage, measureComparison, type MeanSummary, type WorstSummary } from './measure.ts';
 import type { Arm, ArmKey, Arms } from './arms.ts';
 
 /** 契约 §6 的判据。只在这里出现一次，测试不另写一套数字。 */
@@ -130,58 +127,38 @@ export function cropWithinCanvas(crop: Rect, width: number, height: number): boo
 export function coverageGate(arms: Arms): GateResult {
   const failures: string[] = [];
   const expected = GATE_THRESHOLDS.frameCount;
-  const opened = openArms(arms, ['O', 'F', 'C']);
   const canvas = arms.originalCanvas;
-  const restored = Buffer.alloc(canvas.width * canvas.height * 4);
   const perArm: Record<string, { decodedFrames: number; outsideOpaque: number; insideOpaque: number; outsideFrames: number[] }> = {};
-  try {
-    for (const key of ['O', 'F', 'C'] as const) {
-      const arm = arms[key];
-      if (arm.raw.frameCount !== expected) failures.push(`${key} 解码 ${arm.raw.frameCount}/${expected} 帧`);
-      if (arm.timeline.count !== expected) failures.push(`${key} 探针 ${arm.timeline.count}/${expected} 帧`);
-      let outsideOpaque = 0;
-      let insideOpaque = 0;
-      const outsideFrames: number[] = [];
-      for (let frame = 0; frame < Math.min(arm.raw.frameCount, expected); frame += 1) {
-        const rgba = readFrame(opened, key, frame);
-        if (key === 'C') {
-          restoreCrop(rgba, arms.crop, canvas.width, canvas.height, restored, arms.restore.dx, arms.restore.dy);
-          const counts = countOpaqueByCrop(restored, canvas.width, canvas.height, { ...arms.crop, x: arms.crop.x + arms.restore.dx, y: arms.crop.y + arms.restore.dy }, arms.alphaThreshold);
-          if (counts.outside > 0) outsideFrames.push(frame);
-          outsideOpaque += counts.outside;
-          insideOpaque += counts.inside;
-          continue;
-        }
-        if (arm.raw.width !== canvas.width || arm.raw.height !== canvas.height) {
-          failures.push(`${key} 解码尺寸 ${arm.raw.width}x${arm.raw.height} != 画布 ${canvas.width}x${canvas.height}`);
-          break;
-        }
-        const counts = countOpaqueByCrop(rgba, canvas.width, canvas.height, arms.crop, arms.alphaThreshold);
-        if (counts.outside > 0) outsideFrames.push(frame);
-        outsideOpaque += counts.outside;
-        insideOpaque += counts.inside;
-      }
-      perArm[key] = { decodedFrames: arm.raw.frameCount, outsideOpaque, insideOpaque, outsideFrames };
-      if (outsideOpaque > GATE_THRESHOLDS.roiOutsideOpaque) {
-        failures.push(`${key} 在 ROI 外有 ${outsideOpaque} 个 alpha>${arms.alphaThreshold} 像素（帧 ${outsideFrames.slice(0, 8).join(',')}${outsideFrames.length > 8 ? '…' : ''}）`);
-      }
-      if (insideOpaque === 0) failures.push(`${key} ROI 内没有 α>${arms.alphaThreshold} 的前景，无法比较`);
+  for (const key of ['O', 'F', 'C'] as const) {
+    const arm = arms[key];
+    if (arm.raw.frameCount !== expected) failures.push(`${key} 解码 ${arm.raw.frameCount}/${expected} 帧`);
+    if (arm.timeline.count !== expected) failures.push(`${key} 探针 ${arm.timeline.count}/${expected} 帧`);
+    if (key !== 'C' && (arm.raw.width !== canvas.width || arm.raw.height !== canvas.height)) {
+      failures.push(`${key} 解码尺寸 ${arm.raw.width}x${arm.raw.height} != 画布 ${canvas.width}x${canvas.height}`);
+      perArm[key] = { decodedFrames: arm.raw.frameCount, outsideOpaque: -1, insideOpaque: -1, outsideFrames: [] };
+      continue;
     }
-    const expectedInside = perArm.O?.insideOpaque ?? 0;
-    const fRatio = expectedInside === 0 ? 1 : (perArm.F?.insideOpaque ?? 0) / expectedInside;
-    const cRatio = expectedInside === 0 ? 1 : (perArm.C?.insideOpaque ?? 0) / expectedInside;
-    if (fRatio < 0.98) failures.push(`F ROI 内前景像素只剩 O 的 ${(fRatio * 100).toFixed(2)}%`);
-    if (cRatio < 0.98) failures.push(`C ROI 内前景像素只剩 O 的 ${(cRatio * 100).toFixed(2)}%`);
-    return result(
-      'coverage',
-      '全片覆盖与 ROI 合法性',
-      `48/48 帧解码；ROI 外 alpha>${arms.alphaThreshold} 被删除像素数 = ${GATE_THRESHOLDS.roiOutsideOpaque}`,
-      failures,
-      { expectedFrames: expected, perArm, insideRatio: { F: fRatio, C: cRatio }, crop: arms.crop, restore: arms.restore },
-    );
-  } finally {
-    closeArms(opened);
+    const cov = countCoverage(arms, key);
+    perArm[key] = { decodedFrames: arm.raw.frameCount, outsideOpaque: cov.outside, insideOpaque: cov.inside, outsideFrames: cov.outsideFrames };
+    if (cov.outside > GATE_THRESHOLDS.roiOutsideOpaque) {
+      failures.push(
+        `${key} 在 ROI 外有 ${cov.outside} 个 alpha>${arms.alphaThreshold} 像素（帧 ${cov.outsideFrames.slice(0, 8).join(',')}${cov.outsideFrames.length > 8 ? '…' : ''}）`,
+      );
+    }
+    if (cov.inside === 0) failures.push(`${key} ROI 内没有 α>${arms.alphaThreshold} 的前景，无法比较`);
   }
+  const expectedInside = perArm.O?.insideOpaque ?? 0;
+  const fRatio = expectedInside === 0 ? 1 : (perArm.F?.insideOpaque ?? 0) / expectedInside;
+  const cRatio = expectedInside === 0 ? 1 : (perArm.C?.insideOpaque ?? 0) / expectedInside;
+  if (fRatio < 0.98) failures.push(`F ROI 内前景像素只剩 O 的 ${(fRatio * 100).toFixed(2)}%`);
+  if (cRatio < 0.98) failures.push(`C ROI 内前景像素只剩 O 的 ${(cRatio * 100).toFixed(2)}%`);
+  return result(
+    'coverage',
+    '全片覆盖与 ROI 合法性',
+    `48/48 帧解码；ROI 外 alpha>${arms.alphaThreshold} 被删除像素数 = ${GATE_THRESHOLDS.roiOutsideOpaque}`,
+    failures,
+    { expectedFrames: expected, perArm, insideRatio: { F: fRatio, C: cRatio }, crop: arms.crop, restore: arms.restore },
+  );
 }
 
 /** 帧数、逐帧 PTS、duration、循环首尾。 */
@@ -377,49 +354,24 @@ function bump(histogram: Record<string, number>, value: number): void {
   histogram[key] = (histogram[key] ?? 0) + 1;
 }
 
-/** F–C：C 还原到原画布后与 F 比，每通道最大差 ≤2 LSB。 */
-export function fToCGate(arms: Arms): GateResult {
-  const failures: string[] = [];
+/**
+ * 残差形状：黑底上「F 与 C 还原后」的差按通道/alpha 带/到边界距离分类。
+ *
+ * 与门前判据无关，只为解释「差别长什么样」：是整片色偏，还是集中在半透明边。
+ */
+function measureResidualShape(arms: Arms): ResidualShape {
   const canvas = arms.originalCanvas;
-  const expected = GATE_THRESHOLDS.frameCount;
   const opened = openArms(arms, ['F', 'C']);
   const restored = Buffer.alloc(canvas.width * canvas.height * 4);
   const left = Buffer.alloc(canvas.width * canvas.height * 3);
   const right = Buffer.alloc(canvas.width * canvas.height * 3);
-  const perFrame: Array<{ frame: number; alphaMax: number; plates: Record<string, number> }> = [];
   const residual = emptyResidual();
-  let worst = 0;
-  let worstFrame = -1;
-  let worstAlpha = 0;
-  let overThresholdSamples = 0;
   try {
-    for (let frame = 0; frame < expected; frame += 1) {
+    for (let frame = 0; frame < Math.min(GATE_THRESHOLDS.frameCount, arms.frameCount); frame += 1) {
       const candidateRaw = readFrame(opened, 'C', frame);
-      restoreCrop(candidateRaw, arms.crop, canvas.width, canvas.height, restored, arms.restore.dx, arms.restore.dy);
       const reference = readFrame(opened, 'F', frame);
-      if (reference.length !== canvas.width * canvas.height * 4) {
-        failures.push(`F 帧 ${frame} 尺寸 ${reference.length} 不是原画布 RGBA`);
-        break;
-      }
-      const alpha = alphaStats(reference, restored, null);
-      if (alpha.max > worstAlpha) worstAlpha = alpha.max;
-      if (alpha.max > GATE_THRESHOLDS.fToCAlphaMaxLsb) failures.push(`帧 ${frame} alpha 最大差 ${alpha.max} LSB > ${GATE_THRESHOLDS.fToCAlphaMaxLsb} LSB`);
-      const plates: Record<string, number> = {};
-      for (const plate of ['black', 'white', 'checker'] as const) {
-        compositeFrame(reference, canvas.width, canvas.height, plate, left);
-        compositeFrame(restored, canvas.width, canvas.height, plate, right);
-        const stats = diffStats(left, right, null);
-        plates[plate] = stats.max;
-        overThresholdSamples += stats.over2;
-        if (stats.max > GATE_THRESHOLDS.fToCChannelMaxLsb) {
-          failures.push(`帧 ${frame} ${plate} 合成最大差 ${stats.max} LSB > ${GATE_THRESHOLDS.fToCChannelMaxLsb} LSB（超 2 LSB 样本 ${stats.over2}）`);
-        }
-        if (stats.max > worst) {
-          worst = stats.max;
-          worstFrame = frame;
-        }
-      }
-      // 残差形状只在黑底上取一次：三种底的最大差几乎同源，没必要三倍体积。
+      if (reference.length !== canvas.width * canvas.height * 4) break;
+      restoreCrop(candidateRaw, arms.crop, canvas.width, canvas.height, restored, arms.restore.dx, arms.restore.dy);
       compositeFrame(reference, canvas.width, canvas.height, 'black', left);
       compositeFrame(restored, canvas.width, canvas.height, 'black', right);
       const edgeBand = edgeMask(reference, canvas.width, canvas.height, arms.alphaThreshold, GATE_THRESHOLDS.edgeBandLow, GATE_THRESHOLDS.edgeBandHigh);
@@ -442,137 +394,167 @@ export function fToCGate(arms: Arms): GateResult {
         const distance = edgeBand[pixel] === 1 ? 'edge-band(alpha 2..64 或边界 1px)' : edgePlusOne[pixel] === 1 ? 'edge+1px' : 'interior';
         residual.over2ByEdgeDistance[distance] = (residual.over2ByEdgeDistance[distance] ?? 0) + 1;
       }
-      perFrame.push({ frame, alphaMax: alpha.max, plates });
     }
-    return result(
-      'f-to-c',
-      'F–C 原画布一致',
-      `C 按 crop 还原后与 F 合成比较，每通道最大差 ≤${GATE_THRESHOLDS.fToCChannelMaxLsb} LSB（=2/255）；alpha 最大差 ≤${GATE_THRESHOLDS.fToCAlphaMaxLsb} LSB`,
-      failures,
-      { unit: 'LSB (1 LSB = 1/255 of full scale)', worstCompositeMax: worst, worstFrame, worstAlphaMax: worstAlpha, samplesOver2: overThresholdSamples, residual, perFrame },
-    );
   } finally {
     closeArms(opened);
   }
+  return residual;
 }
 
-/** O–C：黑/白/棋盘三种底，前景区与边缘区分别过 MAE/P99。 */
-export function ocGate(arms: Arms): GateResult {
+/** F–C：C 还原到原画布后与 F 比，每通道最大差 ≤2 LSB；alpha ≤2 LSB。 */
+export function fToCGate(arms: Arms): GateResult {
   const failures: string[] = [];
-  const canvas = arms.originalCanvas;
-  const expected = GATE_THRESHOLDS.frameCount;
-  const opened = openArms(arms, ['O', 'C']);
-  const restored = Buffer.alloc(canvas.width * canvas.height * 4);
-  const left = Buffer.alloc(canvas.width * canvas.height * 3);
-  const right = Buffer.alloc(canvas.width * canvas.height * 3);
-  const perFrame: OcFrameRecord[] = [];
-  let worstFg = { mae: 0, p99: 0, frame: -1, plate: 'black' as PlateId };
-  let worstEdge = { mae: 0, p99: 0, frame: -1, plate: 'black' as PlateId };
-  try {
-    for (let frame = 0; frame < expected; frame += 1) {
-      const original = readFrame(opened, 'O', frame);
-      const candidateRaw = readFrame(opened, 'C', frame);
-      restoreCrop(candidateRaw, arms.crop, canvas.width, canvas.height, restored, arms.restore.dx, arms.restore.dy);
-      const foreground = foregroundMask(original, canvas.width, canvas.height, arms.alphaThreshold);
-      const edge = edgeMask(original, canvas.width, canvas.height, arms.alphaThreshold, GATE_THRESHOLDS.edgeBandLow, GATE_THRESHOLDS.edgeBandHigh);
-      const plates = {} as Record<PlateId, { foreground: FramePlateStat; edge: FramePlateStat }>;
-      for (const plate of ['black', 'white', 'checker'] as const) {
-        compositeFrame(original, canvas.width, canvas.height, plate, left);
-        compositeFrame(restored, canvas.width, canvas.height, plate, right);
-        const fgStats = diffStats(left, right, foreground);
-        const edgeStats = diffStats(left, right, edge);
-        const toStat = (stats: ReturnType<typeof diffStats>): FramePlateStat => ({
-          mae: stats.mae,
-          p99: stats.p99,
-          max: stats.max,
-          samples: stats.samples,
-          over1: stats.over1,
-          over2: stats.over2,
-        });
-        plates[plate] = { foreground: toStat(fgStats), edge: toStat(edgeStats) };
-        for (const [region, stats] of [
-          ['foreground', fgStats],
-          ['edge', edgeStats],
-        ] as const) {
-          if (stats.samples === 0) {
-            failures.push(`帧 ${frame} ${plate} ${region} 区为空，门不成立`);
-            continue;
-          }
-          if (stats.mae > GATE_THRESHOLDS.ocMaeLsb + EPSILON) {
-            failures.push(`帧 ${frame} ${plate} ${region} MAE ${stats.mae.toFixed(3)} LSB > ${GATE_THRESHOLDS.ocMaeLsb} LSB(=1/255)（超 1 LSB 样本 ${stats.over1}）`);
-          }
-          if (stats.p99 > GATE_THRESHOLDS.ocP99Lsb + EPSILON) {
-            failures.push(`帧 ${frame} ${plate} ${region} P99 ${stats.p99} LSB > ${GATE_THRESHOLDS.ocP99Lsb} LSB(=2/255)`);
-          }
-        }
-        if (fgStats.mae > worstFg.mae) worstFg = { mae: fgStats.mae, p99: fgStats.p99, frame, plate };
-        if (edgeStats.mae > worstEdge.mae) worstEdge = { mae: edgeStats.mae, p99: edgeStats.p99, frame, plate };
-      }
-      perFrame.push({ frame, plates });
+  const measurement = measureComparison(arms, 'F', 'C', 'f-to-c');
+  const { worstAcrossFramesAndPlates: worst, meanOverAllSamples: mean } = measurement;
+  let overThresholdSamples = 0;
+  for (const record of measurement.perFrame) {
+    if (record.alpha.max > GATE_THRESHOLDS.fToCAlphaMaxLsb) {
+      failures.push(`帧 ${record.frame} alpha 最大差 ${record.alpha.max} LSB > ${GATE_THRESHOLDS.fToCAlphaMaxLsb} LSB`);
     }
-    return result(
-      'o-to-c',
-      'O–C 三种底合成',
-      `前景(α>${arms.alphaThreshold})与边缘区(2..64 或距 alpha 边界 1px) 分别 MAE ≤1 LSB(=1/255)、P99 ≤2 LSB(=2/255)；黑/白/棋盘各自过门`,
-      failures,
-      { unit: 'LSB (1 LSB = 1/255 of full scale)', worstForeground: worstFg, worstEdge, perFrame },
-    );
-  } finally {
-    closeArms(opened);
+    for (const plate of ['black', 'white', 'checker'] as const) {
+      const stats = record.plates[plate].wholeFrame;
+      overThresholdSamples += stats.over2;
+      if (stats.samples === 0) {
+        failures.push(`帧 ${record.frame} ${plate} 合成没有样本，门不成立`);
+        continue;
+      }
+      if (stats.max > GATE_THRESHOLDS.fToCChannelMaxLsb) {
+        failures.push(`帧 ${record.frame} ${plate} 合成最大差 ${stats.max} LSB > ${GATE_THRESHOLDS.fToCChannelMaxLsb} LSB（超 2 LSB 样本 ${stats.over2}）`);
+      }
+    }
   }
+  return result(
+    'f-to-c',
+    'F–C 原画布一致',
+    `C 按 crop 还原后与 F 合成比较，每通道最大差 ≤${GATE_THRESHOLDS.fToCChannelMaxLsb} LSB（=2/255）；alpha 最大差 ≤${GATE_THRESHOLDS.fToCAlphaMaxLsb} LSB`,
+    failures,
+    {
+      unit: 'LSB (1 LSB = 1/255 of full scale)',
+      reference: 'F',
+      candidate: 'C',
+      restoredFromCrop: measurement.restoredFromCrop,
+      crop: measurement.crop,
+      worstCompositeMax: worst.wholeFrameMax.max,
+      worstFrame: worst.wholeFrameMax.frame,
+      worstPlate: worst.wholeFrameMax.plate,
+      worstAlphaMax: worst.alpha.max,
+      worstAlphaFrame: worst.alpha.frame,
+      samplesOver2: overThresholdSamples,
+      worstAcrossFramesAndPlates: worst,
+      meanOverAllSamples: mean,
+      residual: measureResidualShape(arms),
+      perFrame: measurement.perFrame,
+    },
+  );
+}
+
+/**
+ * O–C：黑/白/棋盘三种底，前景区与边缘区分别过 MAE/P99。
+ *
+ * 参照永远是 O（原片字节），不是 F。F 自己偏离原片多少，由
+ * {@link measureReencodeBaseline} 一并报出来，不允许拿转换后的基线掩盖总损失。
+ */
+export function ocGate(arms: Arms): GateResult {
+  return ocGateAgainst(arms, 'O', 'C', 'o-to-c', 'O–C 三种底合成');
+}
+
+/**
+ * 同一条门的不同参照/候选组合（自对照 O–S、F3–C3 用）。
+ *
+ * 判据字符串不变：只换参照臂与候选臂，阈值仍是 §6 的 MAE≤1 / P99≤2 LSB。
+ * `labels` 只影响报告里怎么称呼这两臂（S 在结构上仍放在 C 槽位读，不改 Arms 的键）。
+ */
+export function ocGateAgainst(
+  arms: Arms,
+  reference: ArmKey,
+  candidate: ArmKey,
+  id: string,
+  title: string,
+  labels: { readonly reference?: string; readonly candidate?: string } = {},
+): GateResult {
+  const failures: string[] = [];
+  const measurement = measureComparison(arms, reference, candidate, id);
+  const { worstAcrossFramesAndPlates: worst, meanOverAllSamples: mean } = measurement;
+  for (const record of measurement.perFrame) {
+    for (const plate of ['black', 'white', 'checker'] as const) {
+      for (const [region, stats] of [
+        ['foreground', record.plates[plate].foreground],
+        ['edge', record.plates[plate].edge],
+      ] as const) {
+        if (stats.samples === 0) {
+          failures.push(`帧 ${record.frame} ${plate} ${region} 区为空，门不成立`);
+          continue;
+        }
+        if (stats.mae > GATE_THRESHOLDS.ocMaeLsb + EPSILON) {
+          failures.push(`帧 ${record.frame} ${plate} ${region} MAE ${stats.mae.toFixed(3)} LSB > ${GATE_THRESHOLDS.ocMaeLsb} LSB(=1/255)（超 1 LSB 样本 ${stats.over1}）`);
+        }
+        if (stats.p99 > GATE_THRESHOLDS.ocP99Lsb + EPSILON) {
+          failures.push(`帧 ${record.frame} ${plate} ${region} P99 ${stats.p99} LSB > ${GATE_THRESHOLDS.ocP99Lsb} LSB(=2/255)`);
+        }
+      }
+    }
+  }
+  return result(
+    id,
+    title,
+    `前景(α>${arms.alphaThreshold})与边缘区(2..64 或距 alpha 边界 1px) 分别 MAE ≤1 LSB(=1/255)、P99 ≤2 LSB(=2/255)；黑/白/棋盘各自过门`,
+    failures,
+    {
+      unit: 'LSB (1 LSB = 1/255 of full scale)',
+      reference: labels.reference ?? reference,
+      candidate: labels.candidate ?? candidate,
+      restoredFromCrop: measurement.restoredFromCrop,
+      crop: measurement.crop,
+      worstForeground: worst.foregroundMae,
+      worstEdge: worst.edgeMae,
+      worstAcrossFramesAndPlates: worst,
+      meanOverAllSamples: mean,
+      perFrame: measurement.perFrame,
+    },
+  );
 }
 
 export interface ReencodeBaseline {
-  /** 三种底里最差的前景区 MAE / P99。 */
+  /** 三种底里最差的前景区 MAE / P99（= 旧报告 1.218 的口径，不是平均）。 */
   readonly foreground: { readonly mae: number; readonly p99: number; readonly max: number; readonly frame: number; readonly plate: PlateId };
   readonly edge: { readonly mae: number; readonly p99: number; readonly max: number; readonly frame: number; readonly plate: PlateId };
   readonly alphaMax: number;
   readonly compositeMax: number;
+  /** 与上面四个「最差」并列的池化口径，字段名不同，避免再被当成同一个数。 */
+  readonly worstAcrossFramesAndPlates: WorstSummary;
+  readonly meanOverAllSamples: MeanSummary;
+  readonly reference: string;
+  readonly candidate: string;
 }
 
 /**
- * O–F 同口径测量：F 是全画布重编码、不含任何裁边。
+ * O→X 同口径测量：X 是全画布重编码（F）或裁边候选（C）。
  *
- * 不是门，只用来把「重编码本身的损失」和「裁边的额外损失」分开——
- * 否则 F–C / O–C 一起不过时说不清是 ROI 的错还是编码的错。
+ * 不是门。它存在的理由只有一个：把「重编码本身的损失」和「裁边的额外损失」分开，
+ * 并且——这一点必须在报告里一直可见——**F 自己相对 O 的偏离**。
+ * F–C 通过不代表 F 忠实；拿 F 当唯一参照就等于把这段损失藏起来。
  */
-export function measureReencodeBaseline(arms: Arms, key: 'F' | 'C' = 'F'): ReencodeBaseline {
-  const canvas = arms.originalCanvas;
-  const opened = openArms(arms, ['O', key]);
-  const left = Buffer.alloc(canvas.width * canvas.height * 3);
-  const right = Buffer.alloc(canvas.width * canvas.height * 3);
-  const restored = key === 'C' ? Buffer.alloc(canvas.width * canvas.height * 4) : null;
-  let foreground = { mae: 0, p99: 0, max: 0, frame: -1, plate: 'black' as PlateId };
-  let edge = { mae: 0, p99: 0, max: 0, frame: -1, plate: 'black' as PlateId };
-  let alphaMax = 0;
-  let compositeMax = 0;
-  try {
-    for (let frame = 0; frame < arms.frameCount; frame += 1) {
-      const original = readFrame(opened, 'O', frame);
-      let candidate = readFrame(opened, key, frame);
-      if (restored !== null) {
-        restoreCrop(candidate, arms.crop, canvas.width, canvas.height, restored, arms.restore.dx, arms.restore.dy);
-        candidate = restored;
-      }
-      const alpha = alphaStats(original, candidate, null);
-      if (alpha.max > alphaMax) alphaMax = alpha.max;
-      const fgMask = foregroundMask(original, canvas.width, canvas.height, arms.alphaThreshold);
-      const edMask = edgeMask(original, canvas.width, canvas.height, arms.alphaThreshold, GATE_THRESHOLDS.edgeBandLow, GATE_THRESHOLDS.edgeBandHigh);
-      for (const plate of ['black', 'white', 'checker'] as const) {
-        compositeFrame(original, canvas.width, canvas.height, plate, left);
-        compositeFrame(candidate, canvas.width, canvas.height, plate, right);
-        const whole = diffStats(left, right, null);
-        if (whole.max > compositeMax) compositeMax = whole.max;
-        const fg = diffStats(left, right, fgMask);
-        if (fg.mae > foreground.mae) foreground = { mae: fg.mae, p99: fg.p99, max: fg.max, frame, plate };
-        const ed = diffStats(left, right, edMask);
-        if (ed.mae > edge.mae) edge = { mae: ed.mae, p99: ed.p99, max: ed.max, frame, plate };
-      }
-    }
-    return { foreground, edge, alphaMax, compositeMax };
-  } finally {
-    closeArms(opened);
-  }
+export function measureReencodeBaseline(arms: Arms, key: 'F' | 'C' = 'F', labels: { readonly candidate?: string } = {}): ReencodeBaseline {
+  const measurement = measureComparison(arms, 'O', key, `o-to-${key.toLowerCase()}`);
+  const worst = measurement.worstAcrossFramesAndPlates;
+  return {
+    foreground: { mae: worst.foregroundMae.mae, p99: worst.foregroundMae.p99, max: worst.foregroundMae.max, frame: worst.foregroundMae.frame, plate: (worst.foregroundMae.plate ?? 'black') as PlateId },
+    edge: { mae: worst.edgeMae.mae, p99: worst.edgeMae.p99, max: worst.edgeMae.max, frame: worst.edgeMae.frame, plate: (worst.edgeMae.plate ?? 'black') as PlateId },
+    alphaMax: worst.alpha.max,
+    compositeMax: worst.wholeFrameMax.max,
+    worstAcrossFramesAndPlates: worst,
+    meanOverAllSamples: measurement.meanOverAllSamples,
+    reference: 'O',
+    candidate: labels.candidate ?? key,
+  };
+}
+
+/** 只换 id/标题/臂名的包装（F3–C3 这类同一套判据、不同臂名的组合用）。 */
+export function relabelGate(gate: GateResult, id: string, title: string, labels: { readonly reference?: string; readonly candidate?: string } = {}): GateResult {
+  const metrics: Record<string, unknown> = { ...gate.metrics };
+  if (labels.reference !== undefined) metrics['reference'] = labels.reference;
+  if (labels.candidate !== undefined) metrics['candidate'] = labels.candidate;
+  return { ...gate, id, title, metrics };
 }
 
 /** 汇总。 */

@@ -199,63 +199,171 @@ export function boxRect(box: AlphaBox): Rect | null {
   return { x: box.minX, y: box.minY, width: box.maxX - box.minX + 1, height: box.maxY - box.minY + 1 };
 }
 
-/** 两个 mask 的三通道绝对差统计。`mask` 为 null 时统计整帧。 */
-export function diffStats(left: Uint8Array, right: Uint8Array, mask: Uint8Array | null): DiffStats {
-  const histogram = new Uint32Array(256);
-  const channelSum: [number, number, number] = [0, 0, 0];
-  const channelMax: [number, number, number] = [0, 0, 0];
-  let samples = 0;
-  let over1 = 0;
-  let over2 = 0;
-  let over4 = 0;
-  let over8 = 0;
+/**
+ * 可累加的差值统计。
+ *
+ * 为什么不是只留 {@link diffStats}：报告要同时给两个**不同口径**，
+ * 「各帧/各底里最差的那一个」（逐帧逐底取最大）与「全片所有样本上的平均」（跨帧跨底池化）。
+ * 后者若拿逐帧 MAE 再平均，会被样本数不同的帧带偏，而且算不出池化 P99；
+ * 所以真正的实现是累加器，逐帧统计与池化统计共用它。
+ */
+export interface DiffAccumulator {
+  /** 逐样点绝对差的直方图，长度 256。 */
+  readonly histogram: Uint32Array;
+  samples: number;
+  sum: number;
+  max: number;
+  over1: number;
+  over2: number;
+  over4: number;
+  over8: number;
+  readonly channelSum: [number, number, number];
+  readonly channelMax: [number, number, number];
+}
+
+/** 空累加器（池化统计的起点）。 */
+export function emptyDiffAccumulator(): DiffAccumulator {
+  return {
+    histogram: new Uint32Array(256),
+    samples: 0,
+    sum: 0,
+    max: 0,
+    over1: 0,
+    over2: 0,
+    over4: 0,
+    over8: 0,
+    channelSum: [0, 0, 0],
+    channelMax: [0, 0, 0],
+  };
+}
+
+/** 把一次比较（可带 mask）累加进 `acc`。`mask` 为 null 时统计整帧。 */
+export function accumulateDiff(left: Uint8Array, right: Uint8Array, mask: Uint8Array | null, acc: DiffAccumulator): void {
   const pixels = mask === null ? Math.floor(left.length / 3) : mask.length;
   for (let pixel = 0, offset = 0; pixel < pixels; pixel += 1, offset += 3) {
     if (mask !== null && mask[pixel] !== 1) continue;
     for (let channel = 0; channel < 3; channel += 1) {
       const delta = Math.abs((left[offset + channel] ?? 0) - (right[offset + channel] ?? 0));
-      channelSum[channel] = (channelSum[channel] ?? 0) + delta;
-      if (delta > (channelMax[channel] ?? 0)) channelMax[channel] = delta;
-      histogram[delta] = (histogram[delta] ?? 0) + 1;
-      samples += 1;
-      if (delta > 1) over1 += 1;
-      if (delta > 2) over2 += 1;
-      if (delta > 4) over4 += 1;
-      if (delta > 8) over8 += 1;
+      acc.channelSum[channel] = (acc.channelSum[channel] ?? 0) + delta;
+      if (delta > (acc.channelMax[channel] ?? 0)) acc.channelMax[channel] = delta;
+      acc.histogram[delta] = (acc.histogram[delta] ?? 0) + 1;
+      acc.samples += 1;
+      if (delta > acc.max) acc.max = delta;
+      if (delta > 1) acc.over1 += 1;
+      if (delta > 2) acc.over2 += 1;
+      if (delta > 4) acc.over4 += 1;
+      if (delta > 8) acc.over8 += 1;
     }
   }
+}
+
+/** 一个掩码对应一个累加器。`mask` 为 null 表示整帧。 */
+export interface MaskedAccumulator {
+  readonly mask: Uint8Array | null;
+  readonly acc: DiffAccumulator;
+}
+
+/**
+ * 一趟像素遍历同时喂多个掩码累加器（前景 / 边缘 / 整帧）。
+ *
+ * 为什么不再逐掩码各跑一遍：三种区域的差值其实是同一批像素差，
+ * 分开跑三遍只是把同一份计算重复三遍，48 帧 × 3 底会很慢；
+ * 而「整帧」与「前景」必须来自**同一次**读取，否则两个口径不可比。
+ */
+export function iterateAccumulate(left: Uint8Array, right: Uint8Array, targets: readonly MaskedAccumulator[]): void {
+  const pixels = Math.floor(left.length / 3);
+  for (let pixel = 0, offset = 0; pixel < pixels; pixel += 1, offset += 3) {
+    for (let channel = 0; channel < 3; channel += 1) {
+      const delta = Math.abs((left[offset + channel] ?? 0) - (right[offset + channel] ?? 0));
+      for (const target of targets) {
+        if (target.mask !== null && target.mask[pixel] !== 1) continue;
+        pushDelta(target.acc, channel, delta);
+      }
+    }
+  }
+}
+
+function pushDelta(acc: DiffAccumulator, channel: number, delta: number): void {
+  acc.channelSum[channel] = (acc.channelSum[channel] ?? 0) + delta;
+  if (delta > (acc.channelMax[channel] ?? 0)) acc.channelMax[channel] = delta;
+  acc.histogram[delta] = (acc.histogram[delta] ?? 0) + 1;
+  acc.samples += 1;
+  if (delta > acc.max) acc.max = delta;
+  if (delta > 1) acc.over1 += 1;
+  if (delta > 2) acc.over2 += 1;
+  if (delta > 4) acc.over4 += 1;
+  if (delta > 8) acc.over8 += 1;
+}
+
+/** 累加器转成报告里的一组数。 */
+export function summarizeDiff(acc: DiffAccumulator): DiffStats {
+  const { samples, channelSum, channelMax } = acc;
   return {
     samples,
-    max: Math.max(channelMax[0], channelMax[1], channelMax[2]),
+    max: acc.max,
     mae: samples === 0 ? 0 : (channelSum[0] + channelSum[1] + channelSum[2]) / samples,
-    p99: percentile(histogram, samples, 0.99),
-    channelMax,
+    p99: percentile(acc.histogram, samples, 0.99),
+    channelMax: [channelMax[0], channelMax[1], channelMax[2]],
     channelMae: [samples === 0 ? 0 : channelSum[0] / (samples / 3), samples === 0 ? 0 : channelSum[1] / (samples / 3), samples === 0 ? 0 : channelSum[2] / (samples / 3)],
-    over1,
-    over2,
-    over4,
-    over8,
+    over1: acc.over1,
+    over2: acc.over2,
+    over4: acc.over4,
+    over8: acc.over8,
   };
 }
 
-/** alpha 通道的绝对差统计。alpha 在透明区也有意义，所以不受 RGB 影响。 */
-export function alphaStats(left: Uint8Array, right: Uint8Array, mask: Uint8Array | null): AlphaStats {
-  let samples = 0;
-  let sum = 0;
-  let max = 0;
-  let over1 = 0;
-  let over2 = 0;
+/** 两个 mask 的三通道绝对差统计。`mask` 为 null 时统计整帧。 */
+export function diffStats(left: Uint8Array, right: Uint8Array, mask: Uint8Array | null): DiffStats {
+  const acc = emptyDiffAccumulator();
+  accumulateDiff(left, right, mask, acc);
+  return summarizeDiff(acc);
+}
+
+/** alpha 的可累加统计，口径同 {@link DiffAccumulator}。 */
+export interface AlphaAccumulator {
+  readonly histogram: Uint32Array;
+  samples: number;
+  sum: number;
+  max: number;
+  over1: number;
+  over2: number;
+}
+
+export function emptyAlphaAccumulator(): AlphaAccumulator {
+  return { histogram: new Uint32Array(256), samples: 0, sum: 0, max: 0, over1: 0, over2: 0 };
+}
+
+/** alpha 在透明区也有意义，所以不受 RGB 影响。 */
+export function accumulateAlpha(left: Uint8Array, right: Uint8Array, mask: Uint8Array | null, acc: AlphaAccumulator): void {
   const pixels = mask === null ? Math.floor(left.length / 4) : mask.length;
   for (let pixel = 0; pixel < pixels; pixel += 1) {
     if (mask !== null && mask[pixel] !== 1) continue;
     const delta = Math.abs((left[pixel * 4 + 3] ?? 0) - (right[pixel * 4 + 3] ?? 0));
-    sum += delta;
-    if (delta > max) max = delta;
-    samples += 1;
-    if (delta > 1) over1 += 1;
-    if (delta > 2) over2 += 1;
+    acc.sum += delta;
+    if (delta > acc.max) acc.max = delta;
+    acc.histogram[delta] = (acc.histogram[delta] ?? 0) + 1;
+    acc.samples += 1;
+    if (delta > 1) acc.over1 += 1;
+    if (delta > 2) acc.over2 += 1;
   }
-  return { samples, max, mae: samples === 0 ? 0 : sum / samples, over1, over2 };
+}
+
+export function summarizeAlpha(acc: AlphaAccumulator): AlphaStats {
+  return {
+    samples: acc.samples,
+    max: acc.max,
+    mae: acc.samples === 0 ? 0 : acc.sum / acc.samples,
+    p99: percentile(acc.histogram, acc.samples, 0.99),
+    over1: acc.over1,
+    over2: acc.over2,
+  };
+}
+
+/** alpha 通道的绝对差统计。 */
+export function alphaStats(left: Uint8Array, right: Uint8Array, mask: Uint8Array | null): AlphaStats {
+  const acc = emptyAlphaAccumulator();
+  accumulateAlpha(left, right, mask, acc);
+  return summarizeAlpha(acc);
 }
 
 /** 最近秩 p 分位。空样本记 0。 */

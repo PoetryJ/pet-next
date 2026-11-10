@@ -217,8 +217,10 @@ test('编码档位敏感性：crf 0/4/32', async (t) => {
   const lossless = probes.find((probe) => probe.crf === 0);
   const lossy = probes.find((probe) => probe.crf === 4);
   record.encoderSensitivity = probes;
+  // 结论只写这条探针能支持的范围：探针的输入是 RGBA 原始字节，必然经过 YUV→RGB→YUV。
+  // 「原生 YUVA 直通能不能过」是另一件事，由 quality.test.ts 的 yuva-selfcontrol 单独测。
   record.finding = lossless
-    ? `同一份预处理输入，crf 0（无损）时 O–C 前景 MAE 仍为 ${lossless.ocForeground.mae.toFixed(4)}/255、P99 ${lossless.ocForeground.p99}，已超 §6 的 MAE≤1/255；说明差距来自 8-bit yuva420p 重编码往返，不是 ROI 几何。`
+    ? `在这条 RGBA→YUV 的旧路径上，crf 0（无损）时 O–C 前景 MAE 仍为 ${lossless.ocForeground.mae.toFixed(4)}/255、P99 ${lossless.ocForeground.p99}，已超 §6 的 MAE≤1/255。它只说明该路径过不了，不是所有编码路线的下界；原生 YUVA 直通见 quality.test.ts 的 yuva-selfcontrol。`
     : 'crf 0 没跑出来';
   await t.test('档位越低误差越小（探针有分辨力）', () => {
     assert.equal(probes.length, 3, `只跑到 ${probes.length} 个档位`);
