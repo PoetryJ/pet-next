@@ -1,0 +1,3302 @@
+{
+  "schemaVersion": 1,
+  "task": "M3-12-D",
+  "kind": "idle-roi-bench",
+  "stamp": "behavior-v3-736fe65",
+  "mode": "behavior",
+  "generatedAt": "2026-11-10T11:12:04.268Z",
+  "command": "node bench/idle-roi/run.mjs --mode=behavior --plan=O,F3,C3 --seconds=0 --probe=click,drag,hidden,failure --clicks=10 --roi-layout=on --assets-ref=07278fd --assets-subpath=experiments/idle-roi/out-v3-yuva --quality-report-ref=a1cd1fb --stamp=behavior-v3-736fe65 --display=:157",
+  "host": "nb-1696310541880511232-d0ww0enxobgg",
+  "platform": "linux 5.4.119-19.0009.28 x64",
+  "cpus": 384,
+  "node": "v24.14.0",
+  "electron": "43.3.0",
+  "electronPreflight": "v43.3.0",
+  "head": "736fe65c59fd61cdf72448638807a4f28e7daad4",
+  "branch": "agent/m312r1-perf",
+  "productRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next",
+  "productRootSource": "env:PET_NEXT_BENCH_ROOT",
+  "productRef": "",
+  "dirtyFiles": 0,
+  "productDirtyFiles": 0,
+  "dirtyNote": "dirtyFiles=已跟踪文件改动数（含本 bench 工具自身）；productDirtyFiles 只算 app/electron/core/adapters/contracts/scripts/package.json，应为 0",
+  "display": ":157",
+  "xvfbOwned": false,
+  "window": {
+    "width": 320,
+    "height": 240
+  },
+  "plan": [
+    "O#0",
+    "F#0",
+    "C#0",
+    "C#1",
+    "F#1",
+    "O#1",
+    "O#2",
+    "F#2",
+    "C#2"
+  ],
+  "seconds": 0,
+  "warmupSec": 10,
+  "build": {
+    "built": false,
+    "reason": "up-to-date",
+    "distCss": {
+      "exists": true,
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/dist/app/page.css",
+      "sha256": "4eb6a809d14c1e545b7d9b005064e0b6ac62e033fd2d689ff5f4656611ae3946",
+      "sourcePath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/app/page.css",
+      "sourceSha256": "4eb6a809d14c1e545b7d9b005064e0b6ac62e033fd2d689ff5f4656611ae3946",
+      "matchesSource": true,
+      "objectFitLines": [
+        {
+          "line": 28,
+          "text": "object-fit: contain;"
+        },
+        {
+          "line": 48,
+          "text": "object-fit: contain;"
+        }
+      ],
+      "objectFitNoneLines": [],
+      "idleRoiLines": [
+        {
+          "line": 40,
+          "text": "* 窗口、#pet 命中区域、拖动/点击语义都不变。数值由 contracts/idle-roi 计算（DIP，不再乘 DPR）。"
+        },
+        {
+          "line": 42,
+          "text": "body.idle-roi video#clip {"
+        },
+        {
+          "line": 44,
+          "text": "left: var(--idle-roi-left);"
+        },
+        {
+          "line": 45,
+          "text": "top: var(--idle-roi-top);"
+        },
+        {
+          "line": 46,
+          "text": "width: var(--idle-roi-width);"
+        },
+        {
+          "line": 47,
+          "text": "height: var(--idle-roi-height);"
+        }
+      ],
+      "roiRulePresent": true,
+      "roiRuleObjectFitContain": true,
+      "preflightWarnings": [],
+      "note": "copy-static 原样复制；matchesSource=false 说明 dist 未重建；roiRule* 是文本层预检，最终仍以运行时 computed style 为准"
+    }
+  },
+  "loadavg": {
+    "start": {
+      "one": 16.18,
+      "five": 18.01,
+      "fifteen": 19.23,
+      "running": 13,
+      "threads": 11929
+    },
+    "end": {
+      "one": 11.91,
+      "five": 14.13,
+      "fifteen": 16.95,
+      "running": 9,
+      "threads": 11937
+    },
+    "note": "本机 1 核共享；外部 eval 常把 load 拉到 10+，所有 CPU 数值必须与 loadavg 同时解读"
+  },
+  "manifest": {
+    "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/manifest.json",
+    "found": true,
+    "error": null,
+    "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "candidateSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+    "crop": {
+      "x": 208,
+      "y": 52,
+      "width": 226,
+      "height": 286
+    },
+    "originalCanvas": {
+      "width": 640,
+      "height": 360
+    },
+    "frameCount": 48
+  },
+  "reaction": {
+    "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/reaction.webm",
+    "sha256": "9d73e16ca8d9abcfff96a41d9e98f632a241691ddf81b59538b16a6e77049861"
+  },
+  "sources": {
+    "O": {
+      "arm": "O",
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+      "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
+      "exists": true,
+      "optional": false,
+      "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "expectedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "shaMatched": true,
+      "shippedPath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/idle.webm",
+      "shippedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "matchesShipped": true,
+      "bytes": 78419,
+      "gateExpectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "gateShaMatched": true,
+      "gateChosenFrom": "staged",
+      "gateChosenName": "O.webm"
+    },
+    "F": {
+      "arm": "F",
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+      "label": "F 全画布重编码（与 C 同预处理/编码/PTS）",
+      "exists": true,
+      "optional": true,
+      "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+      "expectedSha": null,
+      "shaMatched": null,
+      "shippedPath": null,
+      "shippedSha256": null,
+      "matchesShipped": null,
+      "bytes": 625108,
+      "gateExpectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+      "gateShaMatched": true,
+      "gateChosenFrom": "staged",
+      "gateChosenName": "F3.webm"
+    },
+    "C": {
+      "arm": "C",
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+      "label": "C ROI 裁剪（编码分辨率=ROI 宽高）",
+      "exists": true,
+      "optional": true,
+      "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+      "expectedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+      "shaMatched": true,
+      "shippedPath": null,
+      "shippedSha256": null,
+      "matchesShipped": null,
+      "bytes": 631169,
+      "gateExpectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+      "gateShaMatched": true,
+      "gateChosenFrom": "staged",
+      "gateChosenName": "C3.webm"
+    }
+  },
+  "armLabels": {
+    "O": "O",
+    "F": "F3",
+    "C": "C3"
+  },
+  "qualityGate": {
+    "ok": true,
+    "code": 0,
+    "checkedAt": "2026-11-10T11:05:07.680Z",
+    "qualityReport": {
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/quality-report.json",
+      "relPath": null,
+      "sha256": "62777d44e38a886d48c8fc1f7d67149c477d1c5871f8958c2008ff32a33071bd",
+      "bytes": 1731945,
+      "found": true,
+      "error": null,
+      "provenance": {
+        "tracked": null,
+        "clean": null,
+        "commit": null,
+        "external": true,
+        "errors": []
+      },
+      "source": {
+        "kind": "committed-ref",
+        "repo": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf",
+        "ref": "a1cd1fb",
+        "commit": "a1cd1fb9183b167ba2e1c022f20db01a337bfaea",
+        "repoPath": "pet-next/tests/idle-roi/out/quality-report.json",
+        "sha256": "62777d44e38a886d48c8fc1f7d67149c477d1c5871f8958c2008ff32a33071bd",
+        "bytes": 1731945,
+        "command": "git -C /data3/DATA/project/project_meishijiang/m312r1-wt-perf show a1cd1fb9183b167ba2e1c022f20db01a337bfaea:pet-next/tests/idle-roi/out/quality-report.json > /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/quality-report.json"
+      },
+      "status": {
+        "reported": "passed",
+        "passed": true,
+        "subject": "f3c3",
+        "candidates": {
+          "category": "f3c3",
+          "status": "passed",
+          "pass": true,
+          "failed": []
+        },
+        "prerequisites": [
+          {
+            "category": "yuva-selfcontrol",
+            "status": "passed",
+            "pass": true
+          }
+        ],
+        "historicalFailed": [
+          "v2-rgba/o-to-c"
+        ],
+        "signals": [
+          {
+            "path": "verdict.status",
+            "value": "passed"
+          },
+          {
+            "path": "verdict.pass",
+            "value": true
+          },
+          {
+            "path": "status",
+            "value": "passed"
+          },
+          {
+            "path": "verdict.candidates.pass",
+            "value": true
+          }
+        ],
+        "gates": [],
+        "errors": []
+      },
+      "thresholds": {
+        "ok": true,
+        "rows": [
+          {
+            "key": "frameCount",
+            "value": 48,
+            "baseline": 48,
+            "ok": true
+          },
+          {
+            "key": "roiOutsideOpaque",
+            "value": 0,
+            "baseline": 0,
+            "ok": true
+          },
+          {
+            "key": "ptsDeltaMs",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "durationDeltaMs",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "fToCChannelMaxLsb",
+            "value": 2,
+            "baseline": 2,
+            "ok": true
+          },
+          {
+            "key": "fToCAlphaMaxLsb",
+            "value": 2,
+            "baseline": 2,
+            "ok": true
+          },
+          {
+            "key": "ocMaeLsb",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "ocP99Lsb",
+            "value": 2,
+            "baseline": 2,
+            "ok": true
+          },
+          {
+            "key": "bboxDeltaPx",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "centroidDeltaPx",
+            "value": 0.5,
+            "baseline": 0.5,
+            "ok": true
+          },
+          {
+            "key": "alphaThreshold",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          }
+        ],
+        "errors": []
+      }
+    },
+    "assetsDir": {
+      "subpath": "experiments/idle-roi/out-v3-yuva",
+      "subpathName": "out-v3-yuva",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed",
+      "assetsDirArg": null,
+      "expectedDir": null,
+      "expected": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva",
+      "artifactsResolveAssetsDir": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva",
+      "errors": [],
+      "armFiles": [
+        "O.webm",
+        "F3.webm",
+        "C3.webm"
+      ],
+      "artifactsResolveAssetsDirExplicit": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva"
+    },
+    "arms": {
+      "O": {
+        "arm": "O",
+        "expectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "chosen": {
+          "name": "O.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "bytes": 78419,
+          "matchesExpected": true,
+          "origin": "staged"
+        },
+        "candidates": [
+          {
+            "name": "O.webm",
+            "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+            "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+            "bytes": 78419,
+            "matchesExpected": true,
+            "origin": "staged"
+          }
+        ],
+        "fallback": null,
+        "reason": null
+      },
+      "F": {
+        "arm": "F",
+        "expectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "chosen": {
+          "name": "F3.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+          "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+          "bytes": 625108,
+          "matchesExpected": true,
+          "origin": "staged"
+        },
+        "candidates": [
+          {
+            "name": "F3.webm",
+            "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+            "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+            "bytes": 625108,
+            "matchesExpected": true,
+            "origin": "staged"
+          }
+        ],
+        "fallback": null,
+        "reason": null
+      },
+      "C": {
+        "arm": "C",
+        "expectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "chosen": {
+          "name": "C3.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+          "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+          "bytes": 631169,
+          "matchesExpected": true,
+          "origin": "staged"
+        },
+        "candidates": [
+          {
+            "name": "C3.webm",
+            "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+            "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+            "bytes": 631169,
+            "matchesExpected": true,
+            "origin": "staged"
+          }
+        ],
+        "fallback": null,
+        "reason": null
+      }
+    },
+    "armShaClaims": {
+      "ok": true,
+      "claims": {
+        "O": {
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "distinct": [
+            "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+          ],
+          "claims": [
+            {
+              "source": "report.verdict.candidates.sha256.O",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            },
+            {
+              "source": "report.variants[2].arms.sha256.O",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            },
+            {
+              "source": "staged-manifest.sourceSha256",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            }
+          ]
+        },
+        "F": {
+          "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+          "distinct": [
+            "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1"
+          ],
+          "claims": [
+            {
+              "source": "report.verdict.candidates.sha256.F",
+              "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1"
+            },
+            {
+              "source": "report.variants[2].arms.sha256.F",
+              "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1"
+            }
+          ]
+        },
+        "C": {
+          "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+          "distinct": [
+            "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+          ],
+          "claims": [
+            {
+              "source": "report.verdict.candidates.sha256.C",
+              "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+            },
+            {
+              "source": "report.variants[2].arms.sha256.C",
+              "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+            },
+            {
+              "source": "staged-manifest.candidateSha256",
+              "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+            }
+          ]
+        }
+      },
+      "errors": []
+    }
+  },
+  "arms": [
+    {
+      "arm": "O",
+      "label": "O",
+      "rep": 0,
+      "tag": "O-r0",
+      "idleSource": {
+        "arm": "O",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+        "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
+        "exists": true,
+        "optional": false,
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "expectedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "shaMatched": true,
+        "shippedPath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/idle.webm",
+        "shippedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "matchesShipped": true,
+        "bytes": 78419,
+        "gateExpectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "O.webm"
+      },
+      "pid": 614292,
+      "wallSec": 10.16,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "O.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 0,
+        "warmupSamples": 10,
+        "windowSec": 0,
+        "cpuSeconds": 0,
+        "cpuSecondsPerMinute": null,
+        "cpuPercentMedian": null,
+        "cpuPercentP90": null,
+        "cpuPercentMean": null,
+        "rssSumMbMedian": null,
+        "rssSumMbMax": null,
+        "pssSumMbMedian": null,
+        "loadavg1Median": null,
+        "loadavg1Max": null,
+        "hostCpuBusyMedian": null,
+        "decodedFrames": 0,
+        "decodedFps": null,
+        "videoSize": null
+      },
+      "probes": {
+        "click": {
+          "clickPoint": {
+            "x": 160,
+            "y": 120
+          },
+          "requested": 10,
+          "observed": 10,
+          "missed": 0,
+          "medianMs": 88.35000133514404,
+          "minMs": 82.30000114440918,
+          "maxMs": 174.5,
+          "samples": [
+            {
+              "sample": 1,
+              "latencyMs": 85,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 105,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 2,
+              "latencyMs": 88.4000015258789,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 109,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 3,
+              "latencyMs": 88.30000114440918,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 110,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 4,
+              "latencyMs": 82.30000114440918,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 105,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 5,
+              "latencyMs": 87.4000015258789,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 6,
+              "latencyMs": 91.60000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 113,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 7,
+              "latencyMs": 172.60000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 184,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 8,
+              "latencyMs": 98.30000114440918,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 119,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 9,
+              "latencyMs": 174.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 195,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 10,
+              "latencyMs": 88.30000114440918,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 110,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            }
+          ],
+          "evidence": "软件输入 + rVFC 呈帧（非物理帧/物理延迟）"
+        },
+        "drag": {
+          "before": {
+            "x": 80,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "after": {
+            "x": 140,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "draggingClassAfter": false,
+          "moved": true,
+          "movedDelta": {
+            "dx": 60,
+            "dy": 0
+          }
+        },
+        "hidden": {
+          "unmapError": null,
+          "mapError": null,
+          "visibilityWhileHidden": "visible",
+          "idleFramesWhileHidden2s": 408,
+          "resumeFirstIdleFrameMs": 28.100000381469727,
+          "visibilityAfterResume": "visible",
+          "visualAfterResume": "idle"
+        },
+        "failure": {
+          "copiedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "copyDeleted": true,
+          "visibility": "visible",
+          "visual": "placeholder",
+          "placeholderVisible": true,
+          "idleVideoHidden": true,
+          "idleVideoPaused": true,
+          "idleVideoSrc": "idle-missing-O-0.webm"
+        },
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2001
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2001
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"bounds\",\"bounds\":{\"x\":86,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":86,\"y\":80},\"physical\":{\"x\":86,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":98,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":98,\"y\":80},\"physical\":{\"x\":98,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":116,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":116,\"y\":80},\"physical\":{\"x\":116,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":140,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":140,\"y\":80},\"physical\":{\"x\":140,\"y\":80}}\n"
+    },
+    {
+      "arm": "F",
+      "label": "F3",
+      "rep": 0,
+      "tag": "F-r0",
+      "idleSource": {
+        "arm": "F",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+        "label": "F 全画布重编码（与 C 同预处理/编码/PTS）",
+        "exists": true,
+        "optional": true,
+        "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "expectedSha": null,
+        "shaMatched": null,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 625108,
+        "gateExpectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "F3.webm"
+      },
+      "pid": 614787,
+      "wallSec": 10.17,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": null,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "F3.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 0,
+        "warmupSamples": 10,
+        "windowSec": 0,
+        "cpuSeconds": 0,
+        "cpuSecondsPerMinute": null,
+        "cpuPercentMedian": null,
+        "cpuPercentP90": null,
+        "cpuPercentMean": null,
+        "rssSumMbMedian": null,
+        "rssSumMbMax": null,
+        "pssSumMbMedian": null,
+        "loadavg1Median": null,
+        "loadavg1Max": null,
+        "hostCpuBusyMedian": null,
+        "decodedFrames": 0,
+        "decodedFps": null,
+        "videoSize": null
+      },
+      "probes": {
+        "click": {
+          "clickPoint": {
+            "x": 160,
+            "y": 120
+          },
+          "requested": 10,
+          "observed": 10,
+          "missed": 0,
+          "medianMs": 89.75,
+          "minMs": 85,
+          "maxMs": 164.70000076293945,
+          "samples": [
+            {
+              "sample": 1,
+              "latencyMs": 89.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 106,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 2,
+              "latencyMs": 92.60000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 115,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 3,
+              "latencyMs": 85,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 107,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 4,
+              "latencyMs": 86.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 108,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 5,
+              "latencyMs": 90,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 112,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 6,
+              "latencyMs": 89.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 7,
+              "latencyMs": 96.29999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 117,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 8,
+              "latencyMs": 164.70000076293945,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 185,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 9,
+              "latencyMs": 89.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 103,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 10,
+              "latencyMs": 97.10000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 119,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            }
+          ],
+          "evidence": "软件输入 + rVFC 呈帧（非物理帧/物理延迟）"
+        },
+        "drag": {
+          "before": {
+            "x": 80,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "after": {
+            "x": 140,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "draggingClassAfter": false,
+          "moved": true,
+          "movedDelta": {
+            "dx": 60,
+            "dy": 0
+          }
+        },
+        "hidden": {
+          "unmapError": null,
+          "mapError": null,
+          "visibilityWhileHidden": "visible",
+          "idleFramesWhileHidden2s": 427,
+          "resumeFirstIdleFrameMs": 29.899999618530273,
+          "visibilityAfterResume": "visible",
+          "visualAfterResume": "idle"
+        },
+        "failure": {
+          "copiedSha": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+          "copyDeleted": true,
+          "visibility": "visible",
+          "visual": "placeholder",
+          "placeholderVisible": true,
+          "idleVideoHidden": true,
+          "idleVideoPaused": true,
+          "idleVideoSrc": "idle-missing-F-0.webm"
+        },
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2000
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2000
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"bounds\",\"bounds\":{\"x\":86,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":86,\"y\":80},\"physical\":{\"x\":86,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":98,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":98,\"y\":80},\"physical\":{\"x\":98,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":116,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":116,\"y\":80},\"physical\":{\"x\":116,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":140,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":140,\"y\":80},\"physical\":{\"x\":140,\"y\":80}}\n"
+    },
+    {
+      "arm": "C",
+      "label": "C3",
+      "rep": 0,
+      "tag": "C-r0",
+      "idleSource": {
+        "arm": "C",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+        "label": "C ROI 裁剪（编码分辨率=ROI 宽高）",
+        "exists": true,
+        "optional": true,
+        "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "expectedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "shaMatched": true,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 631169,
+        "gateExpectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "C3.webm"
+      },
+      "pid": 615300,
+      "wallSec": 10.523,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": true,
+        "env": {
+          "PET_NEXT_IDLE_ROI": "1",
+          "PET_NEXT_IDLE_ROI_MANIFEST": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/manifest.json"
+        }
+      },
+      "steadyState": {
+        "bodyIdleRoi": true,
+        "clipHidden": false,
+        "readyState": 4,
+        "waitedMs": 1
+      },
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "roi",
+        "videoSrc": "C3.webm",
+        "videoIntrinsic": {
+          "width": 226,
+          "height": 286
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": true,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "expected": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": true,
+        "layoutMatches": true,
+        "roiLayoutWired": true
+      },
+      "summary": {
+        "samples": 0,
+        "warmupSamples": 10,
+        "windowSec": 0,
+        "cpuSeconds": 0,
+        "cpuSecondsPerMinute": null,
+        "cpuPercentMedian": null,
+        "cpuPercentP90": null,
+        "cpuPercentMean": null,
+        "rssSumMbMedian": null,
+        "rssSumMbMax": null,
+        "pssSumMbMedian": null,
+        "loadavg1Median": null,
+        "loadavg1Max": null,
+        "hostCpuBusyMedian": null,
+        "decodedFrames": 0,
+        "decodedFps": null,
+        "videoSize": null
+      },
+      "probes": {
+        "click": {
+          "clickPoint": {
+            "x": 160,
+            "y": 120
+          },
+          "requested": 10,
+          "observed": 10,
+          "missed": 0,
+          "medianMs": 91.69999980926514,
+          "minMs": 84.39999961853027,
+          "maxMs": 506.3999996185303,
+          "samples": [
+            {
+              "sample": 1,
+              "latencyMs": 84.39999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 106,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 2,
+              "latencyMs": 87.70000076293945,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 109,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 3,
+              "latencyMs": 90.60000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 112,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 4,
+              "latencyMs": 506.3999996185303,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 515,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 5,
+              "latencyMs": 86.29999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 103,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 6,
+              "latencyMs": 95.89999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 117,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 7,
+              "latencyMs": 93.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 115,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 8,
+              "latencyMs": 92.79999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 115,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 9,
+              "latencyMs": 89.70000076293945,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 112,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 10,
+              "latencyMs": 105.70000076293945,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 109,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            }
+          ],
+          "evidence": "软件输入 + rVFC 呈帧（非物理帧/物理延迟）"
+        },
+        "drag": {
+          "before": {
+            "x": 80,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "after": {
+            "x": 140,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "draggingClassAfter": false,
+          "moved": true,
+          "movedDelta": {
+            "dx": 60,
+            "dy": 0
+          }
+        },
+        "hidden": {
+          "unmapError": null,
+          "mapError": null,
+          "visibilityWhileHidden": "visible",
+          "idleFramesWhileHidden2s": 416,
+          "resumeFirstIdleFrameMs": 16.5,
+          "visibilityAfterResume": "visible",
+          "visualAfterResume": "idle"
+        },
+        "failure": {
+          "copiedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+          "copyDeleted": true,
+          "visibility": "visible",
+          "visual": "placeholder",
+          "placeholderVisible": true,
+          "idleVideoHidden": true,
+          "idleVideoPaused": true,
+          "idleVideoSrc": "idle-missing-C-0.webm"
+        },
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2001
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2001
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"bounds\",\"bounds\":{\"x\":86,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":86,\"y\":80},\"physical\":{\"x\":86,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":98,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":98,\"y\":80},\"physical\":{\"x\":98,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":116,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":116,\"y\":80},\"physical\":{\"x\":116,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":140,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":140,\"y\":80},\"physical\":{\"x\":140,\"y\":80}}\n"
+    },
+    {
+      "arm": "C",
+      "label": "C3",
+      "rep": 1,
+      "tag": "C-r1",
+      "idleSource": {
+        "arm": "C",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+        "label": "C ROI 裁剪（编码分辨率=ROI 宽高）",
+        "exists": true,
+        "optional": true,
+        "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "expectedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "shaMatched": true,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 631169,
+        "gateExpectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "C3.webm"
+      },
+      "pid": 615805,
+      "wallSec": 10.144,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": true,
+        "env": {
+          "PET_NEXT_IDLE_ROI": "1",
+          "PET_NEXT_IDLE_ROI_MANIFEST": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/manifest.json"
+        }
+      },
+      "steadyState": {
+        "bodyIdleRoi": true,
+        "clipHidden": false,
+        "readyState": 4,
+        "waitedMs": 0
+      },
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "roi",
+        "videoSrc": "C3.webm",
+        "videoIntrinsic": {
+          "width": 226,
+          "height": 286
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": true,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "expected": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": true,
+        "layoutMatches": true,
+        "roiLayoutWired": true
+      },
+      "summary": {
+        "samples": 0,
+        "warmupSamples": 10,
+        "windowSec": 0,
+        "cpuSeconds": 0,
+        "cpuSecondsPerMinute": null,
+        "cpuPercentMedian": null,
+        "cpuPercentP90": null,
+        "cpuPercentMean": null,
+        "rssSumMbMedian": null,
+        "rssSumMbMax": null,
+        "pssSumMbMedian": null,
+        "loadavg1Median": null,
+        "loadavg1Max": null,
+        "hostCpuBusyMedian": null,
+        "decodedFrames": 0,
+        "decodedFps": null,
+        "videoSize": null
+      },
+      "probes": {
+        "click": {
+          "clickPoint": {
+            "x": 160,
+            "y": 120
+          },
+          "requested": 10,
+          "observed": 10,
+          "missed": 0,
+          "medianMs": 92.09999942779541,
+          "minMs": 89.0999984741211,
+          "maxMs": 122.5,
+          "samples": [
+            {
+              "sample": 1,
+              "latencyMs": 92.19999885559082,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 2,
+              "latencyMs": 98.79999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 121,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 3,
+              "latencyMs": 90.89999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 112,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 4,
+              "latencyMs": 89.0999984741211,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 110,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 5,
+              "latencyMs": 92.39999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 114,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 6,
+              "latencyMs": 92,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 113,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 7,
+              "latencyMs": 93.19999885559082,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 116,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 8,
+              "latencyMs": 90,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 112,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 9,
+              "latencyMs": 89.39999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 111,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 10,
+              "latencyMs": 122.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 150,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            }
+          ],
+          "evidence": "软件输入 + rVFC 呈帧（非物理帧/物理延迟）"
+        },
+        "drag": {
+          "before": {
+            "x": 80,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "after": {
+            "x": 140,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "draggingClassAfter": false,
+          "moved": true,
+          "movedDelta": {
+            "dx": 60,
+            "dy": 0
+          }
+        },
+        "hidden": {
+          "unmapError": null,
+          "mapError": null,
+          "visibilityWhileHidden": "visible",
+          "idleFramesWhileHidden2s": 411,
+          "resumeFirstIdleFrameMs": 30,
+          "visibilityAfterResume": "visible",
+          "visualAfterResume": "idle"
+        },
+        "failure": {
+          "copiedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+          "copyDeleted": true,
+          "visibility": "visible",
+          "visual": "placeholder",
+          "placeholderVisible": true,
+          "idleVideoHidden": true,
+          "idleVideoPaused": true,
+          "idleVideoSrc": "idle-missing-C-1.webm"
+        },
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2001
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2001
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"bounds\",\"bounds\":{\"x\":86,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":86,\"y\":80},\"physical\":{\"x\":86,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":98,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":98,\"y\":80},\"physical\":{\"x\":98,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":116,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":116,\"y\":80},\"physical\":{\"x\":116,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":140,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":140,\"y\":80},\"physical\":{\"x\":140,\"y\":80}}\n"
+    },
+    {
+      "arm": "F",
+      "label": "F3",
+      "rep": 1,
+      "tag": "F-r1",
+      "idleSource": {
+        "arm": "F",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+        "label": "F 全画布重编码（与 C 同预处理/编码/PTS）",
+        "exists": true,
+        "optional": true,
+        "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "expectedSha": null,
+        "shaMatched": null,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 625108,
+        "gateExpectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "F3.webm"
+      },
+      "pid": 616273,
+      "wallSec": 10.45,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": null,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "F3.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 0,
+        "warmupSamples": 10,
+        "windowSec": 0,
+        "cpuSeconds": 0,
+        "cpuSecondsPerMinute": null,
+        "cpuPercentMedian": null,
+        "cpuPercentP90": null,
+        "cpuPercentMean": null,
+        "rssSumMbMedian": null,
+        "rssSumMbMax": null,
+        "pssSumMbMedian": null,
+        "loadavg1Median": null,
+        "loadavg1Max": null,
+        "hostCpuBusyMedian": null,
+        "decodedFrames": 0,
+        "decodedFps": null,
+        "videoSize": null
+      },
+      "probes": {
+        "click": {
+          "clickPoint": {
+            "x": 160,
+            "y": 120
+          },
+          "requested": 10,
+          "observed": 10,
+          "missed": 0,
+          "medianMs": 93.55000019073486,
+          "minMs": 69.10000038146973,
+          "maxMs": 451.5,
+          "samples": [
+            {
+              "sample": 1,
+              "latencyMs": 87.29999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 2,
+              "latencyMs": 93.19999885559082,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 114,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 3,
+              "latencyMs": 69.10000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 4,
+              "latencyMs": 207.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 225,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 5,
+              "latencyMs": 95.10000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 116,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 6,
+              "latencyMs": 108.69999885559082,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 113,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 7,
+              "latencyMs": 92.79999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 8,
+              "latencyMs": 451.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 471,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 9,
+              "latencyMs": 93.60000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 114,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 10,
+              "latencyMs": 93.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 113,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            }
+          ],
+          "evidence": "软件输入 + rVFC 呈帧（非物理帧/物理延迟）"
+        },
+        "drag": {
+          "before": {
+            "x": 80,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "after": {
+            "x": 140,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "draggingClassAfter": false,
+          "moved": true,
+          "movedDelta": {
+            "dx": 60,
+            "dy": 0
+          }
+        },
+        "hidden": {
+          "unmapError": null,
+          "mapError": null,
+          "visibilityWhileHidden": "visible",
+          "idleFramesWhileHidden2s": 416,
+          "resumeFirstIdleFrameMs": 29.799999237060547,
+          "visibilityAfterResume": "visible",
+          "visualAfterResume": "idle"
+        },
+        "failure": {
+          "copiedSha": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+          "copyDeleted": true,
+          "visibility": "visible",
+          "visual": "placeholder",
+          "placeholderVisible": true,
+          "idleVideoHidden": true,
+          "idleVideoPaused": true,
+          "idleVideoSrc": "idle-missing-F-1.webm"
+        },
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2001
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2001
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"bounds\",\"bounds\":{\"x\":86,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":86,\"y\":80},\"physical\":{\"x\":86,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":98,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":98,\"y\":80},\"physical\":{\"x\":98,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":116,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":116,\"y\":80},\"physical\":{\"x\":116,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":140,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":140,\"y\":80},\"physical\":{\"x\":140,\"y\":80}}\n"
+    },
+    {
+      "arm": "O",
+      "label": "O",
+      "rep": 1,
+      "tag": "O-r1",
+      "idleSource": {
+        "arm": "O",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+        "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
+        "exists": true,
+        "optional": false,
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "expectedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "shaMatched": true,
+        "shippedPath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/idle.webm",
+        "shippedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "matchesShipped": true,
+        "bytes": 78419,
+        "gateExpectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "O.webm"
+      },
+      "pid": 616776,
+      "wallSec": 10.299,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "O.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 0,
+        "warmupSamples": 10,
+        "windowSec": 0,
+        "cpuSeconds": 0,
+        "cpuSecondsPerMinute": null,
+        "cpuPercentMedian": null,
+        "cpuPercentP90": null,
+        "cpuPercentMean": null,
+        "rssSumMbMedian": null,
+        "rssSumMbMax": null,
+        "pssSumMbMedian": null,
+        "loadavg1Median": null,
+        "loadavg1Max": null,
+        "hostCpuBusyMedian": null,
+        "decodedFrames": 0,
+        "decodedFps": null,
+        "videoSize": null
+      },
+      "probes": {
+        "click": {
+          "clickPoint": {
+            "x": 160,
+            "y": 120
+          },
+          "requested": 10,
+          "observed": 10,
+          "missed": 0,
+          "medianMs": 90.55000019073486,
+          "minMs": 78.10000038146973,
+          "maxMs": 110.69999885559082,
+          "samples": [
+            {
+              "sample": 1,
+              "latencyMs": 85.29999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 106,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 2,
+              "latencyMs": 90.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 103,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 3,
+              "latencyMs": 97.89999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 119,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 4,
+              "latencyMs": 88,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 109,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 5,
+              "latencyMs": 90.60000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 111,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 6,
+              "latencyMs": 93.10000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 103,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 7,
+              "latencyMs": 85.29999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 8,
+              "latencyMs": 97.10000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 117,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 9,
+              "latencyMs": 110.69999885559082,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 114,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 10,
+              "latencyMs": 78.10000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            }
+          ],
+          "evidence": "软件输入 + rVFC 呈帧（非物理帧/物理延迟）"
+        },
+        "drag": {
+          "before": {
+            "x": 80,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "after": {
+            "x": 140,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "draggingClassAfter": false,
+          "moved": true,
+          "movedDelta": {
+            "dx": 60,
+            "dy": 0
+          }
+        },
+        "hidden": {
+          "unmapError": null,
+          "mapError": null,
+          "visibilityWhileHidden": "visible",
+          "idleFramesWhileHidden2s": 414,
+          "resumeFirstIdleFrameMs": 13.899999618530273,
+          "visibilityAfterResume": "visible",
+          "visualAfterResume": "idle"
+        },
+        "failure": {
+          "copiedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "copyDeleted": true,
+          "visibility": "visible",
+          "visual": "placeholder",
+          "placeholderVisible": true,
+          "idleVideoHidden": true,
+          "idleVideoPaused": true,
+          "idleVideoSrc": "idle-missing-O-1.webm"
+        },
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2000
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2000
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"bounds\",\"bounds\":{\"x\":86,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":86,\"y\":80},\"physical\":{\"x\":86,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":98,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":98,\"y\":80},\"physical\":{\"x\":98,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":116,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":116,\"y\":80},\"physical\":{\"x\":116,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":140,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":140,\"y\":80},\"physical\":{\"x\":140,\"y\":80}}\n"
+    },
+    {
+      "arm": "O",
+      "label": "O",
+      "rep": 2,
+      "tag": "O-r2",
+      "idleSource": {
+        "arm": "O",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+        "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
+        "exists": true,
+        "optional": false,
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "expectedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "shaMatched": true,
+        "shippedPath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/idle.webm",
+        "shippedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "matchesShipped": true,
+        "bytes": 78419,
+        "gateExpectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "O.webm"
+      },
+      "pid": 617292,
+      "wallSec": 10.221,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": null,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": false,
+        "reason": "没有页面快照"
+      },
+      "summary": {
+        "samples": 0,
+        "warmupSamples": 10,
+        "windowSec": 0,
+        "cpuSeconds": 0,
+        "cpuSecondsPerMinute": null,
+        "cpuPercentMedian": null,
+        "cpuPercentP90": null,
+        "cpuPercentMean": null,
+        "rssSumMbMedian": null,
+        "rssSumMbMax": null,
+        "pssSumMbMedian": null,
+        "loadavg1Median": null,
+        "loadavg1Max": null,
+        "hostCpuBusyMedian": null,
+        "decodedFrames": 0,
+        "decodedFps": null,
+        "videoSize": null
+      },
+      "probes": {},
+      "exit": null,
+      "leftovers": [],
+      "failures": [
+        "45s 内 idle 未进入可播放/播放状态",
+        "cdp evaluate exception: \"Uncaught\" | TypeError: Cannot read properties of undefined (reading 'mark')\n    at <anonymous>:1:18"
+      ],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"console\",\"message\":\"Electron sandboxed_renderer.bundle.js script failed to run\"}\n{\"event\":\"console\",\"message\":\"TypeError: Cannot destructure property 'preloadScripts' of 'binding.startupData' as it is null.\"}\n{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    },
+    {
+      "arm": "F",
+      "label": "F3",
+      "rep": 2,
+      "tag": "F-r2",
+      "idleSource": {
+        "arm": "F",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+        "label": "F 全画布重编码（与 C 同预处理/编码/PTS）",
+        "exists": true,
+        "optional": true,
+        "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "expectedSha": null,
+        "shaMatched": null,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 625108,
+        "gateExpectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "F3.webm"
+      },
+      "pid": 617720,
+      "wallSec": 11.038,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": null,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "F3.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 0,
+        "warmupSamples": 10,
+        "windowSec": 0,
+        "cpuSeconds": 0,
+        "cpuSecondsPerMinute": null,
+        "cpuPercentMedian": null,
+        "cpuPercentP90": null,
+        "cpuPercentMean": null,
+        "rssSumMbMedian": null,
+        "rssSumMbMax": null,
+        "pssSumMbMedian": null,
+        "loadavg1Median": null,
+        "loadavg1Max": null,
+        "hostCpuBusyMedian": null,
+        "decodedFrames": 0,
+        "decodedFps": null,
+        "videoSize": null
+      },
+      "probes": {
+        "click": {
+          "clickPoint": {
+            "x": 160,
+            "y": 120
+          },
+          "requested": 10,
+          "observed": 10,
+          "missed": 0,
+          "medianMs": 90.25000095367432,
+          "minMs": 81.9000015258789,
+          "maxMs": 242.9000015258789,
+          "samples": [
+            {
+              "sample": 1,
+              "latencyMs": 86,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 106,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 2,
+              "latencyMs": 87.9000015258789,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 111,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 3,
+              "latencyMs": 89.10000038146973,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 105,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 4,
+              "latencyMs": 94.9000015258789,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 118,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 5,
+              "latencyMs": 89.80000114440918,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 111,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 6,
+              "latencyMs": 91.20000076293945,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 112,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 7,
+              "latencyMs": 242.9000015258789,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 275,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 8,
+              "latencyMs": 81.9000015258789,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 105,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 9,
+              "latencyMs": 90.70000076293945,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 112,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 10,
+              "latencyMs": 93.80000114440918,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 115,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            }
+          ],
+          "evidence": "软件输入 + rVFC 呈帧（非物理帧/物理延迟）"
+        },
+        "drag": {
+          "before": {
+            "x": 80,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "after": {
+            "x": 140,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "draggingClassAfter": false,
+          "moved": true,
+          "movedDelta": {
+            "dx": 60,
+            "dy": 0
+          }
+        },
+        "hidden": {
+          "unmapError": null,
+          "mapError": null,
+          "visibilityWhileHidden": "visible",
+          "idleFramesWhileHidden2s": 430,
+          "resumeFirstIdleFrameMs": 13,
+          "visibilityAfterResume": "visible",
+          "visualAfterResume": "idle"
+        },
+        "failure": {
+          "copiedSha": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+          "copyDeleted": true,
+          "visibility": "visible",
+          "visual": "placeholder",
+          "placeholderVisible": true,
+          "idleVideoHidden": true,
+          "idleVideoPaused": true,
+          "idleVideoSrc": "idle-missing-F-2.webm"
+        },
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2000
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2000
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"bounds\",\"bounds\":{\"x\":86,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":86,\"y\":80},\"physical\":{\"x\":86,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":98,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":98,\"y\":80},\"physical\":{\"x\":98,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":116,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":116,\"y\":80},\"physical\":{\"x\":116,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":140,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":140,\"y\":80},\"physical\":{\"x\":140,\"y\":80}}\n"
+    },
+    {
+      "arm": "C",
+      "label": "C3",
+      "rep": 2,
+      "tag": "C-r2",
+      "idleSource": {
+        "arm": "C",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+        "label": "C ROI 裁剪（编码分辨率=ROI 宽高）",
+        "exists": true,
+        "optional": true,
+        "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "expectedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "shaMatched": true,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 631169,
+        "gateExpectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "C3.webm"
+      },
+      "pid": 618254,
+      "wallSec": 10.162,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": true,
+        "env": {
+          "PET_NEXT_IDLE_ROI": "1",
+          "PET_NEXT_IDLE_ROI_MANIFEST": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/manifest.json"
+        }
+      },
+      "steadyState": {
+        "bodyIdleRoi": true,
+        "clipHidden": false,
+        "readyState": 4,
+        "waitedMs": 1
+      },
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "roi",
+        "videoSrc": "C3.webm",
+        "videoIntrinsic": {
+          "width": 226,
+          "height": 286
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": true,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "expected": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": true,
+        "layoutMatches": true,
+        "roiLayoutWired": true
+      },
+      "summary": {
+        "samples": 0,
+        "warmupSamples": 10,
+        "windowSec": 0,
+        "cpuSeconds": 0,
+        "cpuSecondsPerMinute": null,
+        "cpuPercentMedian": null,
+        "cpuPercentP90": null,
+        "cpuPercentMean": null,
+        "rssSumMbMedian": null,
+        "rssSumMbMax": null,
+        "pssSumMbMedian": null,
+        "loadavg1Median": null,
+        "loadavg1Max": null,
+        "hostCpuBusyMedian": null,
+        "decodedFrames": 0,
+        "decodedFps": null,
+        "videoSize": null
+      },
+      "probes": {
+        "click": {
+          "clickPoint": {
+            "x": 160,
+            "y": 120
+          },
+          "requested": 10,
+          "observed": 10,
+          "missed": 0,
+          "medianMs": 91.44999980926514,
+          "minMs": 73.79999923706055,
+          "maxMs": 98.89999961853027,
+          "samples": [
+            {
+              "sample": 1,
+              "latencyMs": 87.69999885559082,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 106,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 2,
+              "latencyMs": 93.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 3,
+              "latencyMs": 84.29999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 105,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 4,
+              "latencyMs": 91.39999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 113,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 5,
+              "latencyMs": 91.5,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 113,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 6,
+              "latencyMs": 73.79999923706055,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 104,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 7,
+              "latencyMs": 98.89999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 121,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 8,
+              "latencyMs": 92.19999885559082,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 115,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 9,
+              "latencyMs": 89.39999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 109,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            },
+            {
+              "sample": 10,
+              "latencyMs": 92.39999961853027,
+              "src": "reaction.webm",
+              "mediaTimeMs": 42,
+              "wallMs": 113,
+              "visualBefore": "idle",
+              "visualAfter": "reaction",
+              "returnedToIdle": true
+            }
+          ],
+          "evidence": "软件输入 + rVFC 呈帧（非物理帧/物理延迟）"
+        },
+        "drag": {
+          "before": {
+            "x": 80,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "after": {
+            "x": 140,
+            "y": 80,
+            "width": 320,
+            "height": 240
+          },
+          "draggingClassAfter": false,
+          "moved": true,
+          "movedDelta": {
+            "dx": 60,
+            "dy": 0
+          }
+        },
+        "hidden": {
+          "unmapError": null,
+          "mapError": null,
+          "visibilityWhileHidden": "visible",
+          "idleFramesWhileHidden2s": 408,
+          "resumeFirstIdleFrameMs": 1.0999984741210938,
+          "visibilityAfterResume": "visible",
+          "visualAfterResume": "idle"
+        },
+        "failure": {
+          "copiedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+          "copyDeleted": true,
+          "visibility": "visible",
+          "visual": "placeholder",
+          "placeholderVisible": true,
+          "idleVideoHidden": true,
+          "idleVideoPaused": true,
+          "idleVideoSrc": "idle-missing-C-2.webm"
+        },
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2000
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2000
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"bounds\",\"bounds\":{\"x\":86,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":86,\"y\":80},\"physical\":{\"x\":86,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":98,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":98,\"y\":80},\"physical\":{\"x\":98,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":116,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":116,\"y\":80},\"physical\":{\"x\":116,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":140,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":140,\"y\":80},\"physical\":{\"x\":140,\"y\":80}}\n"
+    }
+  ],
+  "perArm": {
+    "O": {
+      "reps": 3,
+      "repsWithData": 0,
+      "cpuSecondsPerMinuteMedian": null,
+      "cpuSecondsPerMinuteValues": [],
+      "cpuPercentMedianAcrossReps": null,
+      "rssSumMbMedian": null,
+      "rssSumMbValues": [],
+      "loadavg1Median": null,
+      "loadavg1Values": [],
+      "decodedFpsMedian": null,
+      "videoSize": null
+    },
+    "F": {
+      "reps": 3,
+      "repsWithData": 0,
+      "cpuSecondsPerMinuteMedian": null,
+      "cpuSecondsPerMinuteValues": [],
+      "cpuPercentMedianAcrossReps": null,
+      "rssSumMbMedian": null,
+      "rssSumMbValues": [],
+      "loadavg1Median": null,
+      "loadavg1Values": [],
+      "decodedFpsMedian": null,
+      "videoSize": null
+    },
+    "C": {
+      "reps": 3,
+      "repsWithData": 0,
+      "cpuSecondsPerMinuteMedian": null,
+      "cpuSecondsPerMinuteValues": [],
+      "cpuPercentMedianAcrossReps": null,
+      "rssSumMbMedian": null,
+      "rssSumMbValues": [],
+      "loadavg1Median": null,
+      "loadavg1Values": [],
+      "decodedFpsMedian": null,
+      "videoSize": null
+    }
+  },
+  "pairs": [
+    {
+      "rep": 0,
+      "o": null,
+      "f": null,
+      "c": null,
+      "cVsOPercent": null,
+      "cVsFPercent": null
+    },
+    {
+      "rep": 1,
+      "o": null,
+      "f": null,
+      "c": null,
+      "cVsOPercent": null,
+      "cVsFPercent": null
+    },
+    {
+      "rep": 2,
+      "o": null,
+      "f": null,
+      "c": null,
+      "cVsOPercent": null,
+      "cVsFPercent": null
+    }
+  ],
+  "verdict": {
+    "kind": "behavioral",
+    "pass": false,
+    "checks": {
+      "layoutAllMatch": false,
+      "clicksAllHit": false,
+      "hiddenResumeToIdle": false,
+      "failurePlaceholder": false,
+      "exitCodesZero": false,
+      "noLeftoverProcesses": true
+    },
+    "armsChecked": 9,
+    "incompleteArms": [],
+    "failed": [
+      {
+        "tag": "O#2",
+        "problems": [
+          "布局不符",
+          "点击未命中 null",
+          "隐藏恢复未回 idle",
+          "失败占位不可见",
+          "退出码 null"
+        ]
+      }
+    ],
+    "clickMedianMsAcrossArms": 91,
+    "detail": [
+      {
+        "tag": "O#0",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 88.35,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "F3#0",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 89.75,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "C3#0",
+        "layoutMatches": true,
+        "roiLayoutWired": true,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 91.7,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "C3#1",
+        "layoutMatches": true,
+        "roiLayoutWired": true,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 92.1,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "F3#1",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 93.55,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "O#1",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 90.55,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "O#2",
+        "layoutMatches": false,
+        "roiLayoutWired": null,
+        "objectFit": null,
+        "clickObserved": null,
+        "clickRequested": null,
+        "clickMissed": null,
+        "clickMedianMs": null,
+        "hiddenResumeIdle": null,
+        "failurePlaceholderVisible": null,
+        "exitCode": null,
+        "leftovers": 0
+      },
+      {
+        "tag": "F3#2",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 90.25,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "C3#2",
+        "layoutMatches": true,
+        "roiLayoutWired": true,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 91.45,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      }
+    ],
+    "reasons": [
+      "O#2: 布局不符/点击未命中 null/隐藏恢复未回 idle/失败占位不可见/退出码 null"
+    ],
+    "note": "behavior 轮只做功能回归（--seconds=0 不采 CPU），因此不套用 CPU 收益门；incompleteArms 为采集侧抖动，不补跑"
+  },
+  "rawNdjson": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/raw.ndjson",
+  "failures": [
+    "O-r2: 45s 内 idle 未进入可播放/播放状态",
+    "O-r2: cdp evaluate exception: \"Uncaught\" | TypeError: Cannot read properties of undefined (reading 'mark')\n    at <anonymous>:1:18"
+  ],
+  "notRun": [
+    "roi-layout-on-by-flag"
+  ],
+  "roiWiring": {
+    "enabledByFlag": true,
+    "productSupportsWiring": true,
+    "env": {
+      "PET_NEXT_IDLE_ROI": "1",
+      "PET_NEXT_IDLE_ROI_MANIFEST": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/manifest.json"
+    }
+  },
+  "provenance": {
+    "assetArchive": {
+      "ok": true,
+      "repo": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf",
+      "ref": "07278fd",
+      "subpath": "experiments/idle-roi/out-v3-yuva",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed",
+      "command": "git -C /data3/DATA/project/project_meishijiang/m312r1-wt-perf archive 07278fd pet-next/experiments/idle-roi/out-v3-yuva | tar -x -C /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed --strip-components=3",
+      "files": [
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+          "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+          "bytes": 631169
+        },
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+          "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+          "bytes": 625108
+        },
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "bytes": 78419
+        },
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/build-report.json",
+          "sha256": "80d46651d72742b7b962006f91e5d7fba4bed9f999cc7ffed83263382acce804",
+          "bytes": 22366
+        },
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/manifest.json",
+          "sha256": "278ca4226549d6c79cf673cea1784d3e95cf0f3999c9b16669b698a0a0bb0f8f",
+          "bytes": 3021
+        }
+      ]
+    },
+    "assetsDir": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva",
+    "oSourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "fSourceSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+    "cSourceSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+    "oMatchesShipped": true,
+    "note": "数据来自以上 SHA 的已提交字节；未提交工作区快照不作为结论依据"
+  },
+  "finalized": {
+    "at": "2026-11-10T11:25:08.979Z",
+    "kind": "behavioral",
+    "tool": "node bench/idle-roi/run.mjs --mode=finalize --run=<stamp>",
+    "previousVerdict": {
+      "cVsOPercent": null,
+      "cVsFPercent": null,
+      "cVsOPairSupports": 0,
+      "cVsFPairSupports": 0,
+      "pairCount": 0,
+      "rssDeltaPercent": null,
+      "loadDelta": null,
+      "checks": {
+        "cpuMedianDropAtLeast15": false,
+        "cBetterThanFDirection": false,
+        "pairedSupportAtLeast2of3": false,
+        "rssWithin10Percent": false,
+        "loadComparable": false
+      },
+      "pass": false,
+      "reasons": [
+        "缺少 O 或 C 的 CPU 数据"
+      ],
+      "note": "工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读"
+    },
+    "note": "behavior 轮（--seconds=0）只做功能回归，判定为功能性门（布局/点击/隐藏/失败占位/退出/残留），不套 CPU 收益门"
+  }
+}

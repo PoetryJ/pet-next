@@ -6,6 +6,9 @@
 
 ## 0. 本轮结论：**门不过，全部 not-run**
 
+> 后续进展：C 已出 `passed` 报告、B 的 v3 已集成；三臂实测结果与门判定见 **`RESULTS-M3-12-R1.md`**
+> （本节保留门未通过时的原始状态）。
+
 已提交的 `tests/idle-roi/out/quality-report.json`
 （sha256 `5a1583b4…3612d8`，提交 `652cb63`）的 `verdict.status` 是 **failed**
 （`verdict.failed: ["o-to-c"]`，`gates` 里 `o-to-c` 为 `pass:false`）。

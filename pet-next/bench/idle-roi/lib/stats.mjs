@@ -150,3 +150,101 @@ export function verdict({ perArm, pairs }) {
     note: '工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读',
   };
 }
+
+/**
+ * behavior 模式（`--seconds=0`，只做功能回归）的判定：**不复用 CPU 门**。
+ * 判据全部来自探针：布局（含 C 的 ROI 接线）、退出码、残留进程、点击命中率、
+ * 隐藏恢复后回到 idle、失败占位可见。
+ * `incompleteArms` 是"该臂没产出探针"（例如页面 45s 内未进入可播放状态），
+ * 属采集侧抖动，单独列出、不计入 pass/fail，也不补跑填数。
+ * @param {{arms:Array<Record<string, any>>}} input
+ */
+export function behavioralVerdict({ arms }) {
+  const detail = [];
+  const failed = [];
+  const incomplete = [];
+  let noLeftovers = true;
+  let allExitZero = true;
+  for (const entry of arms) {
+    const tag = `${entry.label ?? entry.arm}#${entry.rep}`;
+    const probes = entry.probes ?? null;
+    const click = probes?.click ?? null;
+    const layout = entry.layout ?? null;
+    const exitCode = entry.exit?.exitCode ?? null;
+    const leftovers = (entry.leftovers ?? []).length;
+    // “没有数据”和“数据不合格”必须分开：页面 45s 没起来时 click/layout 全是 null，
+    // 那不是功能性失败，是采集抖动，记进 incompleteArms、不补跑、也不算 pass。
+    const hasClickSamples = Array.isArray(click?.samples) ? click.samples.length > 0 : typeof click?.medianMs === 'number';
+    const hasLayout = layout?.layoutMatches === true || layout?.layoutMatches === false;
+    if (!probes || (!hasClickSamples && !hasLayout)) {
+      incomplete.push({ tag, reason: (entry.failures ?? []).join('; ') || '没有探针数据' });
+      continue;
+    }
+    const row = {
+      tag,
+      label: entry.label ?? entry.arm,
+      layoutMatches: layout ? layout.layoutMatches === true : null,
+      roiLayoutWired: layout ? layout.roiLayoutWired ?? null : null,
+      objectFit: layout?.objectFit ?? null,
+      clickObserved: click?.observed ?? null,
+      clickRequested: click?.requested ?? null,
+      clickMissed: click?.missed ?? null,
+      clickMedianMs: typeof click?.medianMs === 'number' ? round(click.medianMs, 2) : null,
+      hiddenResumeIdle: probes?.hidden?.visualAfterResume ?? null,
+      failurePlaceholderVisible: probes?.failure?.placeholderVisible ?? null,
+      exitCode,
+      leftovers,
+    };
+    detail.push(row);
+    const problems = [];
+    if (row.layoutMatches !== true) problems.push('布局不符');
+    if (row.clickMissed !== 0) problems.push(`点击未命中 ${String(row.clickMissed)}`);
+    if (row.clickObserved !== row.clickRequested) problems.push(`点击样本 ${String(row.clickObserved)}/${String(row.clickRequested)}`);
+    if (row.hiddenResumeIdle !== 'idle') problems.push('隐藏恢复未回 idle');
+    if (row.failurePlaceholderVisible !== true) problems.push('失败占位不可见');
+    if (exitCode !== 0) problems.push(`退出码 ${String(exitCode)}`);
+    if (leftovers !== 0) problems.push(`残留进程 ${leftovers}`);
+    if (problems.length > 0) failed.push({ tag, problems });
+    if (exitCode !== 0) allExitZero = false;
+    if (leftovers !== 0) noLeftovers = false;
+  }
+  const clickMedians = detail.map((row) => row.clickMedianMs).filter((value) => typeof value === 'number');
+  // 逐臂功能汇总（替代 CPU 的 perArm：behavior 轮不采 CPU，不该出现"三臂全 null"的假象）
+  const perArmByLabel = {};
+  for (const row of detail) {
+    const bucket = perArmByLabel[row.label] ?? { reps: 0, clickMedianMsValues: [], exits: [], leftovers: [], layoutAllMatch: true, roiLayoutWired: null, objectFit: null };
+    bucket.reps += 1;
+    if (typeof row.clickMedianMs === 'number') bucket.clickMedianMsValues.push(row.clickMedianMs);
+    bucket.exits.push(row.exitCode);
+    bucket.leftovers.push(row.leftovers);
+    bucket.layoutAllMatch = bucket.layoutAllMatch && row.layoutMatches === true;
+    bucket.roiLayoutWired = bucket.roiLayoutWired === true || row.roiLayoutWired === true;
+    bucket.objectFit = row.objectFit ?? bucket.objectFit;
+    perArmByLabel[row.label] = bucket;
+  }
+  for (const bucket of Object.values(perArmByLabel)) {
+    bucket.clickMedianMs = typeof median(bucket.clickMedianMsValues) === 'number' ? round(median(bucket.clickMedianMsValues), 2) : null;
+    bucket.exitAllZero = bucket.exits.every((code) => code === 0);
+    bucket.leftoversAllZero = bucket.leftovers.every((count) => count === 0);
+  }
+  return {
+    perArmByLabel,
+    kind: 'behavioral',
+    pass: detail.length > 0 && failed.length === 0 && allExitZero && noLeftovers,
+    checks: {
+      layoutAllMatch: detail.length > 0 && detail.every((row) => row.layoutMatches === true),
+      clicksAllHit: detail.length > 0 && detail.every((row) => row.clickMissed === 0 && row.clickObserved === row.clickRequested),
+      hiddenResumeToIdle: detail.length > 0 && detail.every((row) => row.hiddenResumeIdle === 'idle'),
+      failurePlaceholder: detail.length > 0 && detail.every((row) => row.failurePlaceholderVisible === true),
+      exitCodesZero: allExitZero,
+      noLeftoverProcesses: noLeftovers,
+    },
+    armsChecked: detail.length,
+    incompleteArms: incomplete,
+    failed,
+    clickMedianMsAcrossArms: typeof median(clickMedians) === 'number' ? round(median(clickMedians), 2) : null,
+    detail,
+    reasons: failed.map((item) => `${item.tag}: ${item.problems.join('/')}`),
+    note: 'behavior 轮只做功能回归（--seconds=0 不采 CPU），因此不套用 CPU 收益门；incompleteArms 为采集侧抖动，不补跑',
+  };
+}
