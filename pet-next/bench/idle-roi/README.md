@@ -219,9 +219,22 @@ A 的提交 `da02255` 与负责人集成提交 `9dc035e` 的三臂字节逐字�
   Escape 退出码 0，退出后残留进程 0；构建 up-to-date；electron v43.3.0。
 - 产品源码改动 0（`productDirtyFiles=0`，只算 `app/electron/core/adapters/contracts/scripts/package.json`）；
   `dirtyFiles=3` 是本 bench 工具自身当时的未提交改动。
-- 说明：`steadyState` / `observedDpr` / `sourceShaVerified` 三个字段是这份自检之后加的
-  （已用 3s 短跑验证：dpr=1、稳定态仅在 C 臂等待、SHA 校验在 manifest 存在时执行），
-  所以不在这份历史 summary 里；下一次真实三臂会带上。
+- 说明：`steadyState` / `observedDpr` / `sourceShaVerified` / `build.distCss` 是这份自检
+  之后加的（已用 3s 短跑验证：dpr=1、稳定态仅在 C 臂等待、SHA 校验仅在 manifest 存在时
+  执行、`dist/app/page.css` 与源同 SHA 且含 `object-fit: contain`），所以不在这份历史
+  summary 里；下一次真实三臂会带上。
+
+### 9.1 仪器自身修复项（不藏在 diff 里）
+
+- **ROI env 曾全局注入（已修）**：早期版本 `--roi-layout=on` 会给全部三臂设
+  `PET_NEXT_IDLE_ROI*`。sha 门比对的是 `assets/idle.webm`，所以 O/F 也会被套上 ROI 盒，
+  O 的 rect 会从 `0,0,320,240` 变成 `104,56,113,143`，O 基线“假失败”、整轮数据不可用。
+  现在只有 `arm === 'C'` 注入，且逐臂记 `roiEnvApplied`。**用旧版跑出的三臂数据一律作废。**
+- **只比 rect 会漏判（已修）**：`object-fit:none` 时 rect 与 intrinsic 都对但画面 2 倍大；
+  现在 C 与 O/F 都要求 `objectFit === 'contain'`（全等，不是“非 none”）。
+- **dist 可能是旧的（已加证据）**：`build.distCss` 记录 `dist/app/page.css` 与源
+  `app/page.css` 的 SHA 是否相同（`copy-static` 原样复制，不同即未重建），并抓出
+  `object-fit` 行号与文本，避免把旧 dist 的 `none` 误判成“没接线”。
 - 工具覆盖已自证：已提交字节抽取与 SHA 记账、进程树 CPU/RSS/PSS、真实解码帧与视频尺寸、
   10 次点击原始值、loadavg、ready/退出码/残留、warmup/measure 分列、raw.ndjson + summary.json。
 

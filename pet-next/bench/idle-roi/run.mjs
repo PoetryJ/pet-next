@@ -583,6 +583,38 @@ function gitOut(args) {
   }
 }
 
+/**
+ * dist 侧 CSS 证据：`scripts/copy-static.mjs` 是原样 cp，所以
+ * `dist/app/page.css` 的 SHA 必须等于源 `app/page.css` 的 SHA；不等就说明“没重建”，
+ * 不能把旧 dist 的 object-fit 当成被测源码的真实值。
+ */
+function distCssEvidence() {
+  const file = path.join(petRoot, 'dist/app/page.css');
+  const source = path.join(petRoot, 'app/page.css');
+  if (!existsSync(file)) return { exists: false, path: file };
+  const text = readFileSync(file, 'utf8');
+  const sourceText = existsSync(source) ? readFileSync(source, 'utf8') : null;
+  const distSha = sha256(file);
+  const sourceSha = sourceText === null ? null : sha256(source);
+  const objectFitLines = [];
+  const idleRoiLines = [];
+  text.split('\n').forEach((line, index) => {
+    if (line.includes('object-fit')) objectFitLines.push({ line: index + 1, text: line.trim() });
+    if (line.includes('idle-roi')) idleRoiLines.push({ line: index + 1, text: line.trim() });
+  });
+  return {
+    exists: true,
+    path: file,
+    sha256: distSha,
+    sourcePath: source,
+    sourceSha256: sourceSha,
+    matchesSource: sourceSha === null ? null : distSha === sourceSha,
+    objectFitLines,
+    idleRoiLines: idleRoiLines.slice(0, 20),
+    note: 'copy-static 原样复制；matchesSource=false 说明 dist 未重建',
+  };
+}
+
 function electronVersion() {
   try {
     return JSON.parse(readFileSync(path.join(petRoot, 'node_modules/electron/package.json'), 'utf8')).version;
@@ -830,7 +862,10 @@ async function main() {
   });
 
   build = ensureBuild();
-  printStatus(`build=${build.built ? `yes(${build.ms}ms)` : build.reason}`);
+  build.distCss = distCssEvidence();
+  printStatus(
+    `build=${build.built ? `yes(${build.ms}ms)` : build.reason} distCss.objectFit=${JSON.stringify(build.distCss.objectFitLines ?? null)} matchesSource=${String(build.distCss.matchesSource)}`,
+  );
   const preflight = electronPreflight();
   printStatus(`electron=${preflight.version} attempts=${preflight.attempt ?? preflight.attempts ?? '?'}`);
 
