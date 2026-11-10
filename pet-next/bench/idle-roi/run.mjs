@@ -892,13 +892,14 @@ async function main() {
   const assetsRef = value('assets-ref', '');
   const assetsRepo = value('assets-repo', path.resolve(petRoot, '..'));
   const assetsDirArg = value('assets-dir', '');
+  const assetsSubpath = value('assets-subpath', 'experiments/idle-roi/out');
   let archive = null;
   let assetsDir = null;
   if (assetsDirArg !== '') {
     assetsDir = resolveAssetsDir(path.resolve(assetsDirArg));
   } else if (assetsRef !== '') {
     const dest = path.join(outDir, 'assets-committed');
-    archive = stageCommittedAssets({ repo: assetsRepo, ref: assetsRef, dest });
+    archive = stageCommittedAssets({ repo: assetsRepo, ref: assetsRef, dest, subpath: assetsSubpath });
     printStatus(`assets-ref=${assetsRef} -> ${archive.ok ? dest : `失败：${archive.error}`}`);
     if (!archive.ok) {
       console.error(`git archive 取已提交素材失败：${archive.command}\n${archive.error}`);

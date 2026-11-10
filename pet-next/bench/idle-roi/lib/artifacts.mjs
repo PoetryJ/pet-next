@@ -24,8 +24,10 @@ const C_CANDIDATES = [
   'experiments/idle-roi/out/C-roi.webm',
 ];
 
-/** `--assets-ref` 只提取这个子树；strip 3 层后得到 `<dest>/out/*`。 */
+/** `--assets-ref` 默认提取 v1 子树；strip 3 层后得到 `<dest>/out/*`。 */
 export const ARCHIVE_SUBPATH = 'pet-next/experiments/idle-roi/out';
+/** v2（编码域裁剪）在 `out-v2/`，用 `--assets-subpath=experiments/idle-roi/out-v2` 指定。 */
+export const ARCHIVE_SUBPATH_V2 = 'pet-next/experiments/idle-roi/out-v2';
 
 /**
  * 从**已提交** ref 取三臂素材（不读别人的未提交工作区）。
@@ -33,27 +35,23 @@ export const ARCHIVE_SUBPATH = 'pet-next/experiments/idle-roi/out';
  *            tar -x -C <dest> --strip-components=3`。
  * @param {{repo:string, ref:string, dest:string}} options
  */
-export function stageCommittedAssets({ repo, ref, dest }) {
+export function stageCommittedAssets({ repo, ref, dest, subpath = 'experiments/idle-roi/out' }) {
   mkdirSync(dest, { recursive: true });
+  // 只接受 pet-next/ 下的相对路径，避免把 --assets-subpath 变成任意路径读取。
+  const clean = String(subpath).replace(/^\/+/, '').replace(/^pet-next\//, '');
+  const archivePath = `pet-next/${clean}`;
+  const command = `git -C ${repo} archive ${ref} ${archivePath} | tar -x -C ${dest} --strip-components=3`;
   const head = spawnSync('git', ['-C', repo, 'cat-file', '-t', ref], { encoding: 'utf8' });
   if (head.status !== 0) {
     return { ok: false, command: `git -C ${repo} cat-file -t ${ref}`, error: (head.stderr || head.stdout || '').trim() };
   }
-  const archive = spawnSync('git', ['-C', repo, 'archive', ref, ARCHIVE_SUBPATH], { maxBuffer: 256 * 1024 * 1024 });
+  const archive = spawnSync('git', ['-C', repo, 'archive', ref, archivePath], { maxBuffer: 256 * 1024 * 1024 });
   if (archive.status !== 0) {
-    return {
-      ok: false,
-      command: `git -C ${repo} archive ${ref} ${ARCHIVE_SUBPATH}`,
-      error: String(archive.stderr ?? '').trim(),
-    };
+    return { ok: false, command, error: String(archive.stderr ?? '').trim() };
   }
   const tar = spawnSync('tar', ['-x', '-C', dest, '--strip-components=3'], { input: archive.stdout, maxBuffer: 256 * 1024 * 1024 });
   if (tar.status !== 0) {
-    return {
-      ok: false,
-      command: `git -C ${repo} archive ${ref} ${ARCHIVE_SUBPATH} | tar -x -C ${dest} --strip-components=3`,
-      error: String(tar.stderr ?? '').trim(),
-    };
+    return { ok: false, command, error: String(tar.stderr ?? '').trim() };
   }
   const files = [];
   const walk = (dir) => {
@@ -68,19 +66,24 @@ export function stageCommittedAssets({ repo, ref, dest }) {
     ok: true,
     repo,
     ref,
+    subpath: clean,
     dest,
-    command: `git -C ${repo} archive ${ref} ${ARCHIVE_SUBPATH} | tar -x -C ${dest} --strip-components=3`,
+    command,
     files,
   };
 }
 
-/** staged 目录既可能是 `<dest>/out`，也可能是调用方直接给的 `out` 目录。 */
+/** staged 目录既可能是 `<dest>/out[-v2]`，也可能是调用方直接给的 manifest 目录。 */
 export function resolveAssetsDir(dir) {
   if (!dir) return null;
-  const nested = path.join(dir, 'out');
-  if (existsSync(path.join(nested, 'manifest.json'))) return nested;
   if (existsSync(path.join(dir, 'manifest.json'))) return dir;
-  return nested;
+  // 不写死 `out`：v2 是 `out-v2`，先找一级子目录里的 manifest。
+  for (const entry of readdirSync(dir, { withFileTypes: true })) {
+    if (!entry.isDirectory()) continue;
+    const candidate = path.join(dir, entry.name);
+    if (existsSync(path.join(candidate, 'manifest.json'))) return candidate;
+  }
+  return path.join(dir, 'out');
 }
 
 export function loadManifest(manifestPath = MANIFEST_PATH) {
