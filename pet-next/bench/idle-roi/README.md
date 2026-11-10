@@ -64,6 +64,10 @@ git -C <repo> archive <commit> pet-next/<subpath> |
 “命名不符就放行”的旁路；`gate.json` 里的 `staging.namingOnlyFailure` 只是记账字段（仅在
 候选名不在映射表内、且 manifest/字节自洽时为非 null），它**不放行 SHA**，随后仍由阶段门
 按质量报告的逐臂 SHA 核验，对不上照样 exit 5。
+注意 v3 manifest 没有声明 F3 的 SHA（`revision['v3-yuva']` 只有派生说明，没有 `F`/`C` 条目），
+所以 `verifyAssetsDir` 对 F3 只做“存在”检查（`checks.fShaDeclared=false`、`fMatchesManifest=null`）；
+F3 的字节绑定由阶段门按质量报告 `verdict.candidates.sha256.F` 完成。C3 仍有
+`manifest.candidateSha256` 可对。
 
 `O.webm` 必须等于 `manifest.sourceSha256`，`C.webm` 必须等于 `manifest.candidateSha256`；
 `F.webm` 若 manifest 声明了 `revision.<ver>.F.sha256`（`<ver>` = `C.sha256 ===
