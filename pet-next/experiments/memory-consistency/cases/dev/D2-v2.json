@@ -1,0 +1,72 @@
+{
+  "trackId": "D2-v2",
+  "pairId": "D2",
+  "class": "stale-patch",
+  "variant": "v2",
+  "keyCondition": "补丁构建时是否已看到同 subject 的新陈述",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "输入轨迹；期望标签独立存放于 eval/expected/dev.json，策略输入不含 pairId/类别/期望。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T12:01:00.000Z",
+      "observedAt": "2026-11-10T12:01:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "以后周报先给草稿。",
+        "scripted": {
+          "subjectKey": "pref:weekly-report",
+          "valueText": "先给草稿",
+          "kindHint": "preference"
+        }
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T12:02:00.000Z",
+      "observedAt": "2026-11-10T12:02:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "周报直接发。",
+        "scripted": {
+          "subjectKey": "pref:weekly-report",
+          "valueText": "直接发送",
+          "kindHint": "preference"
+        }
+      }
+    }
+  ],
+  "patches": [
+    {
+      "patchId": "D2-v2-p1",
+      "buildAtSequence": 2,
+      "applyAtSequence": 2,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "n1",
+          "text": "周报处理方式",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [],
+          "generator": "scripted",
+          "subjectKey": "pref:weekly-report"
+        }
+      ],
+      "notesToInvalidate": []
+    }
+  ]
+}

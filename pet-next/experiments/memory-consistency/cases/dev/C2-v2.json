@@ -1,0 +1,61 @@
+{
+  "trackId": "C2-v2",
+  "pairId": "C2",
+  "class": "tool-result",
+  "variant": "v2",
+  "keyCondition": "第三条是工具结算还是用户确认",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "输入轨迹；期望标签独立存放于 eval/expected/dev.json，策略输入不含 pairId/类别/期望。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T12:01:00.000Z",
+      "observedAt": "2026-11-10T12:01:00.005Z",
+      "source": "model",
+      "kind": "response.generated",
+      "requestId": "req-1",
+      "responseId": "resp-1",
+      "payload": {
+        "text": "我来写文件。"
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T12:02:00.000Z",
+      "observedAt": "2026-11-10T12:02:00.005Z",
+      "source": "runtime",
+      "kind": "response.presented",
+      "requestId": "req-1",
+      "responseId": "resp-1",
+      "payload": {
+        "channel": "ui"
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e3",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 3,
+      "occurredAt": "2026-11-10T12:03:00.000Z",
+      "observedAt": "2026-11-10T12:03:00.005Z",
+      "source": "user",
+      "kind": "user.acknowledged",
+      "requestId": "req-1",
+      "responseId": "resp-1",
+      "payload": {
+        "ack": "seen"
+      }
+    }
+  ],
+  "patches": []
+}

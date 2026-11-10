@@ -1,0 +1,104 @@
+{
+  "trackId": "A6-v2",
+  "pairId": "A6",
+  "class": "state-update",
+  "variant": "v2",
+  "keyCondition": "第四条事件的种类（request.cancelled vs task.changed cancelled）",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "输入轨迹；期望标签独立存放于 eval/expected/dev.json，策略输入不含 pairId/类别/期望。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T12:01:00.000Z",
+      "observedAt": "2026-11-10T12:01:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "整理周报。",
+        "scripted": {
+          "subjectKey": "task:weekly-report",
+          "valueText": "整理周报。",
+          "kindHint": "task"
+        }
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T12:02:00.000Z",
+      "observedAt": "2026-11-10T12:02:00.005Z",
+      "source": "runtime",
+      "kind": "task.changed",
+      "taskId": "weekly-report",
+      "taskRevision": 1,
+      "payload": {
+        "change": "created",
+        "authority": "explicit"
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e3",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 3,
+      "occurredAt": "2026-11-10T12:03:00.000Z",
+      "observedAt": "2026-11-10T12:03:00.005Z",
+      "source": "model",
+      "kind": "response.generated",
+      "requestId": "req-1",
+      "responseId": "resp-1",
+      "payload": {
+        "text": "草稿如下……"
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e4",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 4,
+      "occurredAt": "2026-11-10T12:04:00.000Z",
+      "observedAt": "2026-11-10T12:04:00.005Z",
+      "source": "runtime",
+      "kind": "task.changed",
+      "taskId": "weekly-report",
+      "taskRevision": 2,
+      "payload": {
+        "change": "cancelled",
+        "authority": "explicit"
+      }
+    }
+  ],
+  "patches": [
+    {
+      "patchId": "A6-v2-p1",
+      "buildAtSequence": 3,
+      "applyAtSequence": 3,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "n1",
+          "text": "周报任务进行中",
+          "sourceEventIds": [
+            "e1",
+            "e2"
+          ],
+          "parentNoteIds": [],
+          "generator": "scripted",
+          "subjectKey": "task:weekly-report"
+        }
+      ],
+      "notesToInvalidate": []
+    }
+  ]
+}

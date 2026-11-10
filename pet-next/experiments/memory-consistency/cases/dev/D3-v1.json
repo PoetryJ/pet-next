@@ -1,0 +1,53 @@
+{
+  "trackId": "D3-v1",
+  "pairId": "D3",
+  "class": "stale-patch",
+  "variant": "v1",
+  "keyCondition": "提交声明里是否包含 subject 依赖",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "输入轨迹；期望标签独立存放于 eval/expected/dev.json，策略输入不含 pairId/类别/期望。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T12:01:00.000Z",
+      "observedAt": "2026-11-10T12:01:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "以后周报先给草稿。",
+        "scripted": {
+          "subjectKey": "pref:weekly-report",
+          "valueText": "先给草稿",
+          "kindHint": "preference"
+        }
+      }
+    }
+  ],
+  "patches": [
+    {
+      "patchId": "D3-v1-p1",
+      "buildAtSequence": 1,
+      "applyAtSequence": 1,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "n1",
+          "text": "周报先给草稿",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [],
+          "generator": "scripted",
+          "subjectKey": "pref:weekly-report"
+        }
+      ],
+      "notesToInvalidate": []
+    }
+  ]
+}

@@ -1,0 +1,392 @@
+{
+  "schemaVersion": "memory-expectations/v1",
+  "dataset": "dev-24x2",
+  "author": "eval（D）",
+  "writtenBeforePipelineRun": true,
+  "basis": "只依据 contracts.ts 与 COMMON.txt 的语义在跑通流水线之前写死；未读取 reducer 输出，也未复制实现常量。判分器只按断言求值。",
+  "assertions": {
+    "A1-v1": {
+      "why": "权威撤销：任务进入 cancelled，且撤销即时让旧任务笔记失效（笔记版本保持 1）",
+      "checks": [
+        { "kind": "task.change", "taskId": "weekly-report", "value": "cancelled" },
+        { "kind": "task.revision", "taskId": "weekly-report", "value": 2 },
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "note.status", "noteId": "n1", "value": "invalidated" },
+        { "kind": "note.version", "noteId": "n1", "value": 1 }
+      ]
+    },
+    "A1-v2": {
+      "why": "候选撤销不是权威事实：任务仍是 created，只留 candidate 记录，旧笔记继续有效",
+      "checks": [
+        { "kind": "task.change", "taskId": "weekly-report", "value": "created" },
+        { "kind": "task.revision", "taskId": "weekly-report", "value": 1 },
+        { "kind": "task.candidateCount", "taskId": "weekly-report", "value": 1 },
+        { "kind": "note.status", "noteId": "n1", "value": "active" }
+      ]
+    },
+    "A2-v1": {
+      "why": "同一 subject 被更正：subject 版本 +1，旧笔记失效，新笔记以新依赖落地",
+      "checks": [
+        { "kind": "subject.version", "subjectKey": "pref:weekly-report", "value": 2 },
+        { "kind": "note.status", "noteId": "n1", "value": "invalidated" },
+        { "kind": "note.status", "noteId": "n2", "value": "active" },
+        { "kind": "patch.disposition", "patchIndex": 1, "value": "applied" }
+      ]
+    },
+    "A2-v2": {
+      "why": "新陈述属于无关 subject：原偏好笔记不受影响，两条笔记都有效",
+      "checks": [
+        { "kind": "subject.version", "subjectKey": "pref:weekly-report", "value": 1 },
+        { "kind": "note.status", "noteId": "n1", "value": "active" },
+        { "kind": "note.status", "noteId": "n2", "value": "active" }
+      ]
+    },
+    "A3-v1": {
+      "why": "补丁构建后只有无关事件令全局版本前进：依赖未变，仍可提交",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "note.status", "noteId": "n1", "value": "active" },
+        { "kind": "subject.version", "subjectKey": "pref:weekly-report", "value": 1 }
+      ]
+    },
+    "A3-v2": {
+      "why": "补丁构建后相关来源被更正：不能提交，且不落任何笔记",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "rejected" },
+        { "kind": "patch.code", "patchIndex": 0, "value": "dependency_stale" },
+        { "kind": "note.status", "noteId": "n1", "value": "absent" },
+        { "kind": "subject.version", "subjectKey": "pref:weekly-report", "value": 2 }
+      ]
+    },
+    "A4-v1": {
+      "why": "同一代际复用 requestId 仍是同一请求：生成与呈现落在同一个请求视图",
+      "checks": [
+        { "kind": "req.count", "value": 1 },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "generated", "value": true },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": true }
+      ]
+    },
+    "A4-v2": {
+      "why": "重置后复用 requestId 是另一个身份：旧代际只有生成，新代际只有呈现",
+      "checks": [
+        { "kind": "req.count", "value": 2 },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": false },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 2, "flag": "presented", "value": true },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 2, "flag": "generated", "value": false }
+      ]
+    },
+    "A5-v1": {
+      "why": "会话重置不撤销长期任务与偏好：三条笔记都有效，两个任务都仍是 created",
+      "checks": [
+        { "kind": "note.status", "noteId": "n1", "value": "active" },
+        { "kind": "note.status", "noteId": "n2", "value": "active" },
+        { "kind": "note.status", "noteId": "n3", "value": "active" },
+        { "kind": "task.change", "taskId": "weekly-report", "value": "created" },
+        { "kind": "task.count", "value": 2 },
+        { "kind": "event.count", "value": 4 }
+      ]
+    },
+    "A5-v2": {
+      "why": "任务权威撤销只影响该任务：周报失效、月报与偏好保留，任务仍计两个",
+      "checks": [
+        { "kind": "note.status", "noteId": "n1", "value": "active" },
+        { "kind": "note.status", "noteId": "n2", "value": "invalidated" },
+        { "kind": "note.status", "noteId": "n3", "value": "active" },
+        { "kind": "task.change", "taskId": "weekly-report", "value": "cancelled" },
+        { "kind": "task.change", "taskId": "monthly-report", "value": "created" },
+        { "kind": "task.count", "value": 2 }
+      ]
+    },
+    "A6-v1": {
+      "why": "单次请求取消只作用于该请求：任务与任务笔记不受影响",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "cancelled", "value": true },
+        { "kind": "task.change", "taskId": "weekly-report", "value": "created" },
+        { "kind": "note.status", "noteId": "n1", "value": "active" }
+      ]
+    },
+    "A6-v2": {
+      "why": "任务撤销不是请求取消：任务 cancelled 且任务笔记失效，请求本身没被标记取消",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "cancelled", "value": false },
+        { "kind": "task.change", "taskId": "weekly-report", "value": "cancelled" },
+        { "kind": "note.status", "noteId": "n1", "value": "invalidated" }
+      ]
+    },
+    "B1-v1": {
+      "why": "观察到呈现：presented=true，但生成与呈现仍是两个事实",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "generated", "value": true },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": true }
+      ]
+    },
+    "B1-v2": {
+      "why": "只有生成：presented 必须保持 false，不能被生成推导出来",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "generated", "value": true },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": false }
+      ]
+    },
+    "B2-v1": {
+      "why": "呈现不等于已读：没有确认事件时 acknowledged 保持 false",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": true },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "acknowledged", "value": false }
+      ]
+    },
+    "B2-v2": {
+      "why": "用户确认独立成立，但不改变工具结果",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "acknowledged", "value": true },
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "none" }
+      ]
+    },
+    "B3-v1": {
+      "why": "确认指向真实存在的回答：接受，同一请求有两条回答",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "acknowledged", "value": true },
+        { "kind": "req.responseCount", "requestId": "req-1", "epoch": 1, "value": 2 }
+      ]
+    },
+    "B3-v2": {
+      "why": "确认指向不存在的回答：拒绝，不能借用别条回答的确认",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "acknowledged", "value": false },
+        { "kind": "rejectedEvent.reason", "index": 0, "value": "ack_unknown_response" }
+      ]
+    },
+    "B4-v1": {
+      "why": "同 eventId 同载荷重发：幂等，不重复入账",
+      "checks": [
+        { "kind": "event.count", "value": 1 },
+        { "kind": "conflict.count", "value": 0 },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "generated", "value": true }
+      ]
+    },
+    "B4-v2": {
+      "why": "同 eventId 不同载荷：显式冲突，原事件不被覆盖",
+      "checks": [
+        { "kind": "event.count", "value": 1 },
+        { "kind": "conflict.count", "value": 1 },
+        { "kind": "rejectedEvent.reason", "index": 0, "value": "event_id_conflict" }
+      ]
+    },
+    "B5-v1": {
+      "why": "关闭代际里到达的结清事件仍被接受：旧请求呈现可查，但没有新事实",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": true },
+        { "kind": "event.count", "value": 3 }
+      ]
+    },
+    "B5-v2": {
+      "why": "关闭代际里到达的新陈述被拒：不产生 subject 版本，不污染当前事实",
+      "checks": [
+        { "kind": "subject.absent", "subjectKey": "pref:language", "value": "absent" },
+        { "kind": "rejectedEvent.reason", "index": 0, "value": "epoch_closed" },
+        { "kind": "event.count", "value": 2 }
+      ]
+    },
+    "B6-v1": {
+      "why": "同一请求的第二条回答：回答集合增加，呈现仍为 false",
+      "checks": [
+        { "kind": "req.responseCount", "requestId": "req-1", "epoch": 1, "value": 2 },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": false }
+      ]
+    },
+    "B6-v2": {
+      "why": "同一回答的呈现：回答集合不增加，presented 变 true",
+      "checks": [
+        { "kind": "req.responseCount", "requestId": "req-1", "epoch": 1, "value": 1 },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": true }
+      ]
+    },
+    "C1-v1": {
+      "why": "工具成功：只写工具结果，呈现与确认各自独立",
+      "checks": [
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "ok" },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": true },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "acknowledged", "value": false }
+      ]
+    },
+    "C1-v2": {
+      "why": "工具失败：error 不被呈现或确认吞掉",
+      "checks": [
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "error" },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "presented", "value": true }
+      ]
+    },
+    "C2-v1": {
+      "why": "工具成功不产生确认",
+      "checks": [
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "ok" },
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "acknowledged", "value": false }
+      ]
+    },
+    "C2-v2": {
+      "why": "用户确认不证明工具成功：工具结果仍是 none",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "acknowledged", "value": true },
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "none" }
+      ]
+    },
+    "C3-v1": {
+      "why": "工具结果未知：保持 unknown，不自动升为成功或失败",
+      "checks": [
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "unknown" },
+        { "kind": "event.count", "value": 1 }
+      ]
+    },
+    "C3-v2": {
+      "why": "未知之后再用另一事件改判成功：同请求工具结论不能翻转，后一条被拒",
+      "checks": [
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "unknown" },
+        { "kind": "rejectedEvent.reasonPrefix", "index": 0, "value": "tool_outcome_conflict" },
+        { "kind": "event.count", "value": 1 }
+      ]
+    },
+    "C4-v1": {
+      "why": "请求已取消后工具仍结算：结算记录保留，任务不受影响",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "cancelled", "value": true },
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "ok" },
+        { "kind": "task.change", "taskId": "weekly-report", "value": "created" }
+      ]
+    },
+    "C4-v2": {
+      "why": "任务被撤销后工具仍结算：任务事实为 cancelled，请求本身没被取消",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-1", "epoch": 1, "flag": "cancelled", "value": false },
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "ok" },
+        { "kind": "task.change", "taskId": "weekly-report", "value": "cancelled" }
+      ]
+    },
+    "C5-v1": {
+      "why": "同一工具结果重发：幂等，不重复生效",
+      "checks": [
+        { "kind": "event.count", "value": 1 },
+        { "kind": "conflict.count", "value": 0 },
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "ok" }
+      ]
+    },
+    "C5-v2": {
+      "why": "同一请求换结论重发：后一条被拒并留原因，原结论不变（这是状态冲突，不是 eventId 冲突）",
+      "checks": [
+        { "kind": "rejectedEvent.reasonPrefix", "index": 0, "value": "tool_outcome_conflict" },
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "ok" },
+        { "kind": "event.count", "value": 1 }
+      ]
+    },
+    "C6-v1": {
+      "why": "同代际工具结果：落在唯一请求视图上",
+      "checks": [
+        { "kind": "req.count", "value": 1 },
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "ok" }
+      ]
+    },
+    "C6-v2": {
+      "why": "跨代际工具结果：原代际不背锅，新代际单独记录",
+      "checks": [
+        { "kind": "req.count", "value": 2 },
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 1, "value": "none" },
+        { "kind": "req.toolOutcome", "requestId": "req-1", "epoch": 2, "value": "ok" }
+      ]
+    },
+    "D1-v1": {
+      "why": "取消前构建的补丁在取消后到达：依赖已变，拒绝；旧笔记已由取消失效",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "note.status", "noteId": "n1", "value": "invalidated" },
+        { "kind": "patch.disposition", "patchIndex": 1, "value": "rejected" },
+        { "kind": "patch.code", "patchIndex": 1, "value": "dependency_stale" },
+        { "kind": "note.status", "noteId": "n2", "value": "absent" }
+      ]
+    },
+    "D1-v2": {
+      "why": "取消后重建的补丁依赖当前版本：可以提交，产生取消后的新笔记",
+      "checks": [
+        { "kind": "note.status", "noteId": "n1", "value": "invalidated" },
+        { "kind": "patch.disposition", "patchIndex": 1, "value": "applied" },
+        { "kind": "note.status", "noteId": "n2", "value": "active" }
+      ]
+    },
+    "D2-v1": {
+      "why": "补丁只看过旧陈述：来源已变，拒绝",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "rejected" },
+        { "kind": "patch.code", "patchIndex": 0, "value": "dependency_stale" },
+        { "kind": "note.status", "noteId": "n1", "value": "absent" }
+      ]
+    },
+    "D2-v2": {
+      "why": "补丁已看到新陈述：依赖当前版本，可以提交",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "note.status", "noteId": "n1", "value": "active" }
+      ]
+    },
+    "D3-v1": {
+      "why": "依赖声明完整：接受",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "note.status", "noteId": "n1", "value": "active" }
+      ]
+    },
+    "D3-v2": {
+      "why": "漏声明 subject 依赖：拒绝，不能靠不声明就绕过版本检查",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "rejected" },
+        { "kind": "patch.code", "patchIndex": 0, "value": "dependency_undeclared" },
+        { "kind": "note.status", "noteId": "n1", "value": "absent" }
+      ]
+    },
+    "D4-v1": {
+      "why": "无环派生链：整份补丁落地",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "note.status", "noteId": "na", "value": "active" },
+        { "kind": "note.status", "noteId": "nb", "value": "active" },
+        { "kind": "note.status", "noteId": "nc", "value": "active" }
+      ]
+    },
+    "D4-v2": {
+      "why": "依赖成环：拒绝，不能靠跳过节点假装成功",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "rejected" },
+        { "kind": "patch.code", "patchIndex": 0, "value": "cycle" },
+        { "kind": "note.status", "noteId": "na", "value": "absent" }
+      ]
+    },
+    "D5-v1": {
+      "why": "同 opId 同载荷重发：replayed，笔记不被重复写",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "patch.disposition", "patchIndex": 1, "value": "replayed" },
+        { "kind": "note.version", "noteId": "n1", "value": 1 }
+      ]
+    },
+    "D5-v2": {
+      "why": "同 opId 换载荷：冲突，原笔记内容不被覆盖",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 1, "value": "rejected" },
+        { "kind": "patch.code", "patchIndex": 1, "value": "op_conflict" },
+        { "kind": "note.version", "noteId": "n1", "value": 1 },
+        { "kind": "note.text", "noteId": "n1", "value": "周报先给草稿" }
+      ]
+    },
+    "D6-v1": {
+      "why": "来源事件存在：接受",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "note.status", "noteId": "n1", "value": "active" }
+      ]
+    },
+    "D6-v2": {
+      "why": "来源事件不存在：拒绝，不能凭空造出笔记",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "rejected" },
+        { "kind": "patch.code", "patchIndex": 0, "value": "unknown_source" },
+        { "kind": "note.status", "noteId": "n1", "value": "absent" }
+      ]
+    }
+  }
+}

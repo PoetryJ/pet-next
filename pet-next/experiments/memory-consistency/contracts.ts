@@ -96,6 +96,8 @@ export interface EventPayload {
   readonly detail?: string;
   readonly change?: TaskChange;
   readonly authority?: TaskAuthority;
+  /** task.changed 可显式给出 subjectKey；缺省约定为 task:<taskId>。 */
+  readonly subjectKey?: string;
   readonly reason?: string;
 }
 
@@ -619,11 +621,14 @@ export function eventPayloadDigest(event: MemoryEvent): string {
   });
 }
 
-/** patch 摘要。同 opId 同载荷幂等，不同载荷冲突。 */
+/**
+ * patch 摘要。同 opId 同载荷幂等，不同载荷冲突。
+ * snapshotVersion 是构造时的观察值，不属于「意图」，所以不进摘要：
+ * 一次网络重试只要笔记内容与依赖声明不变，就仍算同载荷。
+ */
 export function patchDigest(patch: MemoryPatch): string {
   return canonicalJson({
     opId: patch.opId,
-    snapshotVersion: patch.snapshotVersion,
     dependencyVersions: patch.dependencyVersions,
     notesToUpsert: patch.notesToUpsert,
     notesToInvalidate: patch.notesToInvalidate,

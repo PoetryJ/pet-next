@@ -1,0 +1,72 @@
+{
+  "trackId": "A3-v1",
+  "pairId": "A3",
+  "class": "state-update",
+  "variant": "v1",
+  "keyCondition": "补丁构建后新增事件是否触及同一 subject",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "输入轨迹；期望标签独立存放于 eval/expected/dev.json，策略输入不含 pairId/类别/期望。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T12:01:00.000Z",
+      "observedAt": "2026-11-10T12:01:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "以后周报先给草稿。",
+        "scripted": {
+          "subjectKey": "pref:weekly-report",
+          "valueText": "先给草稿",
+          "kindHint": "preference"
+        }
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-dev",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T12:02:00.000Z",
+      "observedAt": "2026-11-10T12:02:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "签名改短。",
+        "scripted": {
+          "subjectKey": "pref:bio",
+          "valueText": "简短",
+          "kindHint": "preference"
+        }
+      }
+    }
+  ],
+  "patches": [
+    {
+      "patchId": "A3-v1-p1",
+      "buildAtSequence": 1,
+      "applyAtSequence": 2,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "n1",
+          "text": "周报先给草稿",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [],
+          "generator": "scripted",
+          "subjectKey": "pref:weekly-report"
+        }
+      ],
+      "notesToInvalidate": []
+    }
+  ]
+}
