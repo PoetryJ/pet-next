@@ -11,7 +11,7 @@
  * - 布局数值是 DIP，调用方**不得再乘 DPR**；
  * - 无效 manifest / 开关关闭 / 非 idle 选择一律回原片，并给出可读原因；
  * - 同一帧率、同一时间轴、同一原画布；本模块不做任何像素处理。
- * @module pet-next/contracts/idle-roi
+ * @module pet-next/experiments/idle-roi/core
  */
 
 /** 裁框（像素，原画布坐标系）。 */

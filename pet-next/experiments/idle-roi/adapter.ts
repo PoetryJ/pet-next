@@ -1,14 +1,14 @@
 /**
  * 待机 ROI 的接线适配层。
  *
- * 决策与 manifest 校验的**唯一实现**在 `contracts/idle-roi.ts`，这里原样转出；
+ * 决策与 manifest 校验的**唯一实现**在 `experiments/idle-roi/core.ts`，这里原样转出；
  * 本层只补一件产品树不需要的东西：把 `IdleRoiLayout`（DIP）变成成套 CSS 值。
  * 不复制公式、不读 DOM、不加载视频。
  *
  * @module pet-next/experiments/idle-roi/adapter
  */
 
-export { computeIdleRoiLayout, decideIdleRoi, parseIdleRoiManifest } from '../../contracts/idle-roi.ts';
+export { computeIdleRoiLayout, decideIdleRoi, parseIdleRoiManifest } from './core.ts';
 export type {
   CropRect,
   IdleRoiDecision,
@@ -16,9 +16,9 @@ export type {
   IdleRoiManifest,
   IdleRoiPts,
   IdleRoiSelection,
-} from '../../contracts/idle-roi.ts';
+} from './core.ts';
 
-import type { IdleRoiLayout } from '../../contracts/idle-roi.ts';
+import type { IdleRoiLayout } from './core.ts';
 
 /** 四个 CSS 自定义属性名：页面写 `style.setProperty` 时用。 */
 export type IdleRoiCssVariableName =

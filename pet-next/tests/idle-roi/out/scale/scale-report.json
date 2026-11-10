@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "kind": "idle-roi-scale",
-  "generatedAt": "2026-11-10T08:31:49.598Z",
+  "generatedAt": "2026-11-10T08:55:46.283Z",
   "status": "passed",
-  "candidate": "tests/idle-roi/fixtures/C.webm",
+  "candidate": "experiments/idle-roi/out/C.webm",
   "osScale": null,
   "osScaleSource": "not-run: 无头 Xvfb，Electron scaleSource 不是 os",
   "originNotes": {

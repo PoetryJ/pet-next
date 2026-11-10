@@ -7,7 +7,6 @@ import { domScreenPointToDip } from '../adapters/window/pointer-point.ts';
 import { DAILY_CADENCE, DEMO_CADENCE } from '../contracts/behavior.ts';
 import { parsePreview, PREVIEW_QUERY } from '../contracts/preview.ts';
 import { IDLE_PAUSE_QUERY } from '../contracts/idle-suspension.ts';
-import { IDLE_ROI_QUERY, computeIdleRoiLayout, parseIdleRoiQuery } from '../contracts/idle-roi.ts';
 import { attachIdleSuspension, type IdleSuspensionHandle } from './idle-suspension.ts';
 import {
   CHAT_LOCAL_TOKEN,
@@ -114,43 +113,7 @@ function benchLog(payload: Record<string, unknown>): void {
   console.log(JSON.stringify({ ...payload, ts: performance.now() }));
 }
 
-// M3-12：可见待机裁边（默认关闭）。主进程只在开关打开、manifest 合法且与当前 idle 字节一致时注入。
-// 缺失/无效时这里是 null，页面完全走原路径（零新增样式、零新增监听）。
-const idleRoiSpec = parseIdleRoiQuery(params.get(IDLE_ROI_QUERY));
-
-/**
- * 按当前播放的 clip 切换裁边布局。
- *
- * 只有 `idle` 且几何有效时启用；`short`/`reaction`/占位/失败一律回到原 contain 布局，
- * 因此不会把旧素材的 metadata 套到新素材上（每次播放请求都重新判定）。
- *
- * @param clip - 本次即将播放的 clip，或 `placeholder`。
- */
-function applyIdleRoi(clip: string): void {
-  if (idleRoiSpec === null) return;
-  if (clip !== 'idle' || !(petEl instanceof HTMLElement)) {
-    document.body.classList.remove('idle-roi');
-    return;
-  }
-  const rect = petEl.getBoundingClientRect();
-  const layout = computeIdleRoiLayout({
-    viewWidth: rect.width,
-    viewHeight: rect.height,
-    originalCanvas: idleRoiSpec.originalCanvas,
-    crop: idleRoiSpec.crop,
-  });
-  if (layout === null) {
-    document.body.classList.remove('idle-roi');
-    return;
-  }
-  document.body.style.setProperty('--idle-roi-left', `${layout.left}px`);
-  document.body.style.setProperty('--idle-roi-top', `${layout.top}px`);
-  document.body.style.setProperty('--idle-roi-width', `${layout.width}px`);
-  document.body.style.setProperty('--idle-roi-height', `${layout.height}px`);
-  document.body.classList.add('idle-roi');
-}
-
-const baseMedia: PetMedia = attachPetMedia({
+const media: PetMedia = attachPetMedia({
   playback: selection.playback,
   primary: video,
   standby,
@@ -175,22 +138,6 @@ const baseMedia: PetMedia = attachPetMedia({
     }
   },
 });
-
-// M3-12：只在开启时包一层布局切换；播放/失败/代际语义全部原样透传，关闭时直接用 baseMedia。
-const media: PetMedia =
-  idleRoiSpec === null
-    ? baseMedia
-    : {
-        ...baseMedia,
-        begin(request) {
-          applyIdleRoi(request.clip);
-          baseMedia.begin(request);
-        },
-        showPlaceholder() {
-          applyIdleRoi('placeholder');
-          baseMedia.showPlaceholder();
-        },
-      };
 
 // M3-9：先接快照再 boot——"启动时窗口已隐藏"也能在首个 idle 兑现后立即暂停；
 // 开关关闭时这里不创建对象，也不注册任何监听。

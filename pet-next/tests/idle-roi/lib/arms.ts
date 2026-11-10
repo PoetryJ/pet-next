@@ -10,7 +10,7 @@ import { existsSync, mkdirSync, readFileSync, rmSync, writeFileSync } from 'node
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
-import { runMediaTool } from '../../../assets-pipeline/media-tool.ts';
+import { runMediaTool } from './tool.ts';
 import { decodeAllFrames, probeStream, probeTimeline, type FrameTimeline, type RawVideo, type StreamInfo } from './media.ts';
 import { applyAlphaFloor, cropFrame, type Rect } from './pixels.ts';
 

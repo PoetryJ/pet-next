@@ -10,7 +10,7 @@
 import { closeSync, existsSync, mkdirSync, openSync, readSync, statSync } from 'node:fs';
 import path from 'node:path';
 
-import { runMediaTool } from '../../../assets-pipeline/media-tool.ts';
+import { runMediaTool } from './tool.ts';
 
 /** 一帧的裸字节。 */
 export interface RawVideo {

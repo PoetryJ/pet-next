@@ -6,7 +6,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { encodeRgbaPng } from '../../../assets-pipeline/png-rgba.ts';
+import { encodeRgbaPng } from './tool.ts';
 import { compositeFrame, type PlateId, type Rect } from './pixels.ts';
 
 export function writeJson(file: string, data: unknown): void {

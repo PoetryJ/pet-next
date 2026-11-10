@@ -8,7 +8,7 @@
 import { readFileSync, statSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
-import { runMediaTool } from '../../../assets-pipeline/media-tool.ts';
+import { runMediaTool } from './tool.ts';
 import { FIXTURE_CROP, encodeCommand, petRoot } from './arms.ts';
 import { decodeAllFrames, openRaw } from './media.ts';
 import { alphaStats, applyAlphaFloor, compositeFrame, diffStats, edgeMask, foregroundMask, restoreCrop } from './pixels.ts';

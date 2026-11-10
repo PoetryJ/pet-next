@@ -1,12 +1,12 @@
 /**
- * manifest 校验与 ROI 决策的逐分支断言（测 `contracts/idle-roi.ts` 的实现），
+ * manifest 校验与 ROI 决策的逐分支断言（测 `experiments/idle-roi/core.ts` 的实现），
  * 外加本层新增的 CSS 值转换。
  *
  * 决策是纯函数：同一输入永远同一结果，不读 DOM、不加载视频。
  */
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import * as contract from '../../contracts/idle-roi.ts';
+import * as contract from './core.ts';
 import * as adapter from './adapter.ts';
 import { decideIdleRoi, formatIdleRoiStyle, idleRoiCssVariables, parseIdleRoiManifest } from './adapter.ts';
 

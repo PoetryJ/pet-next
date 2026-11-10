@@ -1,12 +1,12 @@
 /**
- * 布局与常量逐条钉住：测的是 `contracts/idle-roi.ts` 的实现（产品树唯一实现），
+ * 布局与常量逐条钉住：测的是 `experiments/idle-roi/core.ts` 的实现（产品树唯一实现），
  * 本文件只经 `experiments/idle-roi/layout.ts` 的转出取用，并断言两者是同一个函数。
  *
  * 纯算术断言：不读 DOM、不 sleep、不碰视频。
  */
 import assert from 'node:assert/strict';
 import { describe, test } from 'node:test';
-import * as contract from '../../contracts/idle-roi.ts';
+import * as contract from './core.ts';
 import * as layoutModule from './layout.ts';
 import { computeIdleRoiLayout, type CropRect } from './layout.ts';
 
