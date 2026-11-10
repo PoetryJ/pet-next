@@ -276,7 +276,7 @@ function headlineBlock(variants: readonly VariantEvaluation[]): Record<string, u
 }
 
 /** 归因：全部由实测字段生成。 */
-function attributionBlock(variants: readonly VariantEvaluation[], rows: readonly ComparisonRow[]): Record<string, unknown> {
+function attributionBlock(variants: readonly VariantEvaluation[], _rows: readonly ComparisonRow[]): Record<string, unknown> {
   const statements: string[] = [];
   for (const variant of variants) {
     if (variant.status !== 'evaluated') {

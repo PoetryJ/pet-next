@@ -312,7 +312,7 @@ async function resolveSelfControlFile(
   walk(raw, '');
   const score = (item: { jsonPath: string; command: readonly string[] }): number => {
     const text = item.command.join(' ');
-    if (/rgba/.test(text)) return -100;
+    if (/\brgba\b/.test(text)) return -100;
     if (/lutyuv|alphaextract|drawtext/.test(text)) return -50;
     let value = 0;
     if (/passthrough/i.test(item.jsonPath) || /passthrough/i.test(text)) value += 100;

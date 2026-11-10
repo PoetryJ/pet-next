@@ -392,7 +392,7 @@ async function encodeArm(bin, input, output, filter, label) {
   await rm(partial, { force: true });
   const args = encodeArgs(input, partial, filter);
   const started = performance.now();
-  let stderrText = '';
+  let stderrText;
   try {
     const result = await runCapture(bin, args);
     stderrText = result.stderr.toString('utf8');
