@@ -308,25 +308,45 @@ export function resolveAssetsDirExact({ dest, subpath, assetsDirArg = null, expe
       .filter((name) => existsSync(path.join(expected, name)));
     evidence.armFiles = armFiles;
     if (armFiles.length === 0) evidence.errors.push(`素材目录里没有任何臂视频（${expected}）；空产物不算取到素材`);
-    // 交叉核对 A 的 resolveAssetsDir：
-    // 1) 两参精确模式（<dest>/<subpath>）必须命中本次目录，不扫描、不猜；
-    // 2) 单参模式若返回了目录，必须是同一个（旧实现会选回 out/，这条就是挡它）；返回 null 表示
-    //    dest 里有多份候选（拒绝猜），此时以第 1 条为准。
-    if (dest) {
-      const exact = resolveAssetsDir(dest, { subpath });
-      evidence.artifactsResolveAssetsDirExact = exact ? path.resolve(exact) : null;
-      if (!exact || path.resolve(exact) !== path.resolve(expected)) {
-        evidence.errors.push(
-          `resolveAssetsDir(dest, { subpath }) 未精确命中本次目录：${exact ?? 'null'}（本次应为 ${expected}）；拒跑`,
-        );
+    // 交叉核对 A 的 resolveAssetsDir，分两路（A 的 af5f9c9 起支持显式 subpath）：
+    //  - 两参 `resolveAssetsDir(dir, { subpath })`：显式、不扫描，必须等于本次目录；
+    //  - 单参 `resolveAssetsDir(dir)`：只用来断言"多候选时不许悄悄挑一个"，
+    //    旧实现会静默选回 out/，A 的新实现返回 null（ambiguous-assets-dir 拒绝猜）。
+    const base = dest ?? path.dirname(expected);
+    const probe = (fn) => {
+      try {
+        return fn() ?? null;
+      } catch (error) {
+        return `throw:${String(error?.message ?? error)}`;
       }
-    }
-    const crossCheck = resolveAssetsDir(dest ?? path.dirname(expected));
-    evidence.artifactsResolveAssetsDir = crossCheck ?? null;
-    if (crossCheck && path.resolve(crossCheck) !== path.resolve(expected)) {
+    };
+    // 两参只能在 staging dest（镜像仓库子树，去掉 pet-next/）上做：base + subpath 才等于本次目录。
+    // `--assets-dir` 模式下没有 dest，subpath 的基准无从确定，跳过并记账。
+    const explicit = dest ? probe(() => resolveAssetsDir(dest, { subpath: String(subpath) })) : null;
+    const scan = probe(() => resolveAssetsDir(base));
+    evidence.artifactsResolveAssetsDirExplicit = explicit;
+    evidence.artifactsResolveAssetsDir = scan;
+    if (!dest) {
+      evidence.explicitProbeSkipped = 'no-dest（--assets-dir 模式，没有可拼接 subpath 的基准）';
+    } else if (typeof explicit === 'string' && explicit.startsWith('throw:')) {
+      evidence.errors.push(`resolveAssetsDir(dest,{subpath}) 抛错：${explicit.slice(6)}`);
+    } else if (explicit && path.resolve(explicit) !== path.resolve(expected)) {
       evidence.errors.push(
-        `resolveAssetsDir 选中了别的目录：${crossCheck}（本次应为 ${expected}）；拒跑，避免拿旧 out 的字节当本轮素材`,
+        `resolveAssetsDir(dest,{subpath=${String(subpath)}}) 选中了别的目录：${explicit}（本次应为 ${expected}）；拒跑`,
       );
+    } else if (!explicit) {
+      evidence.explicitSubpathUnsupported = true;
+      evidence.note =
+        '当前 artifacts.resolveAssetsDir 不认 { subpath }（旧版）或该 subpath 目录不存在；已回退为"目录名 + 单参核对"，A 的 af5f9c9 起这条走显式解析';
+    }
+    if (typeof scan === 'string' && scan.startsWith('throw:')) {
+      evidence.errors.push(`resolveAssetsDir(dir) 单参调用抛错：${scan.slice(6)}`);
+    } else if (scan && path.resolve(scan) !== path.resolve(expected)) {
+      evidence.errors.push(
+        `resolveAssetsDir 静默选中了别的目录：${scan}（本次应为 ${expected}）；拒跑，避免拿旧 out 的字节当本轮素材`,
+      );
+    } else if (!scan) {
+      evidence.scanReturnedNull = true;
     }
   }
   return { ok: evidence.errors.length === 0, dir: expected, evidence };

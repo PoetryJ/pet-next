@@ -3,7 +3,7 @@
   "code": 0,
   "errors": [],
   "evidence": {
-    "checkedAt": "2026-11-10T10:27:10.160Z",
+    "checkedAt": "2026-11-10T10:34:22.870Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v3-yuva",
     "strictReport": false,
@@ -20,7 +20,8 @@
         "O.webm",
         "F3.webm",
         "C3.webm"
-      ]
+      ],
+      "artifactsResolveAssetsDirExplicit": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-a-fix/assets-committed/experiments/idle-roi/out-v3-yuva"
     },
     "qualityReport": {
       "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/positive-report-v3-yuva.json",
@@ -39,6 +40,10 @@
       "status": {
         "reported": "passed",
         "passed": true,
+        "subject": null,
+        "candidates": null,
+        "prerequisites": [],
+        "historicalFailed": [],
         "signals": [
           {
             "path": "verdict.status",

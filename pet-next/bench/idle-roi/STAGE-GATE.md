@@ -35,8 +35,11 @@
    - 目录名必须等于 `--assets-subpath` 末段（`out` / `out-v2` / `out-v3-yuva`），
      不遍历、不回退到 `<dest>/out`；
    - 必须存在、是目录、含 `manifest.json`、至少有一个臂视频（空目录不算取到素材）；
-   - 与 `lib/artifacts.mjs` 的 `resolveAssetsDir(dest)` **交叉核对**：两者不一致就拒跑
-     （这就是"同 dest 先 out 后 out-v2 会选回旧 out"那个缺陷的挡板）。
+   - 与 `lib/artifacts.mjs` 交叉核对，分两路：
+     · 两参 `resolveAssetsDir(dest, { subpath })`（A 的 af5f9c9 起）= 显式、不扫描，必须等于本次目录；
+     · 单参 `resolveAssetsDir(dest)` = 只用来断言"多候选不许悄悄挑一个"：返回别的目录 → 拒跑；
+       返回 `null`（`ambiguous-assets-dir`，A 的新实现拒绝猜）→ 记账放行，因为本次目录已由 subpath 唯一钉住。
+     `--assets-dir` 模式没有 dest，跳过两参（记账 `explicitProbeSkipped`），只做单参核对。
 2. **质量报告必须 passed**
    - 读 `tests/idle-roi/out/quality-report.json`（路径写进错误信息与 evidence），
      `verdict.status` 必须是字面量 `passed`；`verdict.pass` 必须 true；
@@ -175,7 +178,7 @@ EXIT=5
 #6 `runs/gate-dup-dest/console.txt`：
 
 ```
-  - resolveAssetsDir 选中了别的目录：<tmp>/dup/out（本次应为 <tmp>/dup/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材
+  - resolveAssetsDir 静默选中了别的目录：<tmp>/dup/out（本次应为 <tmp>/dup/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材
 EXIT=4
 ```
 
@@ -289,6 +292,30 @@ C 这一版报告分层了，门现在读这些字段（旧格式仍然认）：
 `verdict.historicalFailed=['v2-rgba/o-to-c']`（历史 v2 失败不阻塞候选，但原样记账）。
 
 **这不算放行性能**：那份报告还没提交，strict 模式（perf/behavior）会以"未提交改动"拒跑。
+
+### A 的 `af5f9c9`（两参 `resolveAssetsDir(dir, { subpath })`）实测
+
+A 修完后单参在"多候选 dest"上返回 `null`（拒绝猜），所以门的等式从"选中别的目录"变成"null"；
+按 A 的建议，门现在**以 `stage.assetsDir`（= `<dest>/<subpath>`）为期望目录**，两参调用只做确认，
+单参调用只用于断言"多候选不许悄悄挑一个"。实测（临时放入 A 的 af5f9c9 artifacts.mjs，跑完还原、未提交），
+原始输出在 `runs/gate-a-fix/`：
+
+| 场景 | 文件 | EXIT |
+|---|---|---|
+| 同一 dest 先 staging `out-v2` | `1-same-dest-v2.txt` | **0** |
+| 同一 dest 再 staging `out-v3-yuva`（dest 里已有 out-v2） | `2-same-dest-v3.txt` | **0**（`explicit = …/out-v3-yuva`，`scan = null`） |
+| v3 staging（A 的 `verifyAssetsDir` 报 missing-file，走 namingOnly）+ v3 正控 | `3-v3-positive.txt` | **0** |
+| v3 staging + 仓内旧 v2 报告 | `4-v3-old-report.txt` | **5** |
+
+对照：同一场景在**旧** artifacts（`b9c2f61`，strip-3 + 遍历首个 manifest）下是 `gate-dup-dest` 的 **EXIT=4**
+（静默选回旧 `out/`）——也就是说 A 的修复让这条从"拒跑"变成"正确解析后放行"，门的强度没有下降：
+期望目录仍由 subpath 唯一决定，字节仍由报告 SHA 钉住。
+
+（`runs/gate-v3-a-fix/` 里还留着 ccc883b 那一版的旧证据，已被 `runs/gate-a-fix/` 取代，仅作历史。）
+
+顺带修掉我自己一个 bug：staging **成功**时也必须用 `archive.assetsDir` 当期望目录
+（A 改成 `strip-components=1` 后布局是 `<dest>/experiments/idle-roi/out-v3-yuva`，
+原先只在 namingOnly 分支用它，会让成功的 staging 反而找不到目录）。
 
 **仍未放行**：仓内 `quality-report.json` 还是 `652cb63` 的 v2 报告（`status=failed`，
 且 `provenance.files` 与 `arms` 互相矛盾）。C 的严格全片门出结果并**提交**后，我先跑 #10/#11

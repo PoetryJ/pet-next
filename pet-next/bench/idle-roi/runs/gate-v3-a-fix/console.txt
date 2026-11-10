@@ -1,21 +1,16 @@
-$ # 临时把 A 的 ccc883b artifacts.mjs 放入工作区跑门（跑完还原，不提交）
-$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-ref=07278fd --assets-subpath=experiments/idle-roi/out-v3-yuva --stamp=gate-v3-a-fix --display=:157
+$ # A 的最新 artifacts（af5f9c9）临时放入工作区跑门，跑完还原、不提交
+$ # 1) 双候选 dest（out-v2 + out-v3-yuva），用 --assets-dir 指向 v3：A 的显式解析应放行
+/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-dup2-a-fix/gate.json
+{
+  "gate": {
+    "ok": true,
+    "code": 0,
+    "errors": []
+  }
+}
+EXIT_DUP2=0
 
-[idle-roi] assets-ref=07278fd(07278fdb329f200cea32e7d18cc2246336e95901) subpath=experiments/idle-roi/out-v3-yuva -> 失败：缺少 F 全画布文件（接受 F.webm/full.webm/F-full.webm）; 缺少 C 候选文件（接受 C.webm/roi.webm/C-roi.webm）
-[idle-roi]   注意：A 的 verifyAssetsDir 因候选名不含 F3/C3 判 missing-file（缺少 F 全画布文件（接受 F.webm/full.webm/F-full.webm）; 缺少 C 候选文件（接受 C.webm/roi.webm/C-roi.webm））；门会用 /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-a-fix/assets-committed/experiments/idle-roi/out-v3-yuva 逐臂核验并记账
-[idle-roi] 阶段门拒绝（code=5）：5 项
-  - verdict.status=failed（不是 passed）；失败门：o-to-c（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
-  - verdict.pass=false（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
-  - 门 o-to-c 未通过（pass=false）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
-  - F: 报告内部素材 SHA 自相矛盾 → b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673 | 2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0（来源：report.arms.fSha256=b1c3e8cf, report.provenance.files[F.webm].sha256=2ca492a9）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
-  - C: 报告内部素材 SHA 自相矛盾 → 81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e | 08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c | 195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c（来源：report.arms.candidateSha256=81c8a2f2, report.manifest.candidateSha256=81c8a2f2, report.provenance.files[C.webm].sha256=08a80ac4, staged-manifest.candidateSha256=195ae6aa）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
-  质量报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json（sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
-  素材 subpath：experiments/idle-roi/out-v3-yuva；判定细节见 /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-a-fix/gate.json
-
-EXIT=5
-
-$ # 同上，但用 v3 正控报告（三臂 SHA = O/F3/C3 实测）
-
+$ # 2) v3 staging（namingOnly）+ v3 正控
 [idle-roi] assets-ref=07278fd(07278fdb329f200cea32e7d18cc2246336e95901) subpath=experiments/idle-roi/out-v3-yuva -> 失败：缺少 F 全画布文件（接受 F.webm/full.webm/F-full.webm）; 缺少 C 候选文件（接受 C.webm/roi.webm/C-roi.webm）
 [idle-roi]   注意：A 的 verifyAssetsDir 因候选名不含 F3/C3 判 missing-file（缺少 F 全画布文件（接受 F.webm/full.webm/F-full.webm）; 缺少 C 候选文件（接受 C.webm/roi.webm/C-roi.webm））；门会用 /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-a-fix/assets-committed/experiments/idle-roi/out-v3-yuva 逐臂核验并记账
 /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-a-fix/gate.json
@@ -26,5 +21,13 @@ $ # 同上，但用 v3 正控报告（三臂 SHA = O/F3/C3 实测）
     "errors": []
   }
 }
-
 EXIT_POSITIVE=0
+
+$ # 3) v3 staging + 仓内旧 v2 报告
+  - verdict.pass=false（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
+  - 门 o-to-c 未通过（pass=false）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
+  - F: 报告内部素材 SHA 自相矛盾 → b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673 | 2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0（来源：report.arms.fSha256=b1c3e8cf, report.provenance.files[F.webm].sha256=2ca492a9）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
+  - C: 报告内部素材 SHA 自相矛盾 → 81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e | 08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c | 195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c（来源：report.arms.candidateSha256=81c8a2f2, report.manifest.candidateSha256=81c8a2f2, report.provenance.files[C.webm].sha256=08a80ac4, staged-manifest.candidateSha256=195ae6aa）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
+  质量报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json（sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）
+  素材 subpath：experiments/idle-roi/out-v3-yuva；判定细节见 /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-v3-a-fix/gate.json
+EXIT_NEGATIVE=5
