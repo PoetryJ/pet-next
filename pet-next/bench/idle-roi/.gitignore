@@ -1,0 +1,6 @@
+# bench 运行目录里只保留证据（raw.ndjson / summary.json / probes.json）；
+# Electron 的 user-data 是每臂临时产物，体积大且可再生，不入库。
+runs/**/user-data/
+runs/**/user-data-failure/
+runs/.lock
+runs/**/summary.recomputed.json
