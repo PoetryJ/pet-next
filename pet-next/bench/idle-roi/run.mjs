@@ -901,7 +901,10 @@ function runStageGate() {
     }
   }
 
-  const candidateDir = namingOnlyFailure?.assetsDir
+  // A 的 stageCommittedAssets 用 strip-components=1，assetsDir 里保留完整子路径；
+  // 旧版（strip-components=3）只留末段目录。两者都以返回值/回退公式覆盖，交给门做目录名与单参核对。
+  const expectedDir = archive?.assetsDir ?? namingOnlyFailure?.assetsDir ?? null;
+  const candidateDir = expectedDir
     ?? (dest ? path.join(dest, path.basename(assetsSubpath)) : path.resolve(assetsDirArg));
   const stagedManifest = loadManifest(path.join(candidateDir, 'manifest.json')).manifest;
   const reportPath = qualityReportArg === '' ? path.join(petRoot, QUALITY_REPORT_REL) : path.resolve(qualityReportArg);
@@ -912,7 +915,7 @@ function runStageGate() {
     subpath: assetsSubpath,
     dest,
     assetsDirArg: assetsDirArg === '' ? null : assetsDirArg,
-    expectedDir: namingOnlyFailure?.assetsDir ?? null,
+    expectedDir,
     qualityReportPath: reportPath,
     qualityReportRel: reportRel,
     strictReport,

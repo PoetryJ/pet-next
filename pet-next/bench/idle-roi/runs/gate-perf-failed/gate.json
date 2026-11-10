@@ -9,7 +9,7 @@
     "C: 报告内部素材 SHA 自相矛盾 → 81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e | 08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c（来源：report.arms.candidateSha256=81c8a2f2, report.manifest.candidateSha256=81c8a2f2, report.provenance.files[C.webm].sha256=08a80ac4, staged-manifest.candidateSha256=81c8a2f2）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json，sha256=5a1583b4d4d23148d81ed1d867ec4d560bdaccaac7ca6c3b2194709d0b3612d8）"
   ],
   "evidence": {
-    "checkedAt": "2026-11-10T10:27:30.276Z",
+    "checkedAt": "2026-11-10T10:37:10.702Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v2",
     "strictReport": true,
@@ -26,7 +26,8 @@
         "O.webm",
         "F.webm",
         "C.webm"
-      ]
+      ],
+      "artifactsResolveAssetsDirExplicit": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-perf-failed/assets-committed/out-v2"
     },
     "qualityReport": {
       "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json",
@@ -45,6 +46,10 @@
       "status": {
         "reported": "failed",
         "passed": false,
+        "subject": null,
+        "candidates": null,
+        "prerequisites": [],
+        "historicalFailed": [],
         "signals": [
           {
             "path": "verdict.pass",

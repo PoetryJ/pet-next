@@ -5,7 +5,7 @@
     "F: 报告内部素材 SHA 自相矛盾 → 0000000000000000000000000000000000000000000000000000000000000000 | b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673（来源：report.arms.fSha256=00000000, report.provenance.files[F.webm].sha256=b1c3e8cf）（报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/wrong-sha-report.json，sha256=9e5c0c725376d4cde571f0cfb43b0fa5afbdf7f3c1686df8fa5f544d36bcd31b）"
   ],
   "evidence": {
-    "checkedAt": "2026-11-10T10:27:41.412Z",
+    "checkedAt": "2026-11-10T10:37:21.827Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v2",
     "strictReport": false,
@@ -22,7 +22,8 @@
         "O.webm",
         "F.webm",
         "C.webm"
-      ]
+      ],
+      "artifactsResolveAssetsDirExplicit": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-wrong-sha-report/assets-committed/out-v2"
     },
     "qualityReport": {
       "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/wrong-sha-report.json",
@@ -41,6 +42,10 @@
       "status": {
         "reported": "passed",
         "passed": true,
+        "subject": null,
+        "candidates": null,
+        "prerequisites": [],
+        "historicalFailed": [],
         "signals": [
           {
             "path": "verdict.status",

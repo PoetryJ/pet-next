@@ -5,7 +5,7 @@
     "质量报告有未提交改动（M pet-next/tests/idle-roi/out/quality-report.json），不能作为放行依据"
   ],
   "evidence": {
-    "checkedAt": "2026-11-10T10:27:53.711Z",
+    "checkedAt": "2026-11-10T10:37:32.048Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v2",
     "strictReport": true,
@@ -22,7 +22,8 @@
         "O.webm",
         "F.webm",
         "C.webm"
-      ]
+      ],
+      "artifactsResolveAssetsDirExplicit": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-dirty-report/assets-committed/out-v2"
     },
     "qualityReport": {
       "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json",
@@ -43,6 +44,10 @@
       "status": {
         "reported": "passed",
         "passed": true,
+        "subject": null,
+        "candidates": null,
+        "prerequisites": [],
+        "historicalFailed": [],
         "signals": [
           {
             "path": "verdict.status",

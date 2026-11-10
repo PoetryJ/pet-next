@@ -1,0 +1,13 @@
+$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-ref=HEAD --assets-subpath=experiments/idle-roi/out-v2 --quality-report=bench/idle-roi/gate-fixtures/positive-report.json --stamp=gate-a-fix-samedest --display=:157
+
+[idle-roi] assets-ref=HEAD(620e377547a6a13dc9a96b4315a26c23621401b4) subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-a-fix-samedest/assets-committed/experiments/idle-roi/out-v2
+/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-a-fix-samedest/gate.json
+{
+  "gate": {
+    "ok": true,
+    "code": 0,
+    "errors": []
+  }
+}
+
+EXIT=0

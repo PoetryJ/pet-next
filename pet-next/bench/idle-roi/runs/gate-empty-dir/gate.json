@@ -2,14 +2,14 @@
   "ok": false,
   "code": 4,
   "errors": [
-    "素材目录缺 manifest.json：/tmp/tmp.BoA1Tu5UZz/empty/out-v2",
-    "素材目录里没有任何臂视频（/tmp/tmp.BoA1Tu5UZz/empty/out-v2）；空产物不算取到素材",
-    "resolveAssetsDir 选中了别的目录：/tmp/tmp.BoA1Tu5UZz/empty/out（本次应为 /tmp/tmp.BoA1Tu5UZz/empty/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材",
-    "F: 素材目录里没有该臂文件（找过 F3.webm/F.webm/full.webm/F-full.webm）：/tmp/tmp.BoA1Tu5UZz/empty/out-v2",
-    "C: 素材目录里没有该臂文件（找过 C3.webm/C.webm/roi.webm/C-roi.webm）：/tmp/tmp.BoA1Tu5UZz/empty/out-v2"
+    "素材目录缺 manifest.json：/tmp/tmp.auiQL7x7eU/empty/out-v2",
+    "素材目录里没有任何臂视频（/tmp/tmp.auiQL7x7eU/empty/out-v2）；空产物不算取到素材",
+    "resolveAssetsDir 静默选中了别的目录：/tmp/tmp.auiQL7x7eU/empty/out（本次应为 /tmp/tmp.auiQL7x7eU/empty/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材",
+    "F: 素材目录里没有该臂文件（找过 F3.webm/F.webm/full.webm/F-full.webm）：/tmp/tmp.auiQL7x7eU/empty/out-v2",
+    "C: 素材目录里没有该臂文件（找过 C3.webm/C.webm/roi.webm/C-roi.webm）：/tmp/tmp.auiQL7x7eU/empty/out-v2"
   ],
   "evidence": {
-    "checkedAt": "2026-11-10T10:27:47.543Z",
+    "checkedAt": "2026-11-10T10:37:28.454Z",
     "petRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next",
     "subpath": "experiments/idle-roi/out-v2",
     "strictReport": false,
@@ -17,16 +17,18 @@
       "subpath": "experiments/idle-roi/out-v2",
       "subpathName": "out-v2",
       "dest": null,
-      "assetsDirArg": "/tmp/tmp.BoA1Tu5UZz/empty/out-v2",
+      "assetsDirArg": "/tmp/tmp.auiQL7x7eU/empty/out-v2",
       "expectedDir": null,
-      "expected": "/tmp/tmp.BoA1Tu5UZz/empty/out-v2",
-      "artifactsResolveAssetsDir": "/tmp/tmp.BoA1Tu5UZz/empty/out",
+      "expected": "/tmp/tmp.auiQL7x7eU/empty/out-v2",
+      "artifactsResolveAssetsDir": "/tmp/tmp.auiQL7x7eU/empty/out",
       "errors": [
-        "素材目录缺 manifest.json：/tmp/tmp.BoA1Tu5UZz/empty/out-v2",
-        "素材目录里没有任何臂视频（/tmp/tmp.BoA1Tu5UZz/empty/out-v2）；空产物不算取到素材",
-        "resolveAssetsDir 选中了别的目录：/tmp/tmp.BoA1Tu5UZz/empty/out（本次应为 /tmp/tmp.BoA1Tu5UZz/empty/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材"
+        "素材目录缺 manifest.json：/tmp/tmp.auiQL7x7eU/empty/out-v2",
+        "素材目录里没有任何臂视频（/tmp/tmp.auiQL7x7eU/empty/out-v2）；空产物不算取到素材",
+        "resolveAssetsDir 静默选中了别的目录：/tmp/tmp.auiQL7x7eU/empty/out（本次应为 /tmp/tmp.auiQL7x7eU/empty/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材"
       ],
-      "armFiles": []
+      "armFiles": [],
+      "artifactsResolveAssetsDirExplicit": null,
+      "explicitProbeSkipped": "no-dest（--assets-dir 模式，没有可拼接 subpath 的基准）"
     },
     "qualityReport": {
       "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/positive-report.json",
@@ -45,6 +47,10 @@
       "status": {
         "reported": "passed",
         "passed": true,
+        "subject": null,
+        "candidates": null,
+        "prerequisites": [],
+        "historicalFailed": [],
         "signals": [
           {
             "path": "verdict.status",
@@ -247,7 +253,7 @@
         "chosen": null,
         "candidates": [],
         "fallback": null,
-        "reason": "素材目录里没有该臂文件（找过 F3.webm/F.webm/full.webm/F-full.webm）：/tmp/tmp.BoA1Tu5UZz/empty/out-v2"
+        "reason": "素材目录里没有该臂文件（找过 F3.webm/F.webm/full.webm/F-full.webm）：/tmp/tmp.auiQL7x7eU/empty/out-v2"
       },
       "C": {
         "arm": "C",
@@ -255,7 +261,7 @@
         "chosen": null,
         "candidates": [],
         "fallback": null,
-        "reason": "素材目录里没有该臂文件（找过 C3.webm/C.webm/roi.webm/C-roi.webm）：/tmp/tmp.BoA1Tu5UZz/empty/out-v2"
+        "reason": "素材目录里没有该臂文件（找过 C3.webm/C.webm/roi.webm/C-roi.webm）：/tmp/tmp.auiQL7x7eU/empty/out-v2"
       }
     },
     "staging": {

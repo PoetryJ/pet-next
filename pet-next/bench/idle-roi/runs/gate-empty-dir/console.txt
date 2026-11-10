@@ -1,11 +1,11 @@
-$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-dir=/tmp/tmp.BoA1Tu5UZz/empty/out-v2 --assets-subpath=experiments/idle-roi/out-v2 --quality-report=bench/idle-roi/gate-fixtures/positive-report.json --stamp=gate-empty-dir --display=:157
+$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight --assets-dir=/tmp/tmp.auiQL7x7eU/empty/out-v2 --assets-subpath=experiments/idle-roi/out-v2 --quality-report=bench/idle-roi/gate-fixtures/positive-report.json --stamp=gate-empty-dir --display=:157
 
 [idle-roi] 阶段门拒绝（code=4）：5 项
-  - 素材目录缺 manifest.json：/tmp/tmp.BoA1Tu5UZz/empty/out-v2
-  - 素材目录里没有任何臂视频（/tmp/tmp.BoA1Tu5UZz/empty/out-v2）；空产物不算取到素材
-  - resolveAssetsDir 选中了别的目录：/tmp/tmp.BoA1Tu5UZz/empty/out（本次应为 /tmp/tmp.BoA1Tu5UZz/empty/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材
-  - F: 素材目录里没有该臂文件（找过 F3.webm/F.webm/full.webm/F-full.webm）：/tmp/tmp.BoA1Tu5UZz/empty/out-v2
-  - C: 素材目录里没有该臂文件（找过 C3.webm/C.webm/roi.webm/C-roi.webm）：/tmp/tmp.BoA1Tu5UZz/empty/out-v2
+  - 素材目录缺 manifest.json：/tmp/tmp.auiQL7x7eU/empty/out-v2
+  - 素材目录里没有任何臂视频（/tmp/tmp.auiQL7x7eU/empty/out-v2）；空产物不算取到素材
+  - resolveAssetsDir 静默选中了别的目录：/tmp/tmp.auiQL7x7eU/empty/out（本次应为 /tmp/tmp.auiQL7x7eU/empty/out-v2）；拒跑，避免拿旧 out 的字节当本轮素材
+  - F: 素材目录里没有该臂文件（找过 F3.webm/F.webm/full.webm/F-full.webm）：/tmp/tmp.auiQL7x7eU/empty/out-v2
+  - C: 素材目录里没有该臂文件（找过 C3.webm/C.webm/roi.webm/C-roi.webm）：/tmp/tmp.auiQL7x7eU/empty/out-v2
   质量报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/gate-fixtures/positive-report.json（sha256=d7b8a5f1f45cdab73c2c2d746ca6509b8d6c6bd020cb522411512d73d8580232）
   素材 subpath：experiments/idle-roi/out-v2；判定细节见 /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-empty-dir/gate.json
 
