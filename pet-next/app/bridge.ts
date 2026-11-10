@@ -10,6 +10,11 @@ export interface PetBridge {
   moveBy(dx: number, dy: number): void;
   /** 退出应用进程。 */
   quit(): void;
+  /**
+   * M3-11：拖动结束/取消信号（无载荷）。只有页面拿到 `dragBudget=1` 时才调用；
+   * 主进程仅在开关打开时注册接收方，关闭时该消息无人接收、不产生行为。
+   */
+  dragEnd(): void;
 }
 
 /**

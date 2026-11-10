@@ -31,6 +31,11 @@ contextBridge.exposeInMainWorld('pet', {
   quit(): void {
     ipcRenderer.send('pet:quit');
   },
+  // M3-11：拖动结束/取消。通道名与 contracts/drag-budget.ts 一致（内联，preload 独立编译）。
+  // 只在页面拿到 dragBudget=1 时调用；主进程开关关闭时不注册接收方。
+  dragEnd(): void {
+    ipcRenderer.send('pet:drag-end');
+  },
 });
 
 contextBridge.exposeInMainWorld('petChat', {

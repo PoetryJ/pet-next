@@ -13,7 +13,7 @@ import {
   type WriteBudget,
   type WriteBudgetClock,
   type WriteBudgetStats,
-} from '../../experiments/drag-write-budget/scheduler.ts';
+} from '../../core/drag-write-budget/scheduler.ts';
 import { advanceOrigin, type TrackedOrigin } from './track.ts';
 import type { WindowController, WindowHost } from './types.ts';
 

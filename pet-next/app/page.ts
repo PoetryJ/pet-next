@@ -7,6 +7,7 @@ import { domScreenPointToDip } from '../adapters/window/pointer-point.ts';
 import { DAILY_CADENCE, DEMO_CADENCE } from '../contracts/behavior.ts';
 import { parsePreview, PREVIEW_QUERY } from '../contracts/preview.ts';
 import { IDLE_PAUSE_QUERY } from '../contracts/idle-suspension.ts';
+import { DRAG_BUDGET_QUERY } from '../contracts/drag-budget.ts';
 import { attachIdleSuspension, type IdleSuspensionHandle } from './idle-suspension.ts';
 import {
   CHAT_LOCAL_TOKEN,
@@ -32,6 +33,8 @@ const SHORT_REACTION = new URL('../assets/candidates/reaction/short.webm', locat
 
 const params = new URLSearchParams(location.search);
 const selection = parsePreview(params.get(PREVIEW_QUERY));
+// M3-11：只有主进程显式注入 `dragBudget=1` 才上报拖动结束（候选臂）；缺省零新增 IPC。
+const dragBudget = params.get(DRAG_BUDGET_QUERY) === '1';
 // M3-9：只有主进程显式注入 `idlePause=1`（开关打开且单槽）才装配；缺省零对象、零监听。
 const idlePause = params.get(IDLE_PAUSE_QUERY) === '1';
 const idleUrl = params.get('idle') ?? new URL('../assets/idle.webm', location.href).href;
@@ -168,6 +171,8 @@ const surface = {
     document.body.classList.toggle('dragging', dragging);
     // M3-6：拖动优先——拖中完成只给结果提示，不排回应。
     holder.feedback?.drag(dragging);
+    // M3-11：只有候选臂才上报；主进程据此 flush 最后一个有效位置并结束本次 epoch。
+    if (!dragging && dragBudget) window.pet.dragEnd();
   },
 };
 

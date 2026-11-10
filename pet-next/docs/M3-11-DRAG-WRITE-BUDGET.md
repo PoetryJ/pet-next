@@ -27,7 +27,12 @@
 | preload | 仅新增 `pet.dragEnd(): void`；其余不变，不暴露 ipcRenderer |
 | 默认关闭 | 关闭时：零 timer、零新 IPC、`createWindowController` 原样 |
 
-## 2. 纯调度器（B，`experiments/drag-write-budget/`）
+## 2. 纯调度器（B）
+
+> 落点修正（集成时）：实现在 `core/drag-write-budget/scheduler.ts`，`experiments/drag-write-budget/scheduler.ts`
+> 只做 re-export。原因是仓库已有约束 `tests/boundaries.test.ts::产品目录不引用实验或素材流水线`：
+> 候选要接进 `electron/main.ts` 与 `adapters/window/drag-write-budget.ts`，就必须有产品侧实现位置。
+> API、语义、注入时钟与 B 的单测 import 路径都不变（仍从 `experiments/drag-write-budget/scheduler.ts` 取）。
 
 ```ts
 export interface DragPosition { readonly x: number; readonly y: number }
