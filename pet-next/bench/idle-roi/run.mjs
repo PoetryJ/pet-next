@@ -298,6 +298,31 @@ async function runArm(context, { arm, rep }) {
     result.readyEvent = parseReadyEvent(product.stdout());
     if (result.readyEvent === null) armFail('stdout 里没有读到 {event:"ready"}');
 
+    result.observedDpr = page?.viewport?.dpr ?? null;
+    result.sourceShaVerified = source.expectedSha ? source.shaMatched === true : null;
+
+    // C 的稳态前置：body.idle-roi 是 media.begin('idle') 之后才加的，但首个 idle
+    // 要等加载兑现；固定 sleep 会把“还没到 idle”误记成“接线失败”。
+    if (arm === 'C' && context.roiLayout) {
+      const steadyDeadline = Date.now() + 15000;
+      let steady = null;
+      while (Date.now() < steadyDeadline) {
+        page = (await snapshot(cdp)) ?? page;
+        const clip = page?.videos.find((video) => video.id === 'clip') ?? null;
+        if (page && page.bodyIdleRoi === true && clip && clip.hidden === false && clip.readyState >= 2) {
+          steady = { bodyIdleRoi: true, clipHidden: false, readyState: clip.readyState, waitedMs: 15000 - (steadyDeadline - Date.now()) };
+          break;
+        }
+        if (product.exitCode !== null) break;
+        await delay(200);
+      }
+      result.steadyState = steady ?? { bodyIdleRoi: page?.bodyIdleRoi ?? null, clipHidden: page?.videos.find((video) => video.id === 'clip')?.hidden ?? null, timeout: true };
+      if (steady === null) {
+        result.notRun.push('roi-class-timeout');
+        armFail(`${tag}: 15s 内未进入 idle-roi 稳态（body.idle-roi / #clip.hidden 未同时满足），与“接线错误”分开记录`);
+      }
+    }
+
     // 布局核对：只有 C 需要 ROI；F/O 只记录实际 rect 供比对。
     if (context.manifest) {
       result.layout = verifyLayout(page, context.manifest, { expectRoi: arm === 'C' });
@@ -318,6 +343,18 @@ async function runArm(context, { arm, rep }) {
       if (arm !== 'C' && result.layout.checked && result.layout.layoutMatches === false) {
         recordFailure(`${tag}: ${arm} 的 contain 基线不符（${layoutDigest}），该臂不能与后续 C 直接比较`);
       }
+    }
+
+    // 布局被否决时不烧 CPU：直接跳过采样，只留证据（C 的 CPU 不能当采用收益）。
+    const canSample =
+      !(arm === 'C' && result.layout?.checked && !result.layout.roiLayoutWired) && !result.notRun.includes('roi-class-timeout');
+    if (!canSample) {
+      result.notRun.push('sampling-skipped-layout-not-wired');
+      printStatus(`${tag}: 布局/稳态未通过，跳过 ${Number(seconds) + Number(warmupSec)}s 采样`);
+      result.summary = summarizeArm(result.samples);
+      result.loadavgEnd = readLoadavg();
+      result.finishedAt = new Date().toISOString();
+      return result;
     }
 
     // 预热段单列（phase=warmup，不进 summary 的 measure 聚合）。
@@ -654,6 +691,9 @@ async function writeSummary(context, armResults) {
       wallSec: entry.wallSec ?? null,
       readyEvent: entry.readyEvent ?? null,
       roiEnvApplied: entry.roiEnvApplied ?? null,
+      steadyState: entry.steadyState ?? null,
+      observedDpr: entry.observedDpr ?? null,
+      sourceShaVerified: entry.sourceShaVerified ?? null,
       layout: entry.layout,
       summary: entry.summary,
       probes: entry.probes,

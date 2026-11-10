@@ -60,6 +60,11 @@ C 当成采用候选）。`experiments/**` 永远不进 dist，不要去那里�
 进 dist 再跑 C**，否则画面对照整轮要重跑（CPU 本身不受 object-fit 影响，但阶段门要求
 布局+画面通过才认收益）。
 
+C 开跑前还会轮询 `body.idle-roi === true && #clip.hidden === false && readyState>=2`
+（最长 15s）；超时单独记 `roi-class-timeout`，与“接线错误”分开。布局被否决时**直接跳过
+采样**（不烧 3×60s），只留 rect/objectFit/bodyIdleRoi 证据。`observedDpr` 也逐臂记录，
+便于 125%/150% 复跑时区分 DIP 与物理像素。
+
 **只比 rect 会漏判**（B 指出 830b7cb 的 `page.css` 是 `object-fit: none`）：盒子可以正好
 是 104/56/113/143，但 226×286 的候选按原尺寸画进 113×143 盒 → 宠物 2 倍大并溢出。
 所以 C 臂的 `roiLayoutWired` 同时要求三件事：
@@ -180,8 +185,15 @@ C 布局未接线时额外否决（见第 2 节）。
   工作区快照。
 - **体积/面积/重编码都不能当 CPU 收益**（A 的硬数据）：C 225952B > F 188075B > O 78419B，
   C 是 O 的 2.88 倍；像素面积保留 64636/230400 = 28.05% 只是名义值；C 的 `alpha>1`
-  前景比 O 裁框内少 3448 px（-0.177%），所以 **C-O 含“重编码损失 + 几何裁剪”两部分，
-  C-F 才是纯几何**。本工具只用量到的进程树 CPU 说话。
+  前景比 O 裁框内少 3448 px（-0.177%），所以 **C-O 含“重编码损失 + 几何裁剪”两部分**。
+- **C-F 的口径要分开说**（A 更正）：CPU 口径下 C-F 隔离的是**几何面积**（解码 226×286 vs
+  640×360）；但 v1 的 C-F **像素差不是零误差基线**——它含“226 宽区域独立做 RGB→420
+  色度下采样”的路径差异（α 与 Y 平面逐位相同，差在 B 通道主导的色度），真正的编码域
+  裁剪（f-to-c=max 0）才是纯几何。不要拿 v1 的 C-F 当零误差参照。
+- **画质门状态（A 报给负责人，D 只记录不裁决）**：f-to-c 在 4:2:0 下结构不可达
+  （max 6、B 通道主导），o-to-c 与裁剪无关（O vs F 与 O vs C 误差相同），只能上
+  444+alpha。若负责人据此停止 ROI 接线，本 bench 不再投 3×60s；已提交的 `out/` 字节
+  （da02255，SHA 与 9dc035e 一致）保持可复跑。
 - **alpha 形态**：C 带 `alpha_mode=1`，ffprobe 容器仍报 `pix_fmt=yuv420p`，属 VP9 alpha
   正常形态；`colorTags` 三臂一致（`unknown/unknown/bt709/tv`），不是异常。
 
@@ -207,6 +219,9 @@ A 的提交 `da02255` 与负责人集成提交 `9dc035e` 的三臂字节逐字�
   Escape 退出码 0，退出后残留进程 0；构建 up-to-date；electron v43.3.0。
 - 产品源码改动 0（`productDirtyFiles=0`，只算 `app/electron/core/adapters/contracts/scripts/package.json`）；
   `dirtyFiles=3` 是本 bench 工具自身当时的未提交改动。
+- 说明：`steadyState` / `observedDpr` / `sourceShaVerified` 三个字段是这份自检之后加的
+  （已用 3s 短跑验证：dpr=1、稳定态仅在 C 臂等待、SHA 校验在 manifest 存在时执行），
+  所以不在这份历史 summary 里；下一次真实三臂会带上。
 - 工具覆盖已自证：已提交字节抽取与 SHA 记账、进程树 CPU/RSS/PSS、真实解码帧与视频尺寸、
   10 次点击原始值、loadavg、ready/退出码/残留、warmup/measure 分列、raw.ndjson + summary.json。
 

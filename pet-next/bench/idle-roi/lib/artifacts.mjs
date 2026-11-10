@@ -245,9 +245,10 @@ export function verifyLayout(page, manifest, { expectRoi = false } = {}) {
     Math.abs(rectDelta.width) <= tolerance &&
     Math.abs(rectDelta.height) <= tolerance;
   // 盒子位置对 ≠ 画面正确：object-fit:none 会把 226×286 按原尺寸塞进 113×143 盒
-  // （B 指出 830b7cb 的 page.css 正是 none）。O/F 基线要求 contain，C 要求非 none。
+  // （B 指出 830b7cb/4b0b1f0 的 page.css 正是 none）。C 与 O/F 都要求字面量 contain：
+  // fill/cover 在 113:143 ≡ 226:286 下会“碰巧同值”，用全等才能在手改 CSS 时立刻暴露。
   const objectFit = video.objectFit ?? null;
-  const contentScalingOk = expectRoi ? objectFit !== null && objectFit !== 'none' : objectFit === 'contain';
+  const contentScalingOk = objectFit === 'contain';
   const bodyIdleRoi = page.bodyIdleRoi ?? null;
   return {
     checked: true,
@@ -255,7 +256,7 @@ export function verifyLayout(page, manifest, { expectRoi = false } = {}) {
     videoSrc: video.src,
     videoIntrinsic: { width: video.videoWidth, height: video.videoHeight },
     objectFit,
-    objectFitExpected: expectRoi ? 'not-none' : 'contain',
+    objectFitExpected: 'contain',
     contentScalingOk,
     bodyIdleRoiClass: bodyIdleRoi,
     videoHidden: video.hidden,
