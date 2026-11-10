@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "kind": "idle-roi-quality",
   "status": "passed",
-  "generatedAt": "2026-11-10T10:39:22.205Z",
+  "generatedAt": "2026-11-10T10:40:42.649Z",
   "subject": "f3c3",
   "units": "LSB (1 LSB = 1/255 of full scale)；PTS 单位 ms",
   "thresholds": {
@@ -22,18 +22,13 @@
     "edgeBandHigh": 64
   },
   "evaluationCode": {
-    "commit": "aa92f8732014b5c02166b08854ec229214307843",
+    "commit": "5617dd2925a20dab03f1cd2d3c064ef6b0ab1466",
     "branch": "agent/m312r1-c",
     "dirty": true,
     "dirtyPaths": [
-      "pet-next/tests/idle-roi/fixtures-v3/SOURCE.json",
-      "pet-next/tests/idle-roi/lib/quality-report.ts",
-      "pet-next/tests/idle-roi/lib/variants.ts",
-      "pet-next/tests/idle-roi/out/quality-report.json",
-      "pet-next/tests/idle-roi/out/scale/scale-report.json",
-      "pet-next/tests/idle-roi/out/selfcheck-report.json"
+      "pet-next/tests/idle-roi/lib/reference.ts"
     ],
-    "harnessSha256": "deffe413ff95c3dd3a213981c0c7c6849ad815637e5bef88fc3f8bcd6c09bc24",
+    "harnessSha256": "2f7d6d9f065eb1efe482be08e2a3d7f4fc695202eb70da479b09631677f4f9b4",
     "files": [
       {
         "path": "tests/idle-roi/lib/arms.ts",
@@ -72,8 +67,8 @@
       },
       {
         "path": "tests/idle-roi/lib/reference.ts",
-        "sha256": "1e26754dfe0358e1cbff2f2561bb3f8bcd1502fb132f11007f582dc5119c9d12",
-        "bytes": 13721
+        "sha256": "e34c8bc526c83f4c04467cb0f6ec19188e568a0f9fc1b4fe208ca220e389e953",
+        "bytes": 14010
       },
       {
         "path": "tests/idle-roi/lib/report.ts",
@@ -22782,8 +22777,8 @@
       "armsDir": "tests/idle-roi/fixtures-v3",
       "files": {
         "O": "O.webm",
-        "F": "/tmp/m312c-quality-Ovf9Bj/selfcontrol-passthrough.webm",
-        "C": "/tmp/m312c-quality-Ovf9Bj/selfcontrol-passthrough.webm"
+        "F": "/tmp/m312c-quality-IZWs6l/selfcontrol-passthrough.webm",
+        "C": "/tmp/m312c-quality-IZWs6l/selfcontrol-passthrough.webm"
       },
       "labels": {
         "O": "O",
@@ -31977,7 +31972,7 @@
           "frameCount": 48
         },
         "cand": {
-          "file": "/tmp/m312c-quality-Ovf9Bj/selfcontrol-passthrough.webm",
+          "file": "/tmp/m312c-quality-IZWs6l/selfcontrol-passthrough.webm",
           "frameCount": 48
         },
         "layout": {
@@ -32048,7 +32043,7 @@
       },
       "selfControl": {
         "source": "reproduced-from-build-report",
-        "file": "/tmp/m312c-quality-Ovf9Bj/selfcontrol-passthrough.webm",
+        "file": "/tmp/m312c-quality-IZWs6l/selfcontrol-passthrough.webm",
         "sha256": "d5a226ef08724d408513fc3ada52e90752fc19f778a393e7235584d6b5d9e8cc",
         "recordedSha256": "d5a226ef08724d408513fc3ada52e90752fc19f778a393e7235584d6b5d9e8cc",
         "shaMatchesRecorded": true,
@@ -32098,7 +32093,7 @@
           "+bitexact",
           "-f",
           "webm",
-          "/tmp/m312c-quality-Ovf9Bj/selfcontrol-passthrough.webm"
+          "/tmp/m312c-quality-IZWs6l/selfcontrol-passthrough.webm"
         ],
         "note": "由 tests/idle-roi/fixtures-v3/build-report.json/encode/commands/passthrough 的命令本地复现（输入换成本目录 O.webm、输出换到临时目录）；B 的 passthrough.webm 未随提交落盘"
       },
@@ -32404,8 +32399,8 @@
           },
           "S": {
             "key": "S",
-            "file": "/tmp/m312c-quality-Ovf9Bj/selfcontrol-passthrough.webm",
-            "relativeFile": "../../../../../../tmp/m312c-quality-Ovf9Bj/selfcontrol-passthrough.webm",
+            "file": "/tmp/m312c-quality-IZWs6l/selfcontrol-passthrough.webm",
+            "relativeFile": "../../../../../../tmp/m312c-quality-IZWs6l/selfcontrol-passthrough.webm",
             "sha256": "d5a226ef08724d408513fc3ada52e90752fc19f778a393e7235584d6b5d9e8cc",
             "bytes": 619450,
             "stream": {
@@ -55839,7 +55834,7 @@
         "frameCount": 48
       },
       "cand": {
-        "file": "/tmp/m312c-quality-Ovf9Bj/selfcontrol-passthrough.webm",
+        "file": "/tmp/m312c-quality-IZWs6l/selfcontrol-passthrough.webm",
         "frameCount": 48
       },
       "layout": {

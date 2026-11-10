@@ -101,7 +101,10 @@ export function gitState(): GitState {
     .split('\n')
     .map((line) => line.trim())
     .filter((line) => line.length > 0)
-    .map((line) => line.replace(/^\S+\s+/, ''));
+    .map((line) => line.replace(/^\S+\s+/, ''))
+    // 只关心**代码**是否与 HEAD 一致：out/ 下的报告与 PNG 是本次运行的产物，
+    // 它们被写出来是正常工作，不能因此把「评测代码有未提交改动」也标成 true。
+    .filter((entry) => !entry.startsWith('pet-next/tests/idle-roi/out/'));
   return { commit: head.trim(), branch: branch === null ? null : branch.trim(), dirty: dirtyPaths.length > 0, dirtyPaths, error: null };
 }
 
