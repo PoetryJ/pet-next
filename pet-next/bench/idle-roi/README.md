@@ -161,7 +161,9 @@ C 布局未接线时额外否决（见第 2 节）。
   loadavg 13–16 的窗口内，原样保留不剔除），每次点击后均回到 idle。
 - 读到产品 `{"event":"ready"}`（transparent=true，bounds 320×240 @80,80，scaleFactor=1）；
   Escape 退出码 0，退出后残留进程 0；构建 up-to-date；electron v43.3.0；
-  产品源码改动 0（`productDirtyFiles=0`），`dirtyFiles=4` 是本 bench 工具自身当时的未提交改动。
+  运行后核对产品路径改动 0（`git status -uno -- app electron core adapters contracts scripts package.json` 为空）；
+  summary 里 `dirtyFiles=4` 是本 bench 工具自身当时的未提交改动（本轮才加上的
+  `productDirtyFiles` 字段不在这份历史 summary 里）。
 - 工具覆盖已自证：已提交字节抽取与 SHA 记账、进程树 CPU/RSS/PSS、真实解码帧与视频尺寸、
   10 次点击原始值、loadavg、ready/退出码/残留、warmup/measure 分列、raw.ndjson + summary.json。
 
