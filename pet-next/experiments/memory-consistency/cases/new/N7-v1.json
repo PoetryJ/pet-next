@@ -1,0 +1,72 @@
+{
+  "trackId": "N7-v1",
+  "pairId": "N7",
+  "class": "stale-patch",
+  "variant": "v1",
+  "keyCondition": "补丁构建后新增陈述是否触及同一 subject",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "新模板输入轨迹；期望标签在 eval/expected/new.json，跑之前已冻结。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T15:01:00.000Z",
+      "observedAt": "2026-11-10T15:01:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "菜单翻译保留菜名原文。",
+        "scripted": {
+          "subjectKey": "pref:menu",
+          "valueText": "保留菜名原文",
+          "kindHint": "preference"
+        }
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T15:02:00.000Z",
+      "observedAt": "2026-11-10T15:02:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "字体调大一点。",
+        "scripted": {
+          "subjectKey": "pref:font",
+          "valueText": "大一点",
+          "kindHint": "preference"
+        }
+      }
+    }
+  ],
+  "patches": [
+    {
+      "patchId": "N7-v1-p1",
+      "buildAtSequence": 1,
+      "applyAtSequence": 2,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "n1",
+          "text": "菜单翻译保留原文",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [],
+          "generator": "scripted",
+          "subjectKey": "pref:menu"
+        }
+      ],
+      "notesToInvalidate": []
+    }
+  ]
+}

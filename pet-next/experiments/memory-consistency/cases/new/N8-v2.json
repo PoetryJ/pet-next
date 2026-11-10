@@ -1,0 +1,94 @@
+{
+  "trackId": "N8-v2",
+  "pairId": "N8",
+  "class": "stale-patch",
+  "variant": "v2",
+  "keyCondition": "子笔记提交前父笔记是否被重写",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "新模板输入轨迹；期望标签在 eval/expected/new.json，跑之前已冻结。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T15:01:00.000Z",
+      "observedAt": "2026-11-10T15:01:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "行程先定去程。",
+        "scripted": {
+          "subjectKey": "pref:trip",
+          "valueText": "先定去程",
+          "kindHint": "preference"
+        }
+      }
+    }
+  ],
+  "patches": [
+    {
+      "patchId": "N8-v2-p1",
+      "buildAtSequence": 1,
+      "applyAtSequence": 1,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "n-parent",
+          "text": "行程范围",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [],
+          "generator": "scripted",
+          "subjectKey": "pref:trip"
+        }
+      ],
+      "notesToInvalidate": []
+    },
+    {
+      "patchId": "N8-v2-p2",
+      "buildAtSequence": 1,
+      "applyAtSequence": 1,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "n-parent",
+          "text": "行程范围（重写）",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [],
+          "generator": "scripted",
+          "subjectKey": "pref:trip"
+        }
+      ],
+      "notesToInvalidate": []
+    },
+    {
+      "patchId": "N8-v2-p3",
+      "buildAtSequence": 1,
+      "applyAtSequence": 1,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "n-child",
+          "text": "去程优先",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [
+            "n-parent"
+          ],
+          "generator": "scripted"
+        }
+      ],
+      "notesToInvalidate": []
+    }
+  ]
+}

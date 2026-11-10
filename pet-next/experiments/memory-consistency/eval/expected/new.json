@@ -1,0 +1,136 @@
+{
+  "schemaVersion": "memory-expectations/v1",
+  "dataset": "new-templates-8x2",
+  "author": "eval（D）",
+  "writtenBeforePipelineRun": true,
+  "basis": "在第一次运行 new 模板集之前按契约语义写死；与开发集期望分开保存，避免用开发集标签解释新模板。",
+  "assertions": {
+    "N1-v1": {
+      "why": "同一 subject 的重述也推进版本：旧笔记立即失效，新事实才有效",
+      "checks": [
+        { "kind": "subject.version", "subjectKey": "pref:minutes", "value": 2 },
+        { "kind": "note.status", "noteId": "n1", "value": "invalidated" },
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "event.count", "value": 2 }
+      ]
+    },
+    "N1-v2": {
+      "why": "没有第二次陈述：版本停在 1，笔记继续有效",
+      "checks": [
+        { "kind": "subject.version", "subjectKey": "pref:minutes", "value": 1 },
+        { "kind": "note.status", "noteId": "n1", "value": "active" },
+        { "kind": "event.count", "value": 1 }
+      ]
+    },
+    "N2-v1": {
+      "why": "落后 revision 的撤销被拒：任务仍是 revised@r3",
+      "checks": [
+        { "kind": "task.change", "taskId": "expense-42", "value": "revised" },
+        { "kind": "task.revision", "taskId": "expense-42", "value": 3 },
+        { "kind": "rejectedEvent.reasonPrefix", "index": 0, "value": "stale_task_revision" }
+      ]
+    },
+    "N2-v2": {
+      "why": "更新 revision 的撤销生效：任务进入 cancelled@r4",
+      "checks": [
+        { "kind": "task.change", "taskId": "expense-42", "value": "cancelled" },
+        { "kind": "task.revision", "taskId": "expense-42", "value": 4 },
+        { "kind": "task.count", "value": 1 }
+      ]
+    },
+    "N3-v1": {
+      "why": "两条生成属于两个请求：两个独立请求视图",
+      "checks": [
+        { "kind": "req.count", "value": 2 },
+        { "kind": "req.responseCount", "requestId": "req-ticket-1", "epoch": 1, "value": 1 },
+        { "kind": "req.responseCount", "requestId": "req-ticket-2", "epoch": 1, "value": 1 }
+      ]
+    },
+    "N3-v2": {
+      "why": "两条生成属于同一请求：一个视图下两条回答",
+      "checks": [
+        { "kind": "req.count", "value": 1 },
+        { "kind": "req.responseCount", "requestId": "req-ticket-1", "epoch": 1, "value": 2 }
+      ]
+    },
+    "N4-v1": {
+      "why": "确认指向已被呈现的回答：接受；但呈现不证明生成",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-fw-1", "epoch": 1, "flag": "acknowledged", "value": true },
+        { "kind": "req.flag", "requestId": "req-fw-1", "epoch": 1, "flag": "generated", "value": false }
+      ]
+    },
+    "N4-v2": {
+      "why": "确认指向从未出现过的回答：拒绝",
+      "checks": [
+        { "kind": "req.flag", "requestId": "req-fw-1", "epoch": 1, "flag": "acknowledged", "value": false },
+        { "kind": "rejectedEvent.reasonPrefix", "index": 0, "value": "ack_unknown_response" }
+      ]
+    },
+    "N5-v1": {
+      "why": "未知结果同载荷重发：幂等，仍然只有一个事件、一个未知结论",
+      "checks": [
+        { "kind": "event.count", "value": 1 },
+        { "kind": "conflict.count", "value": 0 },
+        { "kind": "req.toolOutcome", "requestId": "req-install", "epoch": 1, "value": "unknown" }
+      ]
+    },
+    "N5-v2": {
+      "why": "未知之后另一事件改判成功：拒绝，未知不得被自动升级",
+      "checks": [
+        { "kind": "event.count", "value": 1 },
+        { "kind": "req.toolOutcome", "requestId": "req-install", "epoch": 1, "value": "unknown" },
+        { "kind": "rejectedEvent.reasonPrefix", "index": 0, "value": "tool_outcome_conflict" }
+      ]
+    },
+    "N6-v1": {
+      "why": "第二个工具结果属于另一请求：两个独立结算",
+      "checks": [
+        { "kind": "req.count", "value": 2 },
+        { "kind": "req.toolOutcome", "requestId": "req-bill-1", "epoch": 1, "value": "ok" },
+        { "kind": "req.toolOutcome", "requestId": "req-bill-2", "epoch": 1, "value": "ok" }
+      ]
+    },
+    "N6-v2": {
+      "why": "同一请求两次不同结论：后一条被拒，原结论不变",
+      "checks": [
+        { "kind": "req.count", "value": 1 },
+        { "kind": "req.toolOutcome", "requestId": "req-bill-1", "epoch": 1, "value": "ok" },
+        { "kind": "rejectedEvent.reasonPrefix", "index": 0, "value": "tool_outcome_conflict" }
+      ]
+    },
+    "N7-v1": {
+      "why": "补丁构建后只有无关 subject 变化：可以提交",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "applied" },
+        { "kind": "note.status", "noteId": "n1", "value": "active" }
+      ]
+    },
+    "N7-v2": {
+      "why": "补丁构建后同 subject 被再次陈述：依赖失效，拒绝",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 0, "value": "rejected" },
+        { "kind": "patch.code", "patchIndex": 0, "value": "dependency_stale" },
+        { "kind": "note.status", "noteId": "n1", "value": "absent" }
+      ]
+    },
+    "N8-v1": {
+      "why": "父笔记未被重写：子笔记按父版本 1 提交成功",
+      "checks": [
+        { "kind": "patch.disposition", "patchIndex": 1, "value": "applied" },
+        { "kind": "note.status", "noteId": "n-parent", "value": "active" },
+        { "kind": "note.status", "noteId": "n-child", "value": "active" },
+        { "kind": "note.version", "noteId": "n-parent", "value": 1 }
+      ]
+    },
+    "N8-v2": {
+      "why": "子笔记提交前父笔记被重写：父版本已变，子笔记必须被拒",
+      "checks": [
+        { "kind": "note.version", "noteId": "n-parent", "value": 2 },
+        { "kind": "patch.disposition", "patchIndex": 2, "value": "rejected" },
+        { "kind": "patch.code", "patchIndex": 2, "value": "dependency_stale" },
+        { "kind": "note.status", "noteId": "n-child", "value": "absent" }
+      ]
+    }
+  }
+}

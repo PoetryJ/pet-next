@@ -1,0 +1,45 @@
+{
+  "trackId": "N4-v1",
+  "pairId": "N4",
+  "class": "generation-presentation",
+  "variant": "v1",
+  "keyCondition": "确认指向的 responseId 是否已被观察到",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "新模板输入轨迹；期望标签在 eval/expected/new.json，跑之前已冻结。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T15:01:00.000Z",
+      "observedAt": "2026-11-10T15:01:00.005Z",
+      "source": "runtime",
+      "kind": "response.presented",
+      "requestId": "req-fw-1",
+      "responseId": "resp-fw-1",
+      "payload": {
+        "channel": "ui"
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T15:02:00.000Z",
+      "observedAt": "2026-11-10T15:02:00.005Z",
+      "source": "user",
+      "kind": "user.acknowledged",
+      "requestId": "req-fw-1",
+      "responseId": "resp-fw-1",
+      "payload": {
+        "ack": "seen"
+      }
+    }
+  ],
+  "patches": []
+}

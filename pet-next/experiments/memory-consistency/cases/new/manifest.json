@@ -1,0 +1,139 @@
+{
+  "schemaVersion": "memory-case-manifest/v1",
+  "dataset": "new-templates",
+  "generatedBy": "cases/build-new.mjs",
+  "counts": {
+    "pairs": 8,
+    "tracks": 16
+  },
+  "tracks": [
+    {
+      "trackId": "N1-v1",
+      "pairId": "N1",
+      "class": "state-update",
+      "variant": "v1",
+      "file": "N1-v1.json",
+      "sha256": "fdf8e35e723c737df9a7bb1b49b21177311c8ae737006b2781b92962210278e9"
+    },
+    {
+      "trackId": "N1-v2",
+      "pairId": "N1",
+      "class": "state-update",
+      "variant": "v2",
+      "file": "N1-v2.json",
+      "sha256": "1d4a61d201ef2c24027afb644070cab123e15a1b55cae523437f00fce1e86296"
+    },
+    {
+      "trackId": "N2-v1",
+      "pairId": "N2",
+      "class": "state-update",
+      "variant": "v1",
+      "file": "N2-v1.json",
+      "sha256": "ddc3d1ae361b95f59062c9e29c3903cf31518588ac486de9a3c8aaa0041a6b79"
+    },
+    {
+      "trackId": "N2-v2",
+      "pairId": "N2",
+      "class": "state-update",
+      "variant": "v2",
+      "file": "N2-v2.json",
+      "sha256": "c123b655069e8d7d9ceb1e3400c8be54f98376d9b4eb5edbafacb75a1b989dda"
+    },
+    {
+      "trackId": "N3-v1",
+      "pairId": "N3",
+      "class": "generation-presentation",
+      "variant": "v1",
+      "file": "N3-v1.json",
+      "sha256": "01ada6a692c513baad297942e61860178f05fead49041f223213ddbfab1fc1ec"
+    },
+    {
+      "trackId": "N3-v2",
+      "pairId": "N3",
+      "class": "generation-presentation",
+      "variant": "v2",
+      "file": "N3-v2.json",
+      "sha256": "115325942fa4ddb59df0f0b1e15424bb00cd32d8d5f23c5548d0eeb0dfbf19bd"
+    },
+    {
+      "trackId": "N4-v1",
+      "pairId": "N4",
+      "class": "generation-presentation",
+      "variant": "v1",
+      "file": "N4-v1.json",
+      "sha256": "8c3a3c4d5668ea6e8f3cdd9b1e1288f35b097614121065699c6d6091a75411c0"
+    },
+    {
+      "trackId": "N4-v2",
+      "pairId": "N4",
+      "class": "generation-presentation",
+      "variant": "v2",
+      "file": "N4-v2.json",
+      "sha256": "4da15d82eca09049bea01c7402a594492f1acace352226d5f5e414a65ac15532"
+    },
+    {
+      "trackId": "N5-v1",
+      "pairId": "N5",
+      "class": "tool-result",
+      "variant": "v1",
+      "file": "N5-v1.json",
+      "sha256": "886a885ead24de5cb8a067153d0873e7d8a909b9e8ebae4b3ff87a816dd0422d"
+    },
+    {
+      "trackId": "N5-v2",
+      "pairId": "N5",
+      "class": "tool-result",
+      "variant": "v2",
+      "file": "N5-v2.json",
+      "sha256": "dbc723cb0375807fcd5bfdd13a4c5ec8a5daf07bd8b291e9ae52aba54ec17ad5"
+    },
+    {
+      "trackId": "N6-v1",
+      "pairId": "N6",
+      "class": "tool-result",
+      "variant": "v1",
+      "file": "N6-v1.json",
+      "sha256": "c13060db062f26bede83a5b27933fd50380d2c37f2d7d59aa76087cfbbe7ff78"
+    },
+    {
+      "trackId": "N6-v2",
+      "pairId": "N6",
+      "class": "tool-result",
+      "variant": "v2",
+      "file": "N6-v2.json",
+      "sha256": "7ba5091be7bd58470b7f62d2b828d461561edc912a181fe1ec025bb724fe07fc"
+    },
+    {
+      "trackId": "N7-v1",
+      "pairId": "N7",
+      "class": "stale-patch",
+      "variant": "v1",
+      "file": "N7-v1.json",
+      "sha256": "6abf1f50010ec61d51f61e8a457733c3eb0f19a123956f714ecec52e65c10e30"
+    },
+    {
+      "trackId": "N7-v2",
+      "pairId": "N7",
+      "class": "stale-patch",
+      "variant": "v2",
+      "file": "N7-v2.json",
+      "sha256": "f1d6c7ffa4abc14ff5ddf710a0c9951b25a0940dc7da45e93b2472bfbc462093"
+    },
+    {
+      "trackId": "N8-v1",
+      "pairId": "N8",
+      "class": "stale-patch",
+      "variant": "v1",
+      "file": "N8-v1.json",
+      "sha256": "665cb6dcb69bcfefaf1b8dea0dce7185686861e88bac434b9b72dc90c10d014d"
+    },
+    {
+      "trackId": "N8-v2",
+      "pairId": "N8",
+      "class": "stale-patch",
+      "variant": "v2",
+      "file": "N8-v2.json",
+      "sha256": "c6c8c58b9284f5f58fc59beabce2bf174fc07beea952bf78b058e2a676b97045"
+    }
+  ]
+}

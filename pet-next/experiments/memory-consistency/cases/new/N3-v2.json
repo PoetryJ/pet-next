@@ -1,0 +1,45 @@
+{
+  "trackId": "N3-v2",
+  "pairId": "N3",
+  "class": "generation-presentation",
+  "variant": "v2",
+  "keyCondition": "第二条生成属于另一个请求还是同一请求",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "新模板输入轨迹；期望标签在 eval/expected/new.json，跑之前已冻结。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T15:01:00.000Z",
+      "observedAt": "2026-11-10T15:01:00.005Z",
+      "source": "model",
+      "kind": "response.generated",
+      "requestId": "req-ticket-1",
+      "responseId": "resp-t1",
+      "payload": {
+        "text": "已为你查票。"
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T15:02:00.000Z",
+      "observedAt": "2026-11-10T15:02:00.005Z",
+      "source": "model",
+      "kind": "response.generated",
+      "requestId": "req-ticket-1",
+      "responseId": "resp-t2",
+      "payload": {
+        "text": "还有一个方案。"
+      }
+    }
+  ],
+  "patches": []
+}

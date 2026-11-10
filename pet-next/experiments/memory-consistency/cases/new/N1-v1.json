@@ -1,0 +1,72 @@
+{
+  "trackId": "N1-v1",
+  "pairId": "N1",
+  "class": "state-update",
+  "variant": "v1",
+  "keyCondition": "是否存在第二次同主题陈述（重述也会让旧笔记失效）",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "新模板输入轨迹；期望标签在 eval/expected/new.json，跑之前已冻结。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T15:01:00.000Z",
+      "observedAt": "2026-11-10T15:01:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "开会纪要先给提纲。",
+        "scripted": {
+          "subjectKey": "pref:minutes",
+          "valueText": "先给提纲",
+          "kindHint": "preference"
+        }
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T15:02:00.000Z",
+      "observedAt": "2026-11-10T15:02:00.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "纪要还是先给提纲。",
+        "scripted": {
+          "subjectKey": "pref:minutes",
+          "valueText": "先给提纲",
+          "kindHint": "preference"
+        }
+      }
+    }
+  ],
+  "patches": [
+    {
+      "patchId": "N1-v1-p1",
+      "buildAtSequence": 1,
+      "applyAtSequence": 1,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "n1",
+          "text": "纪要先给提纲",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [],
+          "generator": "scripted",
+          "subjectKey": "pref:minutes"
+        }
+      ],
+      "notesToInvalidate": []
+    }
+  ]
+}

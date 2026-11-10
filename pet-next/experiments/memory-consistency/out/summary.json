@@ -1,0 +1,132 @@
+{
+  "schemaVersion": "memory-run/v1",
+  "generatedAt": "2026-11-10T12:28:46.597Z",
+  "node": "v24.14.0",
+  "platform": "linux x64",
+  "gitHead": "075d325f41e20828a91de70b92b89913fc22ce41",
+  "dirtyExperimentFiles": 12,
+  "mode": "run",
+  "suites": [
+    {
+      "id": "contracts",
+      "title": "契约冻结自检",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 135,
+      "tests": {
+        "passed": 7,
+        "failed": 0
+      },
+      "log": "logs/contracts.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec tests/contracts.test.ts"
+    },
+    {
+      "id": "ledger",
+      "title": "账本与补丁",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 186,
+      "tests": {
+        "passed": 37,
+        "failed": 0
+      },
+      "log": "logs/ledger.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec ledger/reduce.test.ts ledger/patch.test.ts"
+    },
+    {
+      "id": "policies",
+      "title": "四策略与预算",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 479,
+      "tests": {
+        "passed": 9,
+        "failed": 0
+      },
+      "log": "logs/policies.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec policies/policies.test.ts"
+    },
+    {
+      "id": "storage",
+      "title": "磁盘日志与快照",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 199,
+      "tests": {
+        "passed": 12,
+        "failed": 0
+      },
+      "log": "logs/storage.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec storage/store.test.ts"
+    },
+    {
+      "id": "recovery",
+      "title": "进程崩溃恢复",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 1141,
+      "tests": {
+        "passed": 7,
+        "failed": 0
+      },
+      "log": "logs/recovery.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec recovery/recovery.test.ts"
+    },
+    {
+      "id": "eval",
+      "title": "独立评分与负控",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 726,
+      "tests": {
+        "passed": 20,
+        "failed": 0
+      },
+      "log": "logs/eval.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec eval/dev-set.test.ts eval/no-network.test.ts eval/equivalence.test.ts"
+    },
+    {
+      "id": "replay",
+      "title": "产品纯模块回放",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 228,
+      "tests": {
+        "passed": 10,
+        "failed": 0
+      },
+      "log": "logs/replay.log",
+      "command": "node --experimental-strip-types --test --test-reporter=spec product-replay/replay.test.ts"
+    }
+  ],
+  "gates": [
+    {
+      "id": "G1",
+      "title": "开发轨迹 + 独立评分 + 负控 + 零外呼",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 408,
+      "stdout": "PASS G1 tracks=48 checks=143 failed=0",
+      "resultFile": "g1.json",
+      "command": "node --experimental-strip-types experiments/memory-consistency/runner/g1.ts"
+    },
+    {
+      "id": "P1",
+      "title": "新模板 + 泄漏审计 + 反事实恢复",
+      "status": "pass",
+      "exitCode": 0,
+      "elapsedMs": 538,
+      "stdout": "PASS P1 new=16/47 leak=0 replay=true",
+      "resultFile": "p1.json",
+      "command": "node --experimental-strip-types experiments/memory-consistency/runner/p1.ts"
+    },
+    {
+      "id": "P2",
+      "title": "固定规模成本 + 平台 + 未来 runner dry-run",
+      "status": "not_run",
+      "reason": "missing runner/p2.ts"
+    }
+  ],
+  "zeroLiveModelCalls": true,
+  "note": "zeroLiveModelCalls 由 eval/no-network.test.ts 的静态扫描 + fetch 哨兵证明；本进程未发起任何网络请求。"
+}

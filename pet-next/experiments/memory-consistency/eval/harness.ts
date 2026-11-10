@@ -60,6 +60,8 @@ export interface PatchObservation {
 /** 一条轨迹的观测。评分器只看这个对象。 */
 export interface TrackObservation {
   readonly trackId: string;
+  /** 该轨迹使用的 sessionId；评分器据此查请求/任务键，避免写死单一日志名。 */
+  readonly sessionId: string;
   readonly state: MemoryState;
   readonly patchResults: readonly PatchObservation[];
   readonly rejectedEvents: readonly { readonly eventId: string; readonly reason: string }[];
@@ -146,14 +148,30 @@ function forceUpsert(state: MemoryState, patch: MemoryPatch): MemoryState {
   return { ...state, notes, globalVersion: state.globalVersion + 1 };
 }
 
-/** 执行一条轨迹。 */
-export function runTrack(track: TrackFile, options: RunOptions = {}): TrackObservation {
+/** 逐步轨迹：每一步之后的状态，供演示与反事实比对使用。 */
+export interface TrackTrace {
+  readonly trackId: string;
+  readonly sessionId: string;
+  readonly steps: readonly {
+    readonly sequence: number;
+    readonly state: MemoryState;
+    readonly rejected: readonly { readonly eventId: string; readonly reason: string }[];
+  }[];
+  readonly patchResults: readonly PatchObservation[];
+  readonly rejectedEvents: readonly { readonly eventId: string; readonly reason: string }[];
+  /** 尾部补丁也交付之后的终态。演示用每步状态，判分用终态。 */
+  readonly finalState: MemoryState;
+}
+
+/** 执行一条轨迹，并留下每一步之后的状态（演示与反事实比对用）。 */
+export function traceTrack(track: TrackFile, options: RunOptions = {}): TrackTrace {
   const mutation = options.mutation;
   const events = [...track.events].sort((a, b) => a.sequence - b.sequence);
   const specs = [...track.patches];
   const patchResults: PatchObservation[] = [];
   const rejected: { eventId: string; reason: string }[] = [];
   const appliedOpIds: string[] = [];
+  const stepStates: { sequence: number; state: MemoryState; rejected: { eventId: string; reason: string }[] }[] = [];
 
   const pending = new Map<number, TrackPatchSpec[]>();
   const tail: TrackPatchSpec[] = [];
@@ -201,12 +219,32 @@ export function runTrack(track: TrackFile, options: RunOptions = {}): TrackObser
     for (const spec of pending.get(original.sequence) ?? []) {
       deliver(spec);
     }
+    stepStates.push({ sequence: original.sequence, state, rejected: [...rejected] });
   }
   for (const spec of tail) {
     deliver(spec);
   }
 
-  return { trackId: track.trackId, state, patchResults, rejectedEvents: rejected };
+  return {
+    trackId: track.trackId,
+    sessionId: events[0]?.sessionId ?? '',
+    steps: stepStates,
+    patchResults,
+    finalState: state,
+    rejectedEvents: rejected,
+  };
+}
+
+/** 执行一条轨迹，只取终态。 */
+export function runTrack(track: TrackFile, options: RunOptions = {}): TrackObservation {
+  const trace = traceTrack(track, options);
+  return {
+    trackId: trace.trackId,
+    sessionId: trace.sessionId,
+    state: trace.finalState,
+    patchResults: trace.patchResults,
+    rejectedEvents: trace.rejectedEvents,
+  };
 }
 
 /** 观测里常用键的取值工具，供评分器使用。 */

@@ -17,6 +17,9 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 export const DEV_TRACKS_DIR = join(HERE, '..', 'cases', 'dev');
 /** 开发集独立期望。 */
 export const DEV_EXPECTATIONS_PATH = join(HERE, 'expected', 'dev.json');
+/** 新模板集轨迹目录与独立期望。 */
+export const NEW_TRACKS_DIR = join(HERE, '..', 'cases', 'new');
+export const NEW_EXPECTATIONS_PATH = join(HERE, 'expected', 'new.json');
 
 /** 读取开发集全部轨迹（按文件名排序，保证可复现）。 */
 export function loadDevTracks(dir = DEV_TRACKS_DIR): TrackFile[] {
@@ -24,6 +27,11 @@ export function loadDevTracks(dir = DEV_TRACKS_DIR): TrackFile[] {
     .filter((name) => name.endsWith('.json') && name !== 'manifest.json')
     .sort();
   return files.map((name) => loadTrack(join(dir, name)));
+}
+
+/** 通用装载：任意轨迹目录。 */
+export function loadTracks(dir: string): TrackFile[] {
+  return loadDevTracks(dir);
 }
 
 /** 读取期望文件。 */

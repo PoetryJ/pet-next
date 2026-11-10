@@ -59,8 +59,6 @@ export interface ExpectationFile {
   readonly assertions: Readonly<Record<string, { readonly why: string; readonly checks: readonly Check[] }>>;
 }
 
-const SESSION = 'sess-dev';
-
 function noteOf(state: MemoryState, noteId: string) {
   return state.notes[noteId];
 }
@@ -83,30 +81,30 @@ function evaluate(state: MemoryState, observation: TrackObservation, check: Chec
     case 'note.text':
       return ok(noteOf(state, check.noteId ?? '')?.text ?? 'absent');
     case 'task.change':
-      return ok(state.tasks[taskKey(SESSION, check.taskId ?? '')]?.change ?? 'absent');
+      return ok(state.tasks[taskKey(observation.sessionId, check.taskId ?? '')]?.change ?? 'absent');
     case 'task.revision':
-      return ok(state.tasks[taskKey(SESSION, check.taskId ?? '')]?.revision ?? 'absent');
+      return ok(state.tasks[taskKey(observation.sessionId, check.taskId ?? '')]?.revision ?? 'absent');
     case 'task.candidateCount':
-      return ok(state.tasks[taskKey(SESSION, check.taskId ?? '')]?.candidates.length ?? 'absent');
+      return ok(state.tasks[taskKey(observation.sessionId, check.taskId ?? '')]?.candidates.length ?? 'absent');
     case 'task.count':
       return ok(Object.keys(state.tasks).length);
     case 'req.flag': {
-      const view = state.requests[requestKey(SESSION, check.epoch ?? 1, check.requestId ?? '')];
+      const view = state.requests[requestKey(observation.sessionId, check.epoch ?? 1, check.requestId ?? '')];
       const flag = check.flag ?? 'generated';
       return ok(view === undefined ? 'absent' : view[flag]);
     }
     case 'req.toolOutcome': {
-      const view = state.requests[requestKey(SESSION, check.epoch ?? 1, check.requestId ?? '')];
+      const view = state.requests[requestKey(observation.sessionId, check.epoch ?? 1, check.requestId ?? '')];
       return ok(view?.toolOutcome ?? 'absent');
     }
     case 'req.responseCount': {
-      const view = state.requests[requestKey(SESSION, check.epoch ?? 1, check.requestId ?? '')];
+      const view = state.requests[requestKey(observation.sessionId, check.epoch ?? 1, check.requestId ?? '')];
       return ok(view?.responseIds.length ?? 'absent');
     }
     case 'req.count':
       return ok(Object.keys(state.requests).length);
     case 'session.closed':
-      return ok(state.sessions[sessionKey(SESSION, check.epoch ?? 1)]?.closed ?? 'absent');
+      return ok(state.sessions[sessionKey(observation.sessionId, check.epoch ?? 1)]?.closed ?? 'absent');
     case 'subject.version':
       return ok(state.subjectVersions[check.subjectKey ?? ''] ?? 'absent');
     case 'subject.absent':

@@ -1,0 +1,61 @@
+{
+  "trackId": "N6-v1",
+  "pairId": "N6",
+  "class": "tool-result",
+  "variant": "v1",
+  "keyCondition": "第二个工具结果落在哪个请求上",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "新模板输入轨迹；期望标签在 eval/expected/new.json，跑之前已冻结。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T15:01:00.000Z",
+      "observedAt": "2026-11-10T15:01:00.005Z",
+      "source": "model",
+      "kind": "response.generated",
+      "requestId": "req-bill-1",
+      "responseId": "resp-b1",
+      "payload": {
+        "text": "开始分期计算。"
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T15:02:00.000Z",
+      "observedAt": "2026-11-10T15:02:00.005Z",
+      "source": "runtime",
+      "kind": "tool.result",
+      "requestId": "req-bill-1",
+      "payload": {
+        "toolName": "calc",
+        "outcome": "ok"
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e3",
+      "sessionId": "sess-new",
+      "sessionEpoch": 1,
+      "sequence": 3,
+      "occurredAt": "2026-11-10T15:03:00.000Z",
+      "observedAt": "2026-11-10T15:03:00.005Z",
+      "source": "runtime",
+      "kind": "tool.result",
+      "requestId": "req-bill-2",
+      "payload": {
+        "toolName": "calc",
+        "outcome": "ok"
+      }
+    }
+  ],
+  "patches": []
+}

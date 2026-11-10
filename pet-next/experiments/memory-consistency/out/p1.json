@@ -1,0 +1,305 @@
+{
+  "gate": "P1",
+  "newTemplates": {
+    "tracks": 16,
+    "checks": 47,
+    "passed": 47,
+    "failed": 0,
+    "failedTracks": [],
+    "missingExpectations": [],
+    "testSamples": 8,
+    "note": "新模板验证不是不可见语义能力测试；同一批轨迹在开发期被看过即算暴露。"
+  },
+  "leakage": {
+    "tracks": 16,
+    "samples": 152,
+    "findings": [],
+    "budget": {
+      "utf16Units": 2000,
+      "utf8Bytes": 6000
+    }
+  },
+  "counterfactual": {
+    "pairs": 24,
+    "allPairsHaveDifference": true,
+    "allPairsKeepInvariant": true,
+    "deterministic": true,
+    "details": [
+      {
+        "pairId": "A1",
+        "differingChecks": [
+          "task.change||weekly-report|||||",
+          "task.revision||weekly-report|||||",
+          "note.status|n1||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "A2",
+        "differingChecks": [
+          "subject.version|||||||pref:weekly-report",
+          "note.status|n1||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "A3",
+        "differingChecks": [
+          "patch.disposition|||||0||",
+          "note.status|n1||||||",
+          "subject.version|||||||pref:weekly-report"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "A4",
+        "differingChecks": [
+          "req.count|||||||",
+          "req.flag|||req-1|generated|||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "A5",
+        "differingChecks": [
+          "note.status|n2||||||",
+          "task.change||weekly-report|||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "A6",
+        "differingChecks": [
+          "req.flag|||req-1|cancelled|||",
+          "task.change||weekly-report|||||",
+          "note.status|n1||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "B1",
+        "differingChecks": [
+          "req.flag|||req-1|presented|||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "B2",
+        "differingChecks": [
+          "req.flag|||req-1|acknowledged|||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "B3",
+        "differingChecks": [
+          "req.flag|||req-1|acknowledged|||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "B4",
+        "differingChecks": [
+          "conflict.count|||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "B5",
+        "differingChecks": [
+          "event.count|||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "B6",
+        "differingChecks": [
+          "req.responseCount|||req-1||||",
+          "req.flag|||req-1|presented|||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "C1",
+        "differingChecks": [
+          "req.toolOutcome|||req-1||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "C2",
+        "differingChecks": [
+          "req.toolOutcome|||req-1||||",
+          "req.flag|||req-1|acknowledged|||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "C3",
+        "differingChecks": [],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "C4",
+        "differingChecks": [
+          "req.flag|||req-1|cancelled|||",
+          "task.change||weekly-report|||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "C5",
+        "differingChecks": [],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "C6",
+        "differingChecks": [
+          "req.count|||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "D1",
+        "differingChecks": [
+          "patch.disposition|||||1||",
+          "note.status|n2||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "D2",
+        "differingChecks": [
+          "patch.disposition|||||0||",
+          "note.status|n1||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "D3",
+        "differingChecks": [
+          "patch.disposition|||||0||",
+          "note.status|n1||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "D4",
+        "differingChecks": [
+          "patch.disposition|||||0||",
+          "note.status|na||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "D5",
+        "differingChecks": [
+          "patch.disposition|||||1||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      },
+      {
+        "pairId": "D6",
+        "differingChecks": [
+          "patch.disposition|||||0||",
+          "note.status|n1||||||"
+        ],
+        "behaviorDiffers": true,
+        "invariantsHold": true,
+        "deterministic": true
+      }
+    ]
+  },
+  "replay": {
+    "checks": [
+      {
+        "trackId": "A1-v1",
+        "equal": true,
+        "detail": "events=4"
+      },
+      {
+        "trackId": "A1-v2",
+        "equal": true,
+        "detail": "events=4"
+      },
+      {
+        "trackId": "A2-v1",
+        "equal": true,
+        "detail": "events=2"
+      },
+      {
+        "trackId": "A2-v2",
+        "equal": true,
+        "detail": "events=2"
+      },
+      {
+        "trackId": "A3-v1",
+        "equal": true,
+        "detail": "events=2"
+      },
+      {
+        "trackId": "A3-v2",
+        "equal": true,
+        "detail": "events=2"
+      },
+      {
+        "trackId": "A4-v1",
+        "equal": true,
+        "detail": "events=2"
+      },
+      {
+        "trackId": "A4-v2",
+        "equal": true,
+        "detail": "events=3"
+      }
+    ],
+    "allEqual": true
+  },
+  "passed_gate": true
+}
