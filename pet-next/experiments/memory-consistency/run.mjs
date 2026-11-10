@@ -201,8 +201,40 @@ function main() {
     return 2;
   }
 
+  // --verify 的确定性检查：拿上一轮的 g1 摘要与新结果比对，不一致就失败。
+  let previousDigest = null;
+  if (args.verify) {
+    const previousPath = join(outDir, 'g1.json');
+    if (existsSync(previousPath)) {
+      try {
+        previousDigest = JSON.parse(readFileSync(previousPath, 'utf8')).observationDigest ?? null;
+      } catch {
+        previousDigest = null;
+      }
+    }
+  }
+
   const suiteReports = selectedSuites.map((suite) => runSuite(suite, outDir));
   const gateReports = selectedGates.map((gate) => runGate(gate, outDir));
+
+  let determinism = { checked: false, previousDigest, currentDigest: null, equal: null };
+  if (args.verify) {
+    const currentPath = join(outDir, 'g1.json');
+    let currentDigest = null;
+    if (existsSync(currentPath)) {
+      try {
+        currentDigest = JSON.parse(readFileSync(currentPath, 'utf8')).observationDigest ?? null;
+      } catch {
+        currentDigest = null;
+      }
+    }
+    determinism = {
+      checked: previousDigest !== null && currentDigest !== null,
+      previousDigest,
+      currentDigest,
+      equal: previousDigest !== null && currentDigest !== null ? previousDigest === currentDigest : null,
+    };
+  }
 
   const summary = {
     schemaVersion: 'memory-run/v1',
@@ -214,6 +246,7 @@ function main() {
     mode: args.verify ? 'verify' : 'run',
     suites: suiteReports,
     gates: gateReports,
+    determinism,
     zeroLiveModelCalls: true,
     note: 'zeroLiveModelCalls 由 eval/no-network.test.ts 的静态扫描 + fetch 哨兵证明；本进程未发起任何网络请求。',
   };
@@ -254,8 +287,14 @@ function main() {
 
   const failed = [...suiteReports, ...gateReports].filter((item) => item.status === 'fail');
   const notRun = [...suiteReports, ...gateReports].filter((item) => item.status === 'not_run');
+  if (determinism.checked) {
+    process.stdout.write(`determinism ${determinism.equal ? 'OK' : 'DIFF'}\n`);
+  } else if (args.verify) {
+    process.stdout.write('determinism not checked (no previous g1.json)\n');
+  }
   process.stdout.write(`\nresults: ${relative(REPO_ROOT, outDir)}\n`);
   if (notRun.length > 0) process.stdout.write(`not_run: ${notRun.map((item) => item.id).join(', ')}\n`);
+  if (determinism.checked && determinism.equal === false) return 1;
   return failed.length === 0 ? 0 : 1;
 }
 
