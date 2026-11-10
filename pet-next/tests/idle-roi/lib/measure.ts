@@ -173,7 +173,7 @@ export function measureComparison(arms: Arms, reference: ArmKey, candidate: ArmK
           { mask: edMask, acc: frameTargets.edge },
           { mask: null, acc: frameTargets.wholeFrame },
         ] as const;
-        iterateAccumulate(left, right, masked, 3);
+        iterateAccumulate(left, right, masked);
         // 池化：逐帧结果并入全片累加器。
         accumulateDiff(left, right, fgMask, pooled.foreground);
         accumulateDiff(left, right, edMask, pooled.edge);

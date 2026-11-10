@@ -61,6 +61,8 @@ export interface AlphaStats {
   readonly samples: number;
   readonly max: number;
   readonly mae: number;
+  /** 99 分位（由直方图算，不是"最差"）。 */
+  readonly p99: number;
   readonly over1: number;
   readonly over2: number;
 }
