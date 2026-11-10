@@ -98,9 +98,13 @@ export function pairDrops(perRep) {
  * @param {{perArm:Record<'O'|'F'|'C', any>, pairs:Array<any>}} input
  */
 export function verdict({ perArm, pairs }) {
-  const cVo = perArm.C?.cpuSecondsPerMinute;
-  const o = perArm.O?.cpuSecondsPerMinute;
-  const f = perArm.F?.cpuSecondsPerMinute;
+  // summary.perArm 存的是跨 rep 的中位（`*Median`），单臂 summary 里才叫 `cpuSecondsPerMinute`。
+  // 两种键都认，避免"有数据却判成缺少 CPU 数据"。
+  const armCpu = (arm) =>
+    perArm[arm]?.cpuSecondsPerMinute ?? perArm[arm]?.cpuSecondsPerMinuteMedian ?? null;
+  const cVo = armCpu('C');
+  const o = armCpu('O');
+  const f = armCpu('F');
   const cVoDrop = typeof o === 'number' && o > 0 && typeof cVo === 'number' ? round(((o - cVo) / o) * 100, 2) : null;
   const cVfDrop = typeof f === 'number' && f > 0 && typeof cVo === 'number' ? round(((f - cVo) / f) * 100, 2) : null;
   const cVsOPairSupports = pairs.filter((pair) => typeof pair.cVsOPercent === 'number' && pair.cVsOPercent > 0).length;

@@ -1,0 +1,7 @@
+本次运行在 arm 1（O rep0）刚开始时被 D 主动中断，未保留任何采样数据（raw.ndjson 只有启动前的一行/已删除）。
+原因：C 臂布局接线在 perf 树（b6bb51b）里是 object-fit: none —— app/page.css 的 ROI 规则
+（body.idle-roi video#clip）把 226x286 的候选画进 113x143 的盒子，dpr=1 下 object-fit:none
+等于按固有尺寸画 2 倍左上角（B 已在 M3-12 把 contain 定为唯一正确值）。
+bench 的布局核对要求 objectFit === 'contain'，否则记为 roi-layout-not-wired 并让 C 臂 notRun；
+那样整轮只有 O/F 数据，答不了"C 对 O"的收益门，所以先停手等接线修好。
+console.txt 保留中断前的完整启动日志（门判定、三臂 SHA、loadavg）。

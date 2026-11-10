@@ -1,0 +1,9 @@
+[idle-roi] assets-ref=07278fd(?) subpath=experiments/idle-roi/out-v3-yuva -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3/assets-committed
+[idle-roi] 质量报告 = 11a6488fa2:pet-next/tests/idle-roi/out/quality-report.json sha256=1283d3e6c16d
+[idle-roi] build=up-to-date distCss.objectFit=[{"line":28,"text":"object-fit: contain;"},{"line":48,"text":"object-fit: none;"}] matchesSource=true
+[idle-roi] electron=v43.3.0 attempts=1
+[idle-roi] assetsDir=/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3/assets-committed/out-v3-yuva（subpath=out-v3-yuva）
+[idle-roi]   O: /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3/assets-committed/out-v3-yuva/O.webm sha256=6ebca6b20bcc bytes=78419 报告SHA=6ebca6b20bcc match=true
+[idle-roi]   F: /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3/assets-committed/out-v3-yuva/F3.webm sha256=08afc85246fe bytes=625108 报告SHA=08afc85246fe match=true
+[idle-roi]   C: /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3/assets-committed/out-v3-yuva/C3.webm sha256=195ae6aa3af0 bytes=631169 报告SHA=195ae6aa3af0 match=true
+[idle-roi] arm 1/9 O rep=0 loadavg=31.21 25.65 22.85 10/12086 579334

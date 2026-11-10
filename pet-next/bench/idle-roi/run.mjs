@@ -25,7 +25,7 @@
  * 所有 CPU 数值必须连 loadavg 一起读——本机 1 核且外部评测常把 load 拉到 10+。
  * @module pet-next/bench/idle-roi/run
  */
-import { execFileSync } from 'node:child_process';
+import { execFileSync, spawnSync } from 'node:child_process';
 import { appendFileSync, copyFileSync, existsSync, mkdirSync, readFileSync, unlinkSync, writeFileSync } from 'node:fs';
 import os from 'node:os';
 import path from 'node:path';
@@ -855,6 +855,29 @@ function requireArms(planArms, sources) {
 const GATE_DEFAULT_ASSETS_SUBPATH = 'experiments/idle-roi/out-v3-yuva';
 
 /**
+ * 把质量报告钉在已提交对象上：`git show <commit>:pet-next/tests/idle-roi/out/quality-report.json`。
+ * 返回的 sha256 是取出的字节实测值，用于证明"读的是哪份报告"。
+ */
+function stageCommittedReport({ repo, ref, relPath, destFile }) {
+  const resolve = spawnSync('git', ['-C', repo, 'rev-parse', '--verify', `${ref}^{commit}`], { encoding: 'utf8' });
+  if (resolve.status !== 0) {
+    return {
+      ok: false,
+      command: `git -C ${repo} rev-parse --verify ${ref}^{commit}`,
+      error: (resolve.stderr || resolve.stdout || '').trim(),
+    };
+  }
+  const commit = resolve.stdout.trim();
+  const command = `git -C ${repo} show ${commit}:${relPath} > ${destFile}`;
+  const shown = spawnSync('git', ['-C', repo, 'show', `${commit}:${relPath}`], { maxBuffer: 64 * 1024 * 1024 });
+  if (shown.status !== 0) {
+    return { ok: false, commit, command, error: String(shown.stderr ?? '').trim() || '该提交里没有这份报告' };
+  }
+  writeFileSync(destFile, shown.stdout);
+  return { ok: true, commit, command, path: destFile, sha256: sha256(destFile), bytes: shown.stdout.length };
+}
+
+/**
  * 阶段门：在启动任何产品进程之前把"素材目录 + 质量报告 + 三臂 SHA"锁死。
  * 不通过就非零退出（2/4/5），并把判定写进 runs/<stamp>/gate.json 作为证据。
  * 返回 { archive, assetsDir, manifestInfo, manifest, sources, gate }。
@@ -947,8 +970,49 @@ function runStageGate() {
     process.exit(4);
   }
   const stagedManifest = loadManifest(path.join(candidateDir, 'manifest.json')).manifest;
-  const reportPath = qualityReportArg === '' ? path.join(petRoot, QUALITY_REPORT_REL) : path.resolve(qualityReportArg);
-  const reportRel = qualityReportArg === '' ? `pet-next/${QUALITY_REPORT_REL}` : null;
+  // 被测量树与评测树常常不是同一份 worktree：允许把质量报告钉在**某个已提交对象**上
+  // （`--quality-report-ref=<ref>`），字节从 git 对象取出、提交号与 sha 一起记账。
+  // 这不是"换一份报告放行"：bytes 来自已提交对象，且报告内容仍要过 status/阈值/SHA 全部检查。
+  const qualityRefArg = value('quality-report-ref', '');
+  let reportPath;
+  let reportRel;
+  let reportSource = null;
+  if (qualityRefArg !== '') {
+    if (qualityReportArg !== '') {
+      console.error('--quality-report 与 --quality-report-ref 不能同时给');
+      process.exit(2);
+    }
+    const staged = stageCommittedReport({
+      repo,
+      ref: qualityRefArg,
+      relPath: `pet-next/${QUALITY_REPORT_REL}`,
+      destFile: path.join(outDir, 'quality-report.json'),
+    });
+    if (!staged.ok) {
+      writeFileSync(
+        path.join(outDir, 'gate.json'),
+        JSON.stringify({ ok: false, stage: 'stage-quality-report', qualityRefArg, command: staged.command, error: staged.error, checkedAt: new Date().toISOString() }, null, 2),
+      );
+      console.error(`从提交取质量报告失败：${staged.command}\n${staged.error}`);
+      process.exit(5);
+    }
+    reportPath = staged.path;
+    reportRel = null;
+    reportSource = {
+      kind: 'committed-ref',
+      repo,
+      ref: qualityRefArg,
+      commit: staged.commit,
+      repoPath: `pet-next/${QUALITY_REPORT_REL}`,
+      sha256: staged.sha256,
+      bytes: staged.bytes,
+      command: staged.command,
+    };
+    printStatus(`质量报告 = ${String(staged.commit).slice(0, 10)}:pet-next/${QUALITY_REPORT_REL} sha256=${String(staged.sha256).slice(0, 12)}`);
+  } else {
+    reportPath = qualityReportArg === '' ? path.join(petRoot, QUALITY_REPORT_REL) : path.resolve(qualityReportArg);
+    reportRel = qualityReportArg === '' ? `pet-next/${QUALITY_REPORT_REL}` : null;
+  }
 
   const gate = evaluateStageGate({
     repo,
@@ -959,6 +1023,8 @@ function runStageGate() {
     qualityReportPath: reportPath,
     qualityReportRel: reportRel,
     strictReport,
+    reportSource,
+    reportSourceVerified: reportSource !== null,
     stagedManifest,
     petRootDir: petRoot,
   });
@@ -1193,6 +1259,13 @@ async function main() {
   };
 
   const armResults = [];
+  // 负载告警：本机 1 核共享，外部评测常把 load 拉到 10+。不改判定，只把现实摆出来。
+  const loadAtStart = readLoadavg();
+  if (loadAtStart && Number.isFinite(loadAtStart.one) && loadAtStart.one > 8) {
+    printStatus(
+      `注意：开跑时 loadavg1=${loadAtStart.one}（1 核共享，高位）；本轮 CPU 数字必须与 loadavg 一起读，若各臂不可比只能报"不稳"`,
+    );
+  }
   for (const [index, item] of order.entries()) {
     printStatus(`arm ${index + 1}/${order.length} ${item.arm} rep=${item.rep} loadavg=${loadavgText()}`);
     const result = await runArm(context, item);

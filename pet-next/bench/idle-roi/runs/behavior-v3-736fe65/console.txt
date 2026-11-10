@@ -1,0 +1,108 @@
+[idle-roi] assets-ref=07278fd(?) subpath=experiments/idle-roi/out-v3-yuva -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed
+[idle-roi] 质量报告 = a1cd1fb918:pet-next/tests/idle-roi/out/quality-report.json sha256=62777d44e38a
+[idle-roi] build=up-to-date distCss.objectFit=[{"line":28,"text":"object-fit: contain;"},{"line":48,"text":"object-fit: contain;"}] matchesSource=true
+[idle-roi] electron=v43.3.0 attempts=1
+[idle-roi] assetsDir=/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva（subpath=out-v3-yuva）
+[idle-roi]   O: /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/O.webm sha256=6ebca6b20bcc bytes=78419 报告SHA=6ebca6b20bcc match=true
+[idle-roi]   F: /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/F3.webm sha256=08afc85246fe bytes=625108 报告SHA=08afc85246fe match=true
+[idle-roi]   C: /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/assets-committed/out-v3-yuva/C3.webm sha256=195ae6aa3af0 bytes=631169 报告SHA=195ae6aa3af0 match=true
+[idle-roi] 注意：开跑时 loadavg1=16.18（1 核共享，高位）；本轮 CPU 数字必须与 loadavg 一起读，若各臂不可比只能报"不稳"
+[idle-roi] arm 1/9 O rep=0 loadavg=16.18 18.01 19.23 10/11927 614291
+[idle-roi]   cpu=null s/min (median null%) rss=nullMB fps=null failures=0
+[idle-roi] arm 2/9 F rep=0 loadavg=15.61 17.57 19.02 8/11927 614786
+[idle-roi]   cpu=null s/min (median null%) rss=nullMB fps=null failures=0
+[idle-roi] arm 3/9 C rep=0 loadavg=12.71 16.55 18.61 9/11915 615299
+[idle-roi]   cpu=null s/min (median null%) rss=nullMB fps=null failures=0
+[idle-roi] arm 4/9 C rep=1 loadavg=12.40 15.94 18.30 11/12028 615804
+[idle-roi]   cpu=null s/min (median null%) rss=nullMB fps=null failures=0
+[idle-roi] arm 5/9 F rep=1 loadavg=13.40 15.68 18.10 10/11928 616272
+[idle-roi]   cpu=null s/min (median null%) rss=nullMB fps=null failures=0
+[idle-roi] arm 6/9 O rep=1 loadavg=13.75 15.44 17.90 6/11926 616775
+[idle-roi]   cpu=null s/min (median null%) rss=nullMB fps=null failures=0
+[idle-roi] arm 7/9 O rep=2 loadavg=13.49 15.14 17.69 12/11929 617291
+[idle-roi] 失败：O-r2: 45s 内 idle 未进入可播放/播放状态
+[idle-roi] 失败：O-r2: cdp evaluate exception: "Uncaught" | TypeError: Cannot read properties of undefined (reading 'mark')
+    at <anonymous>:1:18
+[idle-roi]   cpu=null s/min (median null%) rss=nullMB fps=null failures=2
+[idle-roi] arm 8/9 F rep=2 loadavg=14.22 15.18 17.56 10/11919 617719
+[idle-roi]   cpu=null s/min (median null%) rss=nullMB fps=null failures=0
+[idle-roi] arm 9/9 C rep=2 loadavg=12.73 14.65 17.25 13/11933 618253
+[idle-roi]   cpu=null s/min (median null%) rss=nullMB fps=null failures=0
+/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/summary.json
+{
+  "stamp": "behavior-v3-736fe65",
+  "perArm": {
+    "O": {
+      "reps": 3,
+      "cpuSecondsPerMinuteMedian": null,
+      "cpuSecondsPerMinuteValues": [],
+      "rssSumMbMedian": null,
+      "rssSumMbValues": [],
+      "loadavg1Median": null,
+      "loadavg1Values": []
+    },
+    "F": {
+      "reps": 3,
+      "cpuSecondsPerMinuteMedian": null,
+      "cpuSecondsPerMinuteValues": [],
+      "rssSumMbMedian": null,
+      "rssSumMbValues": [],
+      "loadavg1Median": null,
+      "loadavg1Values": []
+    },
+    "C": {
+      "reps": 3,
+      "cpuSecondsPerMinuteMedian": null,
+      "cpuSecondsPerMinuteValues": [],
+      "rssSumMbMedian": null,
+      "rssSumMbValues": [],
+      "loadavg1Median": null,
+      "loadavg1Values": []
+    }
+  },
+  "verdict": {
+    "cVsOPercent": null,
+    "cVsFPercent": null,
+    "cVsOPairSupports": 0,
+    "cVsFPairSupports": 0,
+    "pairCount": 0,
+    "rssDeltaPercent": null,
+    "loadDelta": null,
+    "checks": {
+      "cpuMedianDropAtLeast15": false,
+      "cBetterThanFDirection": false,
+      "pairedSupportAtLeast2of3": false,
+      "rssWithin10Percent": false,
+      "loadComparable": false
+    },
+    "pass": false,
+    "reasons": [
+      "缺少 O 或 C 的 CPU 数据"
+    ],
+    "note": "工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读"
+  },
+  "failures": [
+    "O-r2: 45s 内 idle 未进入可播放/播放状态",
+    "O-r2: cdp evaluate exception: \"Uncaught\" | TypeError: Cannot read properties of undefined (reading 'mark')\n    at <anonymous>:1:18"
+  ],
+  "notRun": [
+    "roi-layout-on-by-flag"
+  ],
+  "loadavg": {
+    "start": {
+      "one": 16.18,
+      "five": 18.01,
+      "fifteen": 19.23,
+      "running": 13,
+      "threads": 11929
+    },
+    "end": {
+      "one": 11.91,
+      "five": 14.13,
+      "fifteen": 16.95,
+      "running": 9,
+      "threads": 11937
+    },
+    "note": "本机 1 核共享；外部 eval 常把 load 拉到 10+，所有 CPU 数值必须与 loadavg 同时解读"
+  }
+}

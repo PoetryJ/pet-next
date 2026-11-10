@@ -1,0 +1,161 @@
+{
+  "click": {
+    "clickPoint": {
+      "x": 160,
+      "y": 120
+    },
+    "requested": 10,
+    "observed": 10,
+    "missed": 0,
+    "medianMs": 88.35000133514404,
+    "minMs": 82.30000114440918,
+    "maxMs": 174.5,
+    "samples": [
+      {
+        "sample": 1,
+        "latencyMs": 85,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 105,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 2,
+        "latencyMs": 88.4000015258789,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 109,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 3,
+        "latencyMs": 88.30000114440918,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 110,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 4,
+        "latencyMs": 82.30000114440918,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 105,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 5,
+        "latencyMs": 87.4000015258789,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 104,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 6,
+        "latencyMs": 91.60000038146973,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 113,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 7,
+        "latencyMs": 172.60000038146973,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 184,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 8,
+        "latencyMs": 98.30000114440918,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 119,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 9,
+        "latencyMs": 174.5,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 195,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      },
+      {
+        "sample": 10,
+        "latencyMs": 88.30000114440918,
+        "src": "reaction.webm",
+        "mediaTimeMs": 42,
+        "wallMs": 110,
+        "visualBefore": "idle",
+        "visualAfter": "reaction",
+        "returnedToIdle": true
+      }
+    ],
+    "evidence": "软件输入 + rVFC 呈帧（非物理帧/物理延迟）"
+  },
+  "drag": {
+    "before": {
+      "x": 80,
+      "y": 80,
+      "width": 320,
+      "height": 240
+    },
+    "after": {
+      "x": 140,
+      "y": 80,
+      "width": 320,
+      "height": 240
+    },
+    "draggingClassAfter": false,
+    "moved": true,
+    "movedDelta": {
+      "dx": 60,
+      "dy": 0
+    }
+  },
+  "hidden": {
+    "unmapError": null,
+    "mapError": null,
+    "visibilityWhileHidden": "visible",
+    "idleFramesWhileHidden2s": 408,
+    "resumeFirstIdleFrameMs": 28.100000381469727,
+    "visibilityAfterResume": "visible",
+    "visualAfterResume": "idle"
+  },
+  "failure": {
+    "copiedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "copyDeleted": true,
+    "visibility": "visible",
+    "visual": "placeholder",
+    "placeholderVisible": true,
+    "idleVideoHidden": true,
+    "idleVideoPaused": true,
+    "idleVideoSrc": "idle-missing-O-0.webm"
+  },
+  "exit": {
+    "exitCode": 0,
+    "signal": null,
+    "ms": 2001
+  }
+}
