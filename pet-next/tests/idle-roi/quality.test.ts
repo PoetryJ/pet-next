@@ -107,8 +107,12 @@ function keyFrameSource(variants: readonly VariantEvaluation[]): { variant: Vari
     if (!variant) continue;
     const key = Object.keys(variant.measurements).find((id) => /^o-to-c/.test(id)) ?? Object.keys(variant.measurements)[0];
     const measurement = key === undefined ? undefined : variant.measurements[key];
-    const frame = measurement?.worstAcrossFramesAndPlates.foregroundMae.frame;
-    if (frame !== undefined && frame >= 0) return { variant, frame };
+    if (measurement === undefined) continue;
+    // 证据图要落在真有误差的地方：优先边缘最差帧（O–C 的残差集中在半透明边），
+    // 前景已经全 0 时再退回前景最差帧——那不是"最差"，只是"有代表意义的一帧"。
+    const worst = measurement.worstAcrossFramesAndPlates;
+    const frame = worst.edgeMae.mae > 0 ? worst.edgeMae.frame : worst.foregroundMae.frame;
+    if (frame >= 0) return { variant, frame };
   }
   return null;
 }

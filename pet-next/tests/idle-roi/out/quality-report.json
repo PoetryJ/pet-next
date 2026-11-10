@@ -2,7 +2,7 @@
   "schemaVersion": 2,
   "kind": "idle-roi-quality",
   "status": "passed",
-  "generatedAt": "2026-11-10T10:33:44.603Z",
+  "generatedAt": "2026-11-10T10:34:45.963Z",
   "subject": "f3c3",
   "units": "LSB (1 LSB = 1/255 of full scale)；PTS 单位 ms",
   "thresholds": {
@@ -22,28 +22,13 @@
     "edgeBandHigh": 64
   },
   "evaluationCode": {
-    "commit": "c56c8cd0845de0ba7d9f9af390c5855f9f6c5d64",
+    "commit": "11a6488fa22ec1beffc2fbcf7ffd0d5f6b77b469",
     "branch": "agent/m312r1-c",
     "dirty": true,
     "dirtyPaths": [
-      "pet-next/tests/idle-roi/lib/arms.ts",
-      "pet-next/tests/idle-roi/lib/gates.ts",
-      "pet-next/tests/idle-roi/lib/quality-report.ts",
-      "pet-next/tests/idle-roi/lib/reference.ts",
-      "pet-next/tests/idle-roi/lib/variants.ts",
-      "pet-next/tests/idle-roi/out/frames/frame-40-crop208x52-black-candidate.png",
-      "pet-next/tests/idle-roi/out/frames/frame-40-crop208x52-black-error-x16.png",
-      "pet-next/tests/idle-roi/out/frames/frame-40-crop208x52-black-original.png",
-      "pet-next/tests/idle-roi/out/quality-report.json",
-      "pet-next/tests/idle-roi/out/scale/scale-report.json",
-      "pet-next/tests/idle-roi/out/selfcheck-report.json",
-      "pet-next/tests/idle-roi/quality.test.ts",
-      "pet-next/tests/idle-roi/fixtures-v3/",
-      "pet-next/tests/idle-roi/out/frames/frame-00-crop208x52-black-candidate.png",
-      "pet-next/tests/idle-roi/out/frames/frame-00-crop208x52-black-error-x16.png",
-      "pet-next/tests/idle-roi/out/frames/frame-00-crop208x52-black-original.png"
+      "pet-next/tests/idle-roi/quality.test.ts"
     ],
-    "harnessSha256": "38ad9129b5e25b18635665c4fe5bc756f5408f0ae4d7a551abe1698774f01dd8",
+    "harnessSha256": "dceceaedb75ff44c4659cd55709ec9be8becf7eee5b8b4aa33e3dc13b1b43fe2",
     "files": [
       {
         "path": "tests/idle-roi/lib/arms.ts",
@@ -117,8 +102,8 @@
       },
       {
         "path": "tests/idle-roi/quality.test.ts",
-        "sha256": "4433d087a3316f868f8758d858988a643c044363d65fe666937d22a1c4defc0d",
-        "bytes": 13140
+        "sha256": "240715444fb9c92f63248bc684badbd71e4497866b5499dc662d7de6259b0c63",
+        "bytes": 13462
       },
       {
         "path": "tests/idle-roi/scale.test.ts",
@@ -22792,8 +22777,8 @@
       "armsDir": "tests/idle-roi/fixtures-v3",
       "files": {
         "O": "O.webm",
-        "F": "/tmp/m312c-quality-4TDTo0/selfcontrol-passthrough.webm",
-        "C": "/tmp/m312c-quality-4TDTo0/selfcontrol-passthrough.webm"
+        "F": "/tmp/m312c-quality-ModoN2/selfcontrol-passthrough.webm",
+        "C": "/tmp/m312c-quality-ModoN2/selfcontrol-passthrough.webm"
       },
       "labels": {
         "O": "O",
@@ -31987,7 +31972,7 @@
           "frameCount": 48
         },
         "cand": {
-          "file": "/tmp/m312c-quality-4TDTo0/selfcontrol-passthrough.webm",
+          "file": "/tmp/m312c-quality-ModoN2/selfcontrol-passthrough.webm",
           "frameCount": 48
         },
         "layout": {
@@ -32058,7 +32043,7 @@
       },
       "selfControl": {
         "source": "reproduced-from-build-report",
-        "file": "/tmp/m312c-quality-4TDTo0/selfcontrol-passthrough.webm",
+        "file": "/tmp/m312c-quality-ModoN2/selfcontrol-passthrough.webm",
         "sha256": "d5a226ef08724d408513fc3ada52e90752fc19f778a393e7235584d6b5d9e8cc",
         "recordedSha256": "d5a226ef08724d408513fc3ada52e90752fc19f778a393e7235584d6b5d9e8cc",
         "shaMatchesRecorded": true,
@@ -32108,7 +32093,7 @@
           "+bitexact",
           "-f",
           "webm",
-          "/tmp/m312c-quality-4TDTo0/selfcontrol-passthrough.webm"
+          "/tmp/m312c-quality-ModoN2/selfcontrol-passthrough.webm"
         ],
         "note": "由 tests/idle-roi/fixtures-v3/build-report.json/encode/commands/passthrough 的命令本地复现（输入换成本目录 O.webm、输出换到临时目录）；B 的 passthrough.webm 未随提交落盘"
       },
@@ -32414,8 +32399,8 @@
           },
           "S": {
             "key": "S",
-            "file": "/tmp/m312c-quality-4TDTo0/selfcontrol-passthrough.webm",
-            "relativeFile": "../../../../../../tmp/m312c-quality-4TDTo0/selfcontrol-passthrough.webm",
+            "file": "/tmp/m312c-quality-ModoN2/selfcontrol-passthrough.webm",
+            "relativeFile": "../../../../../../tmp/m312c-quality-ModoN2/selfcontrol-passthrough.webm",
             "sha256": "d5a226ef08724d408513fc3ada52e90752fc19f778a393e7235584d6b5d9e8cc",
             "bytes": 619450,
             "stream": {
@@ -55639,7 +55624,7 @@
         "frameCount": 48
       },
       "cand": {
-        "file": "/tmp/m312c-quality-4TDTo0/selfcontrol-passthrough.webm",
+        "file": "/tmp/m312c-quality-ModoN2/selfcontrol-passthrough.webm",
         "frameCount": 48
       },
       "layout": {
