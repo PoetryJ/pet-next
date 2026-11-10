@@ -32,7 +32,16 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { connectCdp, delay, freePort, waitForPageSocket } from './lib/cdp.mjs';
-import { loadManifest, resolveArmSource, resolveAssetsDir, stageCommittedAssets, verifyLayout } from './lib/artifacts.mjs';
+import {
+  buildProvenance,
+  DEFAULT_ASSETS_SUBPATH,
+  loadManifest,
+  resolveArmSource,
+  resolveAssetsDirDetailed,
+  stageCommittedAssets,
+  verifyAssetsDir,
+  verifyLayout,
+} from './lib/artifacts.mjs';
 import { probeClicks, probeDrag, probeExit, probeHidden } from './lib/probes.mjs';
 import {
   findProcessesMatching,
@@ -769,15 +778,11 @@ async function writeSummary(context, armResults) {
           }
         : null,
     },
-    provenance: {
-      assetArchive: context.archive ?? null,
-      assetsDir: context.assetsDir ?? null,
-      oSourceSha256: context.sources.O?.sha256 ?? null,
-      fSourceSha256: context.sources.F?.sha256 ?? null,
-      cSourceSha256: context.sources.C?.sha256 ?? null,
-      oMatchesShipped: context.sources.O?.matchesShipped ?? null,
-      note: '数据来自以上 SHA 的已提交字节；未提交工作区快照不作为结论依据',
-    },
+    // 来源字段全部由 buildProvenance 从实际取出的文件重算（不手填）：
+    // assetCommit=素材来源提交，evaluationCodeCommit=跑评测的 HEAD，sourceVideoSha/candidateSha=真实字节。
+    provenance:
+      context.provenance ??
+      buildProvenance({ archive: context.archive ?? null, assetsDir: context.assetsDir ?? null, sources: context.sources ?? {} }),
   };
   writeFileSync(summaryPath, JSON.stringify(summary, null, 2));
   return summary;
@@ -892,21 +897,39 @@ async function main() {
   const assetsRef = value('assets-ref', '');
   const assetsRepo = value('assets-repo', path.resolve(petRoot, '..'));
   const assetsDirArg = value('assets-dir', '');
-  const assetsSubpath = value('assets-subpath', 'experiments/idle-roi/out');
+  const assetsSubpath = value('assets-subpath', DEFAULT_ASSETS_SUBPATH);
   let archive = null;
   let assetsDir = null;
   if (assetsDirArg !== '') {
-    assetsDir = resolveAssetsDir(path.resolve(assetsDirArg));
-  } else if (assetsRef !== '') {
-    const dest = path.join(outDir, 'assets-committed');
-    archive = stageCommittedAssets({ repo: assetsRepo, ref: assetsRef, dest, subpath: assetsSubpath });
-    printStatus(`assets-ref=${assetsRef} -> ${archive.ok ? dest : `失败：${archive.error}`}`);
-    if (!archive.ok) {
-      console.error(`git archive 取已提交素材失败：${archive.command}\n${archive.error}`);
+    // 没有显式 subpath：允许回退扫描，但 0 个或 ≥2 个候选都必须失败——不猜“第一个 manifest”。
+    const resolved = resolveAssetsDirDetailed(path.resolve(assetsDirArg));
+    printStatus(`assets-dir=${path.resolve(assetsDirArg)} -> ${resolved.ok ? resolved.dir : `失败(${resolved.code})：${resolved.error}`}`);
+    if (!resolved.ok) {
+      console.error(`素材目录无法唯一确定（${resolved.code}）：${resolved.error}`);
       cleanupAll();
       process.exit(4);
     }
-    assetsDir = resolveAssetsDir(dest);
+    assetsDir = resolved.dir;
+    const verified = verifyAssetsDir(assetsDir);
+    if (!verified.ok) {
+      console.error(`素材目录不完整（${verified.code}）：${verified.errors.join('; ')}`);
+      cleanupAll();
+      process.exit(4);
+    }
+  } else if (assetsRef !== '') {
+    // 显式 subpath：assetsDir 只由本次 stage 的目录唯一决定（<dest>/<subpath>），
+    // 不再遍历 dest 找 manifest——同 dest 先 v1 后 v2 时旧 out/ 还在，遍历就会选错臂。
+    const dest = path.join(outDir, 'assets-committed');
+    archive = stageCommittedAssets({ repo: assetsRepo, ref: assetsRef, dest, subpath: assetsSubpath });
+    printStatus(
+      `assets-ref=${assetsRef} subpath=${assetsSubpath} -> ${archive.ok ? archive.assetsDir : `失败(${archive.code})：${archive.error}`}`,
+    );
+    if (!archive.ok) {
+      console.error(`取已提交素材失败（${archive.code}）：${archive.command ?? ''}\n${archive.error}`);
+      cleanupAll();
+      process.exit(4);
+    }
+    assetsDir = archive.assetsDir;
   }
   const manifestInfo = loadManifest(assetsDir ? path.join(assetsDir, 'manifest.json') : undefined);
   const manifest = manifestInfo.manifest;
@@ -978,6 +1001,7 @@ async function main() {
     manifestInfo,
     archive,
     assetsDir,
+    provenance: buildProvenance({ archive, assetsDir, sources }),
     productRef: value('product-ref', ''),
     productSupportsRoiWiring,
     reactionUrl,
