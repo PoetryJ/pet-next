@@ -1,0 +1,41 @@
+{
+  "kind": "idle-roi-arms-copy",
+  "note": "只读副本：从负责人分支已提交字节取出，sha256 与 manifest 一致才复制。不复算、不改写 A 的产物。",
+  "sourceCommit": "9dc035e",
+  "sourceRepoPath": "pet-next/experiments/idle-roi/out",
+  "extractCommand": "git -C <m38-wt-lead> archive 9dc035e pet-next/experiments/idle-roi/out | tar -x -C /tmp/m312-out --strip-components=3",
+  "copiedAt": "2026-11-10T16:15:00Z",
+  "files": {
+    "O.webm": {
+      "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "bytes": 78419,
+      "role": "原字节，等于 manifest.sourceSha256"
+    },
+    "F.webm": {
+      "sha256": "2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0",
+      "bytes": 188075,
+      "role": "全画布 640x360 重编码"
+    },
+    "C.webm": {
+      "sha256": "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c",
+      "bytes": 225952,
+      "role": "ROI 226x286 重编码，等于 manifest.candidateSha256"
+    },
+    "manifest.json": {
+      "sha256": null,
+      "bytes": 1013,
+      "role": "契约 §3 的 manifest，parseManifest 逐字段校验"
+    },
+    "build-report.json": {
+      "sha256": null,
+      "bytes": 7250,
+      "role": "A 的构建记录副本，只作证据（encode.crf = 12 等）；画质门不读它"
+    }
+  },
+  "verifiedAgainstLeadReference": true,
+  "leadReference": {
+    "O": "6ebca6b2…df1a",
+    "F": "2ca492a9…02f0",
+    "C": "08a80ac4…7e0c"
+  }
+}

@@ -148,6 +148,26 @@ export function edgeMask(rgba: Uint8Array, width: number, height: number, thresh
   return mask;
 }
 
+/** 4 邻域膨胀 1 像素。用来把「边缘带」再向外扩一圈。 */
+export function dilateMask(mask: Uint8Array, width: number, height: number): Uint8Array {
+  const out = new Uint8Array(mask);
+  for (let y = 0; y < height; y += 1) {
+    for (let x = 0; x < width; x += 1) {
+      const pixel = y * width + x;
+      if (mask[pixel] === 1) continue;
+      if (
+        (x > 0 && mask[pixel - 1] === 1) ||
+        (x + 1 < width && mask[pixel + 1] === 1) ||
+        (y > 0 && mask[pixel - width] === 1) ||
+        (y + 1 < height && mask[pixel + width] === 1)
+      ) {
+        out[pixel] = 1;
+      }
+    }
+  }
+  return out;
+}
+
 /** 新建一个空累加器。 */
 export function emptyAlphaBox(): AlphaBox {
   return { minX: Number.POSITIVE_INFINITY, minY: Number.POSITIVE_INFINITY, maxX: -1, maxY: -1, count: 0, centroidX: 0, centroidY: 0 };

@@ -72,6 +72,33 @@ export function realArmsDir(): string {
   return path.join(petRoot(), 'experiments', 'idle-roi', 'out');
 }
 
+/**
+ * 已提交三臂在本 worktree 的只读副本（C 自己的路径）。
+ *
+ * 为什么要副本：C 的分支从 dfeca20 出来，A 的 `experiments/idle-roi/out/` 在 C 的树上不存在；
+ * 副本的 sha256 必须与 manifest 一致（`fixtures/SOURCE.json` 记了来源 commit），
+ * 这样判定用的是已提交字节而不是谁的工作区快照。
+ */
+export function fixtureArmsDir(): string {
+  return path.join(petRoot(), 'tests', 'idle-roi', 'fixtures');
+}
+
+/**
+ * 三臂目录的解析顺序：
+ * 1) `PET_NEXT_IDLE_ROI_ARMS` 显式指定（v2 这类还没进 fixtures 的版本用这个，不复制也能跑）；
+ * 2) `tests/idle-roi/fixtures/`（已提交副本，sha 与 manifest 校验）；
+ * 3) `experiments/idle-roi/out/`（A 的目录，本 worktree 通常没有）。
+ */
+export function resolveArmsDir(): string {
+  const override = process.env.PET_NEXT_IDLE_ROI_ARMS;
+  const files = ['O.webm', 'F.webm', 'C.webm', 'manifest.json'];
+  const complete = (dir: string): boolean => files.every((name) => existsSync(path.join(dir, name)));
+  if (override !== undefined && override.length > 0 && complete(override)) return override;
+  const local = fixtureArmsDir();
+  if (complete(local)) return local;
+  return realArmsDir();
+}
+
 export function sha256File(file: string): string {
   return createHash('sha256').update(readFileSync(file)).digest('hex');
 }
@@ -280,18 +307,26 @@ function fixturePaths(dir: string): FixturePaths {
   return { dir, prepared: path.join(dir, 'prepared.rgba'), manifestPath: path.join(dir, 'manifest.json') };
 }
 
-export function encodeCommand(input: string, output: string, width: number, height: number, crop: Rect | null, crf: number): string[] {
+export interface EncodeOptions {
+  /** 默认 yuva420p；免色度下采样时传 yuva444p。 */
+  readonly pixelFormat?: string;
+  /** 追加 `-lossless 1`（实测这版 ffmpeg 不一定生效，跑的时候要读回来验证）。 */
+  readonly losslessFlag?: boolean;
+}
+
+export function encodeCommand(input: string, output: string, width: number, height: number, crop: Rect | null, crf: number, options: EncodeOptions = {}): string[] {
   const command = ['ffmpeg', '-y', '-v', 'error', '-f', 'rawvideo', '-pix_fmt', 'rgba', '-s', `${width}x${height}`, '-framerate', FRAMERATE, '-i', input];
   if (crop !== null) command.push('-vf', `crop=${crop.width}:${crop.height}:${crop.x}:${crop.y}`);
   command.push(
     '-c:v',
     'libvpx-vp9',
     '-pix_fmt',
-    'yuva420p',
+    options.pixelFormat ?? 'yuva420p',
     '-crf',
     String(crf),
     '-b:v',
     '0',
+    ...(options.losslessFlag === true ? ['-lossless', '1'] : []),
     '-auto-alt-ref',
     '0',
     '-row-mt',

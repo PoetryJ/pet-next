@@ -1,14 +1,4477 @@
 {
   "schemaVersion": 1,
   "kind": "idle-roi-quality",
-  "status": "not-run",
-  "generatedAt": "2026-11-10T08:12:37.129Z",
-  "reason": [
-    "缺 O.webm（/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out/O.webm）",
-    "缺 F.webm（/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out/F.webm）",
-    "缺 C.webm（/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out/C.webm）",
-    "缺 manifest.json（/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out/manifest.json）"
+  "status": "failed",
+  "generatedAt": "2026-11-10T08:32:38.747Z",
+  "armsDir": "/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/tests/idle-roi/fixtures",
+  "thresholds": {
+    "frameCount": 48,
+    "roiOutsideOpaque": 0,
+    "ptsDeltaMs": 1,
+    "durationDeltaMs": 1,
+    "fToCChannelMaxLsb": 2,
+    "fToCAlphaMaxLsb": 2,
+    "ocMaeLsb": 1,
+    "ocP99Lsb": 2,
+    "bboxDeltaPx": 1,
+    "centroidDeltaPx": 0.5,
+    "positionAlphaFloor": 64,
+    "alphaThreshold": 1,
+    "edgeBandLow": 2,
+    "edgeBandHigh": 64
+  },
+  "provenance": {
+    "kind": "idle-roi-arms-copy",
+    "note": "只读副本：从负责人分支已提交字节取出，sha256 与 manifest 一致才复制。不复算、不改写 A 的产物。",
+    "sourceCommit": "9dc035e",
+    "sourceRepoPath": "pet-next/experiments/idle-roi/out",
+    "extractCommand": "git -C <m38-wt-lead> archive 9dc035e pet-next/experiments/idle-roi/out | tar -x -C /tmp/m312-out --strip-components=3",
+    "copiedAt": "2026-11-10T16:15:00Z",
+    "files": {
+      "O.webm": {
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "bytes": 78419,
+        "role": "原字节，等于 manifest.sourceSha256"
+      },
+      "F.webm": {
+        "sha256": "2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0",
+        "bytes": 188075,
+        "role": "全画布 640x360 重编码"
+      },
+      "C.webm": {
+        "sha256": "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c",
+        "bytes": 225952,
+        "role": "ROI 226x286 重编码，等于 manifest.candidateSha256"
+      },
+      "manifest.json": {
+        "sha256": null,
+        "bytes": 1013,
+        "role": "契约 §3 的 manifest，parseManifest 逐字段校验"
+      },
+      "build-report.json": {
+        "sha256": null,
+        "bytes": 7250,
+        "role": "A 的构建记录副本，只作证据（encode.crf = 12 等）；画质门不读它"
+      }
+    },
+    "verifiedAgainstLeadReference": true,
+    "leadReference": {
+      "O": "6ebca6b2…df1a",
+      "F": "2ca492a9…02f0",
+      "C": "08a80ac4…7e0c"
+    }
+  },
+  "arms": {
+    "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "candidateSha256": "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c",
+    "fSha256": "2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0",
+    "frameCount": {
+      "O": 48,
+      "F": 48,
+      "C": 48
+    },
+    "stream": {
+      "O": {
+        "width": 640,
+        "height": 360,
+        "codec": "vp9",
+        "pixFmt": "yuv420p",
+        "alphaMode": "1",
+        "color": {
+          "range": "tv",
+          "matrix": "bt709",
+          "primaries": null,
+          "transfer": null
+        }
+      },
+      "F": {
+        "width": 640,
+        "height": 360,
+        "codec": "vp9",
+        "pixFmt": "yuv420p",
+        "alphaMode": "1",
+        "color": {
+          "range": "tv",
+          "matrix": "bt709",
+          "primaries": null,
+          "transfer": null
+        }
+      },
+      "C": {
+        "width": 226,
+        "height": 286,
+        "codec": "vp9",
+        "pixFmt": "yuv420p",
+        "alphaMode": "1",
+        "color": {
+          "range": "tv",
+          "matrix": "bt709",
+          "primaries": null,
+          "transfer": null
+        }
+      }
+    }
+  },
+  "manifest": {
+    "schemaVersion": 1,
+    "kind": "idle-roi",
+    "sourcePath": "assets/idle.webm",
+    "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "candidateSha256": "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c",
+    "originalCanvas": {
+      "width": 640,
+      "height": 360
+    },
+    "crop": {
+      "x": 208,
+      "y": 52,
+      "width": 226,
+      "height": 286
+    },
+    "alphaThreshold": 1,
+    "guard": 2,
+    "codec": "vp9",
+    "pixelFormat": "yuva420p",
+    "colorTags": {
+      "primaries": "unknown",
+      "transfer": "unknown",
+      "matrix": "bt709",
+      "range": "tv"
+    },
+    "frameCount": 48,
+    "pts": {
+      "count": 48,
+      "firstMs": 0,
+      "lastMs": 1958,
+      "stepMs": 41.66,
+      "minDeltaMs": 41,
+      "maxDeltaMs": 42
+    },
+    "durationMs": 1999,
+    "loopFrames": 48,
+    "generatedBy": "node experiments/idle-roi/compiler.mjs --out=experiments/idle-roi/out",
+    "ffmpeg": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers",
+    "builtAt": "2026-11-10T08:04:05.529Z"
+  },
+  "colorTagsConsistent": true,
+  "cost": {
+    "bytes": {
+      "O": 78419,
+      "F": 188075,
+      "C": 225952
+    },
+    "bytesVsSource": {
+      "F": 109656,
+      "C": 147533
+    },
+    "candidateVsFullCanvas": {
+      "deltaBytes": 37877,
+      "ratio": 1.2014
+    },
+    "decodedArea": {
+      "cropArea": 64636,
+      "canvasArea": 230400,
+      "retainedRatio": 0.280538
+    },
+    "note": "ROI 省的是解码像素面积，不是文件体积：C 225952 字节 > F 188075 字节，多 37877 字节（+20.1%）；相对源片 O 则是 147533 字节/+188.1%。"
+  },
+  "comparison": {
+    "unit": "LSB (1 LSB = 1/255 of full scale)",
+    "note": "O→F 与 O→C 用同一套掩码、同一批帧、三种底；C↔F 只差裁边",
+    "rows": [
+      {
+        "id": "O->F",
+        "note": "纯重编码：全画布编码，不裁边，保留 alpha<=1 的背景",
+        "unit": "LSB",
+        "foreground": {
+          "mae": 1.8521990967995288,
+          "p99": 7,
+          "max": 18,
+          "frame": 39,
+          "plate": "white"
+        },
+        "edge": {
+          "mae": 0.7451668015466235,
+          "p99": 3,
+          "max": 8,
+          "frame": 38,
+          "plate": "white"
+        },
+        "alphaMax": 16,
+        "compositeMax": 25
+      },
+      {
+        "id": "O->C",
+        "note": "重编码 + 裁边：实际采用的候选臂",
+        "unit": "LSB",
+        "foreground": {
+          "mae": 2.0536602526343346,
+          "p99": 8,
+          "max": 23,
+          "frame": 39,
+          "plate": "white"
+        },
+        "edge": {
+          "mae": 0.8955116048044793,
+          "p99": 4,
+          "max": 9,
+          "frame": 39,
+          "plate": "white"
+        },
+        "alphaMax": 33,
+        "compositeMax": 26
+      },
+      {
+        "id": "C<->F",
+        "note": "只差裁边：C 按 crop 还原到 640×360 后与 F 比（就是 f-to-c 门）",
+        "unit": "LSB",
+        "compositeMax": 29,
+        "alphaMax": 35,
+        "samplesOver2": 4055171
+      }
+    ]
+  },
+  "roundtripFloor": {
+    "variants": [
+      {
+        "id": "O->O 444 crf0",
+        "pixelFormat": "yuva444p",
+        "crf": 0,
+        "losslessFlag": false,
+        "bytes": 683164,
+        "foreground": {
+          "mae": 1.1507553120849934,
+          "p99": 3,
+          "max": 11,
+          "frame": 1,
+          "plate": "white"
+        },
+        "edge": {
+          "mae": 0.08085599831330381,
+          "p99": 1,
+          "max": 3,
+          "frame": 1,
+          "plate": "white"
+        },
+        "alphaMax": 2
+      },
+      {
+        "id": "O->O 444 lossless1",
+        "pixelFormat": "yuva444p",
+        "crf": 0,
+        "losslessFlag": true,
+        "bytes": 683916,
+        "foreground": {
+          "mae": 1.1507553120849934,
+          "p99": 3,
+          "max": 11,
+          "frame": 1,
+          "plate": "white"
+        },
+        "edge": {
+          "mae": 0.08085599831330381,
+          "p99": 1,
+          "max": 3,
+          "frame": 1,
+          "plate": "white"
+        },
+        "alphaMax": 1
+      },
+      {
+        "id": "O->O 420 crf0",
+        "pixelFormat": "yuva420p",
+        "crf": 0,
+        "losslessFlag": false,
+        "bytes": 683164,
+        "foreground": {
+          "mae": 1.1507553120849934,
+          "p99": 3,
+          "max": 11,
+          "frame": 1,
+          "plate": "white"
+        },
+        "edge": {
+          "mae": 0.08085599831330381,
+          "p99": 1,
+          "max": 3,
+          "frame": 1,
+          "plate": "white"
+        },
+        "alphaMax": 2
+      }
+    ],
+    "geometry": {
+      "note": "预处理相同（alpha<=1→0）、编码参数相同，唯一变量是 F 全画布 / C 裁 crop → 这个 max 就是「裁边本身」的误差",
+      "settings": {
+        "pixelFormat": "yuva444p",
+        "crf": 0,
+        "losslessFlag": false
+      },
+      "fToC": {
+        "maxComposite": 2,
+        "maxAlpha": 1,
+        "samplesOver2": 0
+      },
+      "bytes": {
+        "F": 684805,
+        "C": 701881
+      }
+    }
+  },
+  "attribution": {
+    "verdict": "f-to-c 与 o-to-c 不过，归因于 8-bit yuva420p 重编码往返，不是 ROI 裁边",
+    "numbers": {
+      "oToFMicroForegroundMaeLsb": 1.8521990967995288,
+      "oToCMicroForegroundMaeLsb": 2.0536602526343346,
+      "cropOnlyDeltaMaeLsb": 0.2015,
+      "bestSelfRoundtrip": {
+        "id": "O->O 444 crf0",
+        "foregroundMaeLsb": 1.1507553120849934,
+        "p99Lsb": 3,
+        "maxLsb": 11
+      }
+    },
+    "evidence": [
+      "O→F（不裁）：前景 MAE 1.852 LSB、P99 7、max 18；边缘 MAE 0.745 LSB",
+      "O→C（裁边）：前景 MAE 2.054 LSB、P99 8、max 23；边缘 MAE 0.896 LSB",
+      "两者之差 0.201 LSB 才是裁边的额外损失",
+      "O 自往返下限（不裁边、不置零，O->O 444 crf0）：前景 MAE 1.151 LSB、P99 3、max 11",
+      "几何对照（444 无损、同参数、只差分辨率）：F–C max 2 LSB、alpha max 1"
+    ],
+    "cropErrorAgainstF": "几何本身为 0（见 roundtripFloor.geometry）；但这批 v1 字节用的是 crf 12，F–C max 实际是 29 LSB，所以「裁边误差=0」只在同参数无损成对时成立"
+  },
+  "gates": [
+    {
+      "id": "coverage",
+      "title": "全片覆盖与 ROI 合法性",
+      "criteria": "48/48 帧解码；ROI 外 alpha>1 被删除像素数 = 0",
+      "pass": true,
+      "failures": [],
+      "metrics": {
+        "expectedFrames": 48,
+        "perArm": {
+          "O": {
+            "decodedFrames": 48,
+            "outsideOpaque": 0,
+            "insideOpaque": 1951279,
+            "outsideFrames": []
+          },
+          "F": {
+            "decodedFrames": 48,
+            "outsideOpaque": 0,
+            "insideOpaque": 1947124,
+            "outsideFrames": []
+          },
+          "C": {
+            "decodedFrames": 48,
+            "outsideOpaque": 0,
+            "insideOpaque": 1947831,
+            "outsideFrames": []
+          }
+        },
+        "insideRatio": {
+          "F": 0.9978706274192466,
+          "C": 0.9982329538728189
+        },
+        "crop": {
+          "x": 208,
+          "y": 52,
+          "width": 226,
+          "height": 286
+        },
+        "restore": {
+          "dx": 0,
+          "dy": 0
+        }
+      }
+    },
+    {
+      "id": "timeline",
+      "title": "时间轴与循环",
+      "criteria": "帧数相同；逐帧 PTS 一一对应（≤1ms 时间基舍入）；duration 差 ≤1ms；循环不增删帧",
+      "pass": true,
+      "failures": [],
+      "metrics": {
+        "perArm": {
+          "O": {
+            "count": 48,
+            "maxPtsDeltaMs": 0,
+            "ptsExactlyEqual": true,
+            "minStepMs": 0.040999999999999925,
+            "maxStepMs": 0.04200000000000004,
+            "formatDurationMs": 1.999,
+            "durationDeltaMs": 0,
+            "tailMs": 2.220446049250313e-16,
+            "nonIncreasing": 0
+          },
+          "F": {
+            "count": 48,
+            "maxPtsDeltaMs": 0,
+            "ptsExactlyEqual": true,
+            "minStepMs": 0.040999999999999925,
+            "maxStepMs": 0.04200000000000004,
+            "formatDurationMs": 2,
+            "durationDeltaMs": 0.0009999999999998899,
+            "tailMs": 0.001000000000000112,
+            "nonIncreasing": 0
+          },
+          "C": {
+            "count": 48,
+            "maxPtsDeltaMs": 0,
+            "ptsExactlyEqual": true,
+            "minStepMs": 0.040999999999999925,
+            "maxStepMs": 0.04200000000000004,
+            "formatDurationMs": 2,
+            "durationDeltaMs": 0.0009999999999998899,
+            "tailMs": 0.001000000000000112,
+            "nonIncreasing": 0
+          }
+        }
+      }
+    },
+    {
+      "id": "layout",
+      "title": "位置与边缘对齐",
+      "criteria": "还原后 alpha>=64 前景包围盒每边偏移 ≤1px、质心偏移 ≤0.5px（含逐帧）",
+      "pass": true,
+      "failures": [],
+      "metrics": {
+        "positionAlphaFloor": 64,
+        "original": {
+          "union": {
+            "x": 213,
+            "y": 60,
+            "width": 215,
+            "height": 270
+          },
+          "centroid": {
+            "x": 320.3077945621273,
+            "y": 202.76811916324144
+          },
+          "count": 1871651
+        },
+        "candidate": {
+          "union": {
+            "x": 213,
+            "y": 60,
+            "width": 215,
+            "height": 270
+          },
+          "centroid": {
+            "x": 320.30923239673655,
+            "y": 202.76876693006776
+          },
+          "count": 1871670
+        },
+        "centroidDelta": 0.0015770130705963917,
+        "perFrameMaxDelta": 1,
+        "strict": {
+          "alphaThreshold": 1,
+          "original": {
+            "x": 210,
+            "y": 54,
+            "width": 222,
+            "height": 281
+          },
+          "candidate": {
+            "x": 210,
+            "y": 52,
+            "width": 221,
+            "height": 283
+          },
+          "delta": {
+            "x": 0,
+            "y": 2,
+            "width": 1,
+            "height": 2
+          }
+        },
+        "lowAlphaPixels": 75829,
+        "note": "严格量具（alpha>1）会把 ROI 边界上 alpha 2..63 的编码噪声算成\"位置变化\"；lowAlphaPixels=75829 就是这类像素的全片计数。",
+        "restore": {
+          "dx": 0,
+          "dy": 0
+        }
+      }
+    },
+    {
+      "id": "f-to-c",
+      "title": "F–C 原画布一致",
+      "criteria": "C 按 crop 还原后与 F 合成比较，每通道最大差 ≤2 LSB（=2/255）；alpha 最大差 ≤2 LSB",
+      "pass": false,
+      "failures": [
+        "帧 0 alpha 最大差 4 LSB > 2 LSB",
+        "帧 0 black 合成最大差 8 LSB > 2 LSB（超 2 LSB 样本 5619）",
+        "帧 0 white 合成最大差 8 LSB > 2 LSB（超 2 LSB 样本 5638）",
+        "帧 0 checker 合成最大差 8 LSB > 2 LSB（超 2 LSB 样本 5638）",
+        "帧 1 alpha 最大差 4 LSB > 2 LSB",
+        "帧 1 black 合成最大差 8 LSB > 2 LSB（超 2 LSB 样本 5621）",
+        "帧 1 white 合成最大差 8 LSB > 2 LSB（超 2 LSB 样本 5640）",
+        "帧 1 checker 合成最大差 8 LSB > 2 LSB（超 2 LSB 样本 5640）",
+        "帧 2 alpha 最大差 21 LSB > 2 LSB",
+        "帧 2 black 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 15456）",
+        "帧 2 white 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 15897）",
+        "帧 2 checker 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 15467）",
+        "帧 3 alpha 最大差 14 LSB > 2 LSB",
+        "帧 3 black 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 18582）",
+        "帧 3 white 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 19162）",
+        "帧 3 checker 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 18630）",
+        "帧 4 alpha 最大差 12 LSB > 2 LSB",
+        "帧 4 black 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 18641）",
+        "帧 4 white 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 19168）",
+        "帧 4 checker 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 18677）",
+        "帧 5 alpha 最大差 28 LSB > 2 LSB",
+        "帧 5 black 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 24178）",
+        "帧 5 white 合成最大差 24 LSB > 2 LSB（超 2 LSB 样本 24996）",
+        "帧 5 checker 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 24284）",
+        "帧 6 alpha 最大差 13 LSB > 2 LSB",
+        "帧 6 black 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 27552）",
+        "帧 6 white 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 28326）",
+        "帧 6 checker 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 27670）",
+        "帧 7 alpha 最大差 13 LSB > 2 LSB",
+        "帧 7 black 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 27449）",
+        "帧 7 white 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 28225）",
+        "帧 7 checker 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 27567）",
+        "帧 8 alpha 最大差 10 LSB > 2 LSB",
+        "帧 8 black 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 23091）",
+        "帧 8 white 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 23607）",
+        "帧 8 checker 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 23194）",
+        "帧 9 alpha 最大差 16 LSB > 2 LSB",
+        "帧 9 black 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 24855）",
+        "帧 9 white 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 25366）",
+        "帧 9 checker 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 24834）",
+        "帧 10 alpha 最大差 8 LSB > 2 LSB",
+        "帧 10 black 合成最大差 13 LSB > 2 LSB（超 2 LSB 样本 23908）",
+        "帧 10 white 合成最大差 13 LSB > 2 LSB（超 2 LSB 样本 24338）",
+        "帧 10 checker 合成最大差 13 LSB > 2 LSB（超 2 LSB 样本 23923）",
+        "帧 11 alpha 最大差 15 LSB > 2 LSB",
+        "帧 11 black 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 27529）",
+        "帧 11 white 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 28302）",
+        "帧 11 checker 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 27620）",
+        "帧 12 alpha 最大差 12 LSB > 2 LSB",
+        "帧 12 black 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 27836）",
+        "帧 12 white 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 28385）",
+        "帧 12 checker 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 27812）",
+        "帧 13 alpha 最大差 12 LSB > 2 LSB",
+        "帧 13 black 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 27844）",
+        "帧 13 white 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 28409）",
+        "帧 13 checker 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 27837）",
+        "帧 14 alpha 最大差 13 LSB > 2 LSB",
+        "帧 14 black 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 29680）",
+        "帧 14 white 合成最大差 27 LSB > 2 LSB（超 2 LSB 样本 30438）",
+        "帧 14 checker 合成最大差 26 LSB > 2 LSB（超 2 LSB 样本 29757）",
+        "帧 15 alpha 最大差 12 LSB > 2 LSB",
+        "帧 15 black 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 30089）",
+        "帧 15 white 合成最大差 27 LSB > 2 LSB（超 2 LSB 样本 30969）",
+        "帧 15 checker 合成最大差 26 LSB > 2 LSB（超 2 LSB 样本 30210）",
+        "帧 16 alpha 最大差 7 LSB > 2 LSB",
+        "帧 16 black 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 26123）",
+        "帧 16 white 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 26646）",
+        "帧 16 checker 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 26189）",
+        "帧 17 alpha 最大差 13 LSB > 2 LSB",
+        "帧 17 black 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 27618）",
+        "帧 17 white 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 28315）",
+        "帧 17 checker 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 27638）",
+        "帧 18 alpha 最大差 17 LSB > 2 LSB",
+        "帧 18 black 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 29580）",
+        "帧 18 white 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 30604）",
+        "帧 18 checker 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 29772）",
+        "帧 19 alpha 最大差 17 LSB > 2 LSB",
+        "帧 19 black 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 29536）",
+        "帧 19 white 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 30552）",
+        "帧 19 checker 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 29733）",
+        "帧 20 alpha 最大差 8 LSB > 2 LSB",
+        "帧 20 black 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 26622）",
+        "帧 20 white 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 27199）",
+        "帧 20 checker 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 26750）",
+        "帧 21 alpha 最大差 11 LSB > 2 LSB",
+        "帧 21 black 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 27573）",
+        "帧 21 white 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 28258）",
+        "帧 21 checker 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 27717）",
+        "帧 22 alpha 最大差 11 LSB > 2 LSB",
+        "帧 22 black 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 27579）",
+        "帧 22 white 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 28274）",
+        "帧 22 checker 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 27723）",
+        "帧 23 alpha 最大差 14 LSB > 2 LSB",
+        "帧 23 black 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 32518）",
+        "帧 23 white 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 33204）",
+        "帧 23 checker 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 32493）",
+        "帧 24 alpha 最大差 10 LSB > 2 LSB",
+        "帧 24 black 合成最大差 15 LSB > 2 LSB（超 2 LSB 样本 27184）",
+        "帧 24 white 合成最大差 15 LSB > 2 LSB（超 2 LSB 样本 27772）",
+        "帧 24 checker 合成最大差 15 LSB > 2 LSB（超 2 LSB 样本 27264）",
+        "帧 25 alpha 最大差 10 LSB > 2 LSB",
+        "帧 25 black 合成最大差 15 LSB > 2 LSB（超 2 LSB 样本 27244）",
+        "帧 25 white 合成最大差 15 LSB > 2 LSB（超 2 LSB 样本 27829）",
+        "帧 25 checker 合成最大差 15 LSB > 2 LSB（超 2 LSB 样本 27318）",
+        "帧 26 alpha 最大差 15 LSB > 2 LSB",
+        "帧 26 black 合成最大差 16 LSB > 2 LSB（超 2 LSB 样本 31061）",
+        "帧 26 white 合成最大差 23 LSB > 2 LSB（超 2 LSB 样本 31833）",
+        "帧 26 checker 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 31207）",
+        "帧 27 alpha 最大差 15 LSB > 2 LSB",
+        "帧 27 black 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 32753）",
+        "帧 27 white 合成最大差 23 LSB > 2 LSB（超 2 LSB 样本 33498）",
+        "帧 27 checker 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 32810）",
+        "帧 28 alpha 最大差 10 LSB > 2 LSB",
+        "帧 28 black 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 32409）",
+        "帧 28 white 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 33028）",
+        "帧 28 checker 合成最大差 19 LSB > 2 LSB（超 2 LSB 样本 32402）",
+        "帧 29 alpha 最大差 35 LSB > 2 LSB",
+        "帧 29 black 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 34738）",
+        "帧 29 white 合成最大差 29 LSB > 2 LSB（超 2 LSB 样本 35489）",
+        "帧 29 checker 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 34730）",
+        "帧 30 alpha 最大差 9 LSB > 2 LSB",
+        "帧 30 black 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 27663）",
+        "帧 30 white 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 28247）",
+        "帧 30 checker 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 27792）",
+        "帧 31 alpha 最大差 9 LSB > 2 LSB",
+        "帧 31 black 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 27692）",
+        "帧 31 white 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 28269）",
+        "帧 31 checker 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 27817）",
+        "帧 32 alpha 最大差 8 LSB > 2 LSB",
+        "帧 32 black 合成最大差 13 LSB > 2 LSB（超 2 LSB 样本 27648）",
+        "帧 32 white 合成最大差 13 LSB > 2 LSB（超 2 LSB 样本 28150）",
+        "帧 32 checker 合成最大差 13 LSB > 2 LSB（超 2 LSB 样本 27762）",
+        "帧 33 alpha 最大差 11 LSB > 2 LSB",
+        "帧 33 black 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 29585）",
+        "帧 33 white 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 30185）",
+        "帧 33 checker 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 29711）",
+        "帧 34 alpha 最大差 10 LSB > 2 LSB",
+        "帧 34 black 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 29661）",
+        "帧 34 white 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 30277）",
+        "帧 34 checker 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 29773）",
+        "帧 35 alpha 最大差 16 LSB > 2 LSB",
+        "帧 35 black 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 34275）",
+        "帧 35 white 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 35001）",
+        "帧 35 checker 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 34191）",
+        "帧 36 alpha 最大差 10 LSB > 2 LSB",
+        "帧 36 black 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 33599）",
+        "帧 36 white 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 34344）",
+        "帧 36 checker 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 33656）",
+        "帧 37 alpha 最大差 10 LSB > 2 LSB",
+        "帧 37 black 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 33636）",
+        "帧 37 white 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 34370）",
+        "帧 37 checker 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 33687）",
+        "帧 38 alpha 最大差 10 LSB > 2 LSB",
+        "帧 38 black 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 35012）",
+        "帧 38 white 合成最大差 23 LSB > 2 LSB（超 2 LSB 样本 35809）",
+        "帧 38 checker 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 35091）",
+        "帧 39 alpha 最大差 17 LSB > 2 LSB",
+        "帧 39 black 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 36520）",
+        "帧 39 white 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 37409）",
+        "帧 39 checker 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 36546）",
+        "帧 40 alpha 最大差 9 LSB > 2 LSB",
+        "帧 40 black 合成最大差 15 LSB > 2 LSB（超 2 LSB 样本 28362）",
+        "帧 40 white 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 28966）",
+        "帧 40 checker 合成最大差 14 LSB > 2 LSB（超 2 LSB 样本 28476）",
+        "帧 41 alpha 最大差 15 LSB > 2 LSB",
+        "帧 41 black 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 30462）",
+        "帧 41 white 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 31178）",
+        "帧 41 checker 合成最大差 21 LSB > 2 LSB（超 2 LSB 样本 30560）",
+        "帧 42 alpha 最大差 15 LSB > 2 LSB",
+        "帧 42 black 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 31814）",
+        "帧 42 white 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 32633）",
+        "帧 42 checker 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 31913）",
+        "帧 43 alpha 最大差 10 LSB > 2 LSB",
+        "帧 43 black 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 31937）",
+        "帧 43 white 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 32762）",
+        "帧 43 checker 合成最大差 18 LSB > 2 LSB（超 2 LSB 样本 32029）",
+        "帧 44 alpha 最大差 11 LSB > 2 LSB",
+        "帧 44 black 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 31894）",
+        "帧 44 white 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 32649）",
+        "帧 44 checker 合成最大差 17 LSB > 2 LSB（超 2 LSB 样本 31974）",
+        "帧 45 alpha 最大差 15 LSB > 2 LSB",
+        "帧 45 black 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 32497）",
+        "帧 45 white 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 33217）",
+        "帧 45 checker 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 32532）",
+        "帧 46 alpha 最大差 15 LSB > 2 LSB",
+        "帧 46 black 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 32515）",
+        "帧 46 white 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 33258）",
+        "帧 46 checker 合成最大差 22 LSB > 2 LSB（超 2 LSB 样本 32549）",
+        "帧 47 alpha 最大差 16 LSB > 2 LSB",
+        "帧 47 black 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 34837）",
+        "帧 47 white 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 35639）",
+        "帧 47 checker 合成最大差 20 LSB > 2 LSB（超 2 LSB 样本 34799）"
+      ],
+      "metrics": {
+        "unit": "LSB (1 LSB = 1/255 of full scale)",
+        "worstCompositeMax": 29,
+        "worstFrame": 29,
+        "worstAlphaMax": 35,
+        "samplesOver2": 4055171,
+        "residual": {
+          "maxChannelHistogram": {
+            "0": 0,
+            "1": 316450,
+            "2": 503115,
+            "3": 342979,
+            "4": 229118,
+            "5": 131687,
+            "6": 72351,
+            "7": 38049,
+            "8": 19735,
+            "9+": 20902
+          },
+          "perChannelHistogram": {
+            "red": {
+              "0": 260527,
+              "1": 556052,
+              "2": 409414,
+              "3": 215934,
+              "4": 119474,
+              "5": 59392,
+              "6": 28921,
+              "7": 13602,
+              "8": 6128,
+              "9+": 4942
+            },
+            "green": {
+              "0": 338083,
+              "1": 678618,
+              "2": 355202,
+              "3": 174143,
+              "4": 77363,
+              "5": 30917,
+              "6": 11912,
+              "7": 4809,
+              "8": 1850,
+              "9+": 1489
+            },
+            "blue": {
+              "0": 193846,
+              "1": 477654,
+              "2": 413685,
+              "3": 240087,
+              "4": 152244,
+              "5": 88162,
+              "6": 50019,
+              "7": 27238,
+              "8": 14566,
+              "9+": 16885
+            }
+          },
+          "over2Pixels": 854821,
+          "over2ByAlphaBand": {
+            "alpha<=1": 29,
+            "2-8": 141,
+            "9-64": 1950,
+            "65-200": 14819,
+            "201-255": 837882
+          },
+          "over2ByEdgeDistance": {
+            "edge-band(alpha 2..64 或边界 1px)": 4627,
+            "edge+1px": 24391,
+            "interior": 825803
+          }
+        },
+        "perFrame": [
+          {
+            "frame": 0,
+            "alphaMax": 4,
+            "plates": {
+              "black": 8,
+              "white": 8,
+              "checker": 8
+            }
+          },
+          {
+            "frame": 1,
+            "alphaMax": 4,
+            "plates": {
+              "black": 8,
+              "white": 8,
+              "checker": 8
+            }
+          },
+          {
+            "frame": 2,
+            "alphaMax": 21,
+            "plates": {
+              "black": 19,
+              "white": 20,
+              "checker": 20
+            }
+          },
+          {
+            "frame": 3,
+            "alphaMax": 14,
+            "plates": {
+              "black": 20,
+              "white": 20,
+              "checker": 20
+            }
+          },
+          {
+            "frame": 4,
+            "alphaMax": 12,
+            "plates": {
+              "black": 20,
+              "white": 20,
+              "checker": 20
+            }
+          },
+          {
+            "frame": 5,
+            "alphaMax": 28,
+            "plates": {
+              "black": 22,
+              "white": 24,
+              "checker": 22
+            }
+          },
+          {
+            "frame": 6,
+            "alphaMax": 13,
+            "plates": {
+              "black": 20,
+              "white": 20,
+              "checker": 21
+            }
+          },
+          {
+            "frame": 7,
+            "alphaMax": 13,
+            "plates": {
+              "black": 20,
+              "white": 20,
+              "checker": 21
+            }
+          },
+          {
+            "frame": 8,
+            "alphaMax": 10,
+            "plates": {
+              "black": 16,
+              "white": 16,
+              "checker": 16
+            }
+          },
+          {
+            "frame": 9,
+            "alphaMax": 16,
+            "plates": {
+              "black": 16,
+              "white": 18,
+              "checker": 16
+            }
+          },
+          {
+            "frame": 10,
+            "alphaMax": 8,
+            "plates": {
+              "black": 13,
+              "white": 13,
+              "checker": 13
+            }
+          },
+          {
+            "frame": 11,
+            "alphaMax": 15,
+            "plates": {
+              "black": 19,
+              "white": 19,
+              "checker": 19
+            }
+          },
+          {
+            "frame": 12,
+            "alphaMax": 12,
+            "plates": {
+              "black": 19,
+              "white": 19,
+              "checker": 19
+            }
+          },
+          {
+            "frame": 13,
+            "alphaMax": 12,
+            "plates": {
+              "black": 19,
+              "white": 19,
+              "checker": 19
+            }
+          },
+          {
+            "frame": 14,
+            "alphaMax": 13,
+            "plates": {
+              "black": 20,
+              "white": 27,
+              "checker": 26
+            }
+          },
+          {
+            "frame": 15,
+            "alphaMax": 12,
+            "plates": {
+              "black": 20,
+              "white": 27,
+              "checker": 26
+            }
+          },
+          {
+            "frame": 16,
+            "alphaMax": 7,
+            "plates": {
+              "black": 14,
+              "white": 14,
+              "checker": 14
+            }
+          },
+          {
+            "frame": 17,
+            "alphaMax": 13,
+            "plates": {
+              "black": 18,
+              "white": 19,
+              "checker": 18
+            }
+          },
+          {
+            "frame": 18,
+            "alphaMax": 17,
+            "plates": {
+              "black": 16,
+              "white": 16,
+              "checker": 16
+            }
+          },
+          {
+            "frame": 19,
+            "alphaMax": 17,
+            "plates": {
+              "black": 16,
+              "white": 16,
+              "checker": 16
+            }
+          },
+          {
+            "frame": 20,
+            "alphaMax": 8,
+            "plates": {
+              "black": 14,
+              "white": 14,
+              "checker": 14
+            }
+          },
+          {
+            "frame": 21,
+            "alphaMax": 11,
+            "plates": {
+              "black": 17,
+              "white": 17,
+              "checker": 17
+            }
+          },
+          {
+            "frame": 22,
+            "alphaMax": 11,
+            "plates": {
+              "black": 17,
+              "white": 17,
+              "checker": 17
+            }
+          },
+          {
+            "frame": 23,
+            "alphaMax": 14,
+            "plates": {
+              "black": 21,
+              "white": 21,
+              "checker": 21
+            }
+          },
+          {
+            "frame": 24,
+            "alphaMax": 10,
+            "plates": {
+              "black": 15,
+              "white": 15,
+              "checker": 15
+            }
+          },
+          {
+            "frame": 25,
+            "alphaMax": 10,
+            "plates": {
+              "black": 15,
+              "white": 15,
+              "checker": 15
+            }
+          },
+          {
+            "frame": 26,
+            "alphaMax": 15,
+            "plates": {
+              "black": 16,
+              "white": 23,
+              "checker": 21
+            }
+          },
+          {
+            "frame": 27,
+            "alphaMax": 15,
+            "plates": {
+              "black": 21,
+              "white": 23,
+              "checker": 20
+            }
+          },
+          {
+            "frame": 28,
+            "alphaMax": 10,
+            "plates": {
+              "black": 19,
+              "white": 20,
+              "checker": 19
+            }
+          },
+          {
+            "frame": 29,
+            "alphaMax": 35,
+            "plates": {
+              "black": 21,
+              "white": 29,
+              "checker": 21
+            }
+          },
+          {
+            "frame": 30,
+            "alphaMax": 9,
+            "plates": {
+              "black": 14,
+              "white": 14,
+              "checker": 14
+            }
+          },
+          {
+            "frame": 31,
+            "alphaMax": 9,
+            "plates": {
+              "black": 14,
+              "white": 14,
+              "checker": 14
+            }
+          },
+          {
+            "frame": 32,
+            "alphaMax": 8,
+            "plates": {
+              "black": 13,
+              "white": 13,
+              "checker": 13
+            }
+          },
+          {
+            "frame": 33,
+            "alphaMax": 11,
+            "plates": {
+              "black": 18,
+              "white": 18,
+              "checker": 18
+            }
+          },
+          {
+            "frame": 34,
+            "alphaMax": 10,
+            "plates": {
+              "black": 18,
+              "white": 18,
+              "checker": 18
+            }
+          },
+          {
+            "frame": 35,
+            "alphaMax": 16,
+            "plates": {
+              "black": 18,
+              "white": 18,
+              "checker": 18
+            }
+          },
+          {
+            "frame": 36,
+            "alphaMax": 10,
+            "plates": {
+              "black": 17,
+              "white": 17,
+              "checker": 17
+            }
+          },
+          {
+            "frame": 37,
+            "alphaMax": 10,
+            "plates": {
+              "black": 17,
+              "white": 17,
+              "checker": 17
+            }
+          },
+          {
+            "frame": 38,
+            "alphaMax": 10,
+            "plates": {
+              "black": 22,
+              "white": 23,
+              "checker": 22
+            }
+          },
+          {
+            "frame": 39,
+            "alphaMax": 17,
+            "plates": {
+              "black": 22,
+              "white": 22,
+              "checker": 22
+            }
+          },
+          {
+            "frame": 40,
+            "alphaMax": 9,
+            "plates": {
+              "black": 15,
+              "white": 14,
+              "checker": 14
+            }
+          },
+          {
+            "frame": 41,
+            "alphaMax": 15,
+            "plates": {
+              "black": 20,
+              "white": 22,
+              "checker": 21
+            }
+          },
+          {
+            "frame": 42,
+            "alphaMax": 15,
+            "plates": {
+              "black": 18,
+              "white": 18,
+              "checker": 18
+            }
+          },
+          {
+            "frame": 43,
+            "alphaMax": 10,
+            "plates": {
+              "black": 18,
+              "white": 18,
+              "checker": 18
+            }
+          },
+          {
+            "frame": 44,
+            "alphaMax": 11,
+            "plates": {
+              "black": 17,
+              "white": 17,
+              "checker": 17
+            }
+          },
+          {
+            "frame": 45,
+            "alphaMax": 15,
+            "plates": {
+              "black": 22,
+              "white": 22,
+              "checker": 22
+            }
+          },
+          {
+            "frame": 46,
+            "alphaMax": 15,
+            "plates": {
+              "black": 22,
+              "white": 22,
+              "checker": 22
+            }
+          },
+          {
+            "frame": 47,
+            "alphaMax": 16,
+            "plates": {
+              "black": 20,
+              "white": 20,
+              "checker": 20
+            }
+          }
+        ]
+      }
+    },
+    {
+      "id": "o-to-c",
+      "title": "O–C 三种底合成",
+      "criteria": "前景(α>1)与边缘区(2..64 或距 alpha 边界 1px) 分别 MAE ≤1 LSB(=1/255)、P99 ≤2 LSB(=2/255)；黑/白/棋盘各自过门",
+      "pass": false,
+      "failures": [
+        "帧 0 black foreground MAE 1.299 LSB > 1 LSB(=1/255)（超 1 LSB 样本 42071）",
+        "帧 0 black foreground P99 4 LSB > 2 LSB(=2/255)",
+        "帧 0 white foreground MAE 1.340 LSB > 1 LSB(=1/255)（超 1 LSB 样本 43855）",
+        "帧 0 white foreground P99 4 LSB > 2 LSB(=2/255)",
+        "帧 0 checker foreground MAE 1.324 LSB > 1 LSB(=1/255)（超 1 LSB 样本 43216）",
+        "帧 0 checker foreground P99 4 LSB > 2 LSB(=2/255)",
+        "帧 1 black foreground MAE 1.299 LSB > 1 LSB(=1/255)（超 1 LSB 样本 42068）",
+        "帧 1 black foreground P99 4 LSB > 2 LSB(=2/255)",
+        "帧 1 white foreground MAE 1.340 LSB > 1 LSB(=1/255)（超 1 LSB 样本 43861）",
+        "帧 1 white foreground P99 4 LSB > 2 LSB(=2/255)",
+        "帧 1 checker foreground MAE 1.324 LSB > 1 LSB(=1/255)（超 1 LSB 样本 43222）",
+        "帧 1 checker foreground P99 4 LSB > 2 LSB(=2/255)",
+        "帧 2 black foreground MAE 1.618 LSB > 1 LSB(=1/255)（超 1 LSB 样本 53286）",
+        "帧 2 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 2 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 2 white foreground MAE 1.666 LSB > 1 LSB(=1/255)（超 1 LSB 样本 54798）",
+        "帧 2 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 2 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 2 checker foreground MAE 1.640 LSB > 1 LSB(=1/255)（超 1 LSB 样本 53927）",
+        "帧 2 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 3 black foreground MAE 1.698 LSB > 1 LSB(=1/255)（超 1 LSB 样本 55505）",
+        "帧 3 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 3 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 3 white foreground MAE 1.743 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56916）",
+        "帧 3 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 3 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 3 checker foreground MAE 1.715 LSB > 1 LSB(=1/255)（超 1 LSB 样本 55941）",
+        "帧 3 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 3 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 4 black foreground MAE 1.673 LSB > 1 LSB(=1/255)（超 1 LSB 样本 55448）",
+        "帧 4 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 4 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 4 white foreground MAE 1.720 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56972）",
+        "帧 4 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 4 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 4 checker foreground MAE 1.692 LSB > 1 LSB(=1/255)（超 1 LSB 样本 55975）",
+        "帧 4 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 5 black foreground MAE 1.836 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58859）",
+        "帧 5 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 5 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 5 white foreground MAE 1.886 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60353）",
+        "帧 5 white foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 5 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 5 checker foreground MAE 1.855 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59264）",
+        "帧 5 checker foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 5 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 6 black foreground MAE 1.874 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60299）",
+        "帧 6 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 6 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 6 white foreground MAE 1.918 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61707）",
+        "帧 6 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 6 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 6 checker foreground MAE 1.890 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60716）",
+        "帧 6 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 6 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 7 black foreground MAE 1.874 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60406）",
+        "帧 7 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 7 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 7 white foreground MAE 1.919 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61823）",
+        "帧 7 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 7 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 7 checker foreground MAE 1.891 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60823）",
+        "帧 7 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 7 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 8 black foreground MAE 1.624 LSB > 1 LSB(=1/255)（超 1 LSB 样本 55004）",
+        "帧 8 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 8 white foreground MAE 1.670 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56446）",
+        "帧 8 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 8 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 8 checker foreground MAE 1.645 LSB > 1 LSB(=1/255)（超 1 LSB 样本 55613）",
+        "帧 8 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 9 black foreground MAE 1.708 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57173）",
+        "帧 9 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 9 white foreground MAE 1.756 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58637）",
+        "帧 9 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 9 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 9 checker foreground MAE 1.729 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57688）",
+        "帧 9 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 9 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 10 black foreground MAE 1.639 LSB > 1 LSB(=1/255)（超 1 LSB 样本 55413）",
+        "帧 10 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 10 white foreground MAE 1.690 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57008）",
+        "帧 10 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 10 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 10 checker foreground MAE 1.663 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56125）",
+        "帧 10 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 11 black foreground MAE 1.770 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58011）",
+        "帧 11 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 11 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 11 white foreground MAE 1.823 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59687）",
+        "帧 11 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 11 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 11 checker foreground MAE 1.792 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58645）",
+        "帧 11 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 11 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 12 black foreground MAE 1.761 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58263）",
+        "帧 12 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 12 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 12 white foreground MAE 1.814 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59972）",
+        "帧 12 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 12 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 12 checker foreground MAE 1.783 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58881）",
+        "帧 12 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 12 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 13 black foreground MAE 1.762 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58253）",
+        "帧 13 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 13 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 13 white foreground MAE 1.814 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59974）",
+        "帧 13 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 13 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 13 checker foreground MAE 1.784 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58881）",
+        "帧 13 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 13 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 14 black foreground MAE 1.830 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59691）",
+        "帧 14 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 14 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 14 white foreground MAE 1.883 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61331）",
+        "帧 14 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 14 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 14 checker foreground MAE 1.852 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60280）",
+        "帧 14 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 14 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 15 black foreground MAE 1.848 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60088）",
+        "帧 15 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 15 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 15 white foreground MAE 1.902 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61757）",
+        "帧 15 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 15 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 15 checker foreground MAE 1.870 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60675）",
+        "帧 15 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 15 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 16 black foreground MAE 1.639 LSB > 1 LSB(=1/255)（超 1 LSB 样本 55800）",
+        "帧 16 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 16 white foreground MAE 1.691 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57464）",
+        "帧 16 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 16 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 16 checker foreground MAE 1.664 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56545）",
+        "帧 16 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 17 black foreground MAE 1.727 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57681）",
+        "帧 17 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 17 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 17 white foreground MAE 1.777 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59304）",
+        "帧 17 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 17 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 17 checker foreground MAE 1.748 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58271）",
+        "帧 17 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 17 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 18 black foreground MAE 1.801 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59407）",
+        "帧 18 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 18 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 18 white foreground MAE 1.855 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61025）",
+        "帧 18 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 18 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 18 checker foreground MAE 1.824 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59914）",
+        "帧 18 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 18 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 19 black foreground MAE 1.798 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59409）",
+        "帧 19 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 19 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 19 white foreground MAE 1.853 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61019）",
+        "帧 19 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 19 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 19 checker foreground MAE 1.822 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59912）",
+        "帧 19 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 19 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 20 black foreground MAE 1.651 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56279）",
+        "帧 20 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 20 white foreground MAE 1.700 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57921）",
+        "帧 20 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 20 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 20 checker foreground MAE 1.674 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56971）",
+        "帧 20 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 21 black foreground MAE 1.690 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57362）",
+        "帧 21 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 21 white foreground MAE 1.742 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59107）",
+        "帧 21 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 21 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 21 checker foreground MAE 1.715 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58094）",
+        "帧 21 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 22 black foreground MAE 1.693 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57535）",
+        "帧 22 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 22 white foreground MAE 1.745 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59274）",
+        "帧 22 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 22 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 22 checker foreground MAE 1.718 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58265）",
+        "帧 22 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 23 black foreground MAE 1.866 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61284）",
+        "帧 23 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 23 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 23 white foreground MAE 1.919 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62792）",
+        "帧 23 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 23 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 23 checker foreground MAE 1.887 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61707）",
+        "帧 23 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 23 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 24 black foreground MAE 1.650 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56392）",
+        "帧 24 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 24 white foreground MAE 1.698 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57822）",
+        "帧 24 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 24 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 24 checker foreground MAE 1.671 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56994）",
+        "帧 24 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 25 black foreground MAE 1.652 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56522）",
+        "帧 25 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 25 white foreground MAE 1.700 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57967）",
+        "帧 25 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 25 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 25 checker foreground MAE 1.674 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57140）",
+        "帧 25 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 26 black foreground MAE 1.807 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60019）",
+        "帧 26 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 26 white foreground MAE 1.858 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61457）",
+        "帧 26 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 26 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 26 checker foreground MAE 1.828 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60458）",
+        "帧 26 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 26 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 27 black foreground MAE 1.885 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61634）",
+        "帧 27 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 27 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 27 white foreground MAE 1.940 LSB > 1 LSB(=1/255)（超 1 LSB 样本 63148）",
+        "帧 27 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 27 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 27 checker foreground MAE 1.907 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62018）",
+        "帧 27 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 27 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 28 black foreground MAE 1.837 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60747）",
+        "帧 28 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 28 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 28 white foreground MAE 1.888 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62279）",
+        "帧 28 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 28 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 28 checker foreground MAE 1.856 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61164）",
+        "帧 28 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 28 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 29 black foreground MAE 1.944 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62582）",
+        "帧 29 black foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 29 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 29 white foreground MAE 1.996 LSB > 1 LSB(=1/255)（超 1 LSB 样本 64123）",
+        "帧 29 white foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 29 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 29 checker foreground MAE 1.962 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62994）",
+        "帧 29 checker foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 29 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 30 black foreground MAE 1.651 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56262）",
+        "帧 30 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 30 white foreground MAE 1.695 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57670）",
+        "帧 30 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 30 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 30 checker foreground MAE 1.671 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56903）",
+        "帧 30 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 31 black foreground MAE 1.652 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56281）",
+        "帧 31 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 31 white foreground MAE 1.696 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57696）",
+        "帧 31 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 31 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 31 checker foreground MAE 1.673 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56919）",
+        "帧 31 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 32 black foreground MAE 1.677 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56648）",
+        "帧 32 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 32 white foreground MAE 1.725 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58120）",
+        "帧 32 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 32 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 32 checker foreground MAE 1.700 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57324）",
+        "帧 32 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 33 black foreground MAE 1.762 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58478）",
+        "帧 33 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 33 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 33 white foreground MAE 1.813 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60013）",
+        "帧 33 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 33 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 33 checker foreground MAE 1.784 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59029）",
+        "帧 33 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 33 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 34 black foreground MAE 1.763 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58536）",
+        "帧 34 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 34 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 34 white foreground MAE 1.815 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60070）",
+        "帧 34 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 34 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 34 checker foreground MAE 1.786 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59067）",
+        "帧 34 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 34 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 35 black foreground MAE 1.915 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62019）",
+        "帧 35 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 35 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 35 white foreground MAE 1.969 LSB > 1 LSB(=1/255)（超 1 LSB 样本 63626）",
+        "帧 35 white foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 35 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 35 checker foreground MAE 1.935 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62499）",
+        "帧 35 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 35 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 36 black foreground MAE 1.850 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60983）",
+        "帧 36 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 36 white foreground MAE 1.901 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62642）",
+        "帧 36 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 36 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 36 checker foreground MAE 1.870 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61493）",
+        "帧 36 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 36 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 37 black foreground MAE 1.851 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61000）",
+        "帧 37 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 37 white foreground MAE 1.902 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62661）",
+        "帧 37 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 37 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 37 checker foreground MAE 1.871 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61510）",
+        "帧 37 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 37 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 38 black foreground MAE 1.934 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62825）",
+        "帧 38 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 38 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 38 white foreground MAE 1.988 LSB > 1 LSB(=1/255)（超 1 LSB 样本 64566）",
+        "帧 38 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 38 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 38 checker foreground MAE 1.954 LSB > 1 LSB(=1/255)（超 1 LSB 样本 63353）",
+        "帧 38 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 38 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 39 black foreground MAE 1.996 LSB > 1 LSB(=1/255)（超 1 LSB 样本 64002）",
+        "帧 39 black foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 39 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 39 white foreground MAE 2.054 LSB > 1 LSB(=1/255)（超 1 LSB 样本 65679）",
+        "帧 39 white foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 39 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 39 checker foreground MAE 2.017 LSB > 1 LSB(=1/255)（超 1 LSB 样本 64483）",
+        "帧 39 checker foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 39 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 40 black foreground MAE 1.666 LSB > 1 LSB(=1/255)（超 1 LSB 样本 56558）",
+        "帧 40 black foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 40 white foreground MAE 1.715 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58197）",
+        "帧 40 white foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 40 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 40 checker foreground MAE 1.687 LSB > 1 LSB(=1/255)（超 1 LSB 样本 57213）",
+        "帧 40 checker foreground P99 6 LSB > 2 LSB(=2/255)",
+        "帧 41 black foreground MAE 1.789 LSB > 1 LSB(=1/255)（超 1 LSB 样本 58952）",
+        "帧 41 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 41 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 41 white foreground MAE 1.837 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60507）",
+        "帧 41 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 41 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 41 checker foreground MAE 1.808 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59521）",
+        "帧 41 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 41 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 42 black foreground MAE 1.833 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59502）",
+        "帧 42 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 42 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 42 white foreground MAE 1.885 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61133）",
+        "帧 42 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 42 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 42 checker foreground MAE 1.853 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59958）",
+        "帧 42 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 42 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 43 black foreground MAE 1.835 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59551）",
+        "帧 43 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 43 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 43 white foreground MAE 1.886 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61163）",
+        "帧 43 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 43 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 43 checker foreground MAE 1.855 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59996）",
+        "帧 43 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 43 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 44 black foreground MAE 1.831 LSB > 1 LSB(=1/255)（超 1 LSB 样本 59688）",
+        "帧 44 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 44 white foreground MAE 1.880 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61346）",
+        "帧 44 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 44 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 44 checker foreground MAE 1.852 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60293）",
+        "帧 44 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 44 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 45 black foreground MAE 1.872 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60622）",
+        "帧 45 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 45 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 45 white foreground MAE 1.920 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62083）",
+        "帧 45 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 45 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 45 checker foreground MAE 1.891 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61063）",
+        "帧 45 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 45 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 46 black foreground MAE 1.866 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60474）",
+        "帧 46 black foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 46 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 46 white foreground MAE 1.915 LSB > 1 LSB(=1/255)（超 1 LSB 样本 61947）",
+        "帧 46 white foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 46 white edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 46 checker foreground MAE 1.885 LSB > 1 LSB(=1/255)（超 1 LSB 样本 60898）",
+        "帧 46 checker foreground P99 7 LSB > 2 LSB(=2/255)",
+        "帧 46 checker edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 47 black foreground MAE 1.971 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62475）",
+        "帧 47 black foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 47 black edge P99 3 LSB > 2 LSB(=2/255)",
+        "帧 47 white foreground MAE 2.025 LSB > 1 LSB(=1/255)（超 1 LSB 样本 63977）",
+        "帧 47 white foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 47 white edge P99 4 LSB > 2 LSB(=2/255)",
+        "帧 47 checker foreground MAE 1.990 LSB > 1 LSB(=1/255)（超 1 LSB 样本 62812）",
+        "帧 47 checker foreground P99 8 LSB > 2 LSB(=2/255)",
+        "帧 47 checker edge P99 3 LSB > 2 LSB(=2/255)"
+      ],
+      "metrics": {
+        "unit": "LSB (1 LSB = 1/255 of full scale)",
+        "worstForeground": {
+          "mae": 2.0536602526343346,
+          "p99": 8,
+          "frame": 39,
+          "plate": "white"
+        },
+        "worstEdge": {
+          "mae": 0.8955116048044793,
+          "p99": 4,
+          "frame": 39,
+          "plate": "white"
+        },
+        "perFrame": [
+          {
+            "frame": 0,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.2988431343258808,
+                  "p99": 4,
+                  "max": 12,
+                  "samples": 120498,
+                  "over1": 42071,
+                  "over2": 12273
+                },
+                "edge": {
+                  "mae": 0.11195127074144087,
+                  "p99": 1,
+                  "max": 3,
+                  "samples": 9522,
+                  "over1": 28,
+                  "over2": 1
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.3396321930654451,
+                  "p99": 4,
+                  "max": 12,
+                  "samples": 120498,
+                  "over1": 43855,
+                  "over2": 13201
+                },
+                "edge": {
+                  "mae": 0.45925225792900654,
+                  "p99": 2,
+                  "max": 3,
+                  "samples": 9522,
+                  "over1": 206,
+                  "over2": 16
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.3238725953957742,
+                  "p99": 4,
+                  "max": 12,
+                  "samples": 120498,
+                  "over1": 43216,
+                  "over2": 12796
+                },
+                "edge": {
+                  "mae": 0.36378911993278723,
+                  "p99": 2,
+                  "max": 3,
+                  "samples": 9522,
+                  "over1": 100,
+                  "over2": 7
+                }
+              }
+            }
+          },
+          {
+            "frame": 1,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.2989790836653385,
+                  "p99": 4,
+                  "max": 12,
+                  "samples": 120480,
+                  "over1": 42068,
+                  "over2": 12270
+                },
+                "edge": {
+                  "mae": 0.11237613324899852,
+                  "p99": 1,
+                  "max": 3,
+                  "samples": 9486,
+                  "over1": 28,
+                  "over2": 1
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.3399817397078353,
+                  "p99": 4,
+                  "max": 12,
+                  "samples": 120480,
+                  "over1": 43861,
+                  "over2": 13210
+                },
+                "edge": {
+                  "mae": 0.4565675732658655,
+                  "p99": 2,
+                  "max": 3,
+                  "samples": 9486,
+                  "over1": 203,
+                  "over2": 16
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.3241035856573704,
+                  "p99": 4,
+                  "max": 12,
+                  "samples": 120480,
+                  "over1": 43222,
+                  "over2": 12797
+                },
+                "edge": {
+                  "mae": 0.3606367278094033,
+                  "p99": 2,
+                  "max": 3,
+                  "samples": 9486,
+                  "over1": 97,
+                  "over2": 7
+                }
+              }
+            }
+          },
+          {
+            "frame": 2,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6175656984785616,
+                  "p99": 6,
+                  "max": 17,
+                  "samples": 121464,
+                  "over1": 53286,
+                  "over2": 25584
+                },
+                "edge": {
+                  "mae": 0.23695003728560776,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 10728,
+                  "over1": 415,
+                  "over2": 111
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.6661973918197985,
+                  "p99": 6,
+                  "max": 17,
+                  "samples": 121464,
+                  "over1": 54798,
+                  "over2": 26553
+                },
+                "edge": {
+                  "mae": 0.6731916480238628,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10728,
+                  "over1": 1265,
+                  "over2": 275
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.6398109727985246,
+                  "p99": 6,
+                  "max": 17,
+                  "samples": 121464,
+                  "over1": 53927,
+                  "over2": 26016
+                },
+                "edge": {
+                  "mae": 0.47511185682326623,
+                  "p99": 2,
+                  "max": 6,
+                  "samples": 10728,
+                  "over1": 597,
+                  "over2": 100
+                }
+              }
+            }
+          },
+          {
+            "frame": 3,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6976018829416024,
+                  "p99": 7,
+                  "max": 19,
+                  "samples": 121512,
+                  "over1": 55505,
+                  "over2": 28112
+                },
+                "edge": {
+                  "mae": 0.2769058295964126,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10704,
+                  "over1": 520,
+                  "over2": 153
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.742519257357298,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121512,
+                  "over1": 56916,
+                  "over2": 28932
+                },
+                "edge": {
+                  "mae": 0.7642002989536621,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 10704,
+                  "over1": 1635,
+                  "over2": 405
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.7151310158667457,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121512,
+                  "over1": 55941,
+                  "over2": 28369
+                },
+                "edge": {
+                  "mae": 0.5362481315396114,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10704,
+                  "over1": 791,
+                  "over2": 127
+                }
+              }
+            }
+          },
+          {
+            "frame": 4,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6725670271070952,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 121518,
+                  "over1": 55448,
+                  "over2": 27325
+                },
+                "edge": {
+                  "mae": 0.2584650112866817,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 10632,
+                  "over1": 444,
+                  "over2": 108
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.7200990799716915,
+                  "p99": 7,
+                  "max": 19,
+                  "samples": 121518,
+                  "over1": 56972,
+                  "over2": 28229
+                },
+                "edge": {
+                  "mae": 0.7423814898419865,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10632,
+                  "over1": 1468,
+                  "over2": 344
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.692053852104215,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 121518,
+                  "over1": 55975,
+                  "over2": 27657
+                },
+                "edge": {
+                  "mae": 0.5168359668924003,
+                  "p99": 2,
+                  "max": 6,
+                  "samples": 10632,
+                  "over1": 705,
+                  "over2": 106
+                }
+              }
+            }
+          },
+          {
+            "frame": 5,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8364896492616034,
+                  "p99": 7,
+                  "max": 25,
+                  "samples": 121344,
+                  "over1": 58859,
+                  "over2": 31619
+                },
+                "edge": {
+                  "mae": 0.3264268585131894,
+                  "p99": 3,
+                  "max": 12,
+                  "samples": 10425,
+                  "over1": 670,
+                  "over2": 202
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.885993539029536,
+                  "p99": 8,
+                  "max": 25,
+                  "samples": 121344,
+                  "over1": 60353,
+                  "over2": 32529
+                },
+                "edge": {
+                  "mae": 0.8073860911270984,
+                  "p99": 4,
+                  "max": 11,
+                  "samples": 10425,
+                  "over1": 1771,
+                  "over2": 491
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.854685851793249,
+                  "p99": 8,
+                  "max": 25,
+                  "samples": 121344,
+                  "over1": 59264,
+                  "over2": 31929
+                },
+                "edge": {
+                  "mae": 0.5548201438848921,
+                  "p99": 3,
+                  "max": 9,
+                  "samples": 10425,
+                  "over1": 877,
+                  "over2": 225
+                }
+              }
+            }
+          },
+          {
+            "frame": 6,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8739448740436957,
+                  "p99": 7,
+                  "max": 20,
+                  "samples": 121431,
+                  "over1": 60299,
+                  "over2": 33547
+                },
+                "edge": {
+                  "mae": 0.29134236571538386,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 10407,
+                  "over1": 553,
+                  "over2": 146
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.918282810814372,
+                  "p99": 7,
+                  "max": 20,
+                  "samples": 121431,
+                  "over1": 61707,
+                  "over2": 34373
+                },
+                "edge": {
+                  "mae": 0.7961948688382819,
+                  "p99": 4,
+                  "max": 7,
+                  "samples": 10407,
+                  "over1": 1647,
+                  "over2": 422
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8904645436503034,
+                  "p99": 7,
+                  "max": 20,
+                  "samples": 121431,
+                  "over1": 60716,
+                  "over2": 33810
+                },
+                "edge": {
+                  "mae": 0.5505909484001154,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 10407,
+                  "over1": 771,
+                  "over2": 166
+                }
+              }
+            }
+          },
+          {
+            "frame": 7,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8743432646540508,
+                  "p99": 7,
+                  "max": 20,
+                  "samples": 121434,
+                  "over1": 60406,
+                  "over2": 33657
+                },
+                "edge": {
+                  "mae": 0.2896127606418757,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 10407,
+                  "over1": 556,
+                  "over2": 145
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.9187624553255267,
+                  "p99": 7,
+                  "max": 20,
+                  "samples": 121434,
+                  "over1": 61823,
+                  "over2": 34468
+                },
+                "edge": {
+                  "mae": 0.8007110598635534,
+                  "p99": 4,
+                  "max": 8,
+                  "samples": 10407,
+                  "over1": 1666,
+                  "over2": 421
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8912330978144507,
+                  "p99": 7,
+                  "max": 20,
+                  "samples": 121434,
+                  "over1": 60823,
+                  "over2": 33918
+                },
+                "edge": {
+                  "mae": 0.5552032285961372,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 10407,
+                  "over1": 774,
+                  "over2": 166
+                }
+              }
+            }
+          },
+          {
+            "frame": 8,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6236322044116311,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 121089,
+                  "over1": 55004,
+                  "over2": 26807
+                },
+                "edge": {
+                  "mae": 0.2069032951989831,
+                  "p99": 2,
+                  "max": 6,
+                  "samples": 10227,
+                  "over1": 285,
+                  "over2": 43
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.6699782804383552,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 121089,
+                  "over1": 56446,
+                  "over2": 27787
+                },
+                "edge": {
+                  "mae": 0.6418304488119683,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 10227,
+                  "over1": 913,
+                  "over2": 163
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.6451287895680038,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 121089,
+                  "over1": 55613,
+                  "over2": 27288
+                },
+                "edge": {
+                  "mae": 0.44861640754864573,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 10227,
+                  "over1": 387,
+                  "over2": 48
+                }
+              }
+            }
+          },
+          {
+            "frame": 9,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.7081861667531142,
+                  "p99": 6,
+                  "max": 17,
+                  "samples": 121461,
+                  "over1": 57173,
+                  "over2": 29247
+                },
+                "edge": {
+                  "mae": 0.24043398236946625,
+                  "p99": 2,
+                  "max": 7,
+                  "samples": 10323,
+                  "over1": 401,
+                  "over2": 67
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.7564650381603972,
+                  "p99": 6,
+                  "max": 18,
+                  "samples": 121461,
+                  "over1": 58637,
+                  "over2": 30291
+                },
+                "edge": {
+                  "mae": 0.6944686622105977,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 10323,
+                  "over1": 1288,
+                  "over2": 307
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.7287195066729237,
+                  "p99": 6,
+                  "max": 18,
+                  "samples": 121461,
+                  "over1": 57688,
+                  "over2": 29685
+                },
+                "edge": {
+                  "mae": 0.4963673350770125,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10323,
+                  "over1": 602,
+                  "over2": 111
+                }
+              }
+            }
+          },
+          {
+            "frame": 10,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6392786561264823,
+                  "p99": 6,
+                  "max": 17,
+                  "samples": 121440,
+                  "over1": 55413,
+                  "over2": 27384
+                },
+                "edge": {
+                  "mae": 0.20927536231884059,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 10350,
+                  "over1": 289,
+                  "over2": 41
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.6899621212121212,
+                  "p99": 6,
+                  "max": 17,
+                  "samples": 121440,
+                  "over1": 57008,
+                  "over2": 28520
+                },
+                "edge": {
+                  "mae": 0.6303381642512077,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 10350,
+                  "over1": 987,
+                  "over2": 199
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.6626729249011858,
+                  "p99": 6,
+                  "max": 17,
+                  "samples": 121440,
+                  "over1": 56125,
+                  "over2": 27906
+                },
+                "edge": {
+                  "mae": 0.454975845410628,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 10350,
+                  "over1": 446,
+                  "over2": 60
+                }
+              }
+            }
+          },
+          {
+            "frame": 11,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.7702033903878722,
+                  "p99": 7,
+                  "max": 20,
+                  "samples": 121638,
+                  "over1": 58011,
+                  "over2": 31034
+                },
+                "edge": {
+                  "mae": 0.2880030157383847,
+                  "p99": 3,
+                  "max": 9,
+                  "samples": 10611,
+                  "over1": 524,
+                  "over2": 154
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8232871306664036,
+                  "p99": 7,
+                  "max": 19,
+                  "samples": 121638,
+                  "over1": 59687,
+                  "over2": 32050
+                },
+                "edge": {
+                  "mae": 0.8046366977664687,
+                  "p99": 4,
+                  "max": 9,
+                  "samples": 10611,
+                  "over1": 1685,
+                  "over2": 493
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.792186652197504,
+                  "p99": 7,
+                  "max": 19,
+                  "samples": 121638,
+                  "over1": 58645,
+                  "over2": 31357
+                },
+                "edge": {
+                  "mae": 0.5744039204599001,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10611,
+                  "over1": 884,
+                  "over2": 184
+                }
+              }
+            }
+          },
+          {
+            "frame": 12,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.7614470105904874,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121713,
+                  "over1": 58263,
+                  "over2": 31122
+                },
+                "edge": {
+                  "mae": 0.25658326304938617,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10671,
+                  "over1": 419,
+                  "over2": 118
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8136764355492019,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 121713,
+                  "over1": 59972,
+                  "over2": 32162
+                },
+                "edge": {
+                  "mae": 0.7420110580076844,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10671,
+                  "over1": 1517,
+                  "over2": 341
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.783466022528407,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 121713,
+                  "over1": 58881,
+                  "over2": 31536
+                },
+                "edge": {
+                  "mae": 0.5263799081623091,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 10671,
+                  "over1": 721,
+                  "over2": 119
+                }
+              }
+            }
+          },
+          {
+            "frame": 13,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.761874245150477,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121713,
+                  "over1": 58253,
+                  "over2": 31116
+                },
+                "edge": {
+                  "mae": 0.25780151813325836,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10671,
+                  "over1": 421,
+                  "over2": 123
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.814202262699958,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 121713,
+                  "over1": 59974,
+                  "over2": 32160
+                },
+                "edge": {
+                  "mae": 0.7424796176553276,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10671,
+                  "over1": 1513,
+                  "over2": 347
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.7840000657283939,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 121713,
+                  "over1": 58881,
+                  "over2": 31541
+                },
+                "edge": {
+                  "mae": 0.52563021272608,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10671,
+                  "over1": 713,
+                  "over2": 130
+                }
+              }
+            }
+          },
+          {
+            "frame": 14,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.83048815535575,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 121785,
+                  "over1": 59691,
+                  "over2": 32901
+                },
+                "edge": {
+                  "mae": 0.27507726889575723,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10677,
+                  "over1": 502,
+                  "over2": 126
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.883072627991953,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 121785,
+                  "over1": 61331,
+                  "over2": 33864
+                },
+                "edge": {
+                  "mae": 0.7884237145265524,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10677,
+                  "over1": 1680,
+                  "over2": 425
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8519111549041343,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 121785,
+                  "over1": 60280,
+                  "over2": 33223
+                },
+                "edge": {
+                  "mae": 0.5615809684368268,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10677,
+                  "over1": 832,
+                  "over2": 157
+                }
+              }
+            }
+          },
+          {
+            "frame": 15,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8481306494742196,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 121914,
+                  "over1": 60088,
+                  "over2": 33376
+                },
+                "edge": {
+                  "mae": 0.2755567980616904,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 10731,
+                  "over1": 485,
+                  "over2": 124
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.9017340092196138,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121914,
+                  "over1": 61757,
+                  "over2": 34357
+                },
+                "edge": {
+                  "mae": 0.8044916596775696,
+                  "p99": 4,
+                  "max": 9,
+                  "samples": 10731,
+                  "over1": 1697,
+                  "over2": 451
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8695555883655692,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 121914,
+                  "over1": 60675,
+                  "over2": 33732
+                },
+                "edge": {
+                  "mae": 0.5591277606933184,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10731,
+                  "over1": 808,
+                  "over2": 173
+                }
+              }
+            }
+          },
+          {
+            "frame": 16,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6389593335795478,
+                  "p99": 6,
+                  "max": 18,
+                  "samples": 121845,
+                  "over1": 55800,
+                  "over2": 27690
+                },
+                "edge": {
+                  "mae": 0.21328866554997208,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 10746,
+                  "over1": 277,
+                  "over2": 40
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.690861340227338,
+                  "p99": 6,
+                  "max": 18,
+                  "samples": 121845,
+                  "over1": 57464,
+                  "over2": 28861
+                },
+                "edge": {
+                  "mae": 0.644891122278057,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10746,
+                  "over1": 973,
+                  "over2": 186
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.6638187861627478,
+                  "p99": 6,
+                  "max": 18,
+                  "samples": 121845,
+                  "over1": 56545,
+                  "over2": 28271
+                },
+                "edge": {
+                  "mae": 0.4604504001488926,
+                  "p99": 2,
+                  "max": 7,
+                  "samples": 10746,
+                  "over1": 437,
+                  "over2": 73
+                }
+              }
+            }
+          },
+          {
+            "frame": 17,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.7269082232553563,
+                  "p99": 6,
+                  "max": 17,
+                  "samples": 121959,
+                  "over1": 57681,
+                  "over2": 30002
+                },
+                "edge": {
+                  "mae": 0.2571084560526072,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 10797,
+                  "over1": 434,
+                  "over2": 118
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.7768348379373395,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121959,
+                  "over1": 59304,
+                  "over2": 30982
+                },
+                "edge": {
+                  "mae": 0.7285357043623228,
+                  "p99": 3,
+                  "max": 9,
+                  "samples": 10797,
+                  "over1": 1553,
+                  "over2": 394
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.7482678605104995,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121959,
+                  "over1": 58271,
+                  "over2": 30399
+                },
+                "edge": {
+                  "mae": 0.5203297212188571,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10797,
+                  "over1": 819,
+                  "over2": 128
+                }
+              }
+            }
+          },
+          {
+            "frame": 18,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8005504091210653,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122091,
+                  "over1": 59407,
+                  "over2": 32018
+                },
+                "edge": {
+                  "mae": 0.2863472722237607,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10833,
+                  "over1": 554,
+                  "over2": 120
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8552555061388636,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 122091,
+                  "over1": 61025,
+                  "over2": 33046
+                },
+                "edge": {
+                  "mae": 0.8335641096649128,
+                  "p99": 4,
+                  "max": 8,
+                  "samples": 10833,
+                  "over1": 1866,
+                  "over2": 516
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8237052690206486,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122091,
+                  "over1": 59914,
+                  "over2": 32379
+                },
+                "edge": {
+                  "mae": 0.5883873349949229,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10833,
+                  "over1": 937,
+                  "over2": 191
+                }
+              }
+            }
+          },
+          {
+            "frame": 19,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.7984503743017675,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122094,
+                  "over1": 59409,
+                  "over2": 31991
+                },
+                "edge": {
+                  "mae": 0.28637328166805054,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10839,
+                  "over1": 554,
+                  "over2": 122
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8531377463266008,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 122094,
+                  "over1": 61019,
+                  "over2": 33021
+                },
+                "edge": {
+                  "mae": 0.8329181658824615,
+                  "p99": 4,
+                  "max": 8,
+                  "samples": 10839,
+                  "over1": 1874,
+                  "over2": 511
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8217684734712598,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122094,
+                  "over1": 59912,
+                  "over2": 32358
+                },
+                "edge": {
+                  "mae": 0.5886151859027585,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10839,
+                  "over1": 938,
+                  "over2": 192
+                }
+              }
+            }
+          },
+          {
+            "frame": 20,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6509921463610382,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 122109,
+                  "over1": 56279,
+                  "over2": 28078
+                },
+                "edge": {
+                  "mae": 0.19088476796752468,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 10839,
+                  "over1": 212,
+                  "over2": 26
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.6999729749649903,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 122109,
+                  "over1": 57921,
+                  "over2": 29116
+                },
+                "edge": {
+                  "mae": 0.6507980441000092,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 10839,
+                  "over1": 1021,
+                  "over2": 172
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.6739798049283836,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 122109,
+                  "over1": 56971,
+                  "over2": 28557
+                },
+                "edge": {
+                  "mae": 0.4591752006642679,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 10839,
+                  "over1": 455,
+                  "over2": 55
+                }
+              }
+            }
+          },
+          {
+            "frame": 21,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.689976747032187,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 122565,
+                  "over1": 57362,
+                  "over2": 29187
+                },
+                "edge": {
+                  "mae": 0.18873994638069705,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 11190,
+                  "over1": 244,
+                  "over2": 40
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.7418186268510587,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 122565,
+                  "over1": 59107,
+                  "over2": 30240
+                },
+                "edge": {
+                  "mae": 0.6711349419124218,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 11190,
+                  "over1": 1201,
+                  "over2": 247
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.7145433035532167,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 122565,
+                  "over1": 58094,
+                  "over2": 29653
+                },
+                "edge": {
+                  "mae": 0.4779267202859696,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 11190,
+                  "over1": 539,
+                  "over2": 83
+                }
+              }
+            }
+          },
+          {
+            "frame": 22,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6933656363947827,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 122589,
+                  "over1": 57535,
+                  "over2": 29322
+                },
+                "edge": {
+                  "mae": 0.18789666577277198,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 11187,
+                  "over1": 238,
+                  "over2": 38
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.7452789401985496,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 122589,
+                  "over1": 59274,
+                  "over2": 30391
+                },
+                "edge": {
+                  "mae": 0.6687226244748369,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 11187,
+                  "over1": 1183,
+                  "over2": 245
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.717764236595453,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 122589,
+                  "over1": 58265,
+                  "over2": 29783
+                },
+                "edge": {
+                  "mae": 0.4746580852775543,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 11187,
+                  "over1": 525,
+                  "over2": 84
+                }
+              }
+            }
+          },
+          {
+            "frame": 23,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8659573600750072,
+                  "p99": 7,
+                  "max": 15,
+                  "samples": 122655,
+                  "over1": 61284,
+                  "over2": 34234
+                },
+                "edge": {
+                  "mae": 0.2875033306687983,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 11259,
+                  "over1": 581,
+                  "over2": 190
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.919171660348131,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 122655,
+                  "over1": 62792,
+                  "over2": 35101
+                },
+                "edge": {
+                  "mae": 0.7941202593480771,
+                  "p99": 4,
+                  "max": 9,
+                  "samples": 11259,
+                  "over1": 1744,
+                  "over2": 480
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8869919693449104,
+                  "p99": 7,
+                  "max": 15,
+                  "samples": 122655,
+                  "over1": 61707,
+                  "over2": 34476
+                },
+                "edge": {
+                  "mae": 0.5634603428368417,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 11259,
+                  "over1": 858,
+                  "over2": 163
+                }
+              }
+            }
+          },
+          {
+            "frame": 24,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6498571311943833,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 122490,
+                  "over1": 56392,
+                  "over2": 28133
+                },
+                "edge": {
+                  "mae": 0.19453290870488324,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 11304,
+                  "over1": 250,
+                  "over2": 30
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.6975018368846437,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 122490,
+                  "over1": 57822,
+                  "over2": 29082
+                },
+                "edge": {
+                  "mae": 0.6541047416843595,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 11304,
+                  "over1": 973,
+                  "over2": 162
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.6710506980161646,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 122490,
+                  "over1": 56994,
+                  "over2": 28586
+                },
+                "edge": {
+                  "mae": 0.4592179759377212,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 11304,
+                  "over1": 443,
+                  "over2": 56
+                }
+              }
+            }
+          },
+          {
+            "frame": 25,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.652240999265246,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 122490,
+                  "over1": 56522,
+                  "over2": 28196
+                },
+                "edge": {
+                  "mae": 0.1940905874026893,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 11304,
+                  "over1": 248,
+                  "over2": 31
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.6999020328190055,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 122490,
+                  "over1": 57967,
+                  "over2": 29136
+                },
+                "edge": {
+                  "mae": 0.6562278839348903,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 11304,
+                  "over1": 978,
+                  "over2": 160
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.6735080414727732,
+                  "p99": 6,
+                  "max": 19,
+                  "samples": 122490,
+                  "over1": 57140,
+                  "over2": 28642
+                },
+                "edge": {
+                  "mae": 0.46027954706298657,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 11304,
+                  "over1": 451,
+                  "over2": 56
+                }
+              }
+            }
+          },
+          {
+            "frame": 26,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8074436826640548,
+                  "p99": 7,
+                  "max": 15,
+                  "samples": 122520,
+                  "over1": 60019,
+                  "over2": 32603
+                },
+                "edge": {
+                  "mae": 0.2506909155745743,
+                  "p99": 2,
+                  "max": 6,
+                  "samples": 11217,
+                  "over1": 477,
+                  "over2": 98
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8582517140058765,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122520,
+                  "over1": 61457,
+                  "over2": 33550
+                },
+                "edge": {
+                  "mae": 0.7623250423464384,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11217,
+                  "over1": 1590,
+                  "over2": 428
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8281913157035585,
+                  "p99": 7,
+                  "max": 15,
+                  "samples": 122520,
+                  "over1": 60458,
+                  "over2": 33013
+                },
+                "edge": {
+                  "mae": 0.5299991084960328,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11217,
+                  "over1": 763,
+                  "over2": 143
+                }
+              }
+            }
+          },
+          {
+            "frame": 27,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8852114397457835,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122730,
+                  "over1": 61634,
+                  "over2": 34770
+                },
+                "edge": {
+                  "mae": 0.265030888366832,
+                  "p99": 3,
+                  "max": 9,
+                  "samples": 11493,
+                  "over1": 581,
+                  "over2": 149
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.939778375295364,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 122730,
+                  "over1": 63148,
+                  "over2": 35761
+                },
+                "edge": {
+                  "mae": 0.7837814321761072,
+                  "p99": 4,
+                  "max": 7,
+                  "samples": 11493,
+                  "over1": 1798,
+                  "over2": 505
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.9067791086124013,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122730,
+                  "over1": 62018,
+                  "over2": 35080
+                },
+                "edge": {
+                  "mae": 0.5529452710345427,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11493,
+                  "over1": 874,
+                  "over2": 177
+                }
+              }
+            }
+          },
+          {
+            "frame": 28,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8366911165444173,
+                  "p99": 7,
+                  "max": 15,
+                  "samples": 122700,
+                  "over1": 60747,
+                  "over2": 33632
+                },
+                "edge": {
+                  "mae": 0.2525438596491228,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11400,
+                  "over1": 519,
+                  "over2": 120
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8879136104319478,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122700,
+                  "over1": 62279,
+                  "over2": 34535
+                },
+                "edge": {
+                  "mae": 0.7636842105263157,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 11400,
+                  "over1": 1651,
+                  "over2": 429
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8564873675631621,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122700,
+                  "over1": 61164,
+                  "over2": 33880
+                },
+                "edge": {
+                  "mae": 0.5335964912280702,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 11400,
+                  "over1": 759,
+                  "over2": 120
+                }
+              }
+            }
+          },
+          {
+            "frame": 29,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.9439721163555816,
+                  "p99": 8,
+                  "max": 22,
+                  "samples": 122796,
+                  "over1": 62582,
+                  "over2": 36059
+                },
+                "edge": {
+                  "mae": 0.28140222686151706,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 11496,
+                  "over1": 595,
+                  "over2": 169
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.9958304830776248,
+                  "p99": 8,
+                  "max": 26,
+                  "samples": 122796,
+                  "over1": 64123,
+                  "over2": 37002
+                },
+                "edge": {
+                  "mae": 0.8262874043145442,
+                  "p99": 4,
+                  "max": 6,
+                  "samples": 11496,
+                  "over1": 1914,
+                  "over2": 595
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.9623114759438418,
+                  "p99": 8,
+                  "max": 22,
+                  "samples": 122796,
+                  "over1": 62994,
+                  "over2": 36292
+                },
+                "edge": {
+                  "mae": 0.569937369519833,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 11496,
+                  "over1": 952,
+                  "over2": 190
+                }
+              }
+            }
+          },
+          {
+            "frame": 30,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6509395424836601,
+                  "p99": 6,
+                  "max": 22,
+                  "samples": 122400,
+                  "over1": 56262,
+                  "over2": 28166
+                },
+                "edge": {
+                  "mae": 0.19104369808595162,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 11076,
+                  "over1": 221,
+                  "over2": 35
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.6946977124183007,
+                  "p99": 6,
+                  "max": 22,
+                  "samples": 122400,
+                  "over1": 57670,
+                  "over2": 29050
+                },
+                "edge": {
+                  "mae": 0.61583604189238,
+                  "p99": 3,
+                  "max": 4,
+                  "samples": 11076,
+                  "over1": 868,
+                  "over2": 126
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.6714379084967321,
+                  "p99": 6,
+                  "max": 22,
+                  "samples": 122400,
+                  "over1": 56903,
+                  "over2": 28608
+                },
+                "edge": {
+                  "mae": 0.4409534127843987,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 11076,
+                  "over1": 414,
+                  "over2": 54
+                }
+              }
+            }
+          },
+          {
+            "frame": 31,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6524183006535949,
+                  "p99": 6,
+                  "max": 22,
+                  "samples": 122400,
+                  "over1": 56281,
+                  "over2": 28217
+                },
+                "edge": {
+                  "mae": 0.19122426868905743,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 11076,
+                  "over1": 219,
+                  "over2": 37
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.6962336601307189,
+                  "p99": 6,
+                  "max": 22,
+                  "samples": 122400,
+                  "over1": 57696,
+                  "over2": 29107
+                },
+                "edge": {
+                  "mae": 0.61583604189238,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 11076,
+                  "over1": 873,
+                  "over2": 130
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.6729575163398693,
+                  "p99": 6,
+                  "max": 22,
+                  "samples": 122400,
+                  "over1": 56919,
+                  "over2": 28664
+                },
+                "edge": {
+                  "mae": 0.441675695196822,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 11076,
+                  "over1": 413,
+                  "over2": 57
+                }
+              }
+            }
+          },
+          {
+            "frame": 32,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6768100992238923,
+                  "p99": 6,
+                  "max": 25,
+                  "samples": 122148,
+                  "over1": 56648,
+                  "over2": 29095
+                },
+                "edge": {
+                  "mae": 0.20079343611937608,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 11091,
+                  "over1": 252,
+                  "over2": 40
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.7248829289059173,
+                  "p99": 6,
+                  "max": 25,
+                  "samples": 122148,
+                  "over1": 58120,
+                  "over2": 30095
+                },
+                "edge": {
+                  "mae": 0.636912812190064,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 11091,
+                  "over1": 976,
+                  "over2": 150
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.7002979991485738,
+                  "p99": 6,
+                  "max": 25,
+                  "samples": 122148,
+                  "over1": 57324,
+                  "over2": 29598
+                },
+                "edge": {
+                  "mae": 0.4630781714903976,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 11091,
+                  "over1": 474,
+                  "over2": 67
+                }
+              }
+            }
+          },
+          {
+            "frame": 33,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.761790391229403,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122409,
+                  "over1": 58478,
+                  "over2": 31462
+                },
+                "edge": {
+                  "mae": 0.2418987563496234,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11418,
+                  "over1": 428,
+                  "over2": 116
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8130202844562082,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122409,
+                  "over1": 60013,
+                  "over2": 32500
+                },
+                "edge": {
+                  "mae": 0.6868102995270625,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 11418,
+                  "over1": 1304,
+                  "over2": 296
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.7843622609448653,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122409,
+                  "over1": 59029,
+                  "over2": 31919
+                },
+                "edge": {
+                  "mae": 0.4906288316692941,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11418,
+                  "over1": 632,
+                  "over2": 117
+                }
+              }
+            }
+          },
+          {
+            "frame": 34,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.7630028999714087,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122415,
+                  "over1": 58536,
+                  "over2": 31555
+                },
+                "edge": {
+                  "mae": 0.24315068493150685,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11388,
+                  "over1": 437,
+                  "over2": 117
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8145325327778459,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122415,
+                  "over1": 60070,
+                  "over2": 32576
+                },
+                "edge": {
+                  "mae": 0.6930979978925185,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 11388,
+                  "over1": 1330,
+                  "over2": 296
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.785614508025977,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122415,
+                  "over1": 59067,
+                  "over2": 31988
+                },
+                "edge": {
+                  "mae": 0.493940990516333,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 11388,
+                  "over1": 633,
+                  "over2": 118
+                }
+              }
+            }
+          },
+          {
+            "frame": 35,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.914881098308409,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122370,
+                  "over1": 62019,
+                  "over2": 35289
+                },
+                "edge": {
+                  "mae": 0.33051295610787945,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 11346,
+                  "over1": 759,
+                  "over2": 238
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.968652447495301,
+                  "p99": 8,
+                  "max": 17,
+                  "samples": 122370,
+                  "over1": 63626,
+                  "over2": 36226
+                },
+                "edge": {
+                  "mae": 0.8944121276220695,
+                  "p99": 4,
+                  "max": 9,
+                  "samples": 11346,
+                  "over1": 2200,
+                  "over2": 700
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.9349758927841791,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122370,
+                  "over1": 62499,
+                  "over2": 35520
+                },
+                "edge": {
+                  "mae": 0.620482989599859,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 11346,
+                  "over1": 1118,
+                  "over2": 270
+                }
+              }
+            }
+          },
+          {
+            "frame": 36,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.850359806251889,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122427,
+                  "over1": 60983,
+                  "over2": 33823
+                },
+                "edge": {
+                  "mae": 0.2584924262794658,
+                  "p99": 2,
+                  "max": 6,
+                  "samples": 11157,
+                  "over1": 477,
+                  "over2": 84
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.9011329200258114,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122427,
+                  "over1": 62642,
+                  "over2": 34754
+                },
+                "edge": {
+                  "mae": 0.7861432284664336,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11157,
+                  "over1": 1696,
+                  "over2": 390
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.869930652552133,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122427,
+                  "over1": 61493,
+                  "over2": 34110
+                },
+                "edge": {
+                  "mae": 0.5531056735681635,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11157,
+                  "over1": 773,
+                  "over2": 127
+                }
+              }
+            }
+          },
+          {
+            "frame": 37,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8512092920679262,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122427,
+                  "over1": 61000,
+                  "over2": 33854
+                },
+                "edge": {
+                  "mae": 0.2577753876490096,
+                  "p99": 2,
+                  "max": 6,
+                  "samples": 11157,
+                  "over1": 476,
+                  "over2": 82
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.901876220114844,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122427,
+                  "over1": 62661,
+                  "over2": 34781
+                },
+                "edge": {
+                  "mae": 0.7867706372680828,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11157,
+                  "over1": 1696,
+                  "over2": 389
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8706657845083192,
+                  "p99": 7,
+                  "max": 16,
+                  "samples": 122427,
+                  "over1": 61510,
+                  "over2": 34131
+                },
+                "edge": {
+                  "mae": 0.5544501210002689,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11157,
+                  "over1": 771,
+                  "over2": 126
+                }
+              }
+            }
+          },
+          {
+            "frame": 38,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.9338686704975199,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122166,
+                  "over1": 62825,
+                  "over2": 35824
+                },
+                "edge": {
+                  "mae": 0.2824386296196385,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 11121,
+                  "over1": 598,
+                  "over2": 140
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.9882864299395904,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122166,
+                  "over1": 64566,
+                  "over2": 36822
+                },
+                "edge": {
+                  "mae": 0.8657494829601654,
+                  "p99": 4,
+                  "max": 6,
+                  "samples": 11121,
+                  "over1": 2046,
+                  "over2": 505
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.9541525465350424,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 122166,
+                  "over1": 63353,
+                  "over2": 36125
+                },
+                "edge": {
+                  "mae": 0.6021041273266793,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 11121,
+                  "over1": 967,
+                  "over2": 155
+                }
+              }
+            }
+          },
+          {
+            "frame": 39,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.9961139472478566,
+                  "p99": 8,
+                  "max": 23,
+                  "samples": 122232,
+                  "over1": 64002,
+                  "over2": 37224
+                },
+                "edge": {
+                  "mae": 0.30551792648785336,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 11073,
+                  "over1": 690,
+                  "over2": 198
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 2.0536602526343346,
+                  "p99": 8,
+                  "max": 23,
+                  "samples": 122232,
+                  "over1": 65679,
+                  "over2": 38327
+                },
+                "edge": {
+                  "mae": 0.8955116048044793,
+                  "p99": 4,
+                  "max": 9,
+                  "samples": 11073,
+                  "over1": 2148,
+                  "over2": 678
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 2.017352248183782,
+                  "p99": 8,
+                  "max": 23,
+                  "samples": 122232,
+                  "over1": 64483,
+                  "over2": 37555
+                },
+                "edge": {
+                  "mae": 0.6260272735482706,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 11073,
+                  "over1": 1123,
+                  "over2": 250
+                }
+              }
+            }
+          },
+          {
+            "frame": 40,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.6659943095630498,
+                  "p99": 6,
+                  "max": 13,
+                  "samples": 121959,
+                  "over1": 56558,
+                  "over2": 28499
+                },
+                "edge": {
+                  "mae": 0.20562587904360055,
+                  "p99": 2,
+                  "max": 4,
+                  "samples": 10665,
+                  "over1": 293,
+                  "over2": 59
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.7147647980058873,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 121959,
+                  "over1": 58197,
+                  "over2": 29525
+                },
+                "edge": {
+                  "mae": 0.6842006563525551,
+                  "p99": 3,
+                  "max": 5,
+                  "samples": 10665,
+                  "over1": 1106,
+                  "over2": 211
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.687353946818193,
+                  "p99": 6,
+                  "max": 14,
+                  "samples": 121959,
+                  "over1": 57213,
+                  "over2": 28982
+                },
+                "edge": {
+                  "mae": 0.4906704172526957,
+                  "p99": 2,
+                  "max": 5,
+                  "samples": 10665,
+                  "over1": 494,
+                  "over2": 63
+                }
+              }
+            }
+          },
+          {
+            "frame": 41,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.7887800154282993,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121854,
+                  "over1": 58952,
+                  "over2": 31447
+                },
+                "edge": {
+                  "mae": 0.27312565494903307,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 10497,
+                  "over1": 470,
+                  "over2": 128
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8369195922989807,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121854,
+                  "over1": 60507,
+                  "over2": 32359
+                },
+                "edge": {
+                  "mae": 0.8040392493093265,
+                  "p99": 4,
+                  "max": 8,
+                  "samples": 10497,
+                  "over1": 1596,
+                  "over2": 460
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.80812283552448,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121854,
+                  "over1": 59521,
+                  "over2": 31793
+                },
+                "edge": {
+                  "mae": 0.5680670667809851,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10497,
+                  "over1": 785,
+                  "over2": 181
+                }
+              }
+            }
+          },
+          {
+            "frame": 42,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8329557394273706,
+                  "p99": 7,
+                  "max": 19,
+                  "samples": 121824,
+                  "over1": 59502,
+                  "over2": 32888
+                },
+                "edge": {
+                  "mae": 0.292823418319169,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10590,
+                  "over1": 545,
+                  "over2": 172
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8847271473601261,
+                  "p99": 7,
+                  "max": 19,
+                  "samples": 121824,
+                  "over1": 61133,
+                  "over2": 33792
+                },
+                "edge": {
+                  "mae": 0.8644948064211521,
+                  "p99": 4,
+                  "max": 7,
+                  "samples": 10590,
+                  "over1": 1879,
+                  "over2": 465
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8531980562122405,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121824,
+                  "over1": 59958,
+                  "over2": 33140
+                },
+                "edge": {
+                  "mae": 0.6041548630783758,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10590,
+                  "over1": 856,
+                  "over2": 150
+                }
+              }
+            }
+          },
+          {
+            "frame": 43,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8346302863146835,
+                  "p99": 7,
+                  "max": 19,
+                  "samples": 121824,
+                  "over1": 59551,
+                  "over2": 32943
+                },
+                "edge": {
+                  "mae": 0.2924457034938621,
+                  "p99": 3,
+                  "max": 7,
+                  "samples": 10590,
+                  "over1": 546,
+                  "over2": 172
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8858763462043604,
+                  "p99": 7,
+                  "max": 19,
+                  "samples": 121824,
+                  "over1": 61163,
+                  "over2": 33842
+                },
+                "edge": {
+                  "mae": 0.8636449480642115,
+                  "p99": 4,
+                  "max": 7,
+                  "samples": 10590,
+                  "over1": 1880,
+                  "over2": 466
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.854527843446283,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121824,
+                  "over1": 59996,
+                  "over2": 33185
+                },
+                "edge": {
+                  "mae": 0.6028328611898017,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10590,
+                  "over1": 856,
+                  "over2": 150
+                }
+              }
+            }
+          },
+          {
+            "frame": 44,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8309464533675137,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 121707,
+                  "over1": 59688,
+                  "over2": 32751
+                },
+                "edge": {
+                  "mae": 0.26763505174214375,
+                  "p99": 2,
+                  "max": 7,
+                  "samples": 10533,
+                  "over1": 443,
+                  "over2": 96
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.8804012916266115,
+                  "p99": 7,
+                  "max": 17,
+                  "samples": 121707,
+                  "over1": 61346,
+                  "over2": 33688
+                },
+                "edge": {
+                  "mae": 0.7936960030380709,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10533,
+                  "over1": 1672,
+                  "over2": 382
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8519887927563738,
+                  "p99": 7,
+                  "max": 18,
+                  "samples": 121707,
+                  "over1": 60293,
+                  "over2": 33101
+                },
+                "edge": {
+                  "mae": 0.570682616538498,
+                  "p99": 3,
+                  "max": 4,
+                  "samples": 10533,
+                  "over1": 821,
+                  "over2": 131
+                }
+              }
+            }
+          },
+          {
+            "frame": 45,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8716906117285623,
+                  "p99": 7,
+                  "max": 23,
+                  "samples": 121737,
+                  "over1": 60622,
+                  "over2": 33922
+                },
+                "edge": {
+                  "mae": 0.29538520213577424,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 10488,
+                  "over1": 539,
+                  "over2": 152
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.9201557455826905,
+                  "p99": 7,
+                  "max": 23,
+                  "samples": 121737,
+                  "over1": 62083,
+                  "over2": 34811
+                },
+                "edge": {
+                  "mae": 0.7876620900076278,
+                  "p99": 3,
+                  "max": 11,
+                  "samples": 10488,
+                  "over1": 1644,
+                  "over2": 429
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8911177374175476,
+                  "p99": 7,
+                  "max": 23,
+                  "samples": 121737,
+                  "over1": 61063,
+                  "over2": 34194
+                },
+                "edge": {
+                  "mae": 0.5585430968726163,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10488,
+                  "over1": 833,
+                  "over2": 145
+                }
+              }
+            }
+          },
+          {
+            "frame": 46,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.8656070313783473,
+                  "p99": 7,
+                  "max": 23,
+                  "samples": 121740,
+                  "over1": 60474,
+                  "over2": 33875
+                },
+                "edge": {
+                  "mae": 0.29387093699361355,
+                  "p99": 3,
+                  "max": 8,
+                  "samples": 10491,
+                  "over1": 532,
+                  "over2": 146
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 1.914654181041564,
+                  "p99": 7,
+                  "max": 23,
+                  "samples": 121740,
+                  "over1": 61947,
+                  "over2": 34745
+                },
+                "edge": {
+                  "mae": 0.7881040892193308,
+                  "p99": 3,
+                  "max": 11,
+                  "samples": 10491,
+                  "over1": 1659,
+                  "over2": 428
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.8852965335961887,
+                  "p99": 7,
+                  "max": 23,
+                  "samples": 121740,
+                  "over1": 60898,
+                  "over2": 34152
+                },
+                "edge": {
+                  "mae": 0.5565723000667239,
+                  "p99": 3,
+                  "max": 6,
+                  "samples": 10491,
+                  "over1": 819,
+                  "over2": 140
+                }
+              }
+            }
+          },
+          {
+            "frame": 47,
+            "plates": {
+              "black": {
+                "foreground": {
+                  "mae": 1.9713959468007327,
+                  "p99": 8,
+                  "max": 21,
+                  "samples": 121731,
+                  "over1": 62475,
+                  "over2": 36250
+                },
+                "edge": {
+                  "mae": 0.3363982539240271,
+                  "p99": 3,
+                  "max": 12,
+                  "samples": 10767,
+                  "over1": 708,
+                  "over2": 245
+                }
+              },
+              "white": {
+                "foreground": {
+                  "mae": 2.025153822773164,
+                  "p99": 8,
+                  "max": 21,
+                  "samples": 121731,
+                  "over1": 63977,
+                  "over2": 37235
+                },
+                "edge": {
+                  "mae": 0.8764744125568867,
+                  "p99": 4,
+                  "max": 11,
+                  "samples": 10767,
+                  "over1": 2018,
+                  "over2": 633
+                }
+              },
+              "checker": {
+                "foreground": {
+                  "mae": 1.9904954366595198,
+                  "p99": 8,
+                  "max": 21,
+                  "samples": 121731,
+                  "over1": 62812,
+                  "over2": 36519
+                },
+                "edge": {
+                  "mae": 0.6073186588650507,
+                  "p99": 3,
+                  "max": 9,
+                  "samples": 10767,
+                  "over1": 986,
+                  "over2": 237
+                }
+              }
+            }
+          }
+        ]
+      }
+    }
   ],
-  "armsDir": "/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out",
+  "verdict": {
+    "pass": false,
+    "failed": [
+      "f-to-c",
+      "o-to-c"
+    ]
+  },
+  "environment": {
+    "ffmpeg": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers",
+    "node": "v24.14.0"
+  },
+  "keyFrame": {
+    "frame": 39,
+    "pngs": [
+      "tests/idle-roi/out/frames/frame-39-crop208x52-black-original.png",
+      "tests/idle-roi/out/frames/frame-39-crop208x52-black-candidate.png",
+      "tests/idle-roi/out/frames/frame-39-crop208x52-black-error-x16.png"
+    ],
+    "pngCount": 3
+  },
   "rerun": "env -u NODE_OPTIONS node --experimental-strip-types --test --test-reporter spec tests/idle-roi/*.test.ts"
 }

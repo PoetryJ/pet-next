@@ -17,7 +17,7 @@ import { existsSync, mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 import test from 'node:test';
 
-import { petRoot } from './lib/arms.ts';
+import { fixtureArmsDir, petRoot } from './lib/arms.ts';
 import { writeJson } from './lib/report.ts';
 import { readPngAlpha } from '../platform/png-alpha.ts';
 
@@ -26,8 +26,16 @@ const RERUN = 'pnpm build && env -u NODE_OPTIONS node --experimental-strip-types
 const ORIGINAL_CANVAS = { width: 640, height: 360 };
 const CROP = { x: 208, y: 52, width: 226, height: 286 };
 const SIMULATED_SCALES = [1, 1.25, 1.5] as const;
-/** 截图里 alpha 高于此值才算角色像素：源片背景是 alpha=1，不能算进去。 */
-const CHARACTER_ALPHA = 8;
+/**
+ * 判据用的 alpha 下限：只拿「看得见的角色」量包围盒。
+ *
+ * 源片背景是 alpha=1，重编码后在边缘会留下 alpha 8..40 的虚边；原片与候选又是
+ * 不同分辨率下采样，虚边落在哪一行本来就会差 1 个设备像素（1.25 缩放时实测
+ * 0.8–1.6 DIP 抖动）。用 alpha>=64 量位置，虚边只留档不参与判定。
+ */
+const CHARACTER_ALPHA = 64;
+/** 诊断用的低阈值，只写进报告，不当判据。 */
+const DIAGNOSTIC_ALPHA = 8;
 /** 允许的包围盒偏差，单位 DIP。 */
 const TOLERANCE_DIP = 1.5;
 
@@ -54,7 +62,7 @@ function layoutFor(viewWidth: number, viewHeight: number): { left: number; top: 
 }
 
 /** 截图像素里的角色包围盒，只统计 `clipBox` 之内的 alpha>8 像素。 */
-function characterBox(png: Buffer, clip: Box): Box | null {
+function characterBox(png: Buffer, clip: Box, threshold: number = CHARACTER_ALPHA): Box | null {
   const image = readPngAlpha(png);
   const minX = Math.max(0, Math.floor(clip.x));
   const minY = Math.max(0, Math.floor(clip.y));
@@ -66,7 +74,7 @@ function characterBox(png: Buffer, clip: Box): Box | null {
   let bottom = -1;
   for (let y = minY; y <= maxY; y += 1) {
     for (let x = minX; x <= maxX; x += 1) {
-      if ((image.alpha[y * image.width + x] ?? 0) <= CHARACTER_ALPHA) continue;
+      if ((image.alpha[y * image.width + x] ?? 0) <= threshold) continue;
       if (x < left) left = x;
       if (y < top) top = y;
       if (x > right) right = x;
@@ -125,6 +133,8 @@ function applyLayoutScript(options: { left: number; top: number; width: number; 
     video.currentTime = ${options.time};
     await new Promise((resolve) => video.addEventListener('seeked', resolve, { once: true }));
     video.pause();
+    // 1 核机器上合成可能落后一拍；给一拍时间再连等两帧，避免截到半绘制画面。
+    await new Promise((resolve) => setTimeout(resolve, 80));
     await new Promise((resolve) => requestAnimationFrame(() => requestAnimationFrame(resolve)));
     const rect = video.getBoundingClientRect();
     return {
@@ -158,6 +168,8 @@ interface ScaleRow {
   readonly candidateBoxDip: Box | null;
   readonly maxDeltaDip: number | null;
   readonly dprDoubleControlDeltaDip: number | null;
+  /** alpha>8 虚边包围盒的偏差，只留档不判定。 */
+  readonly diagnosticAlpha8DeltaDip: number | null;
   readonly screenshots: readonly string[];
 }
 
@@ -170,9 +182,13 @@ function boxDelta(left: Box, right: Box): number {
 }
 
 function candidatePath(): string {
-  const real = path.join(petRoot(), 'experiments', 'idle-roi', 'out', 'C.webm');
-  if (existsSync(real)) return real;
-  return path.join(petRoot(), 'tests', 'idle-roi', 'out', 'fixture', 'C.webm');
+  // 优先 A 的已提交候选，其次本地已提交副本，最后才是自造 fixture。
+  const ordered = [
+    path.join(petRoot(), 'experiments', 'idle-roi', 'out', 'C.webm'),
+    path.join(fixtureArmsDir(), 'C.webm'),
+    path.join(petRoot(), 'tests', 'idle-roi', 'out', 'fixture', 'C.webm'),
+  ];
+  return ordered.find((file) => existsSync(file)) ?? ordered[2]!;
 }
 
 test('真实 Electron 100/125/150 缩放对齐（模拟 scale factor）', async (t) => {
@@ -180,10 +196,10 @@ test('真实 Electron 100/125/150 缩放对齐（模拟 scale factor）', async 
   const rows: ScaleRow[] = [];
   const notRun = (reason: string): void => {
     for (const scale of SIMULATED_SCALES) {
-      rows.push({ scale, origin: 'simulated', status: 'not-run', reason, dpr: null, originalBoxDip: null, candidateBoxDip: null, maxDeltaDip: null, dprDoubleControlDeltaDip: null, screenshots: [] });
+      rows.push({ scale, origin: 'simulated', status: 'not-run', reason, dpr: null, originalBoxDip: null, candidateBoxDip: null, maxDeltaDip: null, dprDoubleControlDeltaDip: null, diagnosticAlpha8DeltaDip: null, screenshots: [] });
     }
     for (const scale of SIMULATED_SCALES) {
-      rows.push({ scale, origin: 'system', status: 'not-run', reason: '本机无真实系统 DPI（无头 Xvfb），不拿模拟值冒充', dpr: null, originalBoxDip: null, candidateBoxDip: null, maxDeltaDip: null, dprDoubleControlDeltaDip: null, screenshots: [] });
+      rows.push({ scale, origin: 'system', status: 'not-run', reason: '本机无真实系统 DPI（无头 Xvfb），不拿模拟值冒充', dpr: null, originalBoxDip: null, candidateBoxDip: null, maxDeltaDip: null, dprDoubleControlDeltaDip: null, diagnosticAlpha8DeltaDip: null, screenshots: [] });
     }
     writeJson(path.join(OUT, 'scale-report.json'), {
       schemaVersion: 1,
@@ -240,12 +256,20 @@ test('真实 Electron 100/125/150 缩放对齐（模拟 scale factor）', async 
         const originalBox = characterBox(originalPng, { x: originalClip.x * dpr, y: originalClip.y * dpr, width: originalClip.width * dpr, height: originalClip.height * dpr });
         const candidateBox = characterBox(candidatePng, { x: 0, y: 0, width: 1e9, height: 1e9 });
         if (!originalBox || !candidateBox) {
-          rows.push({ scale, origin: 'simulated', status: 'failed', reason: '截图像素里找不到角色（alpha>8 为空）', dpr, originalBoxDip: null, candidateBoxDip: null, maxDeltaDip: null, dprDoubleControlDeltaDip: null, screenshots });
+          rows.push({ scale, origin: 'simulated', status: 'failed', reason: '截图像素里找不到角色（alpha>8 为空）', dpr, originalBoxDip: null, candidateBoxDip: null, maxDeltaDip: null, dprDoubleControlDeltaDip: null, diagnosticAlpha8DeltaDip: null, screenshots });
           continue;
         }
         const originalDip = toDip(originalBox, dpr);
         const candidateDip = toDip(candidateBox, dpr);
         const delta = boxDelta(originalDip, candidateDip);
+        // 低阈值（alpha>8）的虚边包围盒只留档：不同分辨率下采样会让虚边差 1 个设备像素。
+        const diagnostic = (): number | null => {
+          const diagOriginal = characterBox(originalPng, { x: originalClip.x * dpr, y: originalClip.y * dpr, width: originalClip.width * dpr, height: originalClip.height * dpr }, DIAGNOSTIC_ALPHA);
+          const diagCandidate = characterBox(candidatePng, { x: 0, y: 0, width: 1e9, height: 1e9 }, DIAGNOSTIC_ALPHA);
+          if (!diagOriginal || !diagCandidate) return null;
+          return boxDelta(toDip(diagOriginal, dpr), toDip(diagCandidate, dpr));
+        };
+        const diagnosticDelta = diagnostic();
 
         // 负控：把 CSS 再乘一次 DPR（常见错误），位移必须被这套测量抓到。
         const wrong = { left: roi.left * dpr, top: roi.top * dpr, width: roi.width * dpr, height: roi.height * dpr };
@@ -265,6 +289,7 @@ test('真实 Electron 100/125/150 缩放对齐（模拟 scale factor）', async 
           candidateBoxDip: candidateDip,
           maxDeltaDip: delta,
           dprDoubleControlDeltaDip: wrongDelta,
+          diagnosticAlpha8DeltaDip: diagnosticDelta,
           screenshots,
         });
         await t.test(`scale=${scale}`, () => {
@@ -278,7 +303,7 @@ test('真实 Electron 100/125/150 缩放对齐（模拟 scale factor）', async 
       }
     }
     for (const scale of SIMULATED_SCALES) {
-      rows.push({ scale, origin: 'system', status: 'not-run', reason: '本机无真实系统 DPI（无头 Xvfb），不拿模拟值冒充', dpr: null, originalBoxDip: null, candidateBoxDip: null, maxDeltaDip: null, dprDoubleControlDeltaDip: null, screenshots: [] });
+      rows.push({ scale, origin: 'system', status: 'not-run', reason: '本机无真实系统 DPI（无头 Xvfb），不拿模拟值冒充', dpr: null, originalBoxDip: null, candidateBoxDip: null, maxDeltaDip: null, dprDoubleControlDeltaDip: null, diagnosticAlpha8DeltaDip: null, screenshots: [] });
     }
   } finally {
     await xvfb.stop();

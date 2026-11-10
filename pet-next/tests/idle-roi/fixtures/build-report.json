@@ -1,0 +1,310 @@
+{
+  "schemaVersion": 1,
+  "kind": "idle-roi-build-report",
+  "builtAt": "2026-11-10T08:04:05.529Z",
+  "node": "v24.14.0",
+  "ffmpeg": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers",
+  "ffprobe": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers",
+  "host": {
+    "cpus": 384,
+    "loadavg": [
+      15.1,
+      14.73,
+      16.14
+    ],
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "source": {
+    "path": "assets/idle.webm",
+    "bytes": 78419,
+    "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "width": 640,
+    "height": 360,
+    "codec": "vp9",
+    "pixelFormat": "yuv420p",
+    "alphaMode": "1",
+    "frameRate": "24/1",
+    "timeBase": "1/1000",
+    "colorTags": {
+      "primaries": "unknown",
+      "transfer": "unknown",
+      "matrix": "bt709",
+      "range": "tv"
+    },
+    "durationMs": 1999
+  },
+  "alphaScan": {
+    "threshold": 1,
+    "frames": 48,
+    "union": {
+      "x": 210,
+      "y": 54,
+      "width": 222,
+      "height": 281
+    },
+    "guard": 2,
+    "crop": {
+      "x": 208,
+      "y": 52,
+      "width": 226,
+      "height": 286
+    },
+    "cropArea": 64636,
+    "canvasArea": 230400,
+    "retainedRatio": 0.280538,
+    "foregroundPixelsTotal": 1951279,
+    "insideCropForegroundPixels": 1951279,
+    "outsideCropForegroundPixels": 0,
+    "contractCrop": {
+      "x": 208,
+      "y": 52,
+      "width": 226,
+      "height": 286
+    },
+    "matchesContract": true
+  },
+  "encode": {
+    "params": {
+      "decoder": "libvpx-vp9",
+      "encoder": "libvpx-vp9",
+      "pixelFormat": "yuva420p",
+      "crf": 12,
+      "cpuUsed": 2,
+      "gop": 48,
+      "deadline": "good",
+      "rowMt": 1,
+      "autoAltRef": 0,
+      "fpsMode": "passthrough",
+      "bitrate": "vbr (b:v 0, constant quality)",
+      "muxFlags": "+bitexact（仅去掉随机 SegmentUID/DateUTC，不改编码质量，使复跑 sha 可复现）",
+      "colorTags": {
+        "range": "tv",
+        "matrix": "bt709",
+        "primaries": "bt709",
+        "transfer": "bt709"
+      }
+    },
+    "filters": {
+      "F": "format=rgba,lut=a='if(lte(val,1),0,val)',format=yuva420p",
+      "C": "format=rgba,lut=a='if(lte(val,1),0,val)',crop=226:286:208:52,format=yuva420p"
+    },
+    "note": "两臂参数逐字相同，仅 -vf 多一段 crop、输出分辨率不同；输出先写 *.partial，自检通过后原子改名。",
+    "commands": {
+      "F": [
+        "ffmpeg",
+        "-y",
+        "-hide_banner",
+        "-nostdin",
+        "-loglevel",
+        "error",
+        "-c:v",
+        "libvpx-vp9",
+        "-i",
+        "/data3/DATA/project/project_meishijiang/m312-wt-a/pet-next/assets/idle.webm",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "format=rgba,lut=a='if(lte(val,1),0,val)',format=yuva420p",
+        "-fps_mode",
+        "passthrough",
+        "-c:v",
+        "libvpx-vp9",
+        "-pix_fmt",
+        "yuva420p",
+        "-b:v",
+        "0",
+        "-crf",
+        "12",
+        "-g",
+        "48",
+        "-deadline",
+        "good",
+        "-cpu-used",
+        "2",
+        "-row-mt",
+        "1",
+        "-auto-alt-ref",
+        "0",
+        "-color_range",
+        "tv",
+        "-colorspace",
+        "bt709",
+        "-color_primaries",
+        "bt709",
+        "-color_trc",
+        "bt709",
+        "-metadata:s:v:0",
+        "alpha_mode=1",
+        "-an",
+        "-fflags",
+        "+bitexact",
+        "-f",
+        "webm",
+        "/data3/DATA/project/project_meishijiang/m312-wt-a/pet-next/experiments/idle-roi/out/.tmp-268892/F.webm.partial"
+      ],
+      "C": [
+        "ffmpeg",
+        "-y",
+        "-hide_banner",
+        "-nostdin",
+        "-loglevel",
+        "error",
+        "-c:v",
+        "libvpx-vp9",
+        "-i",
+        "/data3/DATA/project/project_meishijiang/m312-wt-a/pet-next/assets/idle.webm",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "format=rgba,lut=a='if(lte(val,1),0,val)',crop=226:286:208:52,format=yuva420p",
+        "-fps_mode",
+        "passthrough",
+        "-c:v",
+        "libvpx-vp9",
+        "-pix_fmt",
+        "yuva420p",
+        "-b:v",
+        "0",
+        "-crf",
+        "12",
+        "-g",
+        "48",
+        "-deadline",
+        "good",
+        "-cpu-used",
+        "2",
+        "-row-mt",
+        "1",
+        "-auto-alt-ref",
+        "0",
+        "-color_range",
+        "tv",
+        "-colorspace",
+        "bt709",
+        "-color_primaries",
+        "bt709",
+        "-color_trc",
+        "bt709",
+        "-metadata:s:v:0",
+        "alpha_mode=1",
+        "-an",
+        "-fflags",
+        "+bitexact",
+        "-f",
+        "webm",
+        "/data3/DATA/project/project_meishijiang/m312-wt-a/pet-next/experiments/idle-roi/out/.tmp-268892/C.webm.partial"
+      ]
+    },
+    "durationsMs": {
+      "F": 1090,
+      "C": 1083,
+      "total": 2173
+    }
+  },
+  "arms": [
+    {
+      "arm": "O",
+      "file": "O.webm",
+      "bytes": 78419,
+      "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "width": 640,
+      "height": 360,
+      "frameCount": 48,
+      "durationMs": 1999,
+      "colorTags": {
+        "primaries": "unknown",
+        "transfer": "unknown",
+        "matrix": "bt709",
+        "range": "tv"
+      },
+      "containerPixelFormat": "yuv420p",
+      "alphaMode": "1",
+      "pts": {
+        "count": 48,
+        "firstMs": 0,
+        "lastMs": 1958,
+        "stepMs": 41.66,
+        "minDeltaMs": 41,
+        "maxDeltaMs": 42
+      }
+    },
+    {
+      "arm": "F",
+      "file": "F.webm",
+      "bytes": 188075,
+      "sha256": "2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0",
+      "width": 640,
+      "height": 360,
+      "frameCount": 48,
+      "durationMs": 2000,
+      "colorTags": {
+        "primaries": "unknown",
+        "transfer": "unknown",
+        "matrix": "bt709",
+        "range": "tv"
+      },
+      "containerPixelFormat": "yuv420p",
+      "alphaMode": "1",
+      "pts": {
+        "count": 48,
+        "firstMs": 0,
+        "lastMs": 1958,
+        "stepMs": 41.66,
+        "minDeltaMs": 41,
+        "maxDeltaMs": 42
+      }
+    },
+    {
+      "arm": "C",
+      "file": "C.webm",
+      "bytes": 225952,
+      "sha256": "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c",
+      "width": 226,
+      "height": 286,
+      "frameCount": 48,
+      "durationMs": 2000,
+      "colorTags": {
+        "primaries": "unknown",
+        "transfer": "unknown",
+        "matrix": "bt709",
+        "range": "tv"
+      },
+      "containerPixelFormat": "yuv420p",
+      "alphaMode": "1",
+      "pts": {
+        "count": 48,
+        "firstMs": 0,
+        "lastMs": 1958,
+        "stepMs": 41.66,
+        "minDeltaMs": 41,
+        "maxDeltaMs": 42
+      },
+      "alphaForegroundPixels": 1947831
+    }
+  ],
+  "selfCheck": {
+    "oBytesEqualToSource": true,
+    "cropMatchesContract": true,
+    "outsideCropForegroundPixels": 0,
+    "frameCounts": {
+      "O": 48,
+      "F": 48,
+      "C": 48
+    },
+    "ptsToleranceMs": 1,
+    "durationDeltaMs": 1,
+    "fCColorTagsEqual": true,
+    "decoderReadback": {
+      "F": 48,
+      "C": 48
+    }
+  },
+  "timings": {
+    "scanMs": 147,
+    "verifyMs": 156,
+    "encodeMs": 2173,
+    "readbackMs": 245,
+    "totalMs": 3140
+  }
+}

@@ -229,7 +229,7 @@ test('编码档位敏感性：crf 0/4/32', async (t) => {
   await t.test('无损档位也过不了 O–C 门（当前编码器行为）', () => {
     assert.ok(lossless, '缺 crf 0');
     assert.ok(
-      lossless.ocForeground.mae > GATE_THRESHOLDS.ocMae,
+      lossless.ocForeground.mae > GATE_THRESHOLDS.ocMaeLsb,
       `crf 0 前景 MAE ${lossless.ocForeground.mae} 已 ≤1/255：编码器行为变了，需要重看「重编码过不了门」的结论`,
     );
   });

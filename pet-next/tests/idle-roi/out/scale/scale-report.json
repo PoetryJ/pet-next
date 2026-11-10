@@ -1,9 +1,9 @@
 {
   "schemaVersion": 1,
   "kind": "idle-roi-scale",
-  "generatedAt": "2026-11-10T08:12:40.186Z",
+  "generatedAt": "2026-11-10T08:31:49.598Z",
   "status": "passed",
-  "candidate": "tests/idle-roi/out/fixture/C.webm",
+  "candidate": "tests/idle-roi/fixtures/C.webm",
   "osScale": null,
   "osScaleSource": "not-run: 无头 Xvfb，Electron scaleSource 不是 os",
   "originNotes": {
@@ -18,19 +18,20 @@
       "reason": null,
       "dpr": 1,
       "originalBoxDip": {
-        "x": 106,
+        "x": 107,
         "y": 60,
-        "width": 108,
+        "width": 106,
         "height": 135
       },
       "candidateBoxDip": {
-        "x": 106,
+        "x": 107,
         "y": 60,
-        "width": 108,
+        "width": 106,
         "height": 135
       },
       "maxDeltaDip": 0,
       "dprDoubleControlDeltaDip": 0,
+      "diagnosticAlpha8DeltaDip": 0,
       "screenshots": [
         "tests/idle-roi/out/scale/scale-1-original.png",
         "tests/idle-roi/out/scale/scale-1-roi.png",
@@ -44,19 +45,20 @@
       "reason": null,
       "dpr": 1.25,
       "originalBoxDip": {
-        "x": 106.4,
-        "y": 60,
-        "width": 107.2,
-        "height": 136
+        "x": 107.2,
+        "y": 60.8,
+        "width": 106.4,
+        "height": 134.4
       },
       "candidateBoxDip": {
-        "x": 106.4,
+        "x": 107.2,
         "y": 60,
-        "width": 107.2,
+        "width": 105.6,
         "height": 135.2
       },
       "maxDeltaDip": 0.8000000000000114,
-      "dprDoubleControlDeltaDip": 28.80000000000001,
+      "dprDoubleControlDeltaDip": 29.599999999999994,
+      "diagnosticAlpha8DeltaDip": 0.8000000000000114,
       "screenshots": [
         "tests/idle-roi/out/scale/scale-1.25-original.png",
         "tests/idle-roi/out/scale/scale-1.25-roi.png",
@@ -72,7 +74,7 @@
       "originalBoxDip": {
         "x": 106.66666666666667,
         "y": 60,
-        "width": 107.33333333333333,
+        "width": 106.66666666666667,
         "height": 135.33333333333334
       },
       "candidateBoxDip": {
@@ -81,8 +83,9 @@
         "width": 107.33333333333333,
         "height": 135.33333333333334
       },
-      "maxDeltaDip": 0,
+      "maxDeltaDip": 0.6666666666666572,
       "dprDoubleControlDeltaDip": 53.33333333333333,
+      "diagnosticAlpha8DeltaDip": 0,
       "screenshots": [
         "tests/idle-roi/out/scale/scale-1.5-original.png",
         "tests/idle-roi/out/scale/scale-1.5-roi.png",
@@ -99,6 +102,7 @@
       "candidateBoxDip": null,
       "maxDeltaDip": null,
       "dprDoubleControlDeltaDip": null,
+      "diagnosticAlpha8DeltaDip": null,
       "screenshots": []
     },
     {
@@ -111,6 +115,7 @@
       "candidateBoxDip": null,
       "maxDeltaDip": null,
       "dprDoubleControlDeltaDip": null,
+      "diagnosticAlpha8DeltaDip": null,
       "screenshots": []
     },
     {
@@ -123,6 +128,7 @@
       "candidateBoxDip": null,
       "maxDeltaDip": null,
       "dprDoubleControlDeltaDip": null,
+      "diagnosticAlpha8DeltaDip": null,
       "screenshots": []
     }
   ],
