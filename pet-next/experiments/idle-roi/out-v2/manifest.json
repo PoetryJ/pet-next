@@ -1,0 +1,106 @@
+{
+  "schemaVersion": 1,
+  "kind": "idle-roi",
+  "sourcePath": "assets/idle.webm",
+  "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+  "candidateSha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e",
+  "originalCanvas": {
+    "width": 640,
+    "height": 360
+  },
+  "crop": {
+    "x": 208,
+    "y": 52,
+    "width": 226,
+    "height": 286
+  },
+  "alphaThreshold": 1,
+  "guard": 2,
+  "codec": "vp9",
+  "pixelFormat": "yuva420p",
+  "colorTags": {
+    "primaries": "unknown",
+    "transfer": "unknown",
+    "matrix": "bt709",
+    "range": "tv"
+  },
+  "frameCount": 48,
+  "pts": {
+    "count": 48,
+    "firstMs": 0,
+    "lastMs": 1958,
+    "stepMs": 41.66,
+    "minDeltaMs": 41,
+    "maxDeltaMs": 42
+  },
+  "durationMs": 1999,
+  "loopFrames": 48,
+  "generatedBy": "node experiments/idle-roi/compiler.mjs --out=experiments/idle-roi/out-v2",
+  "ffmpeg": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers",
+  "builtAt": "2026-11-10T08:32:19.115Z",
+  "revision": {
+    "version": "v2",
+    "previous": "v1",
+    "motivation": "v1(4:2:0 + crf 12) 的 F–C 差 max 8、O–C 前景 MAE 1.30 未过画质门；v2 用 -lossless 1 去掉量化误差，用来证明「裁边本身零误差、门槛被编码往返吃掉」。",
+    "request": {
+      "pixelFormat": "yuva444p",
+      "lossless": true,
+      "cFromF": true,
+      "appliedPixelFormat": "yuva420p",
+      "fallback": {
+        "requested": "yuva444p",
+        "actual": "yuva420p",
+        "reason": "libvpx-vp9 支持列表不含 yuva444p（仅有 yuva420p 带 alpha），ffmpeg 会静默退回 yuva420p"
+      }
+    },
+    "v1": {
+      "source": "experiments/idle-roi/out",
+      "encode": {
+        "decoder": "libvpx-vp9",
+        "encoder": "libvpx-vp9",
+        "pixelFormat": "yuva420p",
+        "crf": 12,
+        "cpuUsed": 2,
+        "gop": 48,
+        "deadline": "good",
+        "rowMt": 1,
+        "autoAltRef": 0,
+        "fpsMode": "passthrough",
+        "bitrate": "vbr (b:v 0, constant quality)",
+        "muxFlags": "+bitexact（仅去掉随机 SegmentUID/DateUTC，不改编码质量，使复跑 sha 可复现）",
+        "colorTags": {
+          "range": "tv",
+          "matrix": "bt709",
+          "primaries": "bt709",
+          "transfer": "bt709"
+        }
+      },
+      "F": {
+        "file": "F.webm",
+        "bytes": 188075,
+        "sha256": "2ca492a98c866e87d900f595f47ab91f752219078fb8668c27149c8648b902f0",
+        "width": 640,
+        "height": 360
+      },
+      "C": {
+        "file": "C.webm",
+        "bytes": 225952,
+        "sha256": "08a80ac4274d9e1e84145e99043a07e13cbfb521ddeb68f20c47603d4d647e0c",
+        "width": 226,
+        "height": 286
+      }
+    },
+    "v2": {
+      "F": {
+        "file": "F.webm",
+        "bytes": 728356,
+        "sha256": "b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673"
+      },
+      "C": {
+        "file": "C.webm",
+        "bytes": 730551,
+        "sha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e"
+      }
+    }
+  }
+}

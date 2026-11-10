@@ -14,6 +14,12 @@ export interface EncodeOptions {
   readonly crf: number;
   readonly cpuUsed: number;
   readonly gop: number;
+  /** 输出像素格式，默认 yuva420p。是否真被编码器接受由 `supportedPixelFormats()` 判定。 */
+  readonly pixelFormat?: string;
+  /** `-lossless 1`：VP9 无损，用于把量化误差从裁剪误差里剥离。 */
+  readonly lossless?: boolean;
+  /** 是否做 alpha<=1 置零。C 从已预处理的 F 派生时为 false（F 已经置零过）。 */
+  readonly alphaZero?: boolean;
 }
 
 export type RunLike = (bin: string, args: readonly string[]) => Promise<void>;
@@ -21,17 +27,27 @@ export type RunLike = (bin: string, args: readonly string[]) => Promise<void>;
 export const DEFAULT_CRF = 12;
 export const DEFAULT_CPU_USED = 2;
 export const DEFAULT_GOP = 48;
+export const DEFAULT_PIXEL_FORMAT = 'yuva420p';
 
 /** 只有 alpha<=1 置零，不抠黑、不改 RGB。 */
 export function alphaZeroFilter(): string {
   return "format=rgba,lut=a='if(lte(val,1),0,val)'";
 }
 
-/** 预处理 → 可选裁剪 → yuva420p。`crop` 为 null 时即 F 臂（全画布）。 */
-export function preprocessFilter(crop: Rect | null): string {
-  const parts = [alphaZeroFilter()];
+export interface FilterOptions {
+  readonly crop: Rect | null;
+  readonly pixelFormat?: string;
+  readonly alphaZero?: boolean;
+}
+
+/** 预处理 → 可选裁剪 → 目标像素格式。`crop` 为 null 时即 F 臂（全画布）。 */
+export function preprocessFilter(crop: Rect | null, options: Omit<FilterOptions, 'crop'> = {}): string {
+  const pixelFormat = options.pixelFormat ?? DEFAULT_PIXEL_FORMAT;
+  const alphaZero = options.alphaZero ?? true;
+  const parts: string[] = [];
+  if (alphaZero) parts.push(alphaZeroFilter());
   if (crop !== null) parts.push(`crop=${crop.width}:${crop.height}:${crop.x}:${crop.y}`);
-  parts.push('format=yuva420p');
+  parts.push(`format=${pixelFormat}`);
   return parts.join(',');
 }
 
@@ -45,6 +61,8 @@ export function encodeArgs(options: EncodeOptions): string[] {
   if (!Number.isInteger(options.gop) || options.gop <= 0) {
     throw new Error(`gop 非法：${String(options.gop)}`);
   }
+  const pixelFormat = options.pixelFormat ?? DEFAULT_PIXEL_FORMAT;
+  const quality = options.lossless === true ? ['-lossless', '1'] : ['-crf', String(options.crf)];
   return [
     '-y',
     '-hide_banner',
@@ -58,17 +76,16 @@ export function encodeArgs(options: EncodeOptions): string[] {
     '-map',
     '0:v:0',
     '-vf',
-    preprocessFilter(options.crop),
+    preprocessFilter(options.crop, { pixelFormat, alphaZero: options.alphaZero !== false }),
     '-fps_mode',
     'passthrough',
     '-c:v',
     'libvpx-vp9',
     '-pix_fmt',
-    'yuva420p',
+    pixelFormat,
     '-b:v',
     '0',
-    '-crf',
-    String(options.crf),
+    ...quality,
     '-g',
     String(options.gop),
     '-deadline',

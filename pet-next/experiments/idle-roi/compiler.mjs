@@ -13,7 +13,7 @@
  *
  * 任何自检失败都以非零退出并打印原因，不放宽阈值、不静默重试。
  */
-import { copyFile, mkdir, readdir, rename, rm, stat, writeFile } from 'node:fs/promises';
+import { copyFile, mkdir, readdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { performance } from 'node:perf_hooks';
@@ -32,7 +32,7 @@ import {
 import { DEFAULT_CRF, DEFAULT_CPU_USED, DEFAULT_GOP, encodeTo, preprocessFilter } from './lib/encode.ts';
 import { sha256File } from './lib/hash.ts';
 import { IDLE_FRAME_COUNT, IDLE_SOURCE_PATH, buildManifest, summarizePts, validateManifest } from './lib/manifest.ts';
-import { decodeRgbaFrames, ffmpegVersionLine, listFramePtsMs, probeStream, runCapture } from './lib/media.ts';
+import { decodeRgbaFrames, encoderPixelFormats, ffmpegVersionLine, listFramePtsMs, probeStream, runCapture } from './lib/media.ts';
 
 /** 契约第 3 节的参考裁框，仅用于报告差异，不参与计算。 */
 const CONTRACT_CROP = { x: 208, y: 52, width: 226, height: 286 };
@@ -56,6 +56,9 @@ function parseArgs(argv) {
     cpuUsed: DEFAULT_CPU_USED,
     gop: DEFAULT_GOP,
     guard: GUARD_PX,
+    pixelFormat: 'yuva420p',
+    lossless: false,
+    cFromF: false,
     ffmpeg: 'ffmpeg',
     ffprobe: 'ffprobe',
   };
@@ -71,6 +74,9 @@ function parseArgs(argv) {
     else if (name === 'cpu-used') options.cpuUsed = Number(raw);
     else if (name === 'gop') options.gop = Number(raw);
     else if (name === 'guard') options.guard = Number(raw);
+    else if (name === 'pix-fmt') options.pixelFormat = raw;
+    else if (name === 'lossless') options.lossless = raw === '1' || raw === 'true';
+    else if (name === 'c-from-f') options.cFromF = raw === '1' || raw === 'true';
     else if (name === 'ffmpeg') options.ffmpeg = raw;
     else if (name === 'ffprobe') options.ffprobe = raw;
     else fail(`未知参数：--${name}`);
@@ -83,11 +89,13 @@ function parseArgs(argv) {
 }
 
 function resolvePaths(options) {
-  const allowedOut = path.join(petRoot, 'experiments', 'idle-roi', 'out');
+  // 只允许 experiments/idle-roi/out 或 out-*（v2 等并存版本），绝不写进 assets/ 或其他目录。
+  const allowedRoot = path.join(petRoot, 'experiments', 'idle-roi');
   const outDir = path.resolve(petRoot, options.out);
-  const relative = path.relative(allowedOut, outDir);
-  if (relative.startsWith('..') || path.isAbsolute(relative)) {
-    fail(`输出目录必须落在 experiments/idle-roi/out 内：${outDir}`);
+  const relative = path.relative(allowedRoot, outDir);
+  const segments = relative.split(path.sep);
+  if (segments.length !== 1 || !segments[0].startsWith('out')) {
+    fail(`输出目录必须是 experiments/idle-roi/out 或 out-*：${outDir}`);
   }
   const sourcePath = path.resolve(petRoot, options.source);
   if (sourcePath !== path.join(petRoot, IDLE_SOURCE_PATH)) {
@@ -129,6 +137,21 @@ async function toolVersion(bin) {
   return stdout.split('\n')[0]?.trim() ?? '';
 }
 
+/** 读上一版（v1）的报告，供 manifest 记录「v1→v2」两次字节；缺文件就返回 null，不猜。 */
+async function readPreviousBuild() {
+  try {
+    const parsed = JSON.parse(await readFile(path.join(petRoot, 'experiments', 'idle-roi', 'out', 'build-report.json'), 'utf8'));
+    const pick = (arm) => {
+      const found = (parsed.arms ?? []).find((item) => item.arm === arm);
+      if (found === undefined) return null;
+      return { file: found.file, bytes: found.bytes, sha256: found.sha256, width: found.width, height: found.height };
+    };
+    return { source: 'experiments/idle-roi/out', encode: parsed.encode?.params ?? null, F: pick('F'), C: pick('C') };
+  } catch {
+    return null;
+  }
+}
+
 async function main() {
   const options = parseArgs(process.argv.slice(2));
   const { outDir, sourcePath } = resolvePaths(options);
@@ -144,6 +167,21 @@ async function main() {
   const canvas = { width: probe.width, height: probe.height };
   log(`源 ${IDLE_SOURCE_PATH} ${canvas.width}x${canvas.height} sha=${sourceSha.slice(0, 12)} frames(target)=${IDLE_FRAME_COUNT}`);
   log(`${ffmpegVersion}`);
+
+  // 编码器真正接受的像素格式：请求 444 时这台 libvpx-vp9 会静默退回 420，必须先探测再决定。
+  const supportedFormats = await encoderPixelFormats(options.ffmpeg, 'libvpx-vp9');
+  const requestedPixelFormat = options.pixelFormat;
+  const pixelFormatFallback =
+    supportedFormats.length === 0 || supportedFormats.includes(requestedPixelFormat)
+      ? null
+      : {
+          requested: requestedPixelFormat,
+          actual: 'yuva420p',
+          reason: `libvpx-vp9 支持列表不含 ${requestedPixelFormat}（仅有 ${supportedFormats.filter((f) => f.includes('a')).join(' ') || 'yuva420p'} 带 alpha），ffmpeg 会静默退回 yuva420p`,
+        };
+  const pixelFormat = pixelFormatFallback === null ? requestedPixelFormat : 'yuva420p';
+  log(`像素格式：请求 ${requestedPixelFormat} → 实际 ${pixelFormat}${pixelFormatFallback === null ? '' : '（不支持，已退回 420）'}`);
+  if (options.lossless) log('编码模式：-lossless 1（VP9 无损）');
 
   // 1) 全片扫描 alpha>1 并集（显式 libvpx-vp9 解码到 rgba，逐帧读完）
   const scanStart = performance.now();
@@ -211,17 +249,31 @@ async function main() {
     const encodeStart = performance.now();
     log(`编码 F（全画布 ${canvas.width}x${canvas.height}）…`);
     const fStart = performance.now();
+    const sharedEncode = {
+      crf: options.crf,
+      cpuUsed: options.cpuUsed,
+      gop: options.gop,
+      pixelFormat,
+      lossless: options.lossless,
+    };
     await encodeTo(
       options.ffmpeg,
-      { input: sourcePath, output: fTmp, crop: null, crf: options.crf, cpuUsed: options.cpuUsed, gop: options.gop },
+      { ...sharedEncode, input: sourcePath, output: fTmp, crop: null },
       encoderFor('F'),
     );
     const fMs = Math.round(performance.now() - fStart);
-    log(`编码 C（ROI ${crop.width}x${crop.height}）…`);
+    log(`编码 C（ROI ${crop.width}x${crop.height}${options.cFromF ? '，从 F 的编码域裁剪' : ''}）…`);
     const cStart = performance.now();
     await encodeTo(
       options.ffmpeg,
-      { input: sourcePath, output: cTmp, crop, crf: options.crf, cpuUsed: options.cpuUsed, gop: options.gop },
+      {
+        ...sharedEncode,
+        // 编码域裁剪：C 从 F 的无损字节裁剪而来，色度平面与 F 同源；F 已经做过阈值置零，不再重复 lut。
+        input: options.cFromF ? fTmp : sourcePath,
+        output: cTmp,
+        crop,
+        alphaZero: options.cFromF ? false : true,
+      },
       encoderFor('C'),
     );
     const cMs = Math.round(performance.now() - cStart);
@@ -279,12 +331,35 @@ async function main() {
     // 5) manifest + 报告，最后改名
     const cSha = await sha256File(cTmp);
     const fSha = await sha256File(fTmp);
+    const fTmpBytes = (await stat(fTmp)).size;
+    const cTmpBytes = (await stat(cTmp)).size;
     const builtAt = new Date().toISOString();
+    const v1 = await readPreviousBuild();
+    const revision = {
+      version: 'v2',
+      previous: 'v1',
+      motivation:
+        'v1(4:2:0 + crf 12) 的 F–C 差 max 8、O–C 前景 MAE 1.30 未过画质门；v2 用 -lossless 1 去掉量化误差，用来证明「裁边本身零误差、门槛被编码往返吃掉」。',
+      request: {
+        pixelFormat: requestedPixelFormat,
+        lossless: options.lossless,
+        cFromF: options.cFromF,
+        appliedPixelFormat: pixelFormat,
+        fallback: pixelFormatFallback,
+      },
+      v1,
+      v2: {
+        F: { file: 'F.webm', bytes: fTmpBytes, sha256: fSha },
+        C: { file: 'C.webm', bytes: cTmpBytes, sha256: cSha },
+      },
+    };
     const manifest = buildManifest({
       sourceSha256: sourceSha,
       candidateSha256: cSha,
       originalCanvas: canvas,
       crop,
+      pixelFormat,
+      revision,
       colorTags: cProbe.colorTags,
       frameCount: oPts.length,
       pts: summarizePts(oPts),
@@ -333,12 +408,18 @@ async function main() {
         contractCrop: CONTRACT_CROP,
         matchesContract: cropMatchesContract,
       },
+      revision,
       encode: {
         params: {
           decoder: 'libvpx-vp9',
           encoder: 'libvpx-vp9',
-          pixelFormat: 'yuva420p',
-          crf: options.crf,
+          pixelFormat,
+          pixelFormatRequested: requestedPixelFormat,
+          pixelFormatFallback,
+          encoderSupportedPixelFormats: supportedFormats,
+          lossless: options.lossless,
+          cFromF: options.cFromF,
+          crf: options.lossless ? null : options.crf,
           cpuUsed: options.cpuUsed,
           gop: options.gop,
           deadline: 'good',
@@ -349,7 +430,10 @@ async function main() {
           muxFlags: '+bitexact（仅去掉随机 SegmentUID/DateUTC，不改编码质量，使复跑 sha 可复现）',
           colorTags: { range: 'tv', matrix: 'bt709', primaries: 'bt709', transfer: 'bt709' },
         },
-        filters: { F: preprocessFilter(null), C: preprocessFilter(crop) },
+        filters: {
+          F: preprocessFilter(null, { pixelFormat }),
+          C: preprocessFilter(crop, { pixelFormat, alphaZero: options.cFromF ? false : true }),
+        },
         note: '两臂参数逐字相同，仅 -vf 多一段 crop、输出分辨率不同；输出先写 *.partial，自检通过后原子改名。',
         commands: { F: executed.F, C: executed.C },
         durationsMs: { F: fMs, C: cMs, total: encodeMs },

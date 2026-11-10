@@ -18,6 +18,18 @@ export interface ColorTags {
   readonly range: string;
 }
 
+/**
+ * 编码器真正接受的像素格式。请求了不支持的格式时 ffmpeg 会静默退回，
+ * 所以生成前必须显式探测，不能假设 `-pix_fmt` 生效。
+ */
+export async function encoderPixelFormats(bin: string, encoder = 'libvpx-vp9'): Promise<string[]> {
+  const { stdout } = await spawnCapture(bin, ['-hide_banner', '-h', `encoder=${encoder}`]);
+  const line = stdout.split('\n').find((row) => row.includes('Supported pixel formats'));
+  if (line === undefined) return [];
+  const list = line.slice(line.indexOf(':') + 1).trim();
+  return list.length === 0 ? [] : list.split(/\s+/);
+}
+
 export interface StreamProbe {
   readonly width: number;
   readonly height: number;

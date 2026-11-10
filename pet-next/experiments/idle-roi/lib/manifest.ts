@@ -41,6 +41,8 @@ export interface IdleRoiManifest {
   readonly generatedBy: string;
   readonly ffmpeg: string;
   readonly builtAt: string;
+  /** 可选修订说明（v1→v2 动机与两次字节）。不属于契约 §3 字段。 */
+  readonly revision?: Record<string, unknown>;
 }
 
 export interface ManifestInput {
@@ -48,6 +50,10 @@ export interface ManifestInput {
   readonly candidateSha256: string;
   readonly originalCanvas: Canvas;
   readonly crop: Rect;
+  /** 实际生效的编码像素格式（不是请求值）。 */
+  readonly pixelFormat?: string;
+  /** 可选：v1→v2 等修订说明，附加在契约字段之后，不影响 §3 字段。 */
+  readonly revision?: Record<string, unknown>;
   readonly colorTags: ColorTags;
   readonly frameCount: number;
   readonly pts: PtsSummary;
@@ -100,7 +106,7 @@ export function buildManifest(input: ManifestInput): IdleRoiManifest {
     alphaThreshold: ALPHA_THRESHOLD,
     guard: GUARD_PX,
     codec: 'vp9',
-    pixelFormat: 'yuva420p',
+    pixelFormat: input.pixelFormat ?? 'yuva420p',
     colorTags: { ...input.colorTags },
     frameCount: input.frameCount,
     pts: { ...input.pts },
@@ -109,6 +115,7 @@ export function buildManifest(input: ManifestInput): IdleRoiManifest {
     generatedBy: input.generatedBy ?? IDLE_GENERATED_BY,
     ffmpeg: input.ffmpeg,
     builtAt: input.builtAt,
+    ...(input.revision === undefined ? {} : { revision: input.revision }),
   };
 }
 
@@ -193,7 +200,10 @@ export function validateManifest(value: unknown): ManifestValidation {
   if (value['alphaThreshold'] !== ALPHA_THRESHOLD) errors.push('alphaThreshold 必须是 1');
   if (!isNonNegativeInt(value['guard']) || value['guard'] !== GUARD_PX) errors.push('guard 必须是 2');
   if (value['codec'] !== 'vp9') errors.push('codec 必须是 vp9');
-  if (value['pixelFormat'] !== 'yuva420p') errors.push('pixelFormat 必须是 yuva420p');
+  // 只接受带 alpha 的 YUV 格式：420 是 libvpx-vp9 唯一支持的 alpha 格式，444 留给支持它的编码器。
+  if (typeof value['pixelFormat'] !== 'string' || !['yuva420p', 'yuva444p'].includes(value['pixelFormat'])) {
+    errors.push('pixelFormat 必须是 yuva420p 或 yuva444p');
+  }
 
   const colorTags = value['colorTags'];
   if (!isRecord(colorTags)) {
