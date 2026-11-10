@@ -19,9 +19,12 @@
 | `de94d8c` | C1/C2/C3/C4+P1 新模板、泄漏审计、演示、入口与门禁 |
 | `37173c9` | B3/B4/D4b/D5+P2 队列、未来 dry-run、成本、平台 |
 | `da7e66a` | README/.gitignore、lint 清理；运行产物移出代码提交 |
-| `d649ce1` | CODE_HEAD：`--verify` 跨轮确定性比对 |
+| `d649ce1` | `--verify` 跨轮确定性比对 |
+| `f25bda1` | 文档：一页结论与状态 |
+| `fa85f07` | 状态回填 G4（bundle 克隆复跑） |
+| `3f80bef` | CODE_HEAD：G1 输出逐条断言记录 |
 
-- CODE_HEAD：`d649ce1f605c9a3a4ba225291de0e8068f22f967`（本次全部测试与门禁在该提交的干净工作树上跑出，`dirty=0`）
+- CODE_HEAD：`3f80befdb8d0cac125ba7bacedb976d44f78aa24`（全部测试与门禁在该提交的干净工作树上跑出，`out/summary.json` 的 `gitHead` 与 `dirtyExperimentFiles=0` 可核对）
 - 其后仅追加 `DELIVERY.md`/`STATUS.md` 文档提交，作为 ARTIFACT_HEAD；**不声称该文档提交跑过测试**。
 
 ## 契约
@@ -35,7 +38,7 @@
 | 门 | 状态 | 证据文件 |
 | --- | --- | --- |
 | G0 | 通过 | `out/logs/contracts.log`（7 项）+ tsc 0 错 |
-| G1 | 通过 | `out/g1.json`：48 轨迹 / 143 断言 / 0 失败 / 6 负控 / fetch 0 |
+| G1 | 通过 | `out/g1.json` + `out/g1-tracks.json`：48 轨迹 / 143 断言逐条 / 0 失败 / 6 负控 / fetch 0 |
 | G2a | 通过 | `out/logs/storage.log`（12）+ `out/logs/recovery.log`（7，8 崩溃点覆盖 7） |
 | G2b | 通过（限定） | `out/logs/eval.log` 中的 `D4a` 等价门；`out/p1.json` 新模板 16/47 |
 | G3 | 通过（限定） | `out/p2.json`：仅在等价成立后比较成本；高扇出 not-run |
