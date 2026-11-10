@@ -1,10 +1,18 @@
 # M3-10 D：便携产物独立验收（静态）与成本
 
-产物（C 实际 ZIP，未从源码旁路启动）：
-- `PetNext-win32-x64.zip`，SHA256 `48eb0dd09c0372143f1bb85f0d213a11f9aa57a9d48de45517c3565d1cb5ca1a`，146 564 405 B
-- manifest `manifest.json`（C 构建时生成，含 Git SHA/Electron 43.3.0/Packager 20.3.0/197 文件逐项 SHA）
-- 本机独立复算：`python3 tests/portable-accept/verify-portable-zip.py <zip> <manifest> <extract-root> <out.json>`
-  结果 `ok=true`，23 项检查 0 失败（`static-result.json`）。
+产物（C 实际 ZIP，未从源码旁路启动）。**两个阶段的 ZIP 要分清，不要混用 SHA：**
+
+| 阶段 | 构建点 | ZIP SHA256 | 说明 |
+|---|---|---|---|
+| 初次验收 | C 分支 `a93dd54` | `48eb0dd09c0372143f1bb85f0d213a11f9aa57a9d48de45517c3565d1cb5ca1a` | 本节 23 项检查首跑对象，留有 `static-result.json` |
+| **最终交付** | 集成后 `1271f44` | `c21e688fd5b7963abd2959ba763d43148260cc1239c81535cae245bcf45eb181` | 与 `manifest.json`(gitSha=1271f44) / bundle 对齐；**重建后已复检 23 项 0 失败** |
+
+最终包复检原始结果：`m310-delivery/logs/portable-static-result.json`（`zip_sha_matches_manifest`
+比对 `c21e688f…eb181`，197 条目、逐文件 SHA 全对、0 失败）。两次构建的运行时闭包相同，
+差异只来自新增的 B 入口与 A 测试改动之后的重新 build。
+
+复算命令（对最终包）：
+`python3 tests/portable-accept/verify-portable-zip.py <zip> <manifest> <extract-root> <out.json>`
 
 ## 静态验收（本机 Linux 实际执行）
 
