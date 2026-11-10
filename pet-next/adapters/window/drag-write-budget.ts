@@ -30,6 +30,7 @@ export interface BudgetedWindowController extends WindowController {
   /**
    * 工作区/显示器/尺寸变化：先 flush 有效 pending，再让**本次拖动内**退回逐事件直写。
    * 首轮不做跨屏推断（不重算跨显示器目标），只回退求正确。
+   * 没有拖动进行中（因而也没有 pending）时为 no-op：下一次拖动仍走候选合帧。
    */
   noteGeometryChanged(): void;
   /** 只清不写：撤定时器、丢 pending；之后 `moveBy` 不再写宿主。 */
@@ -129,11 +130,12 @@ export function createBudgetedWindowController(
     },
     noteGeometryChanged() {
       if (disposed) return;
-      if (dragging) {
-        // 先把本次仍有效的 pending 落到旧几何上，再回退直写，避免目标飞出屏幕。
-        budget.end();
-        dragging = false;
-      }
+      // 没有本次拖动（因而也没有 pending）：几何事件与位移无关，
+      // 不能把下一次拖动静默降级成逐事件直写——保持候选合帧。
+      if (!dragging) return;
+      // 先把本次仍有效的 pending 落到旧几何上，再回退直写，避免目标飞出屏幕。
+      budget.end();
+      dragging = false;
       passthrough = true;
     },
     dispose() {

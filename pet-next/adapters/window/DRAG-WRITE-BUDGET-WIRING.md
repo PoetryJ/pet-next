@@ -238,7 +238,8 @@ pointermove × N        → wire moveBy(dx,dy)       → pet:move-by            
                                                                              └ 过密 → pending，仅一次 timer
 pointerup / cancel     → gesture drag-end         → setDragging(false)     → pet:drag-end → endDrag()
                                                                            → flush pending（即使 <8ms）
-display-*-changed/added/removed → noteGeometryChanged()：先 flush，再 passthrough 直写直到 endDrag
+display-*-changed/added/removed → noteGeometryChanged()：拖动中 → 先 flush，再 passthrough 直写直到 endDrag
+                                                            拖动之外 → no-op（不置 passthrough，下一次拖动仍合帧）
 win closed / before-quit        → dispose()：撤 timer、丢 pending，绝不写
 ```
 
@@ -299,6 +300,8 @@ C 不擅自改架构，按契约保留 `experiments/` 的 import；等负责人�
 2. **跨屏不做推断**：`noteGeometryChanged()` 只 flush + 本次拖动内回退逐事件直写，
    不重算跨显示器目标、不重置 `tracked`（保持与 `controller.ts` 相同的小数累积）。
    显示器增删/分辨率/任务栏变化期间的拖动退化成 M3-10 原路径，属预期。
+   **拖动之外的几何事件是 no-op**（此时没有 pending）：不置 passthrough，
+   否则下一次拖动的第一条 `moveBy` 会直接直写并一直保持到 `endDrag`，等于静默关掉候选。
 3. **单窗口假设**：`pet:move-by` / `pet:drag-end` 与既有写法一样按 `createWindow` 注册。
    产品路径只建一个桌宠窗；launcher 窗有独立 webContents，已被 `event.sender` 校验挡住。
 4. **未测**：真实鼠标、CDP、Windows —— 属 A/D 的分层证据，本文件不含产品现场结论。
@@ -312,8 +315,9 @@ npx tsc -p tsconfig.json --noEmit          # exit 0
 npx tsc -p tsconfig.preload.json --noEmit  # exit 0
 ```
 
-注意：本分支（C）不包含 `experiments/drag-write-budget/scheduler.ts`（B 的所有权）。
-上面的自证跑在一个**字节一致**的临时副本上（sha256 `772704e2…e859b7`，取自 B 的 worktree）；
+注意：本分支（C）不提交 `experiments/drag-write-budget/scheduler.ts`（B 的所有权）。
+上面的自证跑在一个**字节一致**的临时副本上（`git show agent/m311-b:pet-next/experiments/drag-write-budget/scheduler.ts`，
+B 的 `6981626`，sha256 `c63bd7df…a3e82c`），验证后即删除；
 在 B 的 commit 合入前，本分支单独 `pnpm typecheck` 会在该 import 上报 "Cannot find module"，
 这是所有权边界导致的预期状态，不是适配器错误。
 

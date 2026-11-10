@@ -291,16 +291,47 @@ describe('createBudgetedWindowController：dispose / passthrough', () => {
     assert.deepEqual(host.writes.at(-1), { x: 130, y: 100 });
   });
 
+  test('几何变化发生在拖动之外：下一次拖动仍按候选合帧，不降级为直写', () => {
+    const host = harness({ x: 100, y: 100, width: 100, height: 80 });
+    const { clock, advance } = fakeClock();
+    const controller = createBudgetedWindowController(host.host, { budgetMs: 8, clock });
+
+    // 没有拖动进行中：几何事件与位移无关，不得置 passthrough。
+    controller.noteGeometryChanged();
+    controller.noteGeometryChanged();
+
+    controller.moveBy(5, 0);
+    assert.deepEqual(host.writes, [{ x: 105, y: 100 }], '下一次拖动首写仍即时（新 epoch）');
+    controller.moveBy(5, 0);
+    advance(2);
+    assert.equal(host.writes.length, 1, '若降级成 passthrough 这里会是 2');
+    advance(6);
+    assert.deepEqual(host.writes.at(-1), { x: 110, y: 100 });
+
+    // 一轮拖动结束后再收到几何事件，仍不得影响下一轮。
+    controller.endDrag();
+    controller.noteGeometryChanged();
+    advance(1);
+    controller.moveBy(5, 0);
+    controller.moveBy(5, 0);
+    assert.equal(host.writes.length, 3, '首写即时 + 第二条合并');
+    advance(8);
+    assert.deepEqual(host.writes.at(-1), { x: 120, y: 100 });
+  });
+
   test('passthrough 期间往返夹边仍不复用求和（tracked 来自 advanceOrigin）', () => {
     const tight: WorkArea = { x: 0, y: 0, width: 10, height: 10 };
     const host = harness({ x: 9, y: 0, width: 1, height: 1 }, tight);
     const { clock } = fakeClock();
     const controller = createBudgetedWindowController(host.host, { budgetMs: 8, clock });
 
+    // 拖动中才有 passthrough；先起拖动再收几何事件。
+    controller.moveBy(5, 0);
     controller.noteGeometryChanged();
+    const before = host.writes.length;
     controller.moveBy(5, 0);
     controller.moveBy(-5, 0);
-    assert.deepEqual(host.writes, [
+    assert.deepEqual(host.writes.slice(before), [
       { x: 9, y: 0 },
       { x: 4, y: 0 },
     ]);
@@ -309,17 +340,29 @@ describe('createBudgetedWindowController：dispose / passthrough', () => {
 });
 
 describe('createBudgetedWindowController：重复坐标与小数累积', () => {
-  test('夹边产生相同绝对 position 时不重复写', () => {
-    const host = harness({ x: 40, y: 50, width: 100, height: 80 });
+  test('夹边产生相同绝对 position 时不重复写（顶到边界后继续同方向输入）', () => {
+    const initial = { x: 40, y: 50, width: 100, height: 80 };
+    const host = harness(initial);
+    const reference = harness(initial);
     const { clock } = fakeClock();
     const controller = createBudgetedWindowController(host.host, { budgetMs: 8, clock });
+    const baseline = createWindowController(reference.host);
 
-    controller.moveBy(10_000, 0);
-    controller.moveBy(20, 0);
-    controller.moveBy(20, 0);
+    // 同一方向的连续三条输入：夹到右边界后 position 恒为 710，等价于重复坐标。
+    for (const dx of [10_000, 10_000, 10_000]) {
+      controller.moveBy(dx, 0);
+      baseline.moveBy(dx, 0);
+    }
     controller.endDrag();
-    assert.deepEqual(host.writes, [{ x: 710, y: 50 }]);
-    assert.ok(controller.stats.duplicateDropped >= 1);
+
+    assert.deepEqual(reference.writes, [
+      { x: 710, y: 50 },
+      { x: 710, y: 50 },
+      { x: 710, y: 50 },
+    ], '原路径逐条直写，会重复写同一坐标');
+    assert.deepEqual(host.writes, [{ x: 710, y: 50 }], '候选只写一次');
+    assert.equal(controller.stats.duplicateDropped, 2);
+    assert.deepEqual(host.bounds(), reference.bounds());
   });
 
   test('0.5/0.25 亚像素逐步累积，写入等于原路径（压缩后）', () => {
