@@ -310,7 +310,24 @@ test('500Hz 合成指针压力臂：主进程写入减少 ≥50%、落点不变�
           clientX: 100,
           clientY: 100,
         });
-        await delay(300);
+        // 一次 evaluate 里连发 500 条 IPC 后，主进程可能还在排队（高负载下 >300ms）。
+        // 固定 sleep 会把"尚未处理"误判成"没有写入"（上一版就是这样得到 off=0 的假绿），
+        // 这里等到写入稳定（连续 400ms 没有新增）或到 8s 上限，再切片统计。
+        // 本机是与他人共享的 1 核容器，外部评测任务会把 load 抬到 10-17；500 条 IPC 洪峰
+        // 可能要十几秒才排空。这里等到写入稳定（连续 800ms 无新增）或 20s 上限。
+        const settleDeadline = Date.now() + 20000;
+        let stableSince = Date.now();
+        let lastCount = session.app.boundsLines().length;
+        while (Date.now() < settleDeadline) {
+          await delay(100);
+          const count = session.app.boundsLines().length;
+          if (count !== lastCount) {
+            lastCount = count;
+            stableSince = Date.now();
+            continue;
+          }
+          if (Date.now() - stableSince >= 800) break;
+        }
         const lines = session.app.boundsLines().slice(before);
         expected[arm] = { x: base.x + Math.round(EVENTS / scale), y: base.y };
         observed[arm] = {
@@ -344,7 +361,8 @@ test('500Hz 合成指针压力臂：主进程写入减少 ≥50%、落点不变�
 
     assert.ok(observed.off.dispatched >= EVENTS, '基线臂必须真的收到压力事件');
     assert.ok(observed.off.hz >= 300, `压力臂有效速率必须接近 500Hz（实测 ${observed.off.hz}Hz），否则机制门没有意义`);
-    assert.ok(observed.off.writes > 0, '基线臂必须真的有写入');
+    assert.ok(observed.off.writes > 0, '基线臂必须真的有写入（0/0 比较不算机制门）');
+    assert.ok(observed.on.writes > 0, '开启臂必须真的有写入（避免"全被吞掉"伪装成 100% 减少）');
     const reduction = 1 - observed.on.writes / observed.off.writes;
     assert.ok(
       reduction >= 0.5,

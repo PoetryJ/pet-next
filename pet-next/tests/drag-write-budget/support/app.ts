@@ -727,11 +727,41 @@ export interface Session {
   readonly geometry: Bounds;
 }
 
+/**
+ * 等页面真正接上手势：`#pet` 存在且 boot 后已写入 `data-visual`。
+ * 只看 `{event:'ready'}` 不够——那是窗口级就绪，渲染层监听可能还差几秒。
+ */
+export async function waitForPetWired(cdp: Cdp, deadlineMs = 20000): Promise<void> {
+  const deadline = Date.now() + deadlineMs;
+  let last = 'unknown';
+  while (Date.now() < deadline) {
+    try {
+      const state = await cdp.evaluate<{ pet: boolean; visual: string | null }>(
+        `(() => {
+          const el = document.querySelector('#pet');
+          return { pet: el instanceof HTMLElement, visual: document.documentElement.dataset.visual ?? null };
+        })()`,
+        4000,
+      );
+      last = JSON.stringify(state);
+      if (state.pet && state.visual !== null && state.visual !== '') return;
+    } catch (error) {
+      last = error instanceof Error ? error.message : String(error);
+    }
+    await delay(100);
+  }
+  throw new Error(`页面未完成指针装配（#pet/data-visual 缺失）：${last}`);
+}
+
 /** 起一个真实窗口并激活（裸 Xvfb 无 WM 时激活降级，指针仍按坐标命中）。 */
 export async function openSession(options: LaunchOptions & { readonly preview?: string }): Promise<Session> {
   const env: NodeJS.ProcessEnv = { ...(options.extraEnv ?? {}) };
   if (options.preview !== undefined && options.preview !== '') env['PET_NEXT_PREVIEW'] = options.preview;
   const app = await launchApp({ ...options, extraEnv: env });
+  // `{event:'ready'}` 只证明 BrowserWindow 起来了；页面脚本（#pet 监听、boot 后的 visual 标记）
+  // 可能还在装配。共享 1 核容器被外部评测压到 load 10-17 时，这个窗口能有好几秒；
+  // 不等就会把"还没接上手势"误判成"拖动不写宿主"。
+  await waitForPetWired(app.cdp);
   const display = requireDisplay();
   const windowId = petWindowId(display);
   const geometry = windowGeometry(display, windowId);

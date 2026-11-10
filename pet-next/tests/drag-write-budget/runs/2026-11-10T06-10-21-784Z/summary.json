@@ -1,0 +1,368 @@
+{
+  "status": "ok",
+  "generatedAt": "2026-11-10T06:12:33.933Z",
+  "head": "723bca47b1e3490928d0bd4284c10aa09fc6c3b9",
+  "dirty": true,
+  "platform": "linux",
+  "display": ":145",
+  "rounds": 5,
+  "plan": {
+    "budgetMs": 8,
+    "note": "8ms 是计划排队预算，不是 OS 硬保证"
+  },
+  "trajectory": {
+    "label": "real-pointer-60hz-30x2px",
+    "steps": [
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      },
+      {
+        "x": 2,
+        "y": 0
+      }
+    ],
+    "stepDelayMs": 16,
+    "settleMs": 40
+  },
+  "firstLaunch": {
+    "note": "进程内第一次启动，单列；不叫 OS 冷缓存，也不进配对统计",
+    "arm": "off",
+    "round": 0,
+    "order": 0,
+    "firstLaunch": true,
+    "writes": 27,
+    "from": {
+      "x": 80,
+      "y": 80
+    },
+    "to": {
+      "x": 140,
+      "y": 80
+    },
+    "cpuJiffies": 4,
+    "cpuMs": 40,
+    "latencyFirst": 45,
+    "latencyLast": 9,
+    "latencyMedian": 27,
+    "latencyMatched": 29,
+    "latencyUnmatched": 0,
+    "quietExtraWrites": 0,
+    "exitCode": 0,
+    "exitTimedOut": false,
+    "portClosed": true,
+    "alivePids": 0,
+    "writesAfterQuit": 0,
+    "wallMs": 11589
+  },
+  "arms": {
+    "off": {
+      "arm": "off",
+      "launches": 5,
+      "writes": [
+        27,
+        27,
+        27,
+        27,
+        27
+      ],
+      "writesMedian": 27,
+      "cpuMs": [
+        30,
+        30,
+        30,
+        30,
+        40
+      ],
+      "cpuMsMedian": 30,
+      "latencyFirst": [
+        51,
+        41,
+        50,
+        37,
+        48
+      ],
+      "latencyLast": [
+        16,
+        7,
+        16,
+        2,
+        14
+      ],
+      "latencyMedian": [
+        33.5,
+        24,
+        33,
+        19.5,
+        31
+      ],
+      "latencyMedianOfMedians": 31,
+      "residue": {
+        "alivePids": 0,
+        "portOpen": 0,
+        "extraWrites": 0
+      }
+    },
+    "on": {
+      "arm": "on",
+      "launches": 5,
+      "writes": [
+        27,
+        28,
+        27,
+        27,
+        27
+      ],
+      "writesMedian": 27,
+      "cpuMs": [
+        30,
+        30,
+        30,
+        20,
+        40
+      ],
+      "cpuMsMedian": 30,
+      "latencyFirst": [
+        47,
+        37,
+        44,
+        38,
+        49
+      ],
+      "latencyLast": [
+        11,
+        18,
+        10,
+        3,
+        14
+      ],
+      "latencyMedian": [
+        29,
+        27.5,
+        27,
+        20.5,
+        31.5
+      ],
+      "latencyMedianOfMedians": 27.5,
+      "residue": {
+        "alivePids": 0,
+        "portOpen": 0,
+        "extraWrites": 0
+      }
+    }
+  },
+  "paired": [
+    {
+      "round": 1,
+      "offWrites": 27,
+      "onWrites": 27,
+      "offCpuMs": 30,
+      "onCpuMs": 30,
+      "offLatencyMedian": 33.5,
+      "onLatencyMedian": 29,
+      "offFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "onFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "finalMatch": true
+    },
+    {
+      "round": 2,
+      "offWrites": 27,
+      "onWrites": 28,
+      "offCpuMs": 30,
+      "onCpuMs": 30,
+      "offLatencyMedian": 24,
+      "onLatencyMedian": 27.5,
+      "offFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "onFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "finalMatch": true
+    },
+    {
+      "round": 3,
+      "offWrites": 27,
+      "onWrites": 27,
+      "offCpuMs": 30,
+      "onCpuMs": 30,
+      "offLatencyMedian": 33,
+      "onLatencyMedian": 27,
+      "offFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "onFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "finalMatch": true
+    },
+    {
+      "round": 4,
+      "offWrites": 27,
+      "onWrites": 27,
+      "offCpuMs": 30,
+      "onCpuMs": 20,
+      "offLatencyMedian": 19.5,
+      "onLatencyMedian": 20.5,
+      "offFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "onFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "finalMatch": true
+    },
+    {
+      "round": 5,
+      "offWrites": 27,
+      "onWrites": 27,
+      "offCpuMs": 40,
+      "onCpuMs": 40,
+      "offLatencyMedian": 31,
+      "onLatencyMedian": 31.5,
+      "offFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "onFinal": {
+        "x": 140,
+        "y": 80
+      },
+      "finalMatch": true
+    }
+  ],
+  "pairsFinalMatch": true,
+  "verdict": {
+    "code": "no-real-write-reduction",
+    "note": "真实 60Hz 轨迹下写入没有可重复减少（中位 27 → 27）。按阶段门，不建议为这个开关转正。"
+  },
+  "notRun": [
+    "Windows 真实鼠标拖动（本机无 Windows）：not-run",
+    "物理呈帧 / 屏幕上的实际帧：not-run（只测 setPosition 软件提交）",
+    "n=5 的 P95 与统计显著性：不报（样本量不足，报了会误导）"
+  ]
+}
