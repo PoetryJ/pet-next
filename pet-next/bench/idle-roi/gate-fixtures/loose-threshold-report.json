@@ -1,0 +1,67 @@
+{
+ "schemaVersion": 1,
+ "kind": "idle-roi-quality",
+ "status": "passed",
+ "thresholds": {
+  "frameCount": 48,
+  "roiOutsideOpaque": 0,
+  "ptsDeltaMs": 1,
+  "durationDeltaMs": 1,
+  "fToCChannelMaxLsb": 2,
+  "fToCAlphaMaxLsb": 2,
+  "ocMaeLsb": 1,
+  "ocP99Lsb": 3,
+  "bboxDeltaPx": 1,
+  "centroidDeltaPx": 0.5,
+  "alphaThreshold": 1
+ },
+ "arms": {
+  "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+  "fSha256": "b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673",
+  "candidateSha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e"
+ },
+ "manifest": {
+  "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+  "candidateSha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e"
+ },
+ "provenance": {
+  "files": {
+   "O.webm": {
+    "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+   },
+   "F.webm": {
+    "sha256": "b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673"
+   },
+   "C.webm": {
+    "sha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e"
+   }
+  }
+ },
+ "gates": [
+  {
+   "id": "coverage",
+   "pass": true
+  },
+  {
+   "id": "timeline",
+   "pass": true
+  },
+  {
+   "id": "layout",
+   "pass": true
+  },
+  {
+   "id": "f-to-c",
+   "pass": true
+  },
+  {
+   "id": "o-to-c",
+   "pass": true
+  }
+ ],
+ "verdict": {
+  "status": "passed",
+  "pass": true,
+  "failed": []
+ }
+}

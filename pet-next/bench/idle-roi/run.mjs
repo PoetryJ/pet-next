@@ -32,7 +32,9 @@ import path from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
 
 import { connectCdp, delay, freePort, waitForPageSocket } from './lib/cdp.mjs';
-import { loadManifest, resolveArmSource, resolveAssetsDir, stageCommittedAssets, verifyLayout } from './lib/artifacts.mjs';
+// resolveAssetsDir 已由 lib/gate.mjs 交叉核对时调用，这里不再直接用。
+import { loadManifest, resolveArmSource, stageCommittedAssets, verifyLayout } from './lib/artifacts.mjs';
+import { ARM_ALIASES, QUALITY_REPORT_REL, evaluateStageGate, readQualityReport } from './lib/gate.mjs';
 import { probeClicks, probeDrag, probeExit, probeHidden } from './lib/probes.mjs';
 import {
   findProcessesMatching,
@@ -75,13 +77,15 @@ if (process.env.NODE_OPTIONS !== undefined) {
 }
 
 const mode = value('mode', 'perf');
-if (!['perf', 'behavior', 'selfcheck', 'analyze'].includes(mode)) {
-  console.error('--mode 必须是 perf | behavior | selfcheck | analyze');
+if (!['perf', 'behavior', 'selfcheck', 'preflight', 'analyze'].includes(mode)) {
+  console.error('--mode 必须是 perf | behavior | selfcheck | preflight | analyze');
   process.exit(2);
 }
-const display = value('display', ':154');
-if (display !== ':154') {
-  console.error('本任务固定显示号 :154（他人的 :131/:144/:145 不许用）。');
+// M3-12 R1：本 worktree 用 :157；:154 仅保留给上一轮已归档证据，其他显示号一律拒绝。
+const ALLOWED_DISPLAYS = [':157', ':154'];
+const display = value('display', ':157');
+if (!ALLOWED_DISPLAYS.includes(display)) {
+  console.error(`显示号只能是 ${ALLOWED_DISPLAYS.join(' / ')}（他人的 :131/:144/:145 不许用）。`);
   process.exit(2);
 }
 const seconds = Number(value('seconds', '60'));
@@ -90,8 +94,25 @@ const reps = Number(value('reps', mode === 'selfcheck' ? '1' : '3'));
 let stamp = value('stamp', new Date().toISOString().replace(/[:.]/g, '-'));
 const probesRequested = new Set(value('probe', '').split(',').filter(Boolean));
 const clickCount = Number(value('clicks', '12'));
-const overrides = { src: value('src', ''), fSrc: value('f-src', ''), cSrc: value('c-src', '') };
-const allowMissing = has('allow-missing');
+// 阶段门的"反放行"硬规则：任何能让本次采集绕过机器门的开关都直接拒绝（退出 2）。
+// 门在 lib/gate.mjs：素材目录 + quality-report.json 的 verdict.status + 三个素材 SHA。
+const FORBIDDEN_FLAGS = ['force', 'skip-gate', 'allow-missing'];
+if (mode !== 'analyze') {
+  const usedForbidden = FORBIDDEN_FLAGS.filter((name) => has(name));
+  if (usedForbidden.length > 0) {
+    console.error(
+      `本轮禁止绕过阶段门：${usedForbidden.map((name) => `--${name}`).join(' ')}（放行只看 report 的 verdict.status 与素材 SHA，无人工记忆开关）`,
+    );
+    process.exit(2);
+  }
+  const usedOverrides = ['src', 'f-src', 'c-src'].filter((name) => value(name, '') !== '');
+  if (usedOverrides.length > 0) {
+    console.error(
+      `本轮禁止 ${usedOverrides.map((name) => `--${name}`).join(' ')}：臂素材只能来自 --assets-ref 的已提交 subpath，并被质量报告 SHA 钉住。`,
+    );
+    process.exit(2);
+  }
+}
 
 /** 证据永远写在工具所在目录（被测产品根可能是另一份已提交源码）。 */
 const resultsRoot = path.resolve(fileURLToPath(new URL('.', import.meta.url)));
@@ -212,6 +233,7 @@ async function runArm(context, { arm, rep }) {
   const idleBase = source.path ? path.basename(source.path) : `${arm}.webm`;
   const result = {
     arm,
+    label: context.armLabels?.[arm] ?? arm,
     rep,
     tag,
     idleSource: source,
@@ -732,8 +754,22 @@ async function writeSummary(context, armResults) {
       ? { path: context.reactionUrl, sha256: sha256(context.reactionUrl) }
       : { path: null, sha256: null, note: '未指定，产品用默认 reaction.webm' },
     sources: context.sources,
+    armLabels: context.armLabels ?? null,
+    // 阶段门判定（lib/gate.mjs 的原始证据）：报告路径/字节 SHA/verdict/gates/阈值/三臂 SHA 对照。
+    qualityGate: context.stageGate
+      ? {
+          ok: context.stageGate.ok,
+          code: context.stageGate.code,
+          checkedAt: context.stageGate.evidence?.checkedAt ?? null,
+          qualityReport: context.stageGate.evidence?.qualityReport ?? null,
+          assetsDir: context.stageGate.evidence?.assetsDir ?? null,
+          arms: context.stageGate.evidence?.arms ?? null,
+          armShaClaims: context.stageGate.evidence?.armShaClaims ?? null,
+        }
+      : null,
     arms: armResults.map((entry) => ({
       arm: entry.arm,
+      label: entry.label ?? entry.arm,
       rep: entry.rep,
       tag: entry.tag,
       idleSource: entry.idleSource,
@@ -808,6 +844,93 @@ function requireArms(planArms, sources) {
   return missing;
 }
 
+/** 本轮默认 subpath：B 的原生 YUVA 产物（O/F3/C3）。 */
+const DEFAULT_ASSETS_SUBPATH = 'experiments/idle-roi/out-v3-yuva';
+
+/**
+ * 阶段门：在启动任何产品进程之前把"素材目录 + 质量报告 + 三臂 SHA"锁死。
+ * 不通过就非零退出（2/4/5），并把判定写进 runs/<stamp>/gate.json 作为证据。
+ * 返回 { archive, assetsDir, manifestInfo, manifest, sources, gate }。
+ */
+function runStageGate() {
+  const assetsRef = value('assets-ref', '');
+  const assetsRepo = value('assets-repo', path.resolve(petRoot, '..'));
+  const assetsDirArg = value('assets-dir', '');
+  const assetsSubpath = value('assets-subpath', DEFAULT_ASSETS_SUBPATH);
+  const qualityReportArg = value('quality-report', '');
+  const repo = path.dirname(petRoot);
+  const strictReport = mode !== 'preflight';
+  mkdirSync(outDir, { recursive: true });
+
+  if (strictReport && qualityReportArg !== '') {
+    console.error('--quality-report 只给 --mode=preflight 的负控/正控自检用；性能/行为采集只读仓内已提交的报告。');
+    process.exit(2);
+  }
+  if (assetsRef === '' && assetsDirArg === '') {
+    console.error('阶段门：必须给 --assets-ref=<已提交 ref>（推荐）或 --assets-dir=<本次 subpath 已解出的目录>。');
+    console.error('  不再回退到工作区里的 experiments/：那既可能未提交，也可能选回上一次的 out。');
+    process.exit(2);
+  }
+
+  let archive = null;
+  let dest = null;
+  if (assetsRef !== '') {
+    dest = path.join(outDir, 'assets-committed');
+    archive = stageCommittedAssets({ repo: assetsRepo, ref: assetsRef, dest, subpath: assetsSubpath });
+    printStatus(`assets-ref=${assetsRef} subpath=${assetsSubpath} -> ${archive.ok ? dest : `失败：${archive.error}`}`);
+    if (!archive.ok) {
+      writeFileSync(
+        path.join(outDir, 'gate.json'),
+        JSON.stringify({ ok: false, stage: 'stage-committed-assets', assetsRepo, assetsRef, assetsSubpath, command: archive.command, error: archive.error, checkedAt: new Date().toISOString() }, null, 2),
+      );
+      console.error(`git archive 取已提交素材失败：${archive.command}\n${archive.error}`);
+      process.exit(4);
+    }
+  }
+
+  const candidateDir = dest ? path.join(dest, path.basename(assetsSubpath)) : path.resolve(assetsDirArg);
+  const stagedManifest = loadManifest(path.join(candidateDir, 'manifest.json')).manifest;
+  const reportPath = qualityReportArg === '' ? path.join(petRoot, QUALITY_REPORT_REL) : path.resolve(qualityReportArg);
+  const reportRel = qualityReportArg === '' ? `pet-next/${QUALITY_REPORT_REL}` : null;
+
+  const gate = evaluateStageGate({
+    repo,
+    subpath: assetsSubpath,
+    dest,
+    assetsDirArg: assetsDirArg === '' ? null : assetsDirArg,
+    qualityReportPath: reportPath,
+    qualityReportRel: reportRel,
+    strictReport,
+    stagedManifest,
+    petRootDir: petRoot,
+  });
+  writeFileSync(path.join(outDir, 'gate.json'), JSON.stringify(gate, null, 2));
+
+  if (!gate.ok) {
+    console.error(`[idle-roi] 阶段门拒绝（code=${gate.code}）：${gate.errors.length} 项`);
+    for (const message of gate.errors) console.error(`  - ${message}`);
+    console.error(`  质量报告：${reportPath}（sha256=${readQualityReport(reportPath).sha256}）`);
+    console.error(`  素材 subpath：${assetsSubpath}；判定细节见 ${path.join(outDir, 'gate.json')}`);
+    process.exit(gate.code || 5);
+  }
+
+  const assetsDir = gate.evidence.assetsDir.expected;
+  const manifestInfo = loadManifest(path.join(assetsDir, 'manifest.json'));
+  const picks = gate.evidence.arms;
+  const sources = {
+    O: resolveArmSource('O', { src: picks.O.chosen.path }, manifestInfo.manifest, assetsDir),
+    F: resolveArmSource('F', { fSrc: picks.F.chosen.path }, manifestInfo.manifest, assetsDir),
+    C: resolveArmSource('C', { cSrc: picks.C.chosen.path }, manifestInfo.manifest, assetsDir),
+  };
+  for (const arm of ['O', 'F', 'C']) {
+    sources[arm].gateExpectedSha256 = picks[arm].expectedSha256;
+    sources[arm].gateShaMatched = sources[arm].sha256 === picks[arm].expectedSha256;
+    sources[arm].gateChosenFrom = picks[arm].chosen.origin;
+    sources[arm].gateChosenName = picks[arm].chosen.name;
+  }
+  return { archive, assetsDir, manifestInfo, manifest: manifestInfo.manifest, sources, gate };
+}
+
 async function main() {
   if (mode === 'analyze') {
     const runDir = value('run', '');
@@ -861,6 +984,15 @@ async function main() {
     return;
   }
 
+  // 阶段门先跑（lib/gate.mjs）：素材目录 + quality-report.json + 三臂 SHA。
+  // 任何一项不满足都在**没有 Xvfb、没有 Electron、没有 build** 的情况下非零退出。
+  const staged = runStageGate();
+  if (mode === 'preflight') {
+    console.log(path.join(outDir, 'gate.json'));
+    console.log(JSON.stringify({ gate: { ok: staged.gate.ok, code: staged.gate.code, errors: staged.gate.errors } }, null, 2));
+    return;
+  }
+
   mkdirSync(armsDir, { recursive: true });
   acquireLock();
 
@@ -887,50 +1019,50 @@ async function main() {
   const preflight = electronPreflight();
   printStatus(`electron=${preflight.version} attempts=${preflight.attempt ?? preflight.attempts ?? '?'}`);
 
-  // 素材只认已提交字节：--assets-ref=<ref> 用 git archive 抽到 runs/<stamp>/assets-committed，
-  // 不读任何人的未提交工作区；--assets-dir 用于直接给出已解出的 out 目录。
-  const assetsRef = value('assets-ref', '');
-  const assetsRepo = value('assets-repo', path.resolve(petRoot, '..'));
-  const assetsDirArg = value('assets-dir', '');
-  const assetsSubpath = value('assets-subpath', 'experiments/idle-roi/out');
-  let archive = null;
-  let assetsDir = null;
-  if (assetsDirArg !== '') {
-    assetsDir = resolveAssetsDir(path.resolve(assetsDirArg));
-  } else if (assetsRef !== '') {
-    const dest = path.join(outDir, 'assets-committed');
-    archive = stageCommittedAssets({ repo: assetsRepo, ref: assetsRef, dest, subpath: assetsSubpath });
-    printStatus(`assets-ref=${assetsRef} -> ${archive.ok ? dest : `失败：${archive.error}`}`);
-    if (!archive.ok) {
-      console.error(`git archive 取已提交素材失败：${archive.command}\n${archive.error}`);
-      cleanupAll();
-      process.exit(4);
-    }
-    assetsDir = resolveAssetsDir(dest);
+  // 素材与 SHA 已由阶段门确定（见 runStageGate）：这里只取结果，不再自行解析路径。
+  const { archive, assetsDir, manifestInfo, manifest, sources, gate } = staged;
+  printStatus(`assetsDir=${assetsDir}（subpath=${gate.evidence.assetsDir.subpathName}）`);
+  for (const arm of ['O', 'F', 'C']) {
+    printStatus(
+      `  ${arm}: ${sources[arm].path} sha256=${String(sources[arm].sha256).slice(0, 12)} bytes=${sources[arm].bytes} 报告SHA=${String(sources[arm].gateExpectedSha256).slice(0, 12)} match=${String(sources[arm].gateShaMatched)}`,
+    );
   }
-  const manifestInfo = loadManifest(assetsDir ? path.join(assetsDir, 'manifest.json') : undefined);
-  const manifest = manifestInfo.manifest;
-  const sources = {
-    O: resolveArmSource('O', overrides, manifest, assetsDir),
-    F: resolveArmSource('F', overrides, manifest, assetsDir),
-    C: resolveArmSource('C', overrides, manifest, assetsDir),
-  };
-  // 阶段一自检只跑 O；A 的产物缺失时默认硬失败，不静默只跑 O。
-  const requestedArms = mode === 'selfcheck' ? ['O'] : value('plan', 'O,F,C').split(',').map((item) => item.trim()).filter(Boolean);
-  for (const arm of requestedArms) {
-    if (!['O', 'F', 'C'].includes(arm)) {
-      console.error(`--plan 里有未知臂 ${arm}`);
+  // 阶段一自检只跑 O；臂别名 F3/C3 映射到内部 F/C（本轮 B 的产物命名）。
+  const requestedArms = [];
+  const armLabels = {};
+  const planTokens = mode === 'selfcheck'
+    ? ['O']
+    : value('plan', 'O,F,C')
+        .split(',')
+        .map((item) => item.trim())
+        .filter(Boolean);
+  for (const token of planTokens) {
+    const upper = token.toUpperCase();
+    const base = ARM_ALIASES[upper] ?? upper;
+    if (!['O', 'F', 'C'].includes(base)) {
+      console.error(`--plan 里有未知臂 ${token}`);
       process.exit(2);
+    }
+    if (!requestedArms.includes(base)) {
+      requestedArms.push(base);
+      armLabels[base] = upper;
     }
   }
   const missing = requireArms(requestedArms, sources);
-  if (missing.length > 0 && !allowMissing) {
-    console.error(`素材前置不满足：${missing.join(' | ')}`);
-    console.error('A 的产物未落地时先只跑自检：--mode=selfcheck；或显式 --allow-missing（结果会标 notRun）。');
+  if (missing.length > 0) {
+    console.error(`素材前置不满足（阶段门已过但臂解析仍缺文件，属工具 bug）：${missing.join(' | ')}`);
     cleanupAll();
     process.exit(4);
   }
-  if (missing.length > 0) notRun.push(`missing-artifacts: ${missing.join(' | ')}`);
+  // 双重核对：门算过的报告 SHA 必须与本轮真正加载的字节相同（门已查，这里再挡一次回归）。
+  const shaDrift = requestedArms.filter((arm) => sources[arm].gateShaMatched !== true);
+  if (shaDrift.length > 0) {
+    console.error(
+      `素材 SHA 与质量报告不一致：${shaDrift.map((arm) => `${arm}(${sources[arm].sha256} != ${sources[arm].gateExpectedSha256})`).join(' | ')}`,
+    );
+    cleanupAll();
+    process.exit(5);
+  }
   // C 的布局接线（负责人 830b7cb + 9dc035e）：--roi-layout=on 会设
   // PET_NEXT_IDLE_ROI=1 + PET_NEXT_IDLE_ROI_MANIFEST=<staged>/manifest.json。
   const roiLayout = value('roi-layout', 'off') !== 'off';
@@ -978,6 +1110,8 @@ async function main() {
     manifestInfo,
     archive,
     assetsDir,
+    armLabels,
+    stageGate: gate,
     productRef: value('product-ref', ''),
     productSupportsRoiWiring,
     reactionUrl,
