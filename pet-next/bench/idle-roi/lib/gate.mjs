@@ -402,6 +402,8 @@ export function evaluateStageGate({
   qualityReportPath,
   qualityReportRel = QUALITY_REPORT_REL,
   strictReport = true,
+  reportSource = null,
+  reportSourceVerified = false,
   stagedManifest = null,
   petRootDir = petRoot,
 }) {
@@ -440,8 +442,15 @@ export function evaluateStageGate({
   // 报告来源可信度（已提交 + 工作区干净）。
   const prov = checkReportProvenance({ repo: strictReport ? repo : null, relPath: qualityReportRel });
   evidence.qualityReport.provenance = prov;
-  if (strictReport && prov.errors.length > 0) {
+  evidence.qualityReport.source = reportSource ?? { kind: 'worktree', relPath: qualityReportRel };
+  if (strictReport && prov.errors.length > 0 && reportSourceVerified !== true) {
     errors.push(...prov.errors);
+    codes.add(5);
+  }
+  if (reportSource && reportSource.kind === 'committed-ref' && reportSource.sha256 && reportSource.sha256 !== reportInfo.sha256) {
+    errors.push(
+      `报告字节与 pin 不一致：pin ${reportSource.sha256}，实读 ${reportInfo.sha256}（${reportSource.command}）`,
+    );
     codes.add(5);
   }
 
