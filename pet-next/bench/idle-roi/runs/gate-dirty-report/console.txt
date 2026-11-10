@@ -1,0 +1,9 @@
+$ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=perf --assets-ref=HEAD --assets-subpath=experiments/idle-roi/out-v2 --stamp=gate-dirty-report --display=:157
+
+[idle-roi] assets-ref=HEAD(?) subpath=experiments/idle-roi/out-v2 -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-dirty-report/assets-committed
+[idle-roi] 阶段门拒绝（code=5）：1 项
+  - 质量报告有未提交改动（M pet-next/tests/idle-roi/out/quality-report.json），不能作为放行依据
+  质量报告：/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/tests/idle-roi/out/quality-report.json（sha256=d7b8a5f1f45cdab73c2c2d746ca6509b8d6c6bd020cb522411512d73d8580232）
+  素材 subpath：experiments/idle-roi/out-v2；判定细节见 /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/gate-dirty-report/gate.json
+
+EXIT=5

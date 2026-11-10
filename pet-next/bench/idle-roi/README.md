@@ -11,7 +11,8 @@
 | 一（现在） | 工具就绪即可 | `--mode=selfcheck`：只跑 O，证明 /proc 计量、真实解码帧、点击时延、退出/残留都可用 |
 | 二（等负责人通知） | A 的产物过 C 画质门 + 负责人说“可以跑性能” | `--plan=O,F,C --reps=3`，以及其他 agent 停编码/停测试后执行 |
 
-阶段一**不跑 F/C**；F/C 缺失时默认直接失败（`--allow-missing` 才会降级并标 notRun），
+阶段一**不跑 F/C**；F/C 缺失时默认直接失败（`--allow-missing` 才会降级并标 notRun；接了
+阶段门后这类旁路会被门禁拒绝，以 `STAGE-GATE.md` 为准），
 避免“只跑 O 却看起来像做了对照”。
 
 ## 2. 三臂定义与素材路径
@@ -37,6 +38,9 @@ git -C <repo> archive <commit> pet-next/<subpath> |
   调用的内容（旧 `out/` 不删，也不会被当成 v2）。
 - 只有**没有显式 subpath** 时（`--assets-dir=<dir>`）才允许向下扫描 `manifest.json`：
   0 个候选或 ≥2 个候选都直接失败（`manifest-not-found` / `ambiguous-assets-dir`），不猜。
+- 需要复核“该用哪一份”时用精确模式 `resolveAssetsDir(dir, { subpath })`：不扫描，直接返回
+  `<dir>/<subpath>`（`subpath-not-found` / `invalid-subpath` 时为 null）。单参
+  `resolveAssetsDir(dir)` 在 v1/v2 并存的 dest 上返回 null，不会返回旧 `out/`。
 - 路径校验：只接受 `pet-next/` 下的仓库相对路径（前缀可省略）。绝对路径、盘符（`C:/…`）、
   反斜杠路径、`.`/`..` 组件、空路径/空组件、pathspec 通配（`*`、`?`）一律拒绝
   （`invalid-subpath`）。
@@ -55,6 +59,16 @@ git -C <repo> archive <commit> pet-next/<subpath> |
 | 子路径指向文件而不是目录 | `assets-dir-missing` |
 | `--assets-dir` 下多个候选 | `ambiguous-assets-dir` |
 
+臂名映射表（`F_FILES`/`C_FILES`）：v1/v2 是 `F.webm`/`C.webm`，v3（原生 YUVA）是
+`F3.webm`/`C3.webm`。**名字只用于定位，SHA 仍逐文件核验**——所以 `F3/C3` 不需要任何
+“命名不符就放行”的旁路；`gate.json` 里的 `staging.namingOnlyFailure` 只是记账字段（仅在
+候选名不在映射表内、且 manifest/字节自洽时为非 null），它**不放行 SHA**，随后仍由阶段门
+按质量报告的逐臂 SHA 核验，对不上照样 exit 5。
+注意 v3 manifest 没有声明 F3 的 SHA（`revision['v3-yuva']` 只有派生说明，没有 `F`/`C` 条目），
+所以 `verifyAssetsDir` 对 F3 只做“存在”检查（`checks.fShaDeclared=false`、`fMatchesManifest=null`）；
+F3 的字节绑定由阶段门按质量报告 `verdict.candidates.sha256.F` 完成。C3 仍有
+`manifest.candidateSha256` 可对。
+
 `O.webm` 必须等于 `manifest.sourceSha256`，`C.webm` 必须等于 `manifest.candidateSha256`；
 `F.webm` 若 manifest 声明了 `revision.<ver>.F.sha256`（`<ver>` = `C.sha256 ===
 candidateSha256` 的那一版）也必须一致——v1/v2 的 F 不同，不能拿 v1 的 F 校验 v2 的字节。
@@ -71,7 +85,8 @@ candidateSha256` 的那一版）也必须一致——v1/v2 的 F 不同，不能
 | `files[]` | 素材目录里每个文件的 `relative/bytes/sha256`（实测） |
 
 每行 raw.ndjson 还带 `sourceSha256`，`summary.sources` 有三个臂的路径/字节数/SHA。
-不读任何人的未提交工作区快照。`--src= --f-src= --c-src=` 仍可人工覆盖单文件；给了本次
+不读任何人的未提交工作区快照。`--src= --f-src= --c-src=` 仍可人工覆盖单文件（阶段门模式下
+这类覆盖会被门禁拒绝，以 `STAGE-GATE.md` 为准）；给了本次
 素材目录后**缺文件就报 missing，不回退到仓库里另一版本的 F/C**（避免 v1 字节混进 v2 数据）。
 
 ### C 的几何接线（负责人 830b7cb + 9dc035e，默认关闭）
@@ -159,6 +174,14 @@ env -u NODE_OPTIONS node bench/idle-roi/run.mjs --plan=O,F,C --seconds=60 --warm
 
 # 只复算已有目录（不启动 GUI）
 env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=analyze --run=bench/idle-roi/runs/<stamp>
+
+# 阶段门（lib/gate.mjs，任何 perf/behavior 采集都会先跑它）：
+#   - 默认 subpath = experiments/idle-roi/out-v3-yuva（F3/C3）；--assets-subpath 可换
+#   - assetsDir 由本次 stage 唯一决定，并用 resolveAssetsDir(dest, { subpath }) 精确复核
+#   - report verdict.status 不是 passed / 任一臂 SHA 与报告不符 → exit 5；取素材失败 → exit 4
+#   - 干跑只看门（不启动 Xvfb/Electron/build）：
+env -u NODE_OPTIONS node bench/idle-roi/run.mjs --mode=preflight \
+  --assets-ref=07278fd --assets-subpath=experiments/idle-roi/out-v3-yuva --display=:157
 
 # 素材入口回归（纯文件系统，不启动 Electron；含真实 out-v2 一次）
 env -u NODE_OPTIONS node --test bench/idle-roi/test/artifacts.test.mjs
@@ -298,6 +321,10 @@ A 的提交 `da02255` 与负责人集成提交 `9dc035e` 的三臂字节逐字�
 - **provenance 曾残留 v1 字段（已修，R1-A）**：`summary.provenance` 改为 `schemaVersion: 2`，
   `assetCommit`/`evaluationCodeCommit`/`sourceVideoSha`/`candidateSha`/`manifestSha256` 与
   `files[].sha256` 全部从实际取出的文件重算（字段表见第 2 节）。
+- **阶段门合并（R1-A + D）**：D 的 `lib/gate.mjs` 与 A 的精确 staging 合入同一条路径——
+  `assetsDir` 只来自本次 `stageCommittedAssets` 的返回值（`--assets-dir` 时来自唯一候选扫描 +
+  `verifyAssetsDir`），门再用 `resolveAssetsDir(dest, { subpath })` 精确复核；v3 的
+  `F3.webm`/`C3.webm` 走臂名映射表，`namingOnlyFailure` 不放行 SHA。
 - 工具覆盖已自证：已提交字节抽取与 SHA 记账、进程树 CPU/RSS/PSS、真实解码帧与视频尺寸、
   10 次点击原始值、loadavg、ready/退出码/残留、warmup/measure 分列、raw.ndjson + summary.json。
 

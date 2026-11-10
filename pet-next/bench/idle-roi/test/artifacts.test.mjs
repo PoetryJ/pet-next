@@ -158,6 +158,36 @@ describe('stageCommittedAssets：显式 subpath 必须准确', () => {
     for (const file of provenance.files) assert.equal(file.sha256, shaOf(path.join(staged.assetsDir, file.relative)));
   });
 
+  test('v3 命名（F3.webm/C3.webm）按臂名映射识别，SHA 仍逐文件核验', () => {
+    const { root, repo } = newRepo('v3names');
+    const rel = 'experiments/idle-roi/out-v3-yuva';
+    const dir = path.join(repo, 'pet-next', rel);
+    mkdirSync(dir, { recursive: true });
+    const o = 'O-v3';
+    const f = 'F3-bytes';
+    const c = 'C3-bytes';
+    const manifest = {
+      schemaVersion: 1,
+      kind: 'idle-roi',
+      sourceSha256: sha(Buffer.from(o, 'utf8')),
+      candidateSha256: sha(Buffer.from(c, 'utf8')),
+      revision: { 'v3-yuva': { version: 'v3-yuva', route: 'native-yuva' } },
+    };
+    writeFileSync(path.join(dir, 'manifest.json'), `${JSON.stringify(manifest, null, 2)}\n`);
+    writeFileSync(path.join(dir, 'O.webm'), o);
+    writeFileSync(path.join(dir, 'F3.webm'), f);
+    writeFileSync(path.join(dir, 'C3.webm'), c);
+    const ref = commit(repo, 'v3 naming');
+    const staged = stageCommittedAssets({ repo, ref, dest: path.join(root, 'd'), subpath: rel });
+    assert.equal(staged.ok, true, staged.error);
+    assert.equal(staged.verification.measured.candidateSha, sha(Buffer.from(c, 'utf8')));
+    assert.equal(staged.verification.measured.fullCanvasSha, sha(Buffer.from(f, 'utf8')));
+    assert.equal(staged.verification.checks.cMatchesCandidate, true);
+    // 名字进了映射表，SHA 校验不放松：改一个字节必须失败
+    writeFileSync(path.join(staged.assetsDir, 'C3.webm'), 'tampered');
+    assert.equal(verifyAssetsDir(staged.assetsDir).code, 'sha-mismatch');
+  });
+
   test('同 dest 先 v1 后 v2：第二次拿到 v2，旧 v1 与外来文件都不被清理', () => {
     const { root, repo, v1, v2 } = standardRepo();
     const dest = path.join(root, 'mixed');
@@ -191,6 +221,25 @@ describe('stageCommittedAssets：显式 subpath 必须准确', () => {
     assert.equal(shaOf(path.join(dest, 'experiments/idle-roi/out-v2/C.webm')), sha(Buffer.from('C-v2', 'utf8')));
   });
 });
+
+  test('subpath 复核模式：两参精确命中，单参不猜', () => {
+    const { root, repo, v1, v2 } = standardRepo();
+    const dest = path.join(root, 'mixed-review');
+    stageCommittedAssets({ repo, ref: v1, dest, subpath: 'experiments/idle-roi/out' });
+    stageCommittedAssets({ repo, ref: v2, dest, subpath: 'pet-next/experiments/idle-roi/out-v2' });
+    // 单参：多候选 → null（不再选回旧 out/）
+    assert.equal(resolveAssetsDir(dest), null);
+    // 两参：精确返回本次 subpath 对应目录，不扫描
+    assert.equal(resolveAssetsDir(dest, { subpath: 'experiments/idle-roi/out-v2' }), path.join(dest, 'experiments/idle-roi/out-v2'));
+    assert.equal(resolveAssetsDir(dest, { subpath: 'pet-next/experiments/idle-roi/out' }), path.join(dest, 'experiments/idle-roi/out'));
+    const detail = resolveAssetsDirDetailed(dest, { subpath: 'experiments/idle-roi/out-v2' });
+    assert.equal(detail.ok, true);
+    assert.equal(detail.source, 'explicit-subpath');
+    // 非法 / 不存在
+    assert.equal(resolveAssetsDirDetailed(dest, { subpath: '../README.md' }).code, 'invalid-subpath');
+    assert.equal(resolveAssetsDirDetailed(dest, { subpath: 'experiments/idle-roi/out-v3' }).code, 'subpath-not-found');
+    assert.equal(resolveAssetsDir(dest, { subpath: 'experiments/idle-roi/out-v3' }), null);
+  });
 
 describe('非法/缺失路径与空产物：一律非零失败', () => {
   test('../README.md、绝对路径、反斜杠、不存在子树 都不返回 ok', () => {
