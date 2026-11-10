@@ -54,6 +54,12 @@ C 当成采用候选）。`experiments/**` 永远不进 dist，不要去那里�
 
 ### C 开跑前置（当前阻塞）
 
+**硬规则：ROI 规则的 `object-fit` 必须是 `contain`。`none` 会把 226×286 按固有尺寸画进
+113×143 的盒子（dpr=1 时等于 2× 裁切放大，只露左上角 1/4）；盒子与裁框同比例，`contain`
+= `fill` = 按比例缩到 113×143，画面才与全画布重编码一致。** 违反时本工具判
+`contentScalingOk=false` → `roi-layout-not-wired` → C 臂直接 notRun（不烧 3×60s）。
+真实案例见 `runs/perf-3x60-v3-aborted-object-fit-none/`（接线第一次恢复成 `none`，启动后立即中断）。
+
 负责人 HEAD `4b0b1f0` 的 `app/page.css` 里 ROI 规则仍是 `object-fit: none`：rect 与
 `videoWidth/Height` 都会对，但 226×286 按固有尺寸画进 113×143 盒（2 倍大、右下溢出）。
 本工具会因此判 `contentScalingOk=false` → `roi-layout-not-wired`。**等 `none → contain`

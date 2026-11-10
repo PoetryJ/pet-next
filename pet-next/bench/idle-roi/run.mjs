@@ -58,7 +58,7 @@ import {
   windowGeometry,
   xdo,
 } from './lib/session.mjs';
-import { median, pairDrops, summarizeArm, verdict } from './lib/stats.mjs';
+import { behavioralVerdict, median, pairDrops, summarizeArm, verdict } from './lib/stats.mjs';
 
 const rawArgs = process.argv.slice(2);
 const value = (name, fallback) => {
@@ -77,8 +77,8 @@ if (process.env.NODE_OPTIONS !== undefined) {
 }
 
 const mode = value('mode', 'perf');
-if (!['perf', 'behavior', 'selfcheck', 'preflight', 'analyze'].includes(mode)) {
-  console.error('--mode 必须是 perf | behavior | selfcheck | preflight | analyze');
+if (!['perf', 'behavior', 'selfcheck', 'preflight', 'analyze', 'finalize'].includes(mode)) {
+  console.error('--mode 必须是 perf | behavior | selfcheck | preflight | analyze | finalize');
   process.exit(2);
 }
 // M3-12 R1：本 worktree 用 :157；:154 仅保留给上一轮已归档证据，其他显示号一律拒绝。
@@ -848,6 +848,37 @@ function requireArms(planArms, sources) {
 const DEFAULT_ASSETS_SUBPATH = 'experiments/idle-roi/out-v3-yuva';
 
 /**
+ * 从 summary.arms[] 的逐臂聚合重算 perArm（跨 rep 中位）。只吃已有数据，不重新采样。
+ */
+function recomputePerArm(arms) {
+  const out = {};
+  for (const arm of ['O', 'F', 'C']) {
+    const entries = (arms ?? []).filter((entry) => entry.arm === arm);
+    const pick = (fn) => entries.map((entry) => fn(entry)).filter((value) => typeof value === 'number');
+    const cpu = pick((entry) => entry.summary?.cpuSecondsPerMinute);
+    const rss = pick((entry) => entry.summary?.rssSumMbMedian);
+    const load = pick((entry) => entry.summary?.loadavg1Median);
+    const pct = pick((entry) => entry.summary?.cpuPercentMedian);
+    const fps = pick((entry) => entry.summary?.decodedFps);
+    const video = entries.map((entry) => entry.summary?.videoSize).filter(Boolean).at(-1) ?? null;
+    out[arm] = {
+      reps: entries.length,
+      repsWithData: cpu.length,
+      cpuSecondsPerMinuteMedian: median(cpu),
+      cpuSecondsPerMinuteValues: cpu,
+      cpuPercentMedianAcrossReps: median(pct),
+      rssSumMbMedian: median(rss),
+      rssSumMbValues: rss,
+      loadavg1Median: median(load),
+      loadavg1Values: load,
+      decodedFpsMedian: median(fps),
+      videoSize: video,
+    };
+  }
+  return out;
+}
+
+/**
  * 把质量报告钉在已提交对象上：`git show <commit>:pet-next/tests/idle-roi/out/quality-report.json`。
  * 返回的 sha256 是取出的字节实测值，用于证明"读的是哪份报告"。
  */
@@ -1076,6 +1107,54 @@ async function main() {
     const summary = await writeSummary(context, armResults);
     console.log(summaryPath);
     console.log(JSON.stringify({ perArm: summary.perArm, verdict: summary.verdict }, null, 2));
+    return;
+  }
+
+  if (mode === 'finalize') {
+    // 只用已有 summary.json 里的逐臂数据重算 perArm 与 verdict，不启动产品：
+    //  a) 工具 bug 修好后纠正历史 summary 的 verdict（perArm 键名错位曾判成"缺 CPU 数据"）；
+    //  b) behavior 轮（--seconds=0 不采 CPU）改用功能性判定，不再套 CPU 收益门。
+    const runDir = value('run', '');
+    if (runDir === '') {
+      console.error('--mode=finalize 需要 --run=bench/idle-roi/runs/<stamp>');
+      process.exit(2);
+    }
+    const dir = path.isAbsolute(runDir) ? runDir : path.join(petRoot, runDir);
+    const target = path.join(dir, 'summary.json');
+    if (!existsSync(target)) {
+      console.error(`没有 summary.json：${dir}`);
+      process.exit(2);
+    }
+    const original = JSON.parse(readFileSync(target, 'utf8'));
+    const perArm = recomputePerArm(original.arms);
+    const kind = Number(original.seconds) === 0 ? 'behavioral' : 'performance';
+    const nextVerdict =
+      kind === 'behavioral' ? behavioralVerdict({ arms: original.arms }) : verdict({ perArm, pairs: pairDrops(original.arms) });
+    copyFileSync(target, path.join(dir, 'summary.pre-finalize.json'));
+    const next = {
+      ...original,
+      // behavior 轮不采 CPU：perArm 留空但给出功能性逐臂汇总，避免"全 null = 缺数据"的误读。
+      perArm: kind === 'behavioral' ? null : perArm,
+      behaviorPerArm: kind === 'behavioral' ? nextVerdict.perArmByLabel ?? null : original.behaviorPerArm ?? null,
+      perArmNote:
+        kind === 'behavioral'
+          ? 'behavior 轮 --seconds=0 不采 CPU/RSS，逐臂功能汇总见 behaviorPerArm；CPU 数据只能来自 --mode=perf'
+          : 'perArm = 跨 rep 中位（cpuSecondsPerMinuteValues 为逐 rep 原始值）',
+      verdict: nextVerdict,
+      finalized: {
+        at: new Date().toISOString(),
+        kind,
+        tool: 'node bench/idle-roi/run.mjs --mode=finalize --run=<stamp>',
+        previousVerdict: original.verdict ?? null,
+        note:
+          kind === 'behavioral'
+            ? 'behavior 轮（--seconds=0）只做功能回归，判定为功能性门（布局/点击/隐藏/失败占位/退出/残留），不套 CPU 收益门'
+            : 'perArm/verdict 由逐臂 summary 重算（修正 perArm 与 verdict 的 CPU 键名错位）；原始 summary 见 summary.pre-finalize.json',
+      },
+    };
+    writeFileSync(target, JSON.stringify(next, null, 2));
+    console.log(target);
+    console.log(JSON.stringify({ kind, pass: nextVerdict.pass, checks: nextVerdict.checks ?? null }, null, 2));
     return;
   }
 

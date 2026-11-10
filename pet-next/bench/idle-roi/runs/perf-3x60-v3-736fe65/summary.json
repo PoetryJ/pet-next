@@ -1893,12 +1893,14 @@
   "perArm": {
     "O": {
       "reps": 3,
+      "repsWithData": 3,
       "cpuSecondsPerMinuteMedian": 3.373,
       "cpuSecondsPerMinuteValues": [
         3.373,
         3.362,
         3.405
       ],
+      "cpuPercentMedianAcrossReps": 5.9,
       "rssSumMbMedian": 378.87,
       "rssSumMbValues": [
         378.3,
@@ -1910,16 +1912,30 @@
         22.12,
         17.98,
         15.6
-      ]
+      ],
+      "decodedFpsMedian": 23.98,
+      "videoSize": {
+        "width": 640,
+        "height": 360,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "currentTime": 0.312
+      }
     },
     "F": {
       "reps": 3,
+      "repsWithData": 3,
       "cpuSecondsPerMinuteMedian": 4.623,
       "cpuSecondsPerMinuteValues": [
         4.775,
         4.39,
         4.623
       ],
+      "cpuPercentMedianAcrossReps": 7.9,
       "rssSumMbMedian": 380.75,
       "rssSumMbValues": [
         380.34,
@@ -1931,16 +1947,30 @@
         15.65,
         27.01,
         15.59
-      ]
+      ],
+      "decodedFpsMedian": 23.94,
+      "videoSize": {
+        "width": 640,
+        "height": 360,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "currentTime": 0.431
+      }
     },
     "C": {
       "reps": 3,
+      "repsWithData": 3,
       "cpuSecondsPerMinuteMedian": 3.68,
       "cpuSecondsPerMinuteValues": [
         3.737,
         3.491,
         3.68
       ],
+      "cpuPercentMedianAcrossReps": 5.9,
       "rssSumMbMedian": 374.49,
       "rssSumMbValues": [
         374.49,
@@ -1952,7 +1982,19 @@
         13.22,
         30.64,
         18.6
-      ]
+      ],
+      "decodedFpsMedian": 23.94,
+      "videoSize": {
+        "width": 226,
+        "height": 286,
+        "rect": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "currentTime": 1.72
+      }
     }
   },
   "pairs": [
@@ -1982,8 +2024,8 @@
     }
   ],
   "verdict": {
-    "cVsOPercent": null,
-    "cVsFPercent": null,
+    "cVsOPercent": -9.1,
+    "cVsFPercent": 20.4,
     "cVsOPairSupports": 0,
     "cVsFPairSupports": 3,
     "pairCount": 3,
@@ -1991,14 +2033,14 @@
     "loadDelta": 0.62,
     "checks": {
       "cpuMedianDropAtLeast15": false,
-      "cBetterThanFDirection": false,
+      "cBetterThanFDirection": true,
       "pairedSupportAtLeast2of3": false,
       "rssWithin10Percent": true,
       "loadComparable": true
     },
     "pass": false,
     "reasons": [
-      "缺少 O 或 C 的 CPU 数据",
+      "C 对 O 中位仅降 -9.1%（门 ≥15%）",
       "配对支持 0/3 < 2/3"
     ],
     "note": "工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读"
@@ -2058,5 +2100,35 @@
     "cSourceSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
     "oMatchesShipped": true,
     "note": "数据来自以上 SHA 的已提交字节；未提交工作区快照不作为结论依据"
-  }
+  },
+  "finalized": {
+    "at": "2026-11-10T11:25:41.413Z",
+    "kind": "performance",
+    "tool": "node bench/idle-roi/run.mjs --mode=finalize --run=<stamp>",
+    "previousVerdict": {
+      "cVsOPercent": -9.1,
+      "cVsFPercent": 20.4,
+      "cVsOPairSupports": 0,
+      "cVsFPairSupports": 3,
+      "pairCount": 3,
+      "rssDeltaPercent": -1.16,
+      "loadDelta": 0.62,
+      "checks": {
+        "cpuMedianDropAtLeast15": false,
+        "cBetterThanFDirection": true,
+        "pairedSupportAtLeast2of3": false,
+        "rssWithin10Percent": true,
+        "loadComparable": true
+      },
+      "pass": false,
+      "reasons": [
+        "C 对 O 中位仅降 -9.1%（门 ≥15%）",
+        "配对支持 0/3 < 2/3"
+      ],
+      "note": "工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读"
+    },
+    "note": "perArm/verdict 由逐臂 summary 重算（修正 perArm 与 verdict 的 CPU 键名错位）；原始 summary 见 summary.pre-finalize.json"
+  },
+  "behaviorPerArm": null,
+  "perArmNote": "perArm = 跨 rep 中位（cpuSecondsPerMinuteValues 为逐 rep 原始值）"
 }

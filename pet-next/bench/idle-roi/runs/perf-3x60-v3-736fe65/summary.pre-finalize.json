@@ -1,0 +1,2132 @@
+{
+  "schemaVersion": 1,
+  "task": "M3-12-D",
+  "kind": "idle-roi-bench",
+  "stamp": "perf-3x60-v3-736fe65",
+  "mode": "perf",
+  "generatedAt": "2026-11-10T11:04:25.553Z",
+  "command": "node bench/idle-roi/run.mjs --mode=perf --plan=O,F3,C3 --reps=3 --seconds=60 --warmup=10 --roi-layout=on --assets-ref=07278fd --assets-subpath=experiments/idle-roi/out-v3-yuva --quality-report-ref=a1cd1fb --stamp=perf-3x60-v3-736fe65 --display=:157",
+  "host": "nb-1696310541880511232-d0ww0enxobgg",
+  "platform": "linux 5.4.119-19.0009.28 x64",
+  "cpus": 384,
+  "node": "v24.14.0",
+  "electron": "43.3.0",
+  "electronPreflight": "v43.3.0",
+  "head": "736fe65c59fd61cdf72448638807a4f28e7daad4",
+  "branch": "agent/m312r1-perf",
+  "productRoot": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next",
+  "productRootSource": "env:PET_NEXT_BENCH_ROOT",
+  "productRef": "",
+  "dirtyFiles": 0,
+  "productDirtyFiles": 0,
+  "dirtyNote": "dirtyFiles=已跟踪文件改动数（含本 bench 工具自身）；productDirtyFiles 只算 app/electron/core/adapters/contracts/scripts/package.json，应为 0",
+  "display": ":157",
+  "xvfbOwned": false,
+  "window": {
+    "width": 320,
+    "height": 240
+  },
+  "plan": [
+    "O#0",
+    "F#0",
+    "C#0",
+    "C#1",
+    "F#1",
+    "O#1",
+    "O#2",
+    "F#2",
+    "C#2"
+  ],
+  "seconds": 60,
+  "warmupSec": 10,
+  "build": {
+    "built": false,
+    "reason": "up-to-date",
+    "distCss": {
+      "exists": true,
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/dist/app/page.css",
+      "sha256": "4eb6a809d14c1e545b7d9b005064e0b6ac62e033fd2d689ff5f4656611ae3946",
+      "sourcePath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/app/page.css",
+      "sourceSha256": "4eb6a809d14c1e545b7d9b005064e0b6ac62e033fd2d689ff5f4656611ae3946",
+      "matchesSource": true,
+      "objectFitLines": [
+        {
+          "line": 28,
+          "text": "object-fit: contain;"
+        },
+        {
+          "line": 48,
+          "text": "object-fit: contain;"
+        }
+      ],
+      "objectFitNoneLines": [],
+      "idleRoiLines": [
+        {
+          "line": 40,
+          "text": "* 窗口、#pet 命中区域、拖动/点击语义都不变。数值由 contracts/idle-roi 计算（DIP，不再乘 DPR）。"
+        },
+        {
+          "line": 42,
+          "text": "body.idle-roi video#clip {"
+        },
+        {
+          "line": 44,
+          "text": "left: var(--idle-roi-left);"
+        },
+        {
+          "line": 45,
+          "text": "top: var(--idle-roi-top);"
+        },
+        {
+          "line": 46,
+          "text": "width: var(--idle-roi-width);"
+        },
+        {
+          "line": 47,
+          "text": "height: var(--idle-roi-height);"
+        }
+      ],
+      "roiRulePresent": true,
+      "roiRuleObjectFitContain": true,
+      "preflightWarnings": [],
+      "note": "copy-static 原样复制；matchesSource=false 说明 dist 未重建；roiRule* 是文本层预检，最终仍以运行时 computed style 为准"
+    }
+  },
+  "loadavg": {
+    "start": {
+      "one": 19.02,
+      "five": 18.1,
+      "fifteen": 19.65,
+      "running": 10,
+      "threads": 12059
+    },
+    "end": {
+      "one": 15.82,
+      "five": 18.2,
+      "fifteen": 19.34,
+      "running": 9,
+      "threads": 11936
+    },
+    "note": "本机 1 核共享；外部 eval 常把 load 拉到 10+，所有 CPU 数值必须与 loadavg 同时解读"
+  },
+  "manifest": {
+    "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/manifest.json",
+    "found": true,
+    "error": null,
+    "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "candidateSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+    "crop": {
+      "x": 208,
+      "y": 52,
+      "width": 226,
+      "height": 286
+    },
+    "originalCanvas": {
+      "width": 640,
+      "height": 360
+    },
+    "frameCount": 48
+  },
+  "reaction": {
+    "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/reaction.webm",
+    "sha256": "9d73e16ca8d9abcfff96a41d9e98f632a241691ddf81b59538b16a6e77049861"
+  },
+  "sources": {
+    "O": {
+      "arm": "O",
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+      "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
+      "exists": true,
+      "optional": false,
+      "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "expectedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "shaMatched": true,
+      "shippedPath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/idle.webm",
+      "shippedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "matchesShipped": true,
+      "bytes": 78419,
+      "gateExpectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "gateShaMatched": true,
+      "gateChosenFrom": "staged",
+      "gateChosenName": "O.webm"
+    },
+    "F": {
+      "arm": "F",
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+      "label": "F 全画布重编码（与 C 同预处理/编码/PTS）",
+      "exists": true,
+      "optional": true,
+      "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+      "expectedSha": null,
+      "shaMatched": null,
+      "shippedPath": null,
+      "shippedSha256": null,
+      "matchesShipped": null,
+      "bytes": 625108,
+      "gateExpectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+      "gateShaMatched": true,
+      "gateChosenFrom": "staged",
+      "gateChosenName": "F3.webm"
+    },
+    "C": {
+      "arm": "C",
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+      "label": "C ROI 裁剪（编码分辨率=ROI 宽高）",
+      "exists": true,
+      "optional": true,
+      "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+      "expectedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+      "shaMatched": true,
+      "shippedPath": null,
+      "shippedSha256": null,
+      "matchesShipped": null,
+      "bytes": 631169,
+      "gateExpectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+      "gateShaMatched": true,
+      "gateChosenFrom": "staged",
+      "gateChosenName": "C3.webm"
+    }
+  },
+  "armLabels": {
+    "O": "O",
+    "F": "F3",
+    "C": "C3"
+  },
+  "qualityGate": {
+    "ok": true,
+    "code": 0,
+    "checkedAt": "2026-11-10T10:52:51.483Z",
+    "qualityReport": {
+      "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/quality-report.json",
+      "relPath": null,
+      "sha256": "62777d44e38a886d48c8fc1f7d67149c477d1c5871f8958c2008ff32a33071bd",
+      "bytes": 1731945,
+      "found": true,
+      "error": null,
+      "provenance": {
+        "tracked": null,
+        "clean": null,
+        "commit": null,
+        "external": true,
+        "errors": []
+      },
+      "source": {
+        "kind": "committed-ref",
+        "repo": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf",
+        "ref": "a1cd1fb",
+        "commit": "a1cd1fb9183b167ba2e1c022f20db01a337bfaea",
+        "repoPath": "pet-next/tests/idle-roi/out/quality-report.json",
+        "sha256": "62777d44e38a886d48c8fc1f7d67149c477d1c5871f8958c2008ff32a33071bd",
+        "bytes": 1731945,
+        "command": "git -C /data3/DATA/project/project_meishijiang/m312r1-wt-perf show a1cd1fb9183b167ba2e1c022f20db01a337bfaea:pet-next/tests/idle-roi/out/quality-report.json > /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/quality-report.json"
+      },
+      "status": {
+        "reported": "passed",
+        "passed": true,
+        "subject": "f3c3",
+        "candidates": {
+          "category": "f3c3",
+          "status": "passed",
+          "pass": true,
+          "failed": []
+        },
+        "prerequisites": [
+          {
+            "category": "yuva-selfcontrol",
+            "status": "passed",
+            "pass": true
+          }
+        ],
+        "historicalFailed": [
+          "v2-rgba/o-to-c"
+        ],
+        "signals": [
+          {
+            "path": "verdict.status",
+            "value": "passed"
+          },
+          {
+            "path": "verdict.pass",
+            "value": true
+          },
+          {
+            "path": "status",
+            "value": "passed"
+          },
+          {
+            "path": "verdict.candidates.pass",
+            "value": true
+          }
+        ],
+        "gates": [],
+        "errors": []
+      },
+      "thresholds": {
+        "ok": true,
+        "rows": [
+          {
+            "key": "frameCount",
+            "value": 48,
+            "baseline": 48,
+            "ok": true
+          },
+          {
+            "key": "roiOutsideOpaque",
+            "value": 0,
+            "baseline": 0,
+            "ok": true
+          },
+          {
+            "key": "ptsDeltaMs",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "durationDeltaMs",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "fToCChannelMaxLsb",
+            "value": 2,
+            "baseline": 2,
+            "ok": true
+          },
+          {
+            "key": "fToCAlphaMaxLsb",
+            "value": 2,
+            "baseline": 2,
+            "ok": true
+          },
+          {
+            "key": "ocMaeLsb",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "ocP99Lsb",
+            "value": 2,
+            "baseline": 2,
+            "ok": true
+          },
+          {
+            "key": "bboxDeltaPx",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          },
+          {
+            "key": "centroidDeltaPx",
+            "value": 0.5,
+            "baseline": 0.5,
+            "ok": true
+          },
+          {
+            "key": "alphaThreshold",
+            "value": 1,
+            "baseline": 1,
+            "ok": true
+          }
+        ],
+        "errors": []
+      }
+    },
+    "assetsDir": {
+      "subpath": "experiments/idle-roi/out-v3-yuva",
+      "subpathName": "out-v3-yuva",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed",
+      "assetsDirArg": null,
+      "expectedDir": null,
+      "expected": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva",
+      "artifactsResolveAssetsDir": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva",
+      "errors": [],
+      "armFiles": [
+        "O.webm",
+        "F3.webm",
+        "C3.webm"
+      ],
+      "artifactsResolveAssetsDirExplicit": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva"
+    },
+    "arms": {
+      "O": {
+        "arm": "O",
+        "expectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "chosen": {
+          "name": "O.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "bytes": 78419,
+          "matchesExpected": true,
+          "origin": "staged"
+        },
+        "candidates": [
+          {
+            "name": "O.webm",
+            "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+            "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+            "bytes": 78419,
+            "matchesExpected": true,
+            "origin": "staged"
+          }
+        ],
+        "fallback": null,
+        "reason": null
+      },
+      "F": {
+        "arm": "F",
+        "expectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "chosen": {
+          "name": "F3.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+          "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+          "bytes": 625108,
+          "matchesExpected": true,
+          "origin": "staged"
+        },
+        "candidates": [
+          {
+            "name": "F3.webm",
+            "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+            "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+            "bytes": 625108,
+            "matchesExpected": true,
+            "origin": "staged"
+          }
+        ],
+        "fallback": null,
+        "reason": null
+      },
+      "C": {
+        "arm": "C",
+        "expectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "chosen": {
+          "name": "C3.webm",
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+          "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+          "bytes": 631169,
+          "matchesExpected": true,
+          "origin": "staged"
+        },
+        "candidates": [
+          {
+            "name": "C3.webm",
+            "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+            "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+            "bytes": 631169,
+            "matchesExpected": true,
+            "origin": "staged"
+          }
+        ],
+        "fallback": null,
+        "reason": null
+      }
+    },
+    "armShaClaims": {
+      "ok": true,
+      "claims": {
+        "O": {
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "distinct": [
+            "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+          ],
+          "claims": [
+            {
+              "source": "report.verdict.candidates.sha256.O",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            },
+            {
+              "source": "report.variants[2].arms.sha256.O",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            },
+            {
+              "source": "staged-manifest.sourceSha256",
+              "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+            }
+          ]
+        },
+        "F": {
+          "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+          "distinct": [
+            "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1"
+          ],
+          "claims": [
+            {
+              "source": "report.verdict.candidates.sha256.F",
+              "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1"
+            },
+            {
+              "source": "report.variants[2].arms.sha256.F",
+              "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1"
+            }
+          ]
+        },
+        "C": {
+          "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+          "distinct": [
+            "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+          ],
+          "claims": [
+            {
+              "source": "report.verdict.candidates.sha256.C",
+              "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+            },
+            {
+              "source": "report.variants[2].arms.sha256.C",
+              "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+            },
+            {
+              "source": "staged-manifest.candidateSha256",
+              "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+            }
+          ]
+        }
+      },
+      "errors": []
+    }
+  },
+  "arms": [
+    {
+      "arm": "O",
+      "label": "O",
+      "rep": 0,
+      "tag": "O-r0",
+      "idleSource": {
+        "arm": "O",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+        "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
+        "exists": true,
+        "optional": false,
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "expectedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "shaMatched": true,
+        "shippedPath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/idle.webm",
+        "shippedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "matchesShipped": true,
+        "bytes": 78419,
+        "gateExpectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "O.webm"
+      },
+      "pid": 605764,
+      "wallSec": 72.287,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "O.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 60,
+        "warmupSamples": 10,
+        "windowSec": 62.089,
+        "cpuSeconds": 3.49,
+        "cpuSecondsPerMinute": 3.373,
+        "cpuPercentMedian": 5.85,
+        "cpuPercentP90": 6.9,
+        "cpuPercentMean": 5.612,
+        "rssSumMbMedian": 378.3,
+        "rssSumMbMax": 379,
+        "pssSumMbMedian": 189.16,
+        "loadavg1Median": 22.12,
+        "loadavg1Max": 24.63,
+        "hostCpuBusyMedian": 3.1,
+        "decodedFrames": 1489,
+        "decodedFps": 23.98,
+        "videoSize": {
+          "width": 640,
+          "height": 360,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 240
+          },
+          "currentTime": 0.228
+        }
+      },
+      "probes": {
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2001
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2001
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    },
+    {
+      "arm": "F",
+      "label": "F3",
+      "rep": 0,
+      "tag": "F-r0",
+      "idleSource": {
+        "arm": "F",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+        "label": "F 全画布重编码（与 C 同预处理/编码/PTS）",
+        "exists": true,
+        "optional": true,
+        "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "expectedSha": null,
+        "shaMatched": null,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 625108,
+        "gateExpectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "F3.webm"
+      },
+      "pid": 606720,
+      "wallSec": 72.739,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": null,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "F3.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 60,
+        "warmupSamples": 10,
+        "windowSec": 62.571,
+        "cpuSeconds": 4.98,
+        "cpuSecondsPerMinute": 4.775,
+        "cpuPercentMedian": 7.9,
+        "cpuPercentP90": 8.9,
+        "cpuPercentMean": 7.957,
+        "rssSumMbMedian": 380.34,
+        "rssSumMbMax": 381.36,
+        "pssSumMbMedian": 191.97,
+        "loadavg1Median": 15.65,
+        "loadavg1Max": 20.19,
+        "hostCpuBusyMedian": 2.9,
+        "decodedFrames": 1498,
+        "decodedFps": 23.94,
+        "videoSize": {
+          "width": 640,
+          "height": 360,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 240
+          },
+          "currentTime": 0.766
+        }
+      },
+      "probes": {
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 1999
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 1999
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    },
+    {
+      "arm": "C",
+      "label": "C3",
+      "rep": 0,
+      "tag": "C-r0",
+      "idleSource": {
+        "arm": "C",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+        "label": "C ROI 裁剪（编码分辨率=ROI 宽高）",
+        "exists": true,
+        "optional": true,
+        "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "expectedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "shaMatched": true,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 631169,
+        "gateExpectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "C3.webm"
+      },
+      "pid": 607382,
+      "wallSec": 71.53,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": true,
+        "env": {
+          "PET_NEXT_IDLE_ROI": "1",
+          "PET_NEXT_IDLE_ROI_MANIFEST": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/manifest.json"
+        }
+      },
+      "steadyState": {
+        "bodyIdleRoi": true,
+        "clipHidden": false,
+        "readyState": 4,
+        "waitedMs": 0
+      },
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "roi",
+        "videoSrc": "C3.webm",
+        "videoIntrinsic": {
+          "width": 226,
+          "height": 286
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": true,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "expected": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": true,
+        "layoutMatches": true,
+        "roiLayoutWired": true
+      },
+      "summary": {
+        "samples": 60,
+        "warmupSamples": 10,
+        "windowSec": 61.33,
+        "cpuSeconds": 3.82,
+        "cpuSecondsPerMinute": 3.737,
+        "cpuPercentMedian": 5.9,
+        "cpuPercentP90": 6.97,
+        "cpuPercentMean": 6.215,
+        "rssSumMbMedian": 374.49,
+        "rssSumMbMax": 375.57,
+        "pssSumMbMedian": 186.14,
+        "loadavg1Median": 13.22,
+        "loadavg1Max": 17.15,
+        "hostCpuBusyMedian": 3,
+        "decodedFrames": 1468,
+        "decodedFps": 23.94,
+        "videoSize": {
+          "width": 226,
+          "height": 286,
+          "rect": {
+            "x": 104,
+            "y": 56,
+            "width": 113,
+            "height": 143
+          },
+          "currentTime": 1.353
+        }
+      },
+      "probes": {
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 3702
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 3702
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    },
+    {
+      "arm": "C",
+      "label": "C3",
+      "rep": 1,
+      "tag": "C-r1",
+      "idleSource": {
+        "arm": "C",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+        "label": "C ROI 裁剪（编码分辨率=ROI 宽高）",
+        "exists": true,
+        "optional": true,
+        "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "expectedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "shaMatched": true,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 631169,
+        "gateExpectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "C3.webm"
+      },
+      "pid": 608447,
+      "wallSec": 76.58,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": true,
+        "env": {
+          "PET_NEXT_IDLE_ROI": "1",
+          "PET_NEXT_IDLE_ROI_MANIFEST": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/manifest.json"
+        }
+      },
+      "steadyState": {
+        "bodyIdleRoi": true,
+        "clipHidden": false,
+        "readyState": 4,
+        "waitedMs": 0
+      },
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "roi",
+        "videoSrc": "C3.webm",
+        "videoIntrinsic": {
+          "width": 226,
+          "height": 286
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": true,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "expected": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": true,
+        "layoutMatches": true,
+        "roiLayoutWired": true
+      },
+      "summary": {
+        "samples": 60,
+        "warmupSamples": 10,
+        "windowSec": 65.653,
+        "cpuSeconds": 3.82,
+        "cpuSecondsPerMinute": 3.491,
+        "cpuPercentMedian": 5.9,
+        "cpuPercentP90": 6.9,
+        "cpuPercentMean": 5.832,
+        "rssSumMbMedian": 372.87,
+        "rssSumMbMax": 374.34,
+        "pssSumMbMedian": 184.95,
+        "loadavg1Median": 30.64,
+        "loadavg1Max": 33.32,
+        "hostCpuBusyMedian": 3.2,
+        "decodedFrames": 1572,
+        "decodedFps": 23.94,
+        "videoSize": {
+          "width": 226,
+          "height": 286,
+          "rect": {
+            "x": 104,
+            "y": 56,
+            "width": 113,
+            "height": 143
+          },
+          "currentTime": 0.463
+        }
+      },
+      "probes": {
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2000
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2000
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    },
+    {
+      "arm": "F",
+      "label": "F3",
+      "rep": 1,
+      "tag": "F-r1",
+      "idleSource": {
+        "arm": "F",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+        "label": "F 全画布重编码（与 C 同预处理/编码/PTS）",
+        "exists": true,
+        "optional": true,
+        "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "expectedSha": null,
+        "shaMatched": null,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 625108,
+        "gateExpectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "F3.webm"
+      },
+      "pid": 610116,
+      "wallSec": 71.822,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": null,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "F3.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 60,
+        "warmupSamples": 10,
+        "windowSec": 61.499,
+        "cpuSeconds": 4.5,
+        "cpuSecondsPerMinute": 4.39,
+        "cpuPercentMedian": 6.9,
+        "cpuPercentP90": 8.9,
+        "cpuPercentMean": 7.308,
+        "rssSumMbMedian": 380.75,
+        "rssSumMbMax": 381.85,
+        "pssSumMbMedian": 192.53,
+        "loadavg1Median": 27.01,
+        "loadavg1Max": 31.72,
+        "hostCpuBusyMedian": 2.8,
+        "decodedFrames": 1472,
+        "decodedFps": 23.94,
+        "videoSize": {
+          "width": 640,
+          "height": 360,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 240
+          },
+          "currentTime": 1.873
+        }
+      },
+      "probes": {
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2001
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2001
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    },
+    {
+      "arm": "O",
+      "label": "O",
+      "rep": 1,
+      "tag": "O-r1",
+      "idleSource": {
+        "arm": "O",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+        "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
+        "exists": true,
+        "optional": false,
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "expectedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "shaMatched": true,
+        "shippedPath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/idle.webm",
+        "shippedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "matchesShipped": true,
+        "bytes": 78419,
+        "gateExpectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "O.webm"
+      },
+      "pid": 610936,
+      "wallSec": 75.656,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "O.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 60,
+        "warmupSamples": 10,
+        "windowSec": 65.505,
+        "cpuSeconds": 3.67,
+        "cpuSecondsPerMinute": 3.362,
+        "cpuPercentMedian": 5.9,
+        "cpuPercentP90": 6.9,
+        "cpuPercentMean": 5.618,
+        "rssSumMbMedian": 379.07,
+        "rssSumMbMax": 379.79,
+        "pssSumMbMedian": 189.89,
+        "loadavg1Median": 17.98,
+        "loadavg1Max": 22.44,
+        "hostCpuBusyMedian": 2.8,
+        "decodedFrames": 1571,
+        "decodedFps": 23.98,
+        "videoSize": {
+          "width": 640,
+          "height": 360,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 240
+          },
+          "currentTime": 1.784
+        }
+      },
+      "probes": {
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2000
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2000
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    },
+    {
+      "arm": "O",
+      "label": "O",
+      "rep": 2,
+      "tag": "O-r2",
+      "idleSource": {
+        "arm": "O",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+        "label": "已提交 out/O.webm（manifest.sourceSha 对应）",
+        "exists": true,
+        "optional": false,
+        "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "expectedSha": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "shaMatched": true,
+        "shippedPath": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf/pet-next/assets/idle.webm",
+        "shippedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "matchesShipped": true,
+        "bytes": 78419,
+        "gateExpectedSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "O.webm"
+      },
+      "pid": 611703,
+      "wallSec": 72.182,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "O.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 60,
+        "warmupSamples": 10,
+        "windowSec": 62.029,
+        "cpuSeconds": 3.52,
+        "cpuSecondsPerMinute": 3.405,
+        "cpuPercentMedian": 5.9,
+        "cpuPercentP90": 6.9,
+        "cpuPercentMean": 5.675,
+        "rssSumMbMedian": 378.87,
+        "rssSumMbMax": 379.55,
+        "pssSumMbMedian": 188.8,
+        "loadavg1Median": 15.6,
+        "loadavg1Max": 16.09,
+        "hostCpuBusyMedian": 2.8,
+        "decodedFrames": 1488,
+        "decodedFps": 23.99,
+        "videoSize": {
+          "width": 640,
+          "height": 360,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 240
+          },
+          "currentTime": 0.312
+        }
+      },
+      "probes": {
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2000
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2000
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    },
+    {
+      "arm": "F",
+      "label": "F3",
+      "rep": 2,
+      "tag": "F-r2",
+      "idleSource": {
+        "arm": "F",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+        "label": "F 全画布重编码（与 C 同预处理/编码/PTS）",
+        "exists": true,
+        "optional": true,
+        "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "expectedSha": null,
+        "shaMatched": null,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 625108,
+        "gateExpectedSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "F3.webm"
+      },
+      "pid": 612365,
+      "wallSec": 74.385,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": false,
+        "env": null
+      },
+      "steadyState": null,
+      "observedDpr": 1,
+      "sourceShaVerified": null,
+      "layout": {
+        "checked": true,
+        "applicable": "contain",
+        "videoSrc": "F3.webm",
+        "videoIntrinsic": {
+          "width": 640,
+          "height": 360
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": false,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "expected": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": null,
+        "layoutMatches": true,
+        "roiLayoutWired": null
+      },
+      "summary": {
+        "samples": 60,
+        "warmupSamples": 10,
+        "windowSec": 63.335,
+        "cpuSeconds": 4.88,
+        "cpuSecondsPerMinute": 4.623,
+        "cpuPercentMedian": 7.9,
+        "cpuPercentP90": 8.9,
+        "cpuPercentMean": 7.682,
+        "rssSumMbMedian": 381.07,
+        "rssSumMbMax": 382.05,
+        "pssSumMbMedian": 190.09,
+        "loadavg1Median": 15.59,
+        "loadavg1Max": 18.46,
+        "hostCpuBusyMedian": 3,
+        "decodedFrames": 1516,
+        "decodedFps": 23.94,
+        "videoSize": {
+          "width": 640,
+          "height": 360,
+          "rect": {
+            "x": 0,
+            "y": 0,
+            "width": 320,
+            "height": 240
+          },
+          "currentTime": 0.431
+        }
+      },
+      "probes": {
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2000
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2000
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    },
+    {
+      "arm": "C",
+      "label": "C3",
+      "rep": 2,
+      "tag": "C-r2",
+      "idleSource": {
+        "arm": "C",
+        "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+        "label": "C ROI 裁剪（编码分辨率=ROI 宽高）",
+        "exists": true,
+        "optional": true,
+        "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "expectedSha": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "shaMatched": true,
+        "shippedPath": null,
+        "shippedSha256": null,
+        "matchesShipped": null,
+        "bytes": 631169,
+        "gateExpectedSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+        "gateShaMatched": true,
+        "gateChosenFrom": "staged",
+        "gateChosenName": "C3.webm"
+      },
+      "pid": 613259,
+      "wallSec": 71.755,
+      "readyEvent": {
+        "event": "ready",
+        "alwaysOnTop": true,
+        "transparent": true,
+        "requestedBackground": "#00000000",
+        "background": "#000000",
+        "bounds": {
+          "x": 80,
+          "y": 80,
+          "width": 320,
+          "height": 240
+        },
+        "workArea": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "scaleFactor": 1,
+        "forcedDeviceScaleFactor": null,
+        "scaleSource": "os",
+        "displayBounds": {
+          "x": 0,
+          "y": 0,
+          "width": 1920,
+          "height": 1080
+        },
+        "displayCount": 1,
+        "physical": {
+          "x": 80,
+          "y": 80
+        }
+      },
+      "roiEnvApplied": {
+        "enabled": true,
+        "env": {
+          "PET_NEXT_IDLE_ROI": "1",
+          "PET_NEXT_IDLE_ROI_MANIFEST": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/manifest.json"
+        }
+      },
+      "steadyState": {
+        "bodyIdleRoi": true,
+        "clipHidden": false,
+        "readyState": 4,
+        "waitedMs": 1
+      },
+      "observedDpr": 1,
+      "sourceShaVerified": true,
+      "layout": {
+        "checked": true,
+        "applicable": "roi",
+        "videoSrc": "C3.webm",
+        "videoIntrinsic": {
+          "width": 226,
+          "height": 286
+        },
+        "objectFit": "contain",
+        "objectFitExpected": "contain",
+        "contentScalingOk": true,
+        "bodyIdleRoiClass": true,
+        "videoHidden": false,
+        "viewport": {
+          "width": 320,
+          "height": 240,
+          "dpr": 1
+        },
+        "rect": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "expected": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "rectDelta": {
+          "x": 0,
+          "y": 0,
+          "width": 0,
+          "height": 0
+        },
+        "toleranceDip": 1.5,
+        "intrinsicMatchesExpectation": true,
+        "cropSizeMatches": true,
+        "layoutMatches": true,
+        "roiLayoutWired": true
+      },
+      "summary": {
+        "samples": 60,
+        "warmupSamples": 10,
+        "windowSec": 61.462,
+        "cpuSeconds": 3.77,
+        "cpuSecondsPerMinute": 3.68,
+        "cpuPercentMedian": 5.9,
+        "cpuPercentP90": 6.99,
+        "cpuPercentMean": 6.118,
+        "rssSumMbMedian": 374.56,
+        "rssSumMbMax": 375.73,
+        "pssSumMbMedian": 186.47,
+        "loadavg1Median": 18.6,
+        "loadavg1Max": 20.88,
+        "hostCpuBusyMedian": 2.7,
+        "decodedFrames": 1471,
+        "decodedFps": 23.93,
+        "videoSize": {
+          "width": 226,
+          "height": 286,
+          "rect": {
+            "x": 104,
+            "y": 56,
+            "width": 113,
+            "height": 143
+          },
+          "currentTime": 1.72
+        }
+      },
+      "probes": {
+        "exit": {
+          "exitCode": 0,
+          "signal": null,
+          "ms": 2000
+        }
+      },
+      "exit": {
+        "exitCode": 0,
+        "signal": null,
+        "ms": 2000
+      },
+      "leftovers": [],
+      "failures": [],
+      "notRun": [],
+      "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n"
+    }
+  ],
+  "perArm": {
+    "O": {
+      "reps": 3,
+      "repsWithData": 3,
+      "cpuSecondsPerMinuteMedian": 3.373,
+      "cpuSecondsPerMinuteValues": [
+        3.373,
+        3.362,
+        3.405
+      ],
+      "cpuPercentMedianAcrossReps": 5.9,
+      "rssSumMbMedian": 378.87,
+      "rssSumMbValues": [
+        378.3,
+        379.07,
+        378.87
+      ],
+      "loadavg1Median": 17.98,
+      "loadavg1Values": [
+        22.12,
+        17.98,
+        15.6
+      ],
+      "decodedFpsMedian": 23.98,
+      "videoSize": {
+        "width": 640,
+        "height": 360,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "currentTime": 0.312
+      }
+    },
+    "F": {
+      "reps": 3,
+      "repsWithData": 3,
+      "cpuSecondsPerMinuteMedian": 4.623,
+      "cpuSecondsPerMinuteValues": [
+        4.775,
+        4.39,
+        4.623
+      ],
+      "cpuPercentMedianAcrossReps": 7.9,
+      "rssSumMbMedian": 380.75,
+      "rssSumMbValues": [
+        380.34,
+        380.75,
+        381.07
+      ],
+      "loadavg1Median": 15.65,
+      "loadavg1Values": [
+        15.65,
+        27.01,
+        15.59
+      ],
+      "decodedFpsMedian": 23.94,
+      "videoSize": {
+        "width": 640,
+        "height": 360,
+        "rect": {
+          "x": 0,
+          "y": 0,
+          "width": 320,
+          "height": 240
+        },
+        "currentTime": 0.431
+      }
+    },
+    "C": {
+      "reps": 3,
+      "repsWithData": 3,
+      "cpuSecondsPerMinuteMedian": 3.68,
+      "cpuSecondsPerMinuteValues": [
+        3.737,
+        3.491,
+        3.68
+      ],
+      "cpuPercentMedianAcrossReps": 5.9,
+      "rssSumMbMedian": 374.49,
+      "rssSumMbValues": [
+        374.49,
+        372.87,
+        374.56
+      ],
+      "loadavg1Median": 18.6,
+      "loadavg1Values": [
+        13.22,
+        30.64,
+        18.6
+      ],
+      "decodedFpsMedian": 23.94,
+      "videoSize": {
+        "width": 226,
+        "height": 286,
+        "rect": {
+          "x": 104,
+          "y": 56,
+          "width": 113,
+          "height": 143
+        },
+        "currentTime": 1.72
+      }
+    }
+  },
+  "pairs": [
+    {
+      "rep": 0,
+      "o": 3.373,
+      "f": 4.775,
+      "c": 3.737,
+      "cVsOPercent": -10.79,
+      "cVsFPercent": 21.74
+    },
+    {
+      "rep": 1,
+      "o": 3.362,
+      "f": 4.39,
+      "c": 3.491,
+      "cVsOPercent": -3.84,
+      "cVsFPercent": 20.48
+    },
+    {
+      "rep": 2,
+      "o": 3.405,
+      "f": 4.623,
+      "c": 3.68,
+      "cVsOPercent": -8.08,
+      "cVsFPercent": 20.4
+    }
+  ],
+  "verdict": {
+    "cVsOPercent": -9.1,
+    "cVsFPercent": 20.4,
+    "cVsOPairSupports": 0,
+    "cVsFPairSupports": 3,
+    "pairCount": 3,
+    "rssDeltaPercent": -1.16,
+    "loadDelta": 0.62,
+    "checks": {
+      "cpuMedianDropAtLeast15": false,
+      "cBetterThanFDirection": true,
+      "pairedSupportAtLeast2of3": false,
+      "rssWithin10Percent": true,
+      "loadComparable": true
+    },
+    "pass": false,
+    "reasons": [
+      "C 对 O 中位仅降 -9.1%（门 ≥15%）",
+      "配对支持 0/3 < 2/3"
+    ],
+    "note": "工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读"
+  },
+  "rawNdjson": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/raw.ndjson",
+  "failures": [],
+  "notRun": [
+    "roi-layout-on-by-flag"
+  ],
+  "roiWiring": {
+    "enabledByFlag": true,
+    "productSupportsWiring": true,
+    "env": {
+      "PET_NEXT_IDLE_ROI": "1",
+      "PET_NEXT_IDLE_ROI_MANIFEST": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/manifest.json"
+    }
+  },
+  "provenance": {
+    "assetArchive": {
+      "ok": true,
+      "repo": "/data3/DATA/project/project_meishijiang/m312r1-wt-perf",
+      "ref": "07278fd",
+      "subpath": "experiments/idle-roi/out-v3-yuva",
+      "dest": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed",
+      "command": "git -C /data3/DATA/project/project_meishijiang/m312r1-wt-perf archive 07278fd pet-next/experiments/idle-roi/out-v3-yuva | tar -x -C /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed --strip-components=3",
+      "files": [
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/C3.webm",
+          "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+          "bytes": 631169
+        },
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/F3.webm",
+          "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+          "bytes": 625108
+        },
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/O.webm",
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+          "bytes": 78419
+        },
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/build-report.json",
+          "sha256": "80d46651d72742b7b962006f91e5d7fba4bed9f999cc7ffed83263382acce804",
+          "bytes": 22366
+        },
+        {
+          "path": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/manifest.json",
+          "sha256": "278ca4226549d6c79cf673cea1784d3e95cf0f3999c9b16669b698a0a0bb0f8f",
+          "bytes": 3021
+        }
+      ]
+    },
+    "assetsDir": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva",
+    "oSourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "fSourceSha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+    "cSourceSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+    "oMatchesShipped": true,
+    "note": "数据来自以上 SHA 的已提交字节；未提交工作区快照不作为结论依据"
+  },
+  "finalized": {
+    "at": "2026-11-10T11:25:05.294Z",
+    "kind": "performance",
+    "tool": "node bench/idle-roi/run.mjs --mode=finalize --run=<stamp>",
+    "previousVerdict": {
+      "cVsOPercent": null,
+      "cVsFPercent": null,
+      "cVsOPairSupports": 0,
+      "cVsFPairSupports": 3,
+      "pairCount": 3,
+      "rssDeltaPercent": -1.16,
+      "loadDelta": 0.62,
+      "checks": {
+        "cpuMedianDropAtLeast15": false,
+        "cBetterThanFDirection": false,
+        "pairedSupportAtLeast2of3": false,
+        "rssWithin10Percent": true,
+        "loadComparable": true
+      },
+      "pass": false,
+      "reasons": [
+        "缺少 O 或 C 的 CPU 数据",
+        "配对支持 0/3 < 2/3"
+      ],
+      "note": "工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读"
+    },
+    "note": "perArm/verdict 由逐臂 summary 重算（修正 perArm 与 verdict 的 CPU 键名错位）；原始 summary 见 summary.pre-finalize.json"
+  }
+}

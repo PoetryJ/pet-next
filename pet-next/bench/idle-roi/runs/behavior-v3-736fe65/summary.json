@@ -2987,35 +2987,7 @@
       "stdoutTail": "{\"event\":\"ready\",\"alwaysOnTop\":true,\"transparent\":true,\"requestedBackground\":\"#00000000\",\"background\":\"#000000\",\"bounds\":{\"x\":80,\"y\":80,\"width\":320,\"height\":240},\"workArea\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"scaleFactor\":1,\"forcedDeviceScaleFactor\":null,\"scaleSource\":\"os\",\"displayBounds\":{\"x\":0,\"y\":0,\"width\":1920,\"height\":1080},\"displayCount\":1,\"physical\":{\"x\":80,\"y\":80}}\n{\"event\":\"console\",\"message\":\"%cElectron Security Warning (Insecure Content-Security-Policy) font-weight: bold; This renderer process has either no Content Security\\n  Policy set or a policy with \\\"unsafe-eval\\\" enabled. This exposes users of\\n  this app to unnecessary security risks.\\n\\nFor more information and help, consult\\nhttps://electronjs.org/docs/tutorial/security.\\nThis warning will not show up\\nonce the app is packaged.\"}\n{\"event\":\"bounds\",\"bounds\":{\"x\":86,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":86,\"y\":80},\"physical\":{\"x\":86,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":98,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":98,\"y\":80},\"physical\":{\"x\":98,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":116,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":116,\"y\":80},\"physical\":{\"x\":116,\"y\":80}}\n{\"event\":\"bounds\",\"bounds\":{\"x\":140,\"y\":80,\"width\":320,\"height\":240},\"requested\":{\"x\":140,\"y\":80},\"physical\":{\"x\":140,\"y\":80}}\n"
     }
   ],
-  "perArm": {
-    "O": {
-      "reps": 3,
-      "cpuSecondsPerMinuteMedian": null,
-      "cpuSecondsPerMinuteValues": [],
-      "rssSumMbMedian": null,
-      "rssSumMbValues": [],
-      "loadavg1Median": null,
-      "loadavg1Values": []
-    },
-    "F": {
-      "reps": 3,
-      "cpuSecondsPerMinuteMedian": null,
-      "cpuSecondsPerMinuteValues": [],
-      "rssSumMbMedian": null,
-      "rssSumMbValues": [],
-      "loadavg1Median": null,
-      "loadavg1Values": []
-    },
-    "C": {
-      "reps": 3,
-      "cpuSecondsPerMinuteMedian": null,
-      "cpuSecondsPerMinuteValues": [],
-      "rssSumMbMedian": null,
-      "rssSumMbValues": [],
-      "loadavg1Median": null,
-      "loadavg1Values": []
-    }
-  },
+  "perArm": null,
   "pairs": [
     {
       "rep": 0,
@@ -3043,25 +3015,220 @@
     }
   ],
   "verdict": {
-    "cVsOPercent": null,
-    "cVsFPercent": null,
-    "cVsOPairSupports": 0,
-    "cVsFPairSupports": 0,
-    "pairCount": 0,
-    "rssDeltaPercent": null,
-    "loadDelta": null,
-    "checks": {
-      "cpuMedianDropAtLeast15": false,
-      "cBetterThanFDirection": false,
-      "pairedSupportAtLeast2of3": false,
-      "rssWithin10Percent": false,
-      "loadComparable": false
+    "perArmByLabel": {
+      "O": {
+        "reps": 2,
+        "clickMedianMsValues": [
+          88.35,
+          90.55
+        ],
+        "exits": [
+          0,
+          0
+        ],
+        "leftovers": [
+          0,
+          0
+        ],
+        "layoutAllMatch": true,
+        "roiLayoutWired": false,
+        "objectFit": "contain",
+        "clickMedianMs": 89.45,
+        "exitAllZero": true,
+        "leftoversAllZero": true
+      },
+      "F3": {
+        "reps": 3,
+        "clickMedianMsValues": [
+          89.75,
+          93.55,
+          90.25
+        ],
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "leftovers": [
+          0,
+          0,
+          0
+        ],
+        "layoutAllMatch": true,
+        "roiLayoutWired": false,
+        "objectFit": "contain",
+        "clickMedianMs": 90.25,
+        "exitAllZero": true,
+        "leftoversAllZero": true
+      },
+      "C3": {
+        "reps": 3,
+        "clickMedianMsValues": [
+          91.7,
+          92.1,
+          91.45
+        ],
+        "exits": [
+          0,
+          0,
+          0
+        ],
+        "leftovers": [
+          0,
+          0,
+          0
+        ],
+        "layoutAllMatch": true,
+        "roiLayoutWired": true,
+        "objectFit": "contain",
+        "clickMedianMs": 91.7,
+        "exitAllZero": true,
+        "leftoversAllZero": true
+      }
     },
-    "pass": false,
-    "reasons": [
-      "缺少 O 或 C 的 CPU 数据"
+    "kind": "behavioral",
+    "pass": true,
+    "checks": {
+      "layoutAllMatch": true,
+      "clicksAllHit": true,
+      "hiddenResumeToIdle": true,
+      "failurePlaceholder": true,
+      "exitCodesZero": true,
+      "noLeftoverProcesses": true
+    },
+    "armsChecked": 8,
+    "incompleteArms": [
+      {
+        "tag": "O#2",
+        "reason": "45s 内 idle 未进入可播放/播放状态; cdp evaluate exception: \"Uncaught\" | TypeError: Cannot read properties of undefined (reading 'mark')\n    at <anonymous>:1:18"
+      }
     ],
-    "note": "工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读"
+    "failed": [],
+    "clickMedianMsAcrossArms": 91,
+    "detail": [
+      {
+        "tag": "O#0",
+        "label": "O",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 88.35,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "F3#0",
+        "label": "F3",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 89.75,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "C3#0",
+        "label": "C3",
+        "layoutMatches": true,
+        "roiLayoutWired": true,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 91.7,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "C3#1",
+        "label": "C3",
+        "layoutMatches": true,
+        "roiLayoutWired": true,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 92.1,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "F3#1",
+        "label": "F3",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 93.55,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "O#1",
+        "label": "O",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 90.55,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "F3#2",
+        "label": "F3",
+        "layoutMatches": true,
+        "roiLayoutWired": null,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 90.25,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      },
+      {
+        "tag": "C3#2",
+        "label": "C3",
+        "layoutMatches": true,
+        "roiLayoutWired": true,
+        "objectFit": "contain",
+        "clickObserved": 10,
+        "clickRequested": 10,
+        "clickMissed": 0,
+        "clickMedianMs": 91.45,
+        "hiddenResumeIdle": "idle",
+        "failurePlaceholderVisible": true,
+        "exitCode": 0,
+        "leftovers": 0
+      }
+    ],
+    "reasons": [],
+    "note": "behavior 轮只做功能回归（--seconds=0 不采 CPU），因此不套用 CPU 收益门；incompleteArms 为采集侧抖动，不补跑"
   },
   "rawNdjson": "/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/behavior-v3-736fe65/raw.ndjson",
   "failures": [
@@ -3121,5 +3288,242 @@
     "cSourceSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
     "oMatchesShipped": true,
     "note": "数据来自以上 SHA 的已提交字节；未提交工作区快照不作为结论依据"
-  }
+  },
+  "finalized": {
+    "at": "2026-11-10T11:25:34.702Z",
+    "kind": "behavioral",
+    "tool": "node bench/idle-roi/run.mjs --mode=finalize --run=<stamp>",
+    "previousVerdict": {
+      "kind": "behavioral",
+      "pass": false,
+      "checks": {
+        "layoutAllMatch": false,
+        "clicksAllHit": false,
+        "hiddenResumeToIdle": false,
+        "failurePlaceholder": false,
+        "exitCodesZero": false,
+        "noLeftoverProcesses": true
+      },
+      "armsChecked": 9,
+      "incompleteArms": [],
+      "failed": [
+        {
+          "tag": "O#2",
+          "problems": [
+            "布局不符",
+            "点击未命中 null",
+            "隐藏恢复未回 idle",
+            "失败占位不可见",
+            "退出码 null"
+          ]
+        }
+      ],
+      "clickMedianMsAcrossArms": 91,
+      "detail": [
+        {
+          "tag": "O#0",
+          "layoutMatches": true,
+          "roiLayoutWired": null,
+          "objectFit": "contain",
+          "clickObserved": 10,
+          "clickRequested": 10,
+          "clickMissed": 0,
+          "clickMedianMs": 88.35,
+          "hiddenResumeIdle": "idle",
+          "failurePlaceholderVisible": true,
+          "exitCode": 0,
+          "leftovers": 0
+        },
+        {
+          "tag": "F3#0",
+          "layoutMatches": true,
+          "roiLayoutWired": null,
+          "objectFit": "contain",
+          "clickObserved": 10,
+          "clickRequested": 10,
+          "clickMissed": 0,
+          "clickMedianMs": 89.75,
+          "hiddenResumeIdle": "idle",
+          "failurePlaceholderVisible": true,
+          "exitCode": 0,
+          "leftovers": 0
+        },
+        {
+          "tag": "C3#0",
+          "layoutMatches": true,
+          "roiLayoutWired": true,
+          "objectFit": "contain",
+          "clickObserved": 10,
+          "clickRequested": 10,
+          "clickMissed": 0,
+          "clickMedianMs": 91.7,
+          "hiddenResumeIdle": "idle",
+          "failurePlaceholderVisible": true,
+          "exitCode": 0,
+          "leftovers": 0
+        },
+        {
+          "tag": "C3#1",
+          "layoutMatches": true,
+          "roiLayoutWired": true,
+          "objectFit": "contain",
+          "clickObserved": 10,
+          "clickRequested": 10,
+          "clickMissed": 0,
+          "clickMedianMs": 92.1,
+          "hiddenResumeIdle": "idle",
+          "failurePlaceholderVisible": true,
+          "exitCode": 0,
+          "leftovers": 0
+        },
+        {
+          "tag": "F3#1",
+          "layoutMatches": true,
+          "roiLayoutWired": null,
+          "objectFit": "contain",
+          "clickObserved": 10,
+          "clickRequested": 10,
+          "clickMissed": 0,
+          "clickMedianMs": 93.55,
+          "hiddenResumeIdle": "idle",
+          "failurePlaceholderVisible": true,
+          "exitCode": 0,
+          "leftovers": 0
+        },
+        {
+          "tag": "O#1",
+          "layoutMatches": true,
+          "roiLayoutWired": null,
+          "objectFit": "contain",
+          "clickObserved": 10,
+          "clickRequested": 10,
+          "clickMissed": 0,
+          "clickMedianMs": 90.55,
+          "hiddenResumeIdle": "idle",
+          "failurePlaceholderVisible": true,
+          "exitCode": 0,
+          "leftovers": 0
+        },
+        {
+          "tag": "O#2",
+          "layoutMatches": false,
+          "roiLayoutWired": null,
+          "objectFit": null,
+          "clickObserved": null,
+          "clickRequested": null,
+          "clickMissed": null,
+          "clickMedianMs": null,
+          "hiddenResumeIdle": null,
+          "failurePlaceholderVisible": null,
+          "exitCode": null,
+          "leftovers": 0
+        },
+        {
+          "tag": "F3#2",
+          "layoutMatches": true,
+          "roiLayoutWired": null,
+          "objectFit": "contain",
+          "clickObserved": 10,
+          "clickRequested": 10,
+          "clickMissed": 0,
+          "clickMedianMs": 90.25,
+          "hiddenResumeIdle": "idle",
+          "failurePlaceholderVisible": true,
+          "exitCode": 0,
+          "leftovers": 0
+        },
+        {
+          "tag": "C3#2",
+          "layoutMatches": true,
+          "roiLayoutWired": true,
+          "objectFit": "contain",
+          "clickObserved": 10,
+          "clickRequested": 10,
+          "clickMissed": 0,
+          "clickMedianMs": 91.45,
+          "hiddenResumeIdle": "idle",
+          "failurePlaceholderVisible": true,
+          "exitCode": 0,
+          "leftovers": 0
+        }
+      ],
+      "reasons": [
+        "O#2: 布局不符/点击未命中 null/隐藏恢复未回 idle/失败占位不可见/退出码 null"
+      ],
+      "note": "behavior 轮只做功能回归（--seconds=0 不采 CPU），因此不套用 CPU 收益门；incompleteArms 为采集侧抖动，不补跑"
+    },
+    "note": "behavior 轮（--seconds=0）只做功能回归，判定为功能性门（布局/点击/隐藏/失败占位/退出/残留），不套 CPU 收益门"
+  },
+  "behaviorPerArm": {
+    "O": {
+      "reps": 2,
+      "clickMedianMsValues": [
+        88.35,
+        90.55
+      ],
+      "exits": [
+        0,
+        0
+      ],
+      "leftovers": [
+        0,
+        0
+      ],
+      "layoutAllMatch": true,
+      "roiLayoutWired": false,
+      "objectFit": "contain",
+      "clickMedianMs": 89.45,
+      "exitAllZero": true,
+      "leftoversAllZero": true
+    },
+    "F3": {
+      "reps": 3,
+      "clickMedianMsValues": [
+        89.75,
+        93.55,
+        90.25
+      ],
+      "exits": [
+        0,
+        0,
+        0
+      ],
+      "leftovers": [
+        0,
+        0,
+        0
+      ],
+      "layoutAllMatch": true,
+      "roiLayoutWired": false,
+      "objectFit": "contain",
+      "clickMedianMs": 90.25,
+      "exitAllZero": true,
+      "leftoversAllZero": true
+    },
+    "C3": {
+      "reps": 3,
+      "clickMedianMsValues": [
+        91.7,
+        92.1,
+        91.45
+      ],
+      "exits": [
+        0,
+        0,
+        0
+      ],
+      "leftovers": [
+        0,
+        0,
+        0
+      ],
+      "layoutAllMatch": true,
+      "roiLayoutWired": true,
+      "objectFit": "contain",
+      "clickMedianMs": 91.7,
+      "exitAllZero": true,
+      "leftoversAllZero": true
+    }
+  },
+  "perArmNote": "behavior 轮 --seconds=0 不采 CPU/RSS，逐臂功能汇总见 behaviorPerArm；CPU 数据只能来自 --mode=perf"
 }
