@@ -39,7 +39,7 @@
 | G2a | 通过 | `out/logs/storage.log`（12）+ `out/logs/recovery.log`（7，8 崩溃点覆盖 7） |
 | G2b | 通过（限定） | `out/logs/eval.log` 中的 `D4a` 等价门；`out/p1.json` 新模板 16/47 |
 | G3 | 通过（限定） | `out/p2.json`：仅在等价成立后比较成本；高扇出 not-run |
-| G4 | 待封包 | `MANIFEST.json` / `SHA256SUMS.txt` / bundle 在交付目录核对后回填 |
+| G4 | 通过 | 交付目录有 `MANIFEST.json` / `SHA256SUMS.txt` / 增量 bundle；bundle 克隆后复跑 20 项测试与 G1 门禁通过（`bundle-clone-check.txt`） |
 
 ## 平台
 
