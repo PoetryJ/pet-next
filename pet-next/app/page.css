@@ -33,3 +33,17 @@ img {
 #placeholder {
   background: rgba(64, 156, 214, 0.9);
 }
+
+/*
+ * M3-12：可见待机裁边（默认关闭，只有页面收到主进程注入的 idleRoi 才会加这个类）。
+ * 原画布仍是 640x360；这里只把解码后的小画布放回它在 contain 布局里的位置，
+ * 窗口、#pet 命中区域、拖动/点击语义都不变。数值由 contracts/idle-roi 计算（DIP，不再乘 DPR）。
+ */
+body.idle-roi video#clip {
+  position: absolute;
+  left: var(--idle-roi-left);
+  top: var(--idle-roi-top);
+  width: var(--idle-roi-width);
+  height: var(--idle-roi-height);
+  object-fit: none;
+}

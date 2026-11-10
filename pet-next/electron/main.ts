@@ -4,6 +4,8 @@
  * @module pet-next/electron/main
  */
 import { app, BrowserWindow, ipcMain, screen } from 'electron';
+import { createHash } from 'node:crypto';
+import { readFileSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { createWindowController } from '../adapters/window/controller.ts';
@@ -29,6 +31,13 @@ import {
 } from '../contracts/chat.ts';
 import { parsePreview, PREVIEW_ENV, PREVIEW_QUERY } from '../contracts/preview.ts';
 import { IDLE_PAUSE_QUERY, TEST_WINDOW_CHANNEL, idlePauseEnabled } from '../contracts/idle-suspension.ts';
+import {
+  IDLE_ROI_MANIFEST_ENV,
+  IDLE_ROI_QUERY,
+  encodeIdleRoiQuery,
+  idleRoiEnabled,
+  parseIdleRoiManifest,
+} from '../contracts/idle-roi.ts';
 import { attachWindowVisibility } from './window-visibility.ts';
 import {
   LAUNCHER_LOAD_CHANNEL,
@@ -47,6 +56,46 @@ import { registerChatService, type ChatServiceHandle } from './chat-service.ts';
 import { logReady } from './ready-report.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
+
+/**
+ * M3-12：裁边预览的页面参数（默认关闭）。
+ *
+ * 只有开关打开、显式给了 manifest 路径、manifest 合法、且其 `sourceSha256` 与当前
+ * `assets/idle.webm` 实际字节一致时才返回 `x,y,w,h,ow,oh`；否则返回 null 并打一条
+ * `idle-roi-skip` 事件说明原因（页面对 null 完全无感，走原路径）。
+ *
+ * @returns 页面查询值，或 null（不启用）。
+ */
+function resolveIdleRoiQuery(): string | null {
+  if (!idleRoiEnabled(process.env)) return null;
+  const manifestPath = process.env[IDLE_ROI_MANIFEST_ENV];
+  if (manifestPath === undefined || manifestPath === '') return null;
+  try {
+    const parsed = parseIdleRoiManifest(JSON.parse(readFileSync(manifestPath, 'utf8')) as unknown);
+    if (!parsed.ok) {
+      console.log(JSON.stringify({ event: 'idle-roi-skip', reason: parsed.reason }));
+      return null;
+    }
+    const actual = createHash('sha256').update(readFileSync(path.join(root, 'assets/idle.webm'))).digest('hex');
+    if (actual !== parsed.manifest.sourceSha256) {
+      console.log(
+        JSON.stringify({
+          event: 'idle-roi-skip',
+          reason: 'source-sha-mismatch',
+          expected: parsed.manifest.sourceSha256,
+          actual,
+        }),
+      );
+      return null;
+    }
+    return encodeIdleRoiQuery({ crop: parsed.manifest.crop, originalCanvas: parsed.manifest.originalCanvas });
+  } catch (error) {
+    console.log(
+      JSON.stringify({ event: 'idle-roi-skip', reason: error instanceof Error ? error.message : String(error) }),
+    );
+    return null;
+  }
+}
 const WINDOW_WIDTH = 320;
 const WINDOW_HEIGHT = 240;
 let chatHandle: ChatServiceHandle | null = null;
@@ -252,6 +301,9 @@ function createWindow(chatOverride?: LocalChatOverride): void {
   if (preview !== undefined && preview !== '') query[PREVIEW_QUERY] = preview;
   // M3-9：只有单槽且开关打开才通知页面订阅窗口快照（页面据此决定是否创建节能对象）。
   if (idlePauseApplies) query[IDLE_PAUSE_QUERY] = '1';
+  // M3-12：可见待机裁边（默认关闭）。只对单槽可见 idle 注入几何；双槽不参与。
+  const idleRoiQuery = parsePreview(preview).playback === 'single' ? resolveIdleRoiQuery() : null;
+  if (idleRoiQuery !== null) query[IDLE_ROI_QUERY] = idleRoiQuery;
   // M3-6：体验预览缺省 undefined（页面不创建反馈对象，原路径不变）。
   // M3-7：launcher 启动时以用户显式选择为准（standard 显式为 undefined）；否则仍只由 env 决定。
   const experience: ChatExperience | undefined = chatOverride

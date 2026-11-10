@@ -303,11 +303,54 @@ export function decideIdleRoi(input: {
   return { kind: 'roi', layout, manifest: parsed.manifest };
 }
 
-/** 页面查询参数：主进程只在开关打开且 manifest 合法时注入 `1`。 */
+/** 页面查询参数：主进程只在开关打开且 manifest 合法时注入 `x,y,w,h,ow,oh`。 */
 export const IDLE_ROI_QUERY = 'idleRoi';
 
 /** 开关环境变量（默认关闭，只有字面量 `1` 才算开）。 */
 export const IDLE_ROI_ENV = 'PET_NEXT_IDLE_ROI';
+
+/** manifest 路径环境变量（只在实验/预览时设置；缺省不启用）。 */
+export const IDLE_ROI_MANIFEST_ENV = 'PET_NEXT_IDLE_ROI_MANIFEST';
+
+/** 页面需要的全部几何信息。 */
+export interface IdleRoiSpec {
+  readonly crop: CropRect;
+  readonly originalCanvas: { readonly width: number; readonly height: number };
+}
+
+/**
+ * 把几何信息编码进 URL（主进程 → 页面）。
+ *
+ * 格式固定为 `x,y,w,h,ow,oh` 六个整数，避免把整份 manifest 塞进 URL。
+ *
+ * @param spec - 裁框与原画布。
+ * @returns 查询参数值。
+ */
+export function encodeIdleRoiQuery(spec: IdleRoiSpec): string {
+  const { crop, originalCanvas } = spec;
+  return [crop.x, crop.y, crop.width, crop.height, originalCanvas.width, originalCanvas.height].join(',');
+}
+
+/**
+ * 解析页面收到的几何参数；任何缺项/非整数返回 null（调用方回原片）。
+ *
+ * @param raw - URL 查询参数原值。
+ * @returns 几何信息，或 null。
+ */
+export function parseIdleRoiQuery(raw: string | null): IdleRoiSpec | null {
+  if (raw === null || raw === '') return null;
+  const parts = raw.split(',');
+  if (parts.length !== 6) return null;
+  const nums = parts.map((part) => Number(part));
+  if (!nums.every((value) => Number.isInteger(value) && Number.isFinite(value))) return null;
+  const [x, y, width, height, canvasWidth, canvasHeight] = nums as [number, number, number, number, number, number];
+  if (width <= 0 || height <= 0 || canvasWidth <= 0 || canvasHeight <= 0) return null;
+  if (x < 0 || y < 0 || x + width > canvasWidth || y + height > canvasHeight) return null;
+  return {
+    crop: { x, y, width, height },
+    originalCanvas: { width: canvasWidth, height: canvasHeight },
+  };
+}
 
 /**
  * 开关判定。
