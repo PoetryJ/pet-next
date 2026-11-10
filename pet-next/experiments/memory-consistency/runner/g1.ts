@@ -15,6 +15,7 @@ import {
   observationDigest,
   runMutationSuite,
 } from '../eval/dataset.ts';
+import { scoreTrack } from '../eval/scorer.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -40,6 +41,12 @@ export interface G1Report {
     readonly staticOffenders: readonly string[];
     readonly fetchCalls: number;
   };
+  readonly perTrack: readonly {
+    readonly trackId: string;
+    readonly why: string;
+    readonly failed: number;
+    readonly checks: readonly { readonly label: string; readonly expected: unknown; readonly actual: unknown; readonly ok: boolean }[];
+  }[];
   readonly passed_gate: boolean;
 }
 
@@ -72,6 +79,17 @@ export function computeG1(): G1Report {
   }
 
   const failedTracks = first.score.trackFailures.map((item) => item.trackId);
+  const perTrack = first.observations.map((observation) => {
+    const expectation = expectations.assertions[observation.trackId];
+    if (expectation === undefined) return { trackId: observation.trackId, why: '', failed: 0, checks: [] };
+    const scored = scoreTrack(observation, expectation);
+    return {
+      trackId: observation.trackId,
+      why: expectation.why,
+      failed: scored.failed,
+      checks: scored.checks.map((check) => ({ label: check.label, expected: check.expected, actual: check.actual, ok: check.ok })),
+    };
+  });
   const allMutationsDetected = mutations.every((item) => item.detected);
   return {
     gate: 'G1',
@@ -85,6 +103,7 @@ export function computeG1(): G1Report {
     determinism: { secondRunDigest: secondDigest, equal: digest === secondDigest },
     mutations,
     zeroLiveCalls: { staticOffenders: staticScan(), fetchCalls },
+    perTrack,
     passed_gate:
       first.score.failed === 0 &&
       first.score.missingExpectations.length === 0 &&
@@ -100,6 +119,7 @@ if (process.argv[1] !== undefined && import.meta.url === `file://${process.argv[
   if (outDir === undefined) throw new Error('--out needs a value');
   const report = computeG1();
   writeFileSync(join(outDir, 'g1.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  writeFileSync(join(outDir, 'g1-tracks.json'), `${JSON.stringify({ gate: 'G1', tracks: report.perTrack }, null, 2)}\n`, 'utf8');
   process.stdout.write(`${report.passed_gate ? 'PASS' : 'FAIL'} G1 tracks=${report.trackCount} checks=${report.checks} failed=${report.failed}\n`);
   process.exit(report.passed_gate ? 0 : 1);
 }
