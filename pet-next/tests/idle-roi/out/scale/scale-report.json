@@ -1,0 +1,130 @@
+{
+  "schemaVersion": 1,
+  "kind": "idle-roi-scale",
+  "generatedAt": "2026-11-10T08:12:40.186Z",
+  "status": "passed",
+  "candidate": "tests/idle-roi/out/fixture/C.webm",
+  "osScale": null,
+  "osScaleSource": "not-run: 无头 Xvfb，Electron scaleSource 不是 os",
+  "originNotes": {
+    "simulated": "--force-device-scale-factor 启动参数",
+    "system": "真实系统 DPI，本机没有条件，全部 not-run"
+  },
+  "rows": [
+    {
+      "scale": 1,
+      "origin": "simulated",
+      "status": "passed",
+      "reason": null,
+      "dpr": 1,
+      "originalBoxDip": {
+        "x": 106,
+        "y": 60,
+        "width": 108,
+        "height": 135
+      },
+      "candidateBoxDip": {
+        "x": 106,
+        "y": 60,
+        "width": 108,
+        "height": 135
+      },
+      "maxDeltaDip": 0,
+      "dprDoubleControlDeltaDip": 0,
+      "screenshots": [
+        "tests/idle-roi/out/scale/scale-1-original.png",
+        "tests/idle-roi/out/scale/scale-1-roi.png",
+        "tests/idle-roi/out/scale/scale-1-dpr-double.png"
+      ]
+    },
+    {
+      "scale": 1.25,
+      "origin": "simulated",
+      "status": "passed",
+      "reason": null,
+      "dpr": 1.25,
+      "originalBoxDip": {
+        "x": 106.4,
+        "y": 60,
+        "width": 107.2,
+        "height": 136
+      },
+      "candidateBoxDip": {
+        "x": 106.4,
+        "y": 60,
+        "width": 107.2,
+        "height": 135.2
+      },
+      "maxDeltaDip": 0.8000000000000114,
+      "dprDoubleControlDeltaDip": 28.80000000000001,
+      "screenshots": [
+        "tests/idle-roi/out/scale/scale-1.25-original.png",
+        "tests/idle-roi/out/scale/scale-1.25-roi.png",
+        "tests/idle-roi/out/scale/scale-1.25-dpr-double.png"
+      ]
+    },
+    {
+      "scale": 1.5,
+      "origin": "simulated",
+      "status": "passed",
+      "reason": null,
+      "dpr": 1.5,
+      "originalBoxDip": {
+        "x": 106.66666666666667,
+        "y": 60,
+        "width": 107.33333333333333,
+        "height": 135.33333333333334
+      },
+      "candidateBoxDip": {
+        "x": 106.66666666666667,
+        "y": 60,
+        "width": 107.33333333333333,
+        "height": 135.33333333333334
+      },
+      "maxDeltaDip": 0,
+      "dprDoubleControlDeltaDip": 53.33333333333333,
+      "screenshots": [
+        "tests/idle-roi/out/scale/scale-1.5-original.png",
+        "tests/idle-roi/out/scale/scale-1.5-roi.png",
+        "tests/idle-roi/out/scale/scale-1.5-dpr-double.png"
+      ]
+    },
+    {
+      "scale": 1,
+      "origin": "system",
+      "status": "not-run",
+      "reason": "本机无真实系统 DPI（无头 Xvfb），不拿模拟值冒充",
+      "dpr": null,
+      "originalBoxDip": null,
+      "candidateBoxDip": null,
+      "maxDeltaDip": null,
+      "dprDoubleControlDeltaDip": null,
+      "screenshots": []
+    },
+    {
+      "scale": 1.25,
+      "origin": "system",
+      "status": "not-run",
+      "reason": "本机无真实系统 DPI（无头 Xvfb），不拿模拟值冒充",
+      "dpr": null,
+      "originalBoxDip": null,
+      "candidateBoxDip": null,
+      "maxDeltaDip": null,
+      "dprDoubleControlDeltaDip": null,
+      "screenshots": []
+    },
+    {
+      "scale": 1.5,
+      "origin": "system",
+      "status": "not-run",
+      "reason": "本机无真实系统 DPI（无头 Xvfb），不拿模拟值冒充",
+      "dpr": null,
+      "originalBoxDip": null,
+      "candidateBoxDip": null,
+      "maxDeltaDip": null,
+      "dprDoubleControlDeltaDip": null,
+      "screenshots": []
+    }
+  ],
+  "rerun": "pnpm build && env -u NODE_OPTIONS node --experimental-strip-types --test --test-reporter spec tests/idle-roi/scale.test.ts"
+}

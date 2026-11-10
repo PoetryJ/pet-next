@@ -1,0 +1,4200 @@
+{
+  "schemaVersion": 1,
+  "kind": "idle-roi-selfcheck",
+  "generatedAt": "2026-11-10T08:12:53.547Z",
+  "note": "fixture 由 O 自造，只用于自测与负控；其中 O–C 数值只作参考，不构成对 A 候选的判定",
+  "thresholds": {
+    "frameCount": 48,
+    "roiOutsideOpaque": 0,
+    "ptsDeltaMs": 1,
+    "durationDeltaMs": 1,
+    "fToCChannelMax": 2,
+    "fToCAlphaMax": 2,
+    "ocMae": 0.00392156862745098,
+    "ocP99": 0.00784313725490196,
+    "bboxDeltaPx": 1,
+    "centroidDeltaPx": 0.5,
+    "alphaThreshold": 1,
+    "edgeBandLow": 2,
+    "edgeBandHigh": 64
+  },
+  "fixture": {
+    "file": "tests/idle-roi/out/fixture",
+    "crop": {
+      "x": 208,
+      "y": 52,
+      "width": 226,
+      "height": 286
+    },
+    "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "frameCount": 48,
+    "gates": [
+      {
+        "id": "coverage",
+        "title": "全片覆盖与 ROI 合法性",
+        "criteria": "48/48 帧解码；ROI 外 alpha>1 被删除像素数 = 0",
+        "pass": true,
+        "failures": [],
+        "metrics": {
+          "expectedFrames": 48,
+          "perArm": {
+            "O": {
+              "decodedFrames": 48,
+              "outsideOpaque": 0,
+              "insideOpaque": 1951279,
+              "outsideFrames": []
+            },
+            "F": {
+              "decodedFrames": 48,
+              "outsideOpaque": 0,
+              "insideOpaque": 1951279,
+              "outsideFrames": []
+            },
+            "C": {
+              "decodedFrames": 48,
+              "outsideOpaque": 0,
+              "insideOpaque": 1951279,
+              "outsideFrames": []
+            }
+          },
+          "insideRatio": {
+            "F": 1,
+            "C": 1
+          },
+          "crop": {
+            "x": 208,
+            "y": 52,
+            "width": 226,
+            "height": 286
+          },
+          "restore": {
+            "dx": 0,
+            "dy": 0
+          }
+        }
+      },
+      {
+        "id": "timeline",
+        "title": "时间轴与循环",
+        "criteria": "帧数相同；逐帧 PTS 一一对应（≤1ms 时间基舍入）；duration 差 ≤1ms；循环不增删帧",
+        "pass": true,
+        "failures": [],
+        "metrics": {
+          "perArm": {
+            "O": {
+              "count": 48,
+              "maxPtsDeltaMs": 0,
+              "ptsExactlyEqual": true,
+              "minStepMs": 0.040999999999999925,
+              "maxStepMs": 0.04200000000000004,
+              "formatDurationMs": 1.999,
+              "durationDeltaMs": 0,
+              "tailMs": 2.220446049250313e-16,
+              "nonIncreasing": 0
+            },
+            "F": {
+              "count": 48,
+              "maxPtsDeltaMs": 0,
+              "ptsExactlyEqual": true,
+              "minStepMs": 0.040999999999999925,
+              "maxStepMs": 0.04200000000000004,
+              "formatDurationMs": 2,
+              "durationDeltaMs": 0.0009999999999998899,
+              "tailMs": 0.001000000000000112,
+              "nonIncreasing": 0
+            },
+            "C": {
+              "count": 48,
+              "maxPtsDeltaMs": 0,
+              "ptsExactlyEqual": true,
+              "minStepMs": 0.040999999999999925,
+              "maxStepMs": 0.04200000000000004,
+              "formatDurationMs": 2,
+              "durationDeltaMs": 0.0009999999999998899,
+              "tailMs": 0.001000000000000112,
+              "nonIncreasing": 0
+            }
+          }
+        }
+      },
+      {
+        "id": "layout",
+        "title": "位置与边缘对齐",
+        "criteria": "还原后前景包围盒每边偏移 ≤1px、质心偏移 ≤0.5px（含逐帧）",
+        "pass": true,
+        "failures": [],
+        "metrics": {
+          "original": {
+            "union": {
+              "x": 210,
+              "y": 54,
+              "width": 222,
+              "height": 281
+            },
+            "centroid": {
+              "x": 320.15083030156114,
+              "y": 202.69925418148813
+            },
+            "count": 1951279
+          },
+          "candidate": {
+            "union": {
+              "x": 210,
+              "y": 54,
+              "width": 222,
+              "height": 281
+            },
+            "centroid": {
+              "x": 320.15083030156114,
+              "y": 202.69925418148813
+            },
+            "count": 1951279
+          },
+          "centroidDelta": 0,
+          "perFrameMaxDelta": 0,
+          "restore": {
+            "dx": 0,
+            "dy": 0
+          }
+        }
+      },
+      {
+        "id": "f-to-c",
+        "title": "F–C 原画布一致",
+        "criteria": "C 按 crop 还原后与 F 合成比较，每通道最大差 ≤2/255；alpha 最大差 ≤2/255",
+        "pass": true,
+        "failures": [],
+        "metrics": {
+          "worstCompositeMax": 2,
+          "worstFrame": 3,
+          "worstAlphaMax": 1,
+          "samplesOver2": 0,
+          "perFrame": [
+            {
+              "frame": 0,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 1,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 2,
+              "alphaMax": 1,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 3,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 4,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 5,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 6,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 7,
+              "alphaMax": 0,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 8,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 9,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 10,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 11,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 12,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 13,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 14,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 15,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 16,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 17,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 18,
+              "alphaMax": 0,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 19,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 20,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 21,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 22,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 23,
+              "alphaMax": 0,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 24,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 25,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 26,
+              "alphaMax": 1,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 27,
+              "alphaMax": 1,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 28,
+              "alphaMax": 0,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 29,
+              "alphaMax": 1,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 30,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 31,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 32,
+              "alphaMax": 1,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 33,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 34,
+              "alphaMax": 0,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 35,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 36,
+              "alphaMax": 1,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 37,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 38,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 39,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 40,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 41,
+              "alphaMax": 0,
+              "plates": {
+                "black": 1,
+                "white": 1,
+                "checker": 1
+              }
+            },
+            {
+              "frame": 42,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 43,
+              "alphaMax": 0,
+              "plates": {
+                "black": 0,
+                "white": 0,
+                "checker": 0
+              }
+            },
+            {
+              "frame": 44,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 45,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 46,
+              "alphaMax": 0,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            },
+            {
+              "frame": 47,
+              "alphaMax": 1,
+              "plates": {
+                "black": 2,
+                "white": 2,
+                "checker": 2
+              }
+            }
+          ]
+        }
+      },
+      {
+        "id": "o-to-c",
+        "title": "O–C 三种底合成",
+        "criteria": "前景(α>1)与边缘区(2..64 或距 alpha 边界 1px) 分别 MAE ≤1/255、P99 ≤2/255；黑/白/棋盘各自过门",
+        "pass": false,
+        "failures": [
+          "帧 0 black foreground MAE 1.1067/255 > 1/255（超 1 样本 35389）",
+          "帧 0 black foreground P99 3/255 > 2/255",
+          "帧 0 black edge MAE 0.0698/255 > 1/255（超 1 样本 5）",
+          "帧 0 black edge P99 1/255 > 2/255",
+          "帧 0 white foreground MAE 1.1506/255 > 1/255（超 1 样本 37892）",
+          "帧 0 white foreground P99 3/255 > 2/255",
+          "帧 0 white edge MAE 0.3292/255 > 1/255（超 1 样本 61）",
+          "帧 0 white edge P99 1/255 > 2/255",
+          "帧 0 checker foreground MAE 1.1360/255 > 1/255（超 1 样本 37016）",
+          "帧 0 checker foreground P99 3/255 > 2/255",
+          "帧 0 checker edge MAE 0.2862/255 > 1/255（超 1 样本 32）",
+          "帧 0 checker edge P99 1/255 > 2/255",
+          "帧 1 black foreground MAE 1.1068/255 > 1/255（超 1 样本 35389）",
+          "帧 1 black foreground P99 3/255 > 2/255",
+          "帧 1 black edge MAE 0.0701/255 > 1/255（超 1 样本 5）",
+          "帧 1 black edge P99 1/255 > 2/255",
+          "帧 1 white foreground MAE 1.1508/255 > 1/255（超 1 样本 37886）",
+          "帧 1 white foreground P99 3/255 > 2/255",
+          "帧 1 white edge MAE 0.3286/255 > 1/255（超 1 样本 61）",
+          "帧 1 white edge P99 1/255 > 2/255",
+          "帧 1 checker foreground MAE 1.1362/255 > 1/255（超 1 样本 37017）",
+          "帧 1 checker foreground P99 3/255 > 2/255",
+          "帧 1 checker edge MAE 0.2859/255 > 1/255（超 1 样本 32）",
+          "帧 1 checker edge P99 1/255 > 2/255",
+          "帧 2 black foreground MAE 1.0776/255 > 1/255（超 1 样本 33635）",
+          "帧 2 black foreground P99 3/255 > 2/255",
+          "帧 2 black edge MAE 0.0651/255 > 1/255（超 1 样本 6）",
+          "帧 2 black edge P99 1/255 > 2/255",
+          "帧 2 white foreground MAE 1.1276/255 > 1/255（超 1 样本 36521）",
+          "帧 2 white foreground P99 3/255 > 2/255",
+          "帧 2 white edge MAE 0.2723/255 > 1/255（超 1 样本 46）",
+          "帧 2 white edge P99 1/255 > 2/255",
+          "帧 2 checker foreground MAE 1.1109/255 > 1/255（超 1 样本 35468）",
+          "帧 2 checker foreground P99 3/255 > 2/255",
+          "帧 2 checker edge MAE 0.2368/255 > 1/255（超 1 样本 27）",
+          "帧 2 checker edge P99 1/255 > 2/255",
+          "帧 3 black foreground MAE 1.0756/255 > 1/255（超 1 样本 33572）",
+          "帧 3 black foreground P99 3/255 > 2/255",
+          "帧 3 black edge MAE 0.0622/255 > 1/255（超 1 样本 4）",
+          "帧 3 black edge P99 1/255 > 2/255",
+          "帧 3 white foreground MAE 1.1267/255 > 1/255（超 1 样本 36501）",
+          "帧 3 white foreground P99 3/255 > 2/255",
+          "帧 3 white edge MAE 0.2679/255 > 1/255（超 1 样本 40）",
+          "帧 3 white edge P99 1/255 > 2/255",
+          "帧 3 checker foreground MAE 1.1093/255 > 1/255（超 1 样本 35410）",
+          "帧 3 checker foreground P99 3/255 > 2/255",
+          "帧 3 checker edge MAE 0.2339/255 > 1/255（超 1 样本 17）",
+          "帧 3 checker edge P99 1/255 > 2/255",
+          "帧 4 black foreground MAE 1.0762/255 > 1/255（超 1 样本 33629）",
+          "帧 4 black foreground P99 3/255 > 2/255",
+          "帧 4 black edge MAE 0.0624/255 > 1/255（超 1 样本 7）",
+          "帧 4 black edge P99 1/255 > 2/255",
+          "帧 4 white foreground MAE 1.1274/255 > 1/255（超 1 样本 36560）",
+          "帧 4 white foreground P99 3/255 > 2/255",
+          "帧 4 white edge MAE 0.2745/255 > 1/255（超 1 样本 45）",
+          "帧 4 white edge P99 1/255 > 2/255",
+          "帧 4 checker foreground MAE 1.1094/255 > 1/255（超 1 样本 35436）",
+          "帧 4 checker foreground P99 3/255 > 2/255",
+          "帧 4 checker edge MAE 0.2351/255 > 1/255（超 1 样本 16）",
+          "帧 4 checker edge P99 1/255 > 2/255",
+          "帧 5 black foreground MAE 1.0802/255 > 1/255（超 1 样本 33818）",
+          "帧 5 black foreground P99 3/255 > 2/255",
+          "帧 5 black edge MAE 0.0642/255 > 1/255（超 1 样本 6）",
+          "帧 5 black edge P99 1/255 > 2/255",
+          "帧 5 white foreground MAE 1.1302/255 > 1/255（超 1 样本 36755）",
+          "帧 5 white foreground P99 3/255 > 2/255",
+          "帧 5 white edge MAE 0.2517/255 > 1/255（超 1 样本 45）",
+          "帧 5 white edge P99 1/255 > 2/255",
+          "帧 5 checker foreground MAE 1.1127/255 > 1/255（超 1 样本 35606）",
+          "帧 5 checker foreground P99 3/255 > 2/255",
+          "帧 5 checker edge MAE 0.2196/255 > 1/255（超 1 样本 28）",
+          "帧 5 checker edge P99 1/255 > 2/255",
+          "帧 6 black foreground MAE 1.0768/255 > 1/255（超 1 样本 33563）",
+          "帧 6 black foreground P99 3/255 > 2/255",
+          "帧 6 black edge MAE 0.0639/255 > 1/255（超 1 样本 2）",
+          "帧 6 black edge P99 1/255 > 2/255",
+          "帧 6 white foreground MAE 1.1276/255 > 1/255（超 1 样本 36609）",
+          "帧 6 white foreground P99 3/255 > 2/255",
+          "帧 6 white edge MAE 0.2810/255 > 1/255（超 1 样本 29）",
+          "帧 6 white edge P99 1/255 > 2/255",
+          "帧 6 checker foreground MAE 1.1100/255 > 1/255（超 1 样本 35453）",
+          "帧 6 checker foreground P99 3/255 > 2/255",
+          "帧 6 checker edge MAE 0.2419/255 > 1/255（超 1 样本 11）",
+          "帧 6 checker edge P99 1/255 > 2/255",
+          "帧 7 black foreground MAE 1.0764/255 > 1/255（超 1 样本 33542）",
+          "帧 7 black foreground P99 3/255 > 2/255",
+          "帧 7 black edge MAE 0.0638/255 > 1/255（超 1 样本 2）",
+          "帧 7 black edge P99 1/255 > 2/255",
+          "帧 7 white foreground MAE 1.1272/255 > 1/255（超 1 样本 36595）",
+          "帧 7 white foreground P99 3/255 > 2/255",
+          "帧 7 white edge MAE 0.2814/255 > 1/255（超 1 样本 29）",
+          "帧 7 white edge P99 1/255 > 2/255",
+          "帧 7 checker foreground MAE 1.1097/255 > 1/255（超 1 样本 35439）",
+          "帧 7 checker foreground P99 3/255 > 2/255",
+          "帧 7 checker edge MAE 0.2424/255 > 1/255（超 1 样本 11）",
+          "帧 7 checker edge P99 1/255 > 2/255",
+          "帧 8 black foreground MAE 1.0774/255 > 1/255（超 1 样本 33262）",
+          "帧 8 black foreground P99 3/255 > 2/255",
+          "帧 8 black edge MAE 0.0666/255 > 1/255（超 1 样本 5）",
+          "帧 8 black edge P99 1/255 > 2/255",
+          "帧 8 white foreground MAE 1.1289/255 > 1/255（超 1 样本 36266）",
+          "帧 8 white foreground P99 3/255 > 2/255",
+          "帧 8 white edge MAE 0.2874/255 > 1/255（超 1 样本 63）",
+          "帧 8 white edge P99 1/255 > 2/255",
+          "帧 8 checker foreground MAE 1.1108/255 > 1/255（超 1 样本 35176）",
+          "帧 8 checker foreground P99 3/255 > 2/255",
+          "帧 8 checker edge MAE 0.2458/255 > 1/255（超 1 样本 27）",
+          "帧 8 checker edge P99 1/255 > 2/255",
+          "帧 9 black foreground MAE 1.0757/255 > 1/255（超 1 样本 33484）",
+          "帧 9 black foreground P99 3/255 > 2/255",
+          "帧 9 black edge MAE 0.0560/255 > 1/255（超 1 样本 2）",
+          "帧 9 black edge P99 1/255 > 2/255",
+          "帧 9 white foreground MAE 1.1300/255 > 1/255（超 1 样本 36602）",
+          "帧 9 white foreground P99 3/255 > 2/255",
+          "帧 9 white edge MAE 0.2748/255 > 1/255（超 1 样本 32）",
+          "帧 9 white edge P99 1/255 > 2/255",
+          "帧 9 checker foreground MAE 1.1105/255 > 1/255（超 1 样本 35409）",
+          "帧 9 checker foreground P99 3/255 > 2/255",
+          "帧 9 checker edge MAE 0.2387/255 > 1/255（超 1 样本 14）",
+          "帧 9 checker edge P99 1/255 > 2/255",
+          "帧 10 black foreground MAE 1.0747/255 > 1/255（超 1 样本 33363）",
+          "帧 10 black foreground P99 3/255 > 2/255",
+          "帧 10 black edge MAE 0.0597/255 > 1/255（超 1 样本 2）",
+          "帧 10 black edge P99 1/255 > 2/255",
+          "帧 10 white foreground MAE 1.1290/255 > 1/255（超 1 样本 36492）",
+          "帧 10 white foreground P99 3/255 > 2/255",
+          "帧 10 white edge MAE 0.2833/255 > 1/255（超 1 样本 26）",
+          "帧 10 white edge P99 1/255 > 2/255",
+          "帧 10 checker foreground MAE 1.1085/255 > 1/255（超 1 样本 35232）",
+          "帧 10 checker foreground P99 3/255 > 2/255",
+          "帧 10 checker edge MAE 0.2398/255 > 1/255（超 1 样本 12）",
+          "帧 10 checker edge P99 1/255 > 2/255",
+          "帧 11 black foreground MAE 1.0702/255 > 1/255（超 1 样本 33193）",
+          "帧 11 black foreground P99 3/255 > 2/255",
+          "帧 11 black edge MAE 0.0606/255 > 1/255（超 1 样本 5）",
+          "帧 11 black edge P99 1/255 > 2/255",
+          "帧 11 white foreground MAE 1.1238/255 > 1/255（超 1 样本 36355）",
+          "帧 11 white foreground P99 3/255 > 2/255",
+          "帧 11 white edge MAE 0.2680/255 > 1/255（超 1 样本 50）",
+          "帧 11 white edge P99 1/255 > 2/255",
+          "帧 11 checker foreground MAE 1.1050/255 > 1/255（超 1 样本 35152）",
+          "帧 11 checker foreground P99 3/255 > 2/255",
+          "帧 11 checker edge MAE 0.2340/255 > 1/255（超 1 样本 25）",
+          "帧 11 checker edge P99 1/255 > 2/255",
+          "帧 12 black foreground MAE 1.0671/255 > 1/255（超 1 样本 33071）",
+          "帧 12 black foreground P99 3/255 > 2/255",
+          "帧 12 black edge MAE 0.0579/255 > 1/255（超 1 样本 7）",
+          "帧 12 black edge P99 1/255 > 2/255",
+          "帧 12 white foreground MAE 1.1223/255 > 1/255（超 1 样本 36385）",
+          "帧 12 white foreground P99 3/255 > 2/255",
+          "帧 12 white edge MAE 0.2733/255 > 1/255（超 1 样本 53）",
+          "帧 12 white edge P99 1/255 > 2/255",
+          "帧 12 checker foreground MAE 1.1024/255 > 1/255（超 1 样本 35101）",
+          "帧 12 checker foreground P99 3/255 > 2/255",
+          "帧 12 checker edge MAE 0.2384/255 > 1/255（超 1 样本 23）",
+          "帧 12 checker edge P99 1/255 > 2/255",
+          "帧 13 black foreground MAE 1.0675/255 > 1/255（超 1 样本 33088）",
+          "帧 13 black foreground P99 3/255 > 2/255",
+          "帧 13 black edge MAE 0.0579/255 > 1/255（超 1 样本 7）",
+          "帧 13 black edge P99 1/255 > 2/255",
+          "帧 13 white foreground MAE 1.1227/255 > 1/255（超 1 样本 36402）",
+          "帧 13 white foreground P99 3/255 > 2/255",
+          "帧 13 white edge MAE 0.2733/255 > 1/255（超 1 样本 53）",
+          "帧 13 white edge P99 1/255 > 2/255",
+          "帧 13 checker foreground MAE 1.1027/255 > 1/255（超 1 样本 35118）",
+          "帧 13 checker foreground P99 3/255 > 2/255",
+          "帧 13 checker edge MAE 0.2384/255 > 1/255（超 1 样本 23）",
+          "帧 13 checker edge P99 1/255 > 2/255",
+          "帧 14 black foreground MAE 1.0702/255 > 1/255（超 1 样本 33250）",
+          "帧 14 black foreground P99 3/255 > 2/255",
+          "帧 14 black edge MAE 0.0622/255 > 1/255（超 1 样本 4）",
+          "帧 14 black edge P99 1/255 > 2/255",
+          "帧 14 white foreground MAE 1.1268/255 > 1/255（超 1 样本 36582）",
+          "帧 14 white foreground P99 3/255 > 2/255",
+          "帧 14 white edge MAE 0.2857/255 > 1/255（超 1 样本 44）",
+          "帧 14 white edge P99 1/255 > 2/255",
+          "帧 14 checker foreground MAE 1.1067/255 > 1/255（超 1 样本 35257）",
+          "帧 14 checker foreground P99 3/255 > 2/255",
+          "帧 14 checker edge MAE 0.2474/255 > 1/255（超 1 样本 14）",
+          "帧 14 checker edge P99 1/255 > 2/255",
+          "帧 15 black foreground MAE 1.0696/255 > 1/255（超 1 样本 33337）",
+          "帧 15 black foreground P99 3/255 > 2/255",
+          "帧 15 black edge MAE 0.0636/255 > 1/255（超 1 样本 2）",
+          "帧 15 black edge P99 1/255 > 2/255",
+          "帧 15 white foreground MAE 1.1254/255 > 1/255（超 1 样本 36649）",
+          "帧 15 white foreground P99 3/255 > 2/255",
+          "帧 15 white edge MAE 0.2799/255 > 1/255（超 1 样本 43）",
+          "帧 15 white edge P99 1/255 > 2/255",
+          "帧 15 checker foreground MAE 1.1065/255 > 1/255（超 1 样本 35411）",
+          "帧 15 checker foreground P99 3/255 > 2/255",
+          "帧 15 checker edge MAE 0.2361/255 > 1/255（超 1 样本 13）",
+          "帧 15 checker edge P99 1/255 > 2/255",
+          "帧 16 black foreground MAE 1.0688/255 > 1/255（超 1 样本 33368）",
+          "帧 16 black foreground P99 3/255 > 2/255",
+          "帧 16 black edge MAE 0.0620/255 > 1/255（超 1 样本 5）",
+          "帧 16 black edge P99 1/255 > 2/255",
+          "帧 16 white foreground MAE 1.1251/255 > 1/255（超 1 样本 36691）",
+          "帧 16 white foreground P99 3/255 > 2/255",
+          "帧 16 white edge MAE 0.2854/255 > 1/255（超 1 样本 41）",
+          "帧 16 white edge P99 1/255 > 2/255",
+          "帧 16 checker foreground MAE 1.1053/255 > 1/255（超 1 样本 35425）",
+          "帧 16 checker foreground P99 3/255 > 2/255",
+          "帧 16 checker edge MAE 0.2447/255 > 1/255（超 1 样本 13）",
+          "帧 16 checker edge P99 1/255 > 2/255",
+          "帧 17 black foreground MAE 1.0708/255 > 1/255（超 1 样本 33501）",
+          "帧 17 black foreground P99 3/255 > 2/255",
+          "帧 17 black edge MAE 0.0527/255 > 1/255（超 1 样本 4）",
+          "帧 17 black edge P99 1/255 > 2/255",
+          "帧 17 white foreground MAE 1.1269/255 > 1/255（超 1 样本 36785）",
+          "帧 17 white foreground P99 3/255 > 2/255",
+          "帧 17 white edge MAE 0.2593/255 > 1/255（超 1 样本 28）",
+          "帧 17 white edge P99 1/255 > 2/255",
+          "帧 17 checker foreground MAE 1.1070/255 > 1/255（超 1 样本 35493）",
+          "帧 17 checker foreground P99 3/255 > 2/255",
+          "帧 17 checker edge MAE 0.2275/255 > 1/255（超 1 样本 7）",
+          "帧 17 checker edge P99 1/255 > 2/255",
+          "帧 18 black foreground MAE 1.0739/255 > 1/255（超 1 样本 33750）",
+          "帧 18 black foreground P99 3/255 > 2/255",
+          "帧 18 black edge MAE 0.0551/255 > 1/255（超 1 样本 3）",
+          "帧 18 black edge P99 1/255 > 2/255",
+          "帧 18 white foreground MAE 1.1291/255 > 1/255（超 1 样本 37068）",
+          "帧 18 white foreground P99 3/255 > 2/255",
+          "帧 18 white edge MAE 0.2569/255 > 1/255（超 1 样本 29）",
+          "帧 18 white edge P99 1/255 > 2/255",
+          "帧 18 checker foreground MAE 1.1109/255 > 1/255（超 1 样本 35879）",
+          "帧 18 checker foreground P99 3/255 > 2/255",
+          "帧 18 checker edge MAE 0.2247/255 > 1/255（超 1 样本 14）",
+          "帧 18 checker edge P99 1/255 > 2/255",
+          "帧 19 black foreground MAE 1.0741/255 > 1/255（超 1 样本 33765）",
+          "帧 19 black foreground P99 3/255 > 2/255",
+          "帧 19 black edge MAE 0.0551/255 > 1/255（超 1 样本 3）",
+          "帧 19 black edge P99 1/255 > 2/255",
+          "帧 19 white foreground MAE 1.1293/255 > 1/255（超 1 样本 37078）",
+          "帧 19 white foreground P99 3/255 > 2/255",
+          "帧 19 white edge MAE 0.2568/255 > 1/255（超 1 样本 29）",
+          "帧 19 white edge P99 1/255 > 2/255",
+          "帧 19 checker foreground MAE 1.1111/255 > 1/255（超 1 样本 35891）",
+          "帧 19 checker foreground P99 3/255 > 2/255",
+          "帧 19 checker edge MAE 0.2246/255 > 1/255（超 1 样本 14）",
+          "帧 19 checker edge P99 1/255 > 2/255",
+          "帧 20 black foreground MAE 1.0660/255 > 1/255（超 1 样本 33197）",
+          "帧 20 black foreground P99 3/255 > 2/255",
+          "帧 20 black edge MAE 0.0543/255 > 1/255（超 1 样本 2）",
+          "帧 20 black edge P99 1/255 > 2/255",
+          "帧 20 white foreground MAE 1.1190/255 > 1/255（超 1 样本 36373）",
+          "帧 20 white foreground P99 3/255 > 2/255",
+          "帧 20 white edge MAE 0.2834/255 > 1/255（超 1 样本 34）",
+          "帧 20 white edge P99 1/255 > 2/255",
+          "帧 20 checker foreground MAE 1.1011/255 > 1/255（超 1 样本 35212）",
+          "帧 20 checker foreground P99 3/255 > 2/255",
+          "帧 20 checker edge MAE 0.2418/255 > 1/255（超 1 样本 16）",
+          "帧 20 checker edge P99 1/255 > 2/255",
+          "帧 21 black foreground MAE 1.0655/255 > 1/255（超 1 样本 33435）",
+          "帧 21 black foreground P99 3/255 > 2/255",
+          "帧 21 black edge MAE 0.0481/255 > 1/255（超 1 样本 1）",
+          "帧 21 black edge P99 1/255 > 2/255",
+          "帧 21 white foreground MAE 1.1194/255 > 1/255（超 1 样本 36678）",
+          "帧 21 white foreground P99 3/255 > 2/255",
+          "帧 21 white edge MAE 0.2776/255 > 1/255（超 1 样本 37）",
+          "帧 21 white edge P99 1/255 > 2/255",
+          "帧 21 checker foreground MAE 1.1014/255 > 1/255（超 1 样本 35468）",
+          "帧 21 checker foreground P99 3/255 > 2/255",
+          "帧 21 checker edge MAE 0.2429/255 > 1/255（超 1 样本 19）",
+          "帧 21 checker edge P99 1/255 > 2/255",
+          "帧 22 black foreground MAE 1.0657/255 > 1/255（超 1 样本 33495）",
+          "帧 22 black foreground P99 3/255 > 2/255",
+          "帧 22 black edge MAE 0.0464/255 > 1/255（超 1 样本 1）",
+          "帧 22 black edge P99 1/255 > 2/255",
+          "帧 22 white foreground MAE 1.1197/255 > 1/255（超 1 样本 36740）",
+          "帧 22 white foreground P99 3/255 > 2/255",
+          "帧 22 white edge MAE 0.2759/255 > 1/255（超 1 样本 33）",
+          "帧 22 white edge P99 1/255 > 2/255",
+          "帧 22 checker foreground MAE 1.1014/255 > 1/255（超 1 样本 35522）",
+          "帧 22 checker foreground P99 3/255 > 2/255",
+          "帧 22 checker edge MAE 0.2416/255 > 1/255（超 1 样本 20）",
+          "帧 22 checker edge P99 1/255 > 2/255",
+          "帧 23 black foreground MAE 1.0651/255 > 1/255（超 1 样本 33279）",
+          "帧 23 black foreground P99 3/255 > 2/255",
+          "帧 23 black edge MAE 0.0542/255 > 1/255（超 1 样本 2）",
+          "帧 23 black edge P99 1/255 > 2/255",
+          "帧 23 white foreground MAE 1.1188/255 > 1/255（超 1 样本 36481）",
+          "帧 23 white foreground P99 3/255 > 2/255",
+          "帧 23 white edge MAE 0.2735/255 > 1/255（超 1 样本 23）",
+          "帧 23 white edge P99 1/255 > 2/255",
+          "帧 23 checker foreground MAE 1.1003/255 > 1/255（超 1 样本 35278）",
+          "帧 23 checker foreground P99 3/255 > 2/255",
+          "帧 23 checker edge MAE 0.2403/255 > 1/255（超 1 样本 15）",
+          "帧 23 checker edge P99 1/255 > 2/255",
+          "帧 24 black foreground MAE 1.0645/255 > 1/255（超 1 样本 33354）",
+          "帧 24 black foreground P99 3/255 > 2/255",
+          "帧 24 black edge MAE 0.0541/255 > 1/255（超 1 样本 0）",
+          "帧 24 black edge P99 1/255 > 2/255",
+          "帧 24 white foreground MAE 1.1184/255 > 1/255（超 1 样本 36579）",
+          "帧 24 white foreground P99 3/255 > 2/255",
+          "帧 24 white edge MAE 0.2811/255 > 1/255（超 1 样本 15）",
+          "帧 24 white edge P99 1/255 > 2/255",
+          "帧 24 checker foreground MAE 1.0990/255 > 1/255（超 1 样本 35334）",
+          "帧 24 checker foreground P99 3/255 > 2/255",
+          "帧 24 checker edge MAE 0.2457/255 > 1/255（超 1 样本 12）",
+          "帧 24 checker edge P99 1/255 > 2/255",
+          "帧 25 black foreground MAE 1.0646/255 > 1/255（超 1 样本 33354）",
+          "帧 25 black foreground P99 3/255 > 2/255",
+          "帧 25 black edge MAE 0.0541/255 > 1/255（超 1 样本 0）",
+          "帧 25 black edge P99 1/255 > 2/255",
+          "帧 25 white foreground MAE 1.1185/255 > 1/255（超 1 样本 36579）",
+          "帧 25 white foreground P99 3/255 > 2/255",
+          "帧 25 white edge MAE 0.2811/255 > 1/255（超 1 样本 15）",
+          "帧 25 white edge P99 1/255 > 2/255",
+          "帧 25 checker foreground MAE 1.0990/255 > 1/255（超 1 样本 35334）",
+          "帧 25 checker foreground P99 3/255 > 2/255",
+          "帧 25 checker edge MAE 0.2457/255 > 1/255（超 1 样本 12）",
+          "帧 25 checker edge P99 1/255 > 2/255",
+          "帧 26 black foreground MAE 1.0626/255 > 1/255（超 1 样本 33339）",
+          "帧 26 black foreground P99 3/255 > 2/255",
+          "帧 26 black edge MAE 0.0531/255 > 1/255（超 1 样本 4）",
+          "帧 26 black edge P99 1/255 > 2/255",
+          "帧 26 white foreground MAE 1.1161/255 > 1/255（超 1 样本 36582）",
+          "帧 26 white foreground P99 3/255 > 2/255",
+          "帧 26 white edge MAE 0.2832/255 > 1/255（超 1 样本 35）",
+          "帧 26 white edge P99 1/255 > 2/255",
+          "帧 26 checker foreground MAE 1.0978/255 > 1/255（超 1 样本 35361）",
+          "帧 26 checker foreground P99 3/255 > 2/255",
+          "帧 26 checker edge MAE 0.2473/255 > 1/255（超 1 样本 14）",
+          "帧 26 checker edge P99 1/255 > 2/255",
+          "帧 27 black foreground MAE 1.0609/255 > 1/255（超 1 样本 33517）",
+          "帧 27 black foreground P99 3/255 > 2/255",
+          "帧 27 black edge MAE 0.0516/255 > 1/255（超 1 样本 3）",
+          "帧 27 black edge P99 1/255 > 2/255",
+          "帧 27 white foreground MAE 1.1158/255 > 1/255（超 1 样本 36856）",
+          "帧 27 white foreground P99 3/255 > 2/255",
+          "帧 27 white edge MAE 0.2713/255 > 1/255（超 1 样本 29）",
+          "帧 27 white edge P99 1/255 > 2/255",
+          "帧 27 checker foreground MAE 1.0962/255 > 1/255（超 1 样本 35505）",
+          "帧 27 checker foreground P99 3/255 > 2/255",
+          "帧 27 checker edge MAE 0.2374/255 > 1/255（超 1 样本 12）",
+          "帧 27 checker edge P99 1/255 > 2/255",
+          "帧 28 black foreground MAE 1.0614/255 > 1/255（超 1 样本 33566）",
+          "帧 28 black foreground P99 3/255 > 2/255",
+          "帧 28 black edge MAE 0.0518/255 > 1/255（超 1 样本 3）",
+          "帧 28 black edge P99 1/255 > 2/255",
+          "帧 28 white foreground MAE 1.1167/255 > 1/255（超 1 样本 36894）",
+          "帧 28 white foreground P99 3/255 > 2/255",
+          "帧 28 white edge MAE 0.2746/255 > 1/255（超 1 样本 33）",
+          "帧 28 white edge P99 1/255 > 2/255",
+          "帧 28 checker foreground MAE 1.0976/255 > 1/255（超 1 样本 35582）",
+          "帧 28 checker foreground P99 3/255 > 2/255",
+          "帧 28 checker edge MAE 0.2439/255 > 1/255（超 1 样本 15）",
+          "帧 28 checker edge P99 1/255 > 2/255",
+          "帧 29 black foreground MAE 1.0629/255 > 1/255（超 1 样本 33723）",
+          "帧 29 black foreground P99 3/255 > 2/255",
+          "帧 29 black edge MAE 0.0528/255 > 1/255（超 1 样本 5）",
+          "帧 29 black edge P99 1/255 > 2/255",
+          "帧 29 white foreground MAE 1.1161/255 > 1/255（超 1 样本 36857）",
+          "帧 29 white foreground P99 3/255 > 2/255",
+          "帧 29 white edge MAE 0.2509/255 > 1/255（超 1 样本 27）",
+          "帧 29 white edge P99 1/255 > 2/255",
+          "帧 29 checker foreground MAE 1.0981/255 > 1/255（超 1 样本 35682）",
+          "帧 29 checker foreground P99 3/255 > 2/255",
+          "帧 29 checker edge MAE 0.2216/255 > 1/255（超 1 样本 17）",
+          "帧 29 checker edge P99 1/255 > 2/255",
+          "帧 30 black foreground MAE 1.0709/255 > 1/255（超 1 样本 33971）",
+          "帧 30 black foreground P99 3/255 > 2/255",
+          "帧 30 black edge MAE 0.0488/255 > 1/255（超 1 样本 2）",
+          "帧 30 black edge P99 1/255 > 2/255",
+          "帧 30 white foreground MAE 1.1230/255 > 1/255（超 1 样本 37179）",
+          "帧 30 white foreground P99 3/255 > 2/255",
+          "帧 30 white edge MAE 0.2782/255 > 1/255（超 1 样本 26）",
+          "帧 30 white edge P99 1/255 > 2/255",
+          "帧 30 checker foreground MAE 1.1056/255 > 1/255（超 1 样本 35983）",
+          "帧 30 checker foreground P99 3/255 > 2/255",
+          "帧 30 checker edge MAE 0.2458/255 > 1/255（超 1 样本 18）",
+          "帧 30 checker edge P99 1/255 > 2/255",
+          "帧 31 black foreground MAE 1.0710/255 > 1/255（超 1 样本 33972）",
+          "帧 31 black foreground P99 3/255 > 2/255",
+          "帧 31 black edge MAE 0.0488/255 > 1/255（超 1 样本 2）",
+          "帧 31 black edge P99 1/255 > 2/255",
+          "帧 31 white foreground MAE 1.1230/255 > 1/255（超 1 样本 37179）",
+          "帧 31 white foreground P99 3/255 > 2/255",
+          "帧 31 white edge MAE 0.2784/255 > 1/255（超 1 样本 26）",
+          "帧 31 white edge P99 1/255 > 2/255",
+          "帧 31 checker foreground MAE 1.1056/255 > 1/255（超 1 样本 35984）",
+          "帧 31 checker foreground P99 3/255 > 2/255",
+          "帧 31 checker edge MAE 0.2460/255 > 1/255（超 1 样本 18）",
+          "帧 31 checker edge P99 1/255 > 2/255",
+          "帧 32 black foreground MAE 1.0684/255 > 1/255（超 1 样本 33973）",
+          "帧 32 black foreground P99 3/255 > 2/255",
+          "帧 32 black edge MAE 0.0573/255 > 1/255（超 1 样本 4）",
+          "帧 32 black edge P99 1/255 > 2/255",
+          "帧 32 white foreground MAE 1.1227/255 > 1/255（超 1 样本 37127）",
+          "帧 32 white foreground P99 3/255 > 2/255",
+          "帧 32 white edge MAE 0.2619/255 > 1/255（超 1 样本 47）",
+          "帧 32 white edge P99 1/255 > 2/255",
+          "帧 32 checker foreground MAE 1.1038/255 > 1/255（超 1 样本 35923）",
+          "帧 32 checker foreground P99 3/255 > 2/255",
+          "帧 32 checker edge MAE 0.2311/255 > 1/255（超 1 样本 24）",
+          "帧 32 checker edge P99 1/255 > 2/255",
+          "帧 33 black foreground MAE 1.0676/255 > 1/255（超 1 样本 34090）",
+          "帧 33 black foreground P99 3/255 > 2/255",
+          "帧 33 black edge MAE 0.0553/255 > 1/255（超 1 样本 6）",
+          "帧 33 black edge P99 1/255 > 2/255",
+          "帧 33 white foreground MAE 1.1231/255 > 1/255（超 1 样本 37352）",
+          "帧 33 white foreground P99 3/255 > 2/255",
+          "帧 33 white edge MAE 0.2624/255 > 1/255（超 1 样本 45）",
+          "帧 33 white edge P99 1/255 > 2/255",
+          "帧 33 checker foreground MAE 1.1033/255 > 1/255（超 1 样本 36049）",
+          "帧 33 checker foreground P99 3/255 > 2/255",
+          "帧 33 checker edge MAE 0.2331/255 > 1/255（超 1 样本 24）",
+          "帧 33 checker edge P99 1/255 > 2/255",
+          "帧 34 black foreground MAE 1.0682/255 > 1/255（超 1 样本 34116）",
+          "帧 34 black foreground P99 3/255 > 2/255",
+          "帧 34 black edge MAE 0.0573/255 > 1/255（超 1 样本 5）",
+          "帧 34 black edge P99 1/255 > 2/255",
+          "帧 34 white foreground MAE 1.1237/255 > 1/255（超 1 样本 37403）",
+          "帧 34 white foreground P99 3/255 > 2/255",
+          "帧 34 white edge MAE 0.2660/255 > 1/255（超 1 样本 46）",
+          "帧 34 white edge P99 1/255 > 2/255",
+          "帧 34 checker foreground MAE 1.1036/255 > 1/255（超 1 样本 36071）",
+          "帧 34 checker foreground P99 3/255 > 2/255",
+          "帧 34 checker edge MAE 0.2358/255 > 1/255（超 1 样本 26）",
+          "帧 34 checker edge P99 1/255 > 2/255",
+          "帧 35 black foreground MAE 1.0800/255 > 1/255（超 1 样本 35076）",
+          "帧 35 black foreground P99 3/255 > 2/255",
+          "帧 35 black edge MAE 0.0583/255 > 1/255（超 1 样本 4）",
+          "帧 35 black edge P99 1/255 > 2/255",
+          "帧 35 white foreground MAE 1.1334/255 > 1/255（超 1 样本 38317）",
+          "帧 35 white foreground P99 3/255 > 2/255",
+          "帧 35 white edge MAE 0.2535/255 > 1/255（超 1 样本 35）",
+          "帧 35 white edge P99 1/255 > 2/255",
+          "帧 35 checker foreground MAE 1.1151/255 > 1/255（超 1 样本 37102）",
+          "帧 35 checker foreground P99 3/255 > 2/255",
+          "帧 35 checker edge MAE 0.2269/255 > 1/255（超 1 样本 14）",
+          "帧 35 checker edge P99 1/255 > 2/255",
+          "帧 36 black foreground MAE 1.0834/255 > 1/255（超 1 样本 35313）",
+          "帧 36 black foreground P99 3/255 > 2/255",
+          "帧 36 black edge MAE 0.0555/255 > 1/255（超 1 样本 1）",
+          "帧 36 black edge P99 1/255 > 2/255",
+          "帧 36 white foreground MAE 1.1382/255 > 1/255（超 1 样本 38567）",
+          "帧 36 white foreground P99 3/255 > 2/255",
+          "帧 36 white edge MAE 0.2714/255 > 1/255（超 1 样本 29）",
+          "帧 36 white edge P99 1/255 > 2/255",
+          "帧 36 checker foreground MAE 1.1196/255 > 1/255（超 1 样本 37321）",
+          "帧 36 checker foreground P99 3/255 > 2/255",
+          "帧 36 checker edge MAE 0.2449/255 > 1/255（超 1 样本 18）",
+          "帧 36 checker edge P99 1/255 > 2/255",
+          "帧 37 black foreground MAE 1.0836/255 > 1/255（超 1 样本 35323）",
+          "帧 37 black foreground P99 3/255 > 2/255",
+          "帧 37 black edge MAE 0.0555/255 > 1/255（超 1 样本 1）",
+          "帧 37 black edge P99 1/255 > 2/255",
+          "帧 37 white foreground MAE 1.1384/255 > 1/255（超 1 样本 38576）",
+          "帧 37 white foreground P99 3/255 > 2/255",
+          "帧 37 white edge MAE 0.2714/255 > 1/255（超 1 样本 29）",
+          "帧 37 white edge P99 1/255 > 2/255",
+          "帧 37 checker foreground MAE 1.1198/255 > 1/255（超 1 样本 37331）",
+          "帧 37 checker foreground P99 3/255 > 2/255",
+          "帧 37 checker edge MAE 0.2449/255 > 1/255（超 1 样本 18）",
+          "帧 37 checker edge P99 1/255 > 2/255",
+          "帧 38 black foreground MAE 1.0816/255 > 1/255（超 1 样本 34971）",
+          "帧 38 black foreground P99 3/255 > 2/255",
+          "帧 38 black edge MAE 0.0518/255 > 1/255（超 1 样本 7）",
+          "帧 38 black edge P99 1/255 > 2/255",
+          "帧 38 white foreground MAE 1.1349/255 > 1/255（超 1 样本 38253）",
+          "帧 38 white foreground P99 3/255 > 2/255",
+          "帧 38 white edge MAE 0.2646/255 > 1/255（超 1 样本 40）",
+          "帧 38 white edge P99 1/255 > 2/255",
+          "帧 38 checker foreground MAE 1.1155/255 > 1/255（超 1 样本 36901）",
+          "帧 38 checker foreground P99 3/255 > 2/255",
+          "帧 38 checker edge MAE 0.2383/255 > 1/255（超 1 样本 22）",
+          "帧 38 checker edge P99 1/255 > 2/255",
+          "帧 39 black foreground MAE 1.0803/255 > 1/255（超 1 样本 34996）",
+          "帧 39 black foreground P99 3/255 > 2/255",
+          "帧 39 black edge MAE 0.0490/255 > 1/255（超 1 样本 2）",
+          "帧 39 black edge P99 1/255 > 2/255",
+          "帧 39 white foreground MAE 1.1330/255 > 1/255（超 1 样本 38089）",
+          "帧 39 white foreground P99 3/255 > 2/255",
+          "帧 39 white edge MAE 0.2707/255 > 1/255（超 1 样本 40）",
+          "帧 39 white edge P99 1/255 > 2/255",
+          "帧 39 checker foreground MAE 1.1147/255 > 1/255（超 1 样本 36911）",
+          "帧 39 checker foreground P99 3/255 > 2/255",
+          "帧 39 checker edge MAE 0.2343/255 > 1/255（超 1 样本 19）",
+          "帧 39 checker edge P99 1/255 > 2/255",
+          "帧 40 black foreground MAE 1.0833/255 > 1/255（超 1 样本 35011）",
+          "帧 40 black foreground P99 3/255 > 2/255",
+          "帧 40 black edge MAE 0.0529/255 > 1/255（超 1 样本 5）",
+          "帧 40 black edge P99 1/255 > 2/255",
+          "帧 40 white foreground MAE 1.1361/255 > 1/255（超 1 样本 38069）",
+          "帧 40 white foreground P99 3/255 > 2/255",
+          "帧 40 white edge MAE 0.2887/255 > 1/255（超 1 样本 38）",
+          "帧 40 white edge P99 1/255 > 2/255",
+          "帧 40 checker foreground MAE 1.1176/255 > 1/255（超 1 样本 36924）",
+          "帧 40 checker foreground P99 3/255 > 2/255",
+          "帧 40 checker edge MAE 0.2493/255 > 1/255（超 1 样本 25）",
+          "帧 40 checker edge P99 1/255 > 2/255",
+          "帧 41 black foreground MAE 1.0820/255 > 1/255（超 1 样本 34794）",
+          "帧 41 black foreground P99 3/255 > 2/255",
+          "帧 41 black edge MAE 0.0595/255 > 1/255（超 1 样本 6）",
+          "帧 41 black edge P99 1/255 > 2/255",
+          "帧 41 white foreground MAE 1.1346/255 > 1/255（超 1 样本 37898）",
+          "帧 41 white foreground P99 3/255 > 2/255",
+          "帧 41 white edge MAE 0.2868/255 > 1/255（超 1 样本 58）",
+          "帧 41 white edge P99 1/255 > 2/255",
+          "帧 41 checker foreground MAE 1.1166/255 > 1/255（超 1 样本 36737）",
+          "帧 41 checker foreground P99 3/255 > 2/255",
+          "帧 41 checker edge MAE 0.2466/255 > 1/255（超 1 样本 28）",
+          "帧 41 checker edge P99 1/255 > 2/255",
+          "帧 42 black foreground MAE 1.0802/255 > 1/255（超 1 样本 34780）",
+          "帧 42 black foreground P99 3/255 > 2/255",
+          "帧 42 black edge MAE 0.0553/255 > 1/255（超 1 样本 3）",
+          "帧 42 black edge P99 1/255 > 2/255",
+          "帧 42 white foreground MAE 1.1334/255 > 1/255（超 1 样本 37905）",
+          "帧 42 white foreground P99 3/255 > 2/255",
+          "帧 42 white edge MAE 0.2870/255 > 1/255（超 1 样本 32）",
+          "帧 42 white edge P99 1/255 > 2/255",
+          "帧 42 checker foreground MAE 1.1144/255 > 1/255（超 1 样本 36731）",
+          "帧 42 checker foreground P99 3/255 > 2/255",
+          "帧 42 checker edge MAE 0.2409/255 > 1/255（超 1 样本 23）",
+          "帧 42 checker edge P99 1/255 > 2/255",
+          "帧 43 black foreground MAE 1.0805/255 > 1/255（超 1 样本 34796）",
+          "帧 43 black foreground P99 3/255 > 2/255",
+          "帧 43 black edge MAE 0.0553/255 > 1/255（超 1 样本 3）",
+          "帧 43 black edge P99 1/255 > 2/255",
+          "帧 43 white foreground MAE 1.1337/255 > 1/255（超 1 样本 37921）",
+          "帧 43 white foreground P99 3/255 > 2/255",
+          "帧 43 white edge MAE 0.2870/255 > 1/255（超 1 样本 32）",
+          "帧 43 white edge P99 1/255 > 2/255",
+          "帧 43 checker foreground MAE 1.1147/255 > 1/255（超 1 样本 36748）",
+          "帧 43 checker foreground P99 3/255 > 2/255",
+          "帧 43 checker edge MAE 0.2409/255 > 1/255（超 1 样本 23）",
+          "帧 43 checker edge P99 1/255 > 2/255",
+          "帧 44 black foreground MAE 1.0803/255 > 1/255（超 1 样本 34683）",
+          "帧 44 black foreground P99 3/255 > 2/255",
+          "帧 44 black edge MAE 0.0534/255 > 1/255（超 1 样本 4）",
+          "帧 44 black edge P99 1/255 > 2/255",
+          "帧 44 white foreground MAE 1.1318/255 > 1/255（超 1 样本 37719）",
+          "帧 44 white foreground P99 3/255 > 2/255",
+          "帧 44 white edge MAE 0.2728/255 > 1/255（超 1 样本 47）",
+          "帧 44 white edge P99 1/255 > 2/255",
+          "帧 44 checker foreground MAE 1.1142/255 > 1/255（超 1 样本 36585）",
+          "帧 44 checker foreground P99 3/255 > 2/255",
+          "帧 44 checker edge MAE 0.2359/255 > 1/255（超 1 样本 24）",
+          "帧 44 checker edge P99 1/255 > 2/255",
+          "帧 45 black foreground MAE 1.0821/255 > 1/255（超 1 样本 34780）",
+          "帧 45 black foreground P99 3/255 > 2/255",
+          "帧 45 black edge MAE 0.0583/255 > 1/255（超 1 样本 5）",
+          "帧 45 black edge P99 1/255 > 2/255",
+          "帧 45 white foreground MAE 1.1352/255 > 1/255（超 1 样本 37990）",
+          "帧 45 white foreground P99 3/255 > 2/255",
+          "帧 45 white edge MAE 0.2916/255 > 1/255（超 1 样本 51）",
+          "帧 45 white edge P99 1/255 > 2/255",
+          "帧 45 checker foreground MAE 1.1167/255 > 1/255（超 1 样本 36770）",
+          "帧 45 checker foreground P99 3/255 > 2/255",
+          "帧 45 checker edge MAE 0.2465/255 > 1/255（超 1 样本 31）",
+          "帧 45 checker edge P99 1/255 > 2/255",
+          "帧 46 black foreground MAE 1.0829/255 > 1/255（超 1 样本 34872）",
+          "帧 46 black foreground P99 3/255 > 2/255",
+          "帧 46 black edge MAE 0.0598/255 > 1/255（超 1 样本 5）",
+          "帧 46 black edge P99 1/255 > 2/255",
+          "帧 46 white foreground MAE 1.1361/255 > 1/255（超 1 样本 38083）",
+          "帧 46 white foreground P99 3/255 > 2/255",
+          "帧 46 white edge MAE 0.2916/255 > 1/255（超 1 样本 51）",
+          "帧 46 white edge P99 1/255 > 2/255",
+          "帧 46 checker foreground MAE 1.1174/255 > 1/255（超 1 样本 36857）",
+          "帧 46 checker foreground P99 3/255 > 2/255",
+          "帧 46 checker edge MAE 0.2434/255 > 1/255（超 1 样本 31）",
+          "帧 46 checker edge P99 1/255 > 2/255",
+          "帧 47 black foreground MAE 1.0792/255 > 1/255（超 1 样本 34585）",
+          "帧 47 black foreground P99 3/255 > 2/255",
+          "帧 47 black edge MAE 0.0593/255 > 1/255（超 1 样本 2）",
+          "帧 47 black edge P99 1/255 > 2/255",
+          "帧 47 white foreground MAE 1.1351/255 > 1/255（超 1 样本 37859）",
+          "帧 47 white foreground P99 3/255 > 2/255",
+          "帧 47 white edge MAE 0.2878/255 > 1/255（超 1 样本 41）",
+          "帧 47 white edge P99 1/255 > 2/255",
+          "帧 47 checker foreground MAE 1.1156/255 > 1/255（超 1 样本 36632）",
+          "帧 47 checker foreground P99 3/255 > 2/255",
+          "帧 47 checker edge MAE 0.2496/255 > 1/255（超 1 样本 26）",
+          "帧 47 checker edge P99 1/255 > 2/255"
+        ],
+        "metrics": {
+          "worstForeground": {
+            "mae": 1.1507553120849934,
+            "p99": 3,
+            "frame": 1,
+            "plate": "white"
+          },
+          "worstEdge": {
+            "mae": 0.32923755513547576,
+            "p99": 1,
+            "frame": 0,
+            "plate": "white"
+          },
+          "perFrame": [
+            {
+              "frame": 0,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.1066656707995153,
+                    "p99": 3,
+                    "max": 11,
+                    "samples": 120498,
+                    "over1": 35389,
+                    "over2": 2591
+                  },
+                  "edge": {
+                    "mae": 0.06983826927116152,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 9522,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1506332055303823,
+                    "p99": 3,
+                    "max": 11,
+                    "samples": 120498,
+                    "over1": 37892,
+                    "over2": 3527
+                  },
+                  "edge": {
+                    "mae": 0.32923755513547576,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 9522,
+                    "over1": 61,
+                    "over2": 2
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1360188550847317,
+                    "p99": 3,
+                    "max": 11,
+                    "samples": 120498,
+                    "over1": 37016,
+                    "over2": 3077
+                  },
+                  "edge": {
+                    "mae": 0.2861793740810754,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 9522,
+                    "over1": 32,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 1,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.106847609561753,
+                    "p99": 3,
+                    "max": 11,
+                    "samples": 120480,
+                    "over1": 35389,
+                    "over2": 2593
+                  },
+                  "edge": {
+                    "mae": 0.07010331014126081,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 9486,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1507553120849934,
+                    "p99": 3,
+                    "max": 11,
+                    "samples": 120480,
+                    "over1": 37886,
+                    "over2": 3524
+                  },
+                  "edge": {
+                    "mae": 0.32858950031625556,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 9486,
+                    "over1": 61,
+                    "over2": 2
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1362134794156706,
+                    "p99": 3,
+                    "max": 11,
+                    "samples": 120480,
+                    "over1": 37017,
+                    "over2": 3078
+                  },
+                  "edge": {
+                    "mae": 0.28589500316255534,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 9486,
+                    "over1": 32,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 2,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.077627939142462,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121464,
+                    "over1": 33635,
+                    "over2": 2508
+                  },
+                  "edge": {
+                    "mae": 0.06506338553318419,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10728,
+                    "over1": 6,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1276345254561022,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121464,
+                    "over1": 36521,
+                    "over2": 3641
+                  },
+                  "edge": {
+                    "mae": 0.27227815063385535,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10728,
+                    "over1": 46,
+                    "over2": 2
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1109299874860041,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121464,
+                    "over1": 35468,
+                    "over2": 3117
+                  },
+                  "edge": {
+                    "mae": 0.23676360924683074,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10728,
+                    "over1": 27,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 3,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0755727829350188,
+                    "p99": 3,
+                    "max": 12,
+                    "samples": 121512,
+                    "over1": 33572,
+                    "over2": 2432
+                  },
+                  "edge": {
+                    "mae": 0.062219730941704035,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10704,
+                    "over1": 4,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1266870761735466,
+                    "p99": 3,
+                    "max": 12,
+                    "samples": 121512,
+                    "over1": 36501,
+                    "over2": 3549
+                  },
+                  "edge": {
+                    "mae": 0.2679372197309417,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10704,
+                    "over1": 40,
+                    "over2": 3
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1092896174863387,
+                    "p99": 3,
+                    "max": 12,
+                    "samples": 121512,
+                    "over1": 35410,
+                    "over2": 3008
+                  },
+                  "edge": {
+                    "mae": 0.23393124065769805,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10704,
+                    "over1": 17,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 4,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.076202702480291,
+                    "p99": 3,
+                    "max": 12,
+                    "samples": 121518,
+                    "over1": 33629,
+                    "over2": 2394
+                  },
+                  "edge": {
+                    "mae": 0.06235891647855531,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10632,
+                    "over1": 7,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.127388535031847,
+                    "p99": 3,
+                    "max": 12,
+                    "samples": 121518,
+                    "over1": 36560,
+                    "over2": 3476
+                  },
+                  "edge": {
+                    "mae": 0.27445447705041387,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10632,
+                    "over1": 45,
+                    "over2": 3
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1094323474711565,
+                    "p99": 3,
+                    "max": 12,
+                    "samples": 121518,
+                    "over1": 35436,
+                    "over2": 2966
+                  },
+                  "edge": {
+                    "mae": 0.23513920240782543,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10632,
+                    "over1": 16,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 5,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0802099815400843,
+                    "p99": 3,
+                    "max": 19,
+                    "samples": 121344,
+                    "over1": 33818,
+                    "over2": 2312
+                  },
+                  "edge": {
+                    "mae": 0.06417266187050359,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10425,
+                    "over1": 6,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1302083333333333,
+                    "p99": 3,
+                    "max": 19,
+                    "samples": 121344,
+                    "over1": 36755,
+                    "over2": 3361
+                  },
+                  "edge": {
+                    "mae": 0.2517026378896883,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10425,
+                    "over1": 45,
+                    "over2": 2
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.112737341772152,
+                    "p99": 3,
+                    "max": 19,
+                    "samples": 121344,
+                    "over1": 35606,
+                    "over2": 2863
+                  },
+                  "edge": {
+                    "mae": 0.219568345323741,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10425,
+                    "over1": 28,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 6,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.076800816924838,
+                    "p99": 3,
+                    "max": 22,
+                    "samples": 121431,
+                    "over1": 33563,
+                    "over2": 2297
+                  },
+                  "edge": {
+                    "mae": 0.06389929854905352,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10407,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1275621546392602,
+                    "p99": 3,
+                    "max": 22,
+                    "samples": 121431,
+                    "over1": 36609,
+                    "over2": 3353
+                  },
+                  "edge": {
+                    "mae": 0.2809647352743346,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10407,
+                    "over1": 29,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.110021328985185,
+                    "p99": 3,
+                    "max": 22,
+                    "samples": 121431,
+                    "over1": 35453,
+                    "over2": 2828
+                  },
+                  "edge": {
+                    "mae": 0.2418564427788988,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10407,
+                    "over1": 11,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 7,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0763871732793122,
+                    "p99": 3,
+                    "max": 22,
+                    "samples": 121434,
+                    "over1": 33542,
+                    "over2": 2293
+                  },
+                  "edge": {
+                    "mae": 0.06380320937830307,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10407,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1272378411318082,
+                    "p99": 3,
+                    "max": 22,
+                    "samples": 121434,
+                    "over1": 36595,
+                    "over2": 3350
+                  },
+                  "edge": {
+                    "mae": 0.28144518112808686,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10407,
+                    "over1": 29,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.109656274190095,
+                    "p99": 3,
+                    "max": 22,
+                    "samples": 121434,
+                    "over1": 35439,
+                    "over2": 2824
+                  },
+                  "edge": {
+                    "mae": 0.24243297780340156,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10407,
+                    "over1": 11,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 8,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.077405875017549,
+                    "p99": 3,
+                    "max": 21,
+                    "samples": 121089,
+                    "over1": 33262,
+                    "over2": 2319
+                  },
+                  "edge": {
+                    "mae": 0.0665884423584629,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10227,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1288721518882805,
+                    "p99": 3,
+                    "max": 21,
+                    "samples": 121089,
+                    "over1": 36266,
+                    "over2": 3410
+                  },
+                  "edge": {
+                    "mae": 0.2873765522636159,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10227,
+                    "over1": 63,
+                    "over2": 3
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1107697643881773,
+                    "p99": 3,
+                    "max": 21,
+                    "samples": 121089,
+                    "over1": 35176,
+                    "over2": 2855
+                  },
+                  "edge": {
+                    "mae": 0.2458198885303608,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10227,
+                    "over1": 27,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 9,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0757444776512626,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 121461,
+                    "over1": 33484,
+                    "over2": 2332
+                  },
+                  "edge": {
+                    "mae": 0.05599147534631405,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10323,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.129975877030487,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 121461,
+                    "over1": 36602,
+                    "over2": 3543
+                  },
+                  "edge": {
+                    "mae": 0.2748232103070813,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10323,
+                    "over1": 32,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1104716740352871,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 121461,
+                    "over1": 35409,
+                    "over2": 2919
+                  },
+                  "edge": {
+                    "mae": 0.23869030320643222,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10323,
+                    "over1": 14,
+                    "over2": 1
+                  }
+                }
+              }
+            },
+            {
+              "frame": 10,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.074720026350461,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 121440,
+                    "over1": 33363,
+                    "over2": 2334
+                  },
+                  "edge": {
+                    "mae": 0.059710144927536235,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10350,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1289855072463768,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 121440,
+                    "over1": 36492,
+                    "over2": 3533
+                  },
+                  "edge": {
+                    "mae": 0.2832850241545894,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10350,
+                    "over1": 26,
+                    "over2": 2
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1085391963109354,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 121440,
+                    "over1": 35232,
+                    "over2": 2912
+                  },
+                  "edge": {
+                    "mae": 0.23980676328502415,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10350,
+                    "over1": 12,
+                    "over2": 1
+                  }
+                }
+              }
+            },
+            {
+              "frame": 11,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0702165441720515,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121638,
+                    "over1": 33193,
+                    "over2": 2283
+                  },
+                  "edge": {
+                    "mae": 0.06059749316746772,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10611,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1238346569328663,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121638,
+                    "over1": 36355,
+                    "over2": 3408
+                  },
+                  "edge": {
+                    "mae": 0.2680237489397795,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10611,
+                    "over1": 50,
+                    "over2": 2
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1050000822111512,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121638,
+                    "over1": 35152,
+                    "over2": 2843
+                  },
+                  "edge": {
+                    "mae": 0.23400245028743757,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10611,
+                    "over1": 25,
+                    "over2": 1
+                  }
+                }
+              }
+            },
+            {
+              "frame": 12,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.067149770361424,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121713,
+                    "over1": 33071,
+                    "over2": 2229
+                  },
+                  "edge": {
+                    "mae": 0.057913972448692716,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10671,
+                    "over1": 7,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1223369730431425,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121713,
+                    "over1": 36385,
+                    "over2": 3376
+                  },
+                  "edge": {
+                    "mae": 0.27326398650548217,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10671,
+                    "over1": 53,
+                    "over2": 0
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1023801894620953,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121713,
+                    "over1": 35101,
+                    "over2": 2804
+                  },
+                  "edge": {
+                    "mae": 0.23840314872083215,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10671,
+                    "over1": 23,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 13,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0674866283798772,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121713,
+                    "over1": 33088,
+                    "over2": 2229
+                  },
+                  "edge": {
+                    "mae": 0.057913972448692716,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10671,
+                    "over1": 7,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1226738310615958,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121713,
+                    "over1": 36402,
+                    "over2": 3376
+                  },
+                  "edge": {
+                    "mae": 0.27326398650548217,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10671,
+                    "over1": 53,
+                    "over2": 0
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1027170474805486,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121713,
+                    "over1": 35118,
+                    "over2": 2804
+                  },
+                  "edge": {
+                    "mae": 0.23840314872083215,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10671,
+                    "over1": 23,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 14,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0702139015478096,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121785,
+                    "over1": 33250,
+                    "over2": 2307
+                  },
+                  "edge": {
+                    "mae": 0.06218975367612625,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10677,
+                    "over1": 4,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.126764379849735,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121785,
+                    "over1": 36582,
+                    "over2": 3474
+                  },
+                  "edge": {
+                    "mae": 0.28566076613280883,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10677,
+                    "over1": 44,
+                    "over2": 2
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1066962269573428,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121785,
+                    "over1": 35257,
+                    "over2": 2894
+                  },
+                  "edge": {
+                    "mae": 0.2473541256907371,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10677,
+                    "over1": 14,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 15,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.069590038879866,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121914,
+                    "over1": 33337,
+                    "over2": 2348
+                  },
+                  "edge": {
+                    "mae": 0.06364737675892275,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10731,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1253506570205227,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121914,
+                    "over1": 36649,
+                    "over2": 3489
+                  },
+                  "edge": {
+                    "mae": 0.27993663218712145,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10731,
+                    "over1": 43,
+                    "over2": 2
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1064766966878292,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121914,
+                    "over1": 35411,
+                    "over2": 2943
+                  },
+                  "edge": {
+                    "mae": 0.23613829093281147,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10731,
+                    "over1": 13,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 16,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.068825146702778,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121845,
+                    "over1": 33368,
+                    "over2": 2282
+                  },
+                  "edge": {
+                    "mae": 0.06197654941373534,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10746,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1250851491649227,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121845,
+                    "over1": 36691,
+                    "over2": 3459
+                  },
+                  "edge": {
+                    "mae": 0.2854085241019914,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10746,
+                    "over1": 41,
+                    "over2": 0
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.105256678567032,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121845,
+                    "over1": 35425,
+                    "over2": 2883
+                  },
+                  "edge": {
+                    "mae": 0.24474222966685277,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10746,
+                    "over1": 13,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 17,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0708106822784706,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121959,
+                    "over1": 33501,
+                    "over2": 2340
+                  },
+                  "edge": {
+                    "mae": 0.05269982402519218,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10797,
+                    "over1": 4,
+                    "over2": 1
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1268787051386122,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121959,
+                    "over1": 36785,
+                    "over2": 3510
+                  },
+                  "edge": {
+                    "mae": 0.25933129573029545,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10797,
+                    "over1": 28,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.10700317319755,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 121959,
+                    "over1": 35493,
+                    "over2": 2898
+                  },
+                  "edge": {
+                    "mae": 0.2274705936834306,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10797,
+                    "over1": 7,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 18,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0738629383001204,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 122091,
+                    "over1": 33750,
+                    "over2": 2338
+                  },
+                  "edge": {
+                    "mae": 0.05510938798116865,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10833,
+                    "over1": 3,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1290676626450762,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 122091,
+                    "over1": 37068,
+                    "over2": 3439
+                  },
+                  "edge": {
+                    "mae": 0.25690021231422505,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10833,
+                    "over1": 29,
+                    "over2": 0
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1108845041813074,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 122091,
+                    "over1": 35879,
+                    "over2": 2925
+                  },
+                  "edge": {
+                    "mae": 0.22468383642573617,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10833,
+                    "over1": 14,
+                    "over2": 1
+                  }
+                }
+              }
+            },
+            {
+              "frame": 19,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0740740740740742,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 122094,
+                    "over1": 33765,
+                    "over2": 2338
+                  },
+                  "edge": {
+                    "mae": 0.05507888181566565,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10839,
+                    "over1": 3,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1292528707389389,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 122094,
+                    "over1": 37078,
+                    "over2": 3438
+                  },
+                  "edge": {
+                    "mae": 0.2567580035058585,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10839,
+                    "over1": 29,
+                    "over2": 0
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1110783494684424,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 122094,
+                    "over1": 35891,
+                    "over2": 2923
+                  },
+                  "edge": {
+                    "mae": 0.2245594612049082,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10839,
+                    "over1": 14,
+                    "over2": 1
+                  }
+                }
+              }
+            },
+            {
+              "frame": 20,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0659902218509691,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 122109,
+                    "over1": 33197,
+                    "over2": 2163
+                  },
+                  "edge": {
+                    "mae": 0.054340806347449026,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10839,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1189920480881834,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 122109,
+                    "over1": 36373,
+                    "over2": 3205
+                  },
+                  "edge": {
+                    "mae": 0.28342097979518405,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10839,
+                    "over1": 34,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1011063885544883,
+                    "p99": 3,
+                    "max": 15,
+                    "samples": 122109,
+                    "over1": 35212,
+                    "over2": 2688
+                  },
+                  "edge": {
+                    "mae": 0.24181197527447182,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10839,
+                    "over1": 16,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 21,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0654917798719048,
+                    "p99": 3,
+                    "max": 16,
+                    "samples": 122565,
+                    "over1": 33435,
+                    "over2": 2224
+                  },
+                  "edge": {
+                    "mae": 0.04807864164432529,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11190,
+                    "over1": 1,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1194223473259086,
+                    "p99": 3,
+                    "max": 16,
+                    "samples": 122565,
+                    "over1": 36678,
+                    "over2": 3268
+                  },
+                  "edge": {
+                    "mae": 0.2775692582663092,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11190,
+                    "over1": 37,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1013829396646677,
+                    "p99": 3,
+                    "max": 16,
+                    "samples": 122565,
+                    "over1": 35468,
+                    "over2": 2762
+                  },
+                  "edge": {
+                    "mae": 0.24289544235924934,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11190,
+                    "over1": 19,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 22,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0657073636296894,
+                    "p99": 3,
+                    "max": 16,
+                    "samples": 122589,
+                    "over1": 33495,
+                    "over2": 2236
+                  },
+                  "edge": {
+                    "mae": 0.04639313488871011,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11187,
+                    "over1": 1,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1196926314759073,
+                    "p99": 3,
+                    "max": 16,
+                    "samples": 122589,
+                    "over1": 36740,
+                    "over2": 3275
+                  },
+                  "edge": {
+                    "mae": 0.27585590417448824,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11187,
+                    "over1": 33,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1014365073538408,
+                    "p99": 3,
+                    "max": 16,
+                    "samples": 122589,
+                    "over1": 35522,
+                    "over2": 2772
+                  },
+                  "edge": {
+                    "mae": 0.24161973719495844,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11187,
+                    "over1": 20,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 23,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0650768415474299,
+                    "p99": 3,
+                    "max": 23,
+                    "samples": 122655,
+                    "over1": 33279,
+                    "over2": 2238
+                  },
+                  "edge": {
+                    "mae": 0.05417887911892708,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11259,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1188129305776364,
+                    "p99": 3,
+                    "max": 23,
+                    "samples": 122655,
+                    "over1": 36481,
+                    "over2": 3370
+                  },
+                  "edge": {
+                    "mae": 0.27347011279864997,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11259,
+                    "over1": 23,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.100322041498512,
+                    "p99": 3,
+                    "max": 23,
+                    "samples": 122655,
+                    "over1": 35278,
+                    "over2": 2825
+                  },
+                  "edge": {
+                    "mae": 0.2402522426503242,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11259,
+                    "over1": 15,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 24,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0645440444117886,
+                    "p99": 3,
+                    "max": 24,
+                    "samples": 122490,
+                    "over1": 33354,
+                    "over2": 2340
+                  },
+                  "edge": {
+                    "mae": 0.05405166312809625,
+                    "p99": 1,
+                    "max": 1,
+                    "samples": 11304,
+                    "over1": 0,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1184096660951914,
+                    "p99": 3,
+                    "max": 24,
+                    "samples": 122490,
+                    "over1": 36579,
+                    "over2": 3395
+                  },
+                  "edge": {
+                    "mae": 0.2811394196744515,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11304,
+                    "over1": 15,
+                    "over2": 0
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.0989713445995593,
+                    "p99": 3,
+                    "max": 24,
+                    "samples": 122490,
+                    "over1": 35334,
+                    "over2": 2891
+                  },
+                  "edge": {
+                    "mae": 0.24566525123849964,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11304,
+                    "over1": 12,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 25,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0646175197975345,
+                    "p99": 3,
+                    "max": 24,
+                    "samples": 122490,
+                    "over1": 33354,
+                    "over2": 2340
+                  },
+                  "edge": {
+                    "mae": 0.05405166312809625,
+                    "p99": 1,
+                    "max": 1,
+                    "samples": 11304,
+                    "over1": 0,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1184831414809373,
+                    "p99": 3,
+                    "max": 24,
+                    "samples": 122490,
+                    "over1": 36579,
+                    "over2": 3395
+                  },
+                  "edge": {
+                    "mae": 0.2811394196744515,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11304,
+                    "over1": 15,
+                    "over2": 0
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.099044819985305,
+                    "p99": 3,
+                    "max": 24,
+                    "samples": 122490,
+                    "over1": 35334,
+                    "over2": 2891
+                  },
+                  "edge": {
+                    "mae": 0.24566525123849964,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11304,
+                    "over1": 12,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 26,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0626183480248124,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122520,
+                    "over1": 33339,
+                    "over2": 2393
+                  },
+                  "edge": {
+                    "mae": 0.05313363644468218,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11217,
+                    "over1": 4,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1161116552399608,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122520,
+                    "over1": 36582,
+                    "over2": 3425
+                  },
+                  "edge": {
+                    "mae": 0.2832308103771062,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11217,
+                    "over1": 35,
+                    "over2": 0
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.097820763956905,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122520,
+                    "over1": 35361,
+                    "over2": 2957
+                  },
+                  "edge": {
+                    "mae": 0.24730320049924223,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11217,
+                    "over1": 14,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 27,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0608734620712132,
+                    "p99": 3,
+                    "max": 10,
+                    "samples": 122730,
+                    "over1": 33517,
+                    "over2": 2296
+                  },
+                  "edge": {
+                    "mae": 0.05159662403201949,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11493,
+                    "over1": 3,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1157826122382466,
+                    "p99": 3,
+                    "max": 10,
+                    "samples": 122730,
+                    "over1": 36856,
+                    "over2": 3381
+                  },
+                  "edge": {
+                    "mae": 0.27129557121726267,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11493,
+                    "over1": 29,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.0962437871750998,
+                    "p99": 3,
+                    "max": 10,
+                    "samples": 122730,
+                    "over1": 35505,
+                    "over2": 2867
+                  },
+                  "edge": {
+                    "mae": 0.2373618724440964,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11493,
+                    "over1": 12,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 28,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0614262428687857,
+                    "p99": 3,
+                    "max": 10,
+                    "samples": 122700,
+                    "over1": 33566,
+                    "over2": 2287
+                  },
+                  "edge": {
+                    "mae": 0.05175438596491228,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11400,
+                    "over1": 3,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1167400162999186,
+                    "p99": 3,
+                    "max": 10,
+                    "samples": 122700,
+                    "over1": 36894,
+                    "over2": 3400
+                  },
+                  "edge": {
+                    "mae": 0.27456140350877195,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11400,
+                    "over1": 33,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.0976202118989404,
+                    "p99": 3,
+                    "max": 10,
+                    "samples": 122700,
+                    "over1": 35582,
+                    "over2": 2881
+                  },
+                  "edge": {
+                    "mae": 0.24385964912280703,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11400,
+                    "over1": 15,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 29,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0628603537574515,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122796,
+                    "over1": 33723,
+                    "over2": 2373
+                  },
+                  "edge": {
+                    "mae": 0.052800974251913706,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11496,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.116103130395127,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122796,
+                    "over1": 36857,
+                    "over2": 3467
+                  },
+                  "edge": {
+                    "mae": 0.2508698677800974,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11496,
+                    "over1": 27,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.0980732271409492,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122796,
+                    "over1": 35682,
+                    "over2": 2955
+                  },
+                  "edge": {
+                    "mae": 0.2215553235908142,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11496,
+                    "over1": 17,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 30,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.070906862745098,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122400,
+                    "over1": 33971,
+                    "over2": 2384
+                  },
+                  "edge": {
+                    "mae": 0.04875406283856988,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11076,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.123014705882353,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122400,
+                    "over1": 37179,
+                    "over2": 3375
+                  },
+                  "edge": {
+                    "mae": 0.27816901408450706,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11076,
+                    "over1": 26,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1056209150326797,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122400,
+                    "over1": 35983,
+                    "over2": 2951
+                  },
+                  "edge": {
+                    "mae": 0.24575659082701337,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11076,
+                    "over1": 18,
+                    "over2": 1
+                  }
+                }
+              }
+            },
+            {
+              "frame": 31,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0709558823529413,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122400,
+                    "over1": 33972,
+                    "over2": 2384
+                  },
+                  "edge": {
+                    "mae": 0.04875406283856988,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11076,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.123014705882353,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122400,
+                    "over1": 37179,
+                    "over2": 3375
+                  },
+                  "edge": {
+                    "mae": 0.27843986998916576,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11076,
+                    "over1": 26,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1056290849673203,
+                    "p99": 3,
+                    "max": 17,
+                    "samples": 122400,
+                    "over1": 35984,
+                    "over2": 2951
+                  },
+                  "edge": {
+                    "mae": 0.2460274467316721,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11076,
+                    "over1": 18,
+                    "over2": 1
+                  }
+                }
+              }
+            },
+            {
+              "frame": 32,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0683924419556603,
+                    "p99": 3,
+                    "max": 20,
+                    "samples": 122148,
+                    "over1": 33973,
+                    "over2": 2335
+                  },
+                  "edge": {
+                    "mae": 0.057343792263997835,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11091,
+                    "over1": 4,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1227117922520222,
+                    "p99": 3,
+                    "max": 20,
+                    "samples": 122148,
+                    "over1": 37127,
+                    "over2": 3455
+                  },
+                  "edge": {
+                    "mae": 0.26192408258948696,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11091,
+                    "over1": 47,
+                    "over2": 0
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1037921210335004,
+                    "p99": 3,
+                    "max": 20,
+                    "samples": 122148,
+                    "over1": 35923,
+                    "over2": 2885
+                  },
+                  "edge": {
+                    "mae": 0.2310882697682806,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11091,
+                    "over1": 24,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 33,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0676420851407984,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 122409,
+                    "over1": 34090,
+                    "over2": 2338
+                  },
+                  "edge": {
+                    "mae": 0.055263618847433874,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11418,
+                    "over1": 6,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1231036933558807,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 122409,
+                    "over1": 37352,
+                    "over2": 3456
+                  },
+                  "edge": {
+                    "mae": 0.26239271325976526,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11418,
+                    "over1": 45,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1033093971848476,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 122409,
+                    "over1": 36049,
+                    "over2": 2899
+                  },
+                  "edge": {
+                    "mae": 0.23314065510597304,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11418,
+                    "over1": 24,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 34,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0681942572397174,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 122415,
+                    "over1": 34116,
+                    "over2": 2336
+                  },
+                  "edge": {
+                    "mae": 0.0573410607657183,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11388,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1236613160151943,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 122415,
+                    "over1": 37403,
+                    "over2": 3456
+                  },
+                  "edge": {
+                    "mae": 0.2659817351598174,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11388,
+                    "over1": 46,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1036147530939835,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 122415,
+                    "over1": 36071,
+                    "over2": 2901
+                  },
+                  "edge": {
+                    "mae": 0.23577449947312962,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11388,
+                    "over1": 26,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 35,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0800277845877257,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122370,
+                    "over1": 35076,
+                    "over2": 2303
+                  },
+                  "edge": {
+                    "mae": 0.05834655385157765,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11346,
+                    "over1": 4,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.133366021083599,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122370,
+                    "over1": 38317,
+                    "over2": 3305
+                  },
+                  "edge": {
+                    "mae": 0.25348140313766965,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11346,
+                    "over1": 35,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1150772248100025,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122370,
+                    "over1": 37102,
+                    "over2": 2856
+                  },
+                  "edge": {
+                    "mae": 0.22686409307244845,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11346,
+                    "over1": 14,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 36,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0834048044957403,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122427,
+                    "over1": 35313,
+                    "over2": 2331
+                  },
+                  "edge": {
+                    "mae": 0.0554808640315497,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11157,
+                    "over1": 1,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.13821297589584,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122427,
+                    "over1": 38567,
+                    "over2": 3440
+                  },
+                  "edge": {
+                    "mae": 0.2713991216276777,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11157,
+                    "over1": 29,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1195651286072517,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122427,
+                    "over1": 37321,
+                    "over2": 2934
+                  },
+                  "edge": {
+                    "mae": 0.24486869230079772,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11157,
+                    "over1": 18,
+                    "over2": 1
+                  }
+                }
+              }
+            },
+            {
+              "frame": 37,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0836008396840566,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122427,
+                    "over1": 35323,
+                    "over2": 2329
+                  },
+                  "edge": {
+                    "mae": 0.0554808640315497,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11157,
+                    "over1": 1,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1383845066856166,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122427,
+                    "over1": 38576,
+                    "over2": 3438
+                  },
+                  "edge": {
+                    "mae": 0.2713991216276777,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11157,
+                    "over1": 29,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1197529956627215,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122427,
+                    "over1": 37331,
+                    "over2": 2932
+                  },
+                  "edge": {
+                    "mae": 0.24486869230079772,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11157,
+                    "over1": 18,
+                    "over2": 1
+                  }
+                }
+              }
+            },
+            {
+              "frame": 38,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0816102679960053,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122166,
+                    "over1": 34971,
+                    "over2": 2240
+                  },
+                  "edge": {
+                    "mae": 0.0517939034259509,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11121,
+                    "over1": 7,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1348902313245912,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122166,
+                    "over1": 38253,
+                    "over2": 3301
+                  },
+                  "edge": {
+                    "mae": 0.2646344753169679,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11121,
+                    "over1": 40,
+                    "over2": 6
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1155231406446966,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 122166,
+                    "over1": 36901,
+                    "over2": 2802
+                  },
+                  "edge": {
+                    "mae": 0.2382879237478644,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11121,
+                    "over1": 22,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 39,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.080330846259572,
+                    "p99": 3,
+                    "max": 6,
+                    "samples": 122232,
+                    "over1": 34996,
+                    "over2": 2292
+                  },
+                  "edge": {
+                    "mae": 0.04903820102953129,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11073,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1329602722691277,
+                    "p99": 3,
+                    "max": 6,
+                    "samples": 122232,
+                    "over1": 38089,
+                    "over2": 3401
+                  },
+                  "edge": {
+                    "mae": 0.27074866793100333,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 11073,
+                    "over1": 40,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1146917337522089,
+                    "p99": 3,
+                    "max": 6,
+                    "samples": 122232,
+                    "over1": 36911,
+                    "over2": 2872
+                  },
+                  "edge": {
+                    "mae": 0.23426352388693217,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 11073,
+                    "over1": 19,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 40,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0833230839872416,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 121959,
+                    "over1": 35011,
+                    "over2": 2233
+                  },
+                  "edge": {
+                    "mae": 0.05288326300984529,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10665,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1361031166211595,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 121959,
+                    "over1": 38069,
+                    "over2": 3367
+                  },
+                  "edge": {
+                    "mae": 0.28870135958743554,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10665,
+                    "over1": 38,
+                    "over2": 2
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1176132962716978,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 121959,
+                    "over1": 36924,
+                    "over2": 2820
+                  },
+                  "edge": {
+                    "mae": 0.2493202062822316,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10665,
+                    "over1": 25,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 41,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0819833571323059,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 121854,
+                    "over1": 34794,
+                    "over2": 2248
+                  },
+                  "edge": {
+                    "mae": 0.059540821187005814,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10497,
+                    "over1": 6,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.134611912616738,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 121854,
+                    "over1": 37898,
+                    "over2": 3291
+                  },
+                  "edge": {
+                    "mae": 0.2868438601505192,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10497,
+                    "over1": 58,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1166231719927127,
+                    "p99": 3,
+                    "max": 8,
+                    "samples": 121854,
+                    "over1": 36737,
+                    "over2": 2849
+                  },
+                  "edge": {
+                    "mae": 0.24664189768505287,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10497,
+                    "over1": 28,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 42,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0801648279485159,
+                    "p99": 3,
+                    "max": 6,
+                    "samples": 121824,
+                    "over1": 34780,
+                    "over2": 2202
+                  },
+                  "edge": {
+                    "mae": 0.05533522190745987,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10590,
+                    "over1": 3,
+                    "over2": 1
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1333891515629104,
+                    "p99": 3,
+                    "max": 6,
+                    "samples": 121824,
+                    "over1": 37905,
+                    "over2": 3315
+                  },
+                  "edge": {
+                    "mae": 0.2869688385269122,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10590,
+                    "over1": 32,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1143534935644865,
+                    "p99": 3,
+                    "max": 6,
+                    "samples": 121824,
+                    "over1": 36731,
+                    "over2": 2791
+                  },
+                  "edge": {
+                    "mae": 0.2408876298394712,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10590,
+                    "over1": 23,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 43,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0805260047281324,
+                    "p99": 3,
+                    "max": 6,
+                    "samples": 121824,
+                    "over1": 34796,
+                    "over2": 2205
+                  },
+                  "edge": {
+                    "mae": 0.05533522190745987,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10590,
+                    "over1": 3,
+                    "over2": 1
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1337010769634883,
+                    "p99": 3,
+                    "max": 6,
+                    "samples": 121824,
+                    "over1": 37921,
+                    "over2": 3320
+                  },
+                  "edge": {
+                    "mae": 0.2869688385269122,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10590,
+                    "over1": 32,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.114722878907276,
+                    "p99": 3,
+                    "max": 6,
+                    "samples": 121824,
+                    "over1": 36748,
+                    "over2": 2798
+                  },
+                  "edge": {
+                    "mae": 0.2408876298394712,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10590,
+                    "over1": 23,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 44,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.080274758230833,
+                    "p99": 3,
+                    "max": 9,
+                    "samples": 121707,
+                    "over1": 34683,
+                    "over2": 2276
+                  },
+                  "edge": {
+                    "mae": 0.05335611886452103,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10533,
+                    "over1": 4,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1318412252376608,
+                    "p99": 3,
+                    "max": 9,
+                    "samples": 121707,
+                    "over1": 37719,
+                    "over2": 3313
+                  },
+                  "edge": {
+                    "mae": 0.2727617962593753,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10533,
+                    "over1": 47,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.114175848554315,
+                    "p99": 3,
+                    "max": 9,
+                    "samples": 121707,
+                    "over1": 36585,
+                    "over2": 2838
+                  },
+                  "edge": {
+                    "mae": 0.23592518750593372,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10533,
+                    "over1": 24,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 45,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0821114369501466,
+                    "p99": 3,
+                    "max": 9,
+                    "samples": 121737,
+                    "over1": 34780,
+                    "over2": 2248
+                  },
+                  "edge": {
+                    "mae": 0.05825705568268497,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10488,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.135242366741418,
+                    "p99": 3,
+                    "max": 9,
+                    "samples": 121737,
+                    "over1": 37990,
+                    "over2": 3346
+                  },
+                  "edge": {
+                    "mae": 0.2915713196033562,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10488,
+                    "over1": 51,
+                    "over2": 4
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1167270427232476,
+                    "p99": 3,
+                    "max": 9,
+                    "samples": 121737,
+                    "over1": 36770,
+                    "over2": 2837
+                  },
+                  "edge": {
+                    "mae": 0.24647215865751335,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10488,
+                    "over1": 31,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 46,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.082939050435354,
+                    "p99": 3,
+                    "max": 9,
+                    "samples": 121740,
+                    "over1": 34872,
+                    "over2": 2233
+                  },
+                  "edge": {
+                    "mae": 0.05976551329711181,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10491,
+                    "over1": 5,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1361343847543945,
+                    "p99": 3,
+                    "max": 9,
+                    "samples": 121740,
+                    "over1": 38083,
+                    "over2": 3320
+                  },
+                  "edge": {
+                    "mae": 0.2915832618434849,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10491,
+                    "over1": 51,
+                    "over2": 4
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.1174223755544603,
+                    "p99": 3,
+                    "max": 9,
+                    "samples": 121740,
+                    "over1": 36857,
+                    "over2": 2820
+                  },
+                  "edge": {
+                    "mae": 0.24335144409493853,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10491,
+                    "over1": 31,
+                    "over2": 0
+                  }
+                }
+              }
+            },
+            {
+              "frame": 47,
+              "plates": {
+                "black": {
+                  "foreground": {
+                    "mae": 1.0791910031134222,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 121731,
+                    "over1": 34585,
+                    "over2": 2199
+                  },
+                  "edge": {
+                    "mae": 0.059348007801616046,
+                    "p99": 1,
+                    "max": 2,
+                    "samples": 10767,
+                    "over1": 2,
+                    "over2": 0
+                  }
+                },
+                "white": {
+                  "foreground": {
+                    "mae": 1.1350765211819505,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 121731,
+                    "over1": 37859,
+                    "over2": 3362
+                  },
+                  "edge": {
+                    "mae": 0.2878239063806074,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10767,
+                    "over1": 41,
+                    "over2": 1
+                  }
+                },
+                "checker": {
+                  "foreground": {
+                    "mae": 1.11556628960577,
+                    "p99": 3,
+                    "max": 7,
+                    "samples": 121731,
+                    "over1": 36632,
+                    "over2": 2787
+                  },
+                  "edge": {
+                    "mae": 0.24955883718770316,
+                    "p99": 1,
+                    "max": 3,
+                    "samples": 10767,
+                    "over1": 26,
+                    "over2": 2
+                  }
+                }
+              }
+            }
+          ]
+        }
+      }
+    ],
+    "structuralVerdict": {
+      "pass": false,
+      "failed": [
+        "o-to-c"
+      ]
+    }
+  },
+  "encoderSensitivity": [
+    {
+      "crf": 0,
+      "bytes": {
+        "F": 684805,
+        "C": 701881,
+        "source": 78419
+      },
+      "fToC": {
+        "maxComposite": 2,
+        "alphaMax": 1,
+        "samplesOver2": 0
+      },
+      "ocForeground": {
+        "mae": 1.1507553120849934,
+        "p99": 3,
+        "max": 11
+      },
+      "ocEdge": {
+        "mae": 0.32923755513547576,
+        "p99": 1,
+        "max": 3
+      }
+    },
+    {
+      "crf": 4,
+      "bytes": {
+        "F": 299741,
+        "C": 355775,
+        "source": 78419
+      },
+      "fToC": {
+        "maxComposite": 18,
+        "alphaMax": 10,
+        "samplesOver2": 1530745
+      },
+      "ocForeground": {
+        "mae": 1.4774690752012567,
+        "p99": 5,
+        "max": 12
+      },
+      "ocEdge": {
+        "mae": 0.5068264140429088,
+        "p99": 2,
+        "max": 5
+      }
+    },
+    {
+      "crf": 32,
+      "bytes": {
+        "F": 95761,
+        "C": 106321,
+        "source": 78419
+      },
+      "fToC": {
+        "maxComposite": 48,
+        "alphaMax": 45,
+        "samplesOver2": 7492104
+      },
+      "ocForeground": {
+        "mae": 3.3719402447804177,
+        "p99": 14,
+        "max": 37
+      },
+      "ocEdge": {
+        "mae": 1.475122311455737,
+        "p99": 8,
+        "max": 15
+      }
+    }
+  ],
+  "finding": "同一份预处理输入，crf 0（无损）时 O–C 前景 MAE 仍为 1.1508/255、P99 3，已超 §6 的 MAE≤1/255；说明差距来自 8-bit yuva420p 重编码往返，不是 ROI 几何。",
+  "negativeControlInset": {
+    "crop": {
+      "x": 218,
+      "y": 52,
+      "width": 216,
+      "height": 286
+    },
+    "outsideOpaque": 3137,
+    "pass": false,
+    "failures": [
+      "O 在 ROI 外有 3137 个 alpha>1 像素（帧 0,1,2,3,4,5,6,7…）",
+      "F 在 ROI 外有 3137 个 alpha>1 像素（帧 0,1,2,3,4,5,6,7…）"
+    ]
+  },
+  "negativeControlShift": {
+    "shiftCanvasPx": 2,
+    "shiftDip": 1,
+    "layout": {
+      "id": "layout",
+      "title": "位置与边缘对齐",
+      "criteria": "还原后前景包围盒每边偏移 ≤1px、质心偏移 ≤0.5px（含逐帧）",
+      "pass": false,
+      "failures": [
+        "全片包围盒 x 偏移 2px > 1px",
+        "质心偏移 2.000px > 0.5px",
+        "逐帧包围盒最大偏移 2px > 1px"
+      ],
+      "metrics": {
+        "original": {
+          "union": {
+            "x": 210,
+            "y": 54,
+            "width": 222,
+            "height": 281
+          },
+          "centroid": {
+            "x": 320.15083030156114,
+            "y": 202.69925418148813
+          },
+          "count": 1951279
+        },
+        "candidate": {
+          "union": {
+            "x": 212,
+            "y": 54,
+            "width": 222,
+            "height": 281
+          },
+          "centroid": {
+            "x": 322.1508303015612,
+            "y": 202.69925418148813
+          },
+          "count": 1951279
+        },
+        "centroidDelta": 2.000000000000057,
+        "perFrameMaxDelta": 2,
+        "restore": {
+          "dx": 2,
+          "dy": 0
+        }
+      }
+    },
+    "ocPass": false,
+    "worstEdge": {
+      "mae": 44.96162766181742,
+      "p99": 236,
+      "frame": 1,
+      "plate": "white"
+    },
+    "ocFailures": [
+      "帧 0 black foreground MAE 24.8086/255 > 1/255（超 1 样本 99292）",
+      "帧 0 black foreground P99 181/255 > 2/255",
+      "帧 0 black edge MAE 13.6782/255 > 1/255（超 1 样本 4587）",
+      "帧 0 black edge P99 76/255 > 2/255",
+      "帧 0 white foreground MAE 29.4591/255 > 1/255（超 1 样本 100482）",
+      "帧 0 white foreground P99 210/255 > 2/255",
+      "帧 0 white edge MAE 44.8150/255 > 1/255（超 1 样本 6108）",
+      "帧 0 white edge P99 236/255 > 2/255"
+    ]
+  }
+}

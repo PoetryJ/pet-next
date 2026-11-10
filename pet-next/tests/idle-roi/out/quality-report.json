@@ -1,0 +1,14 @@
+{
+  "schemaVersion": 1,
+  "kind": "idle-roi-quality",
+  "status": "not-run",
+  "generatedAt": "2026-11-10T08:12:37.129Z",
+  "reason": [
+    "缺 O.webm（/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out/O.webm）",
+    "缺 F.webm（/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out/F.webm）",
+    "缺 C.webm（/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out/C.webm）",
+    "缺 manifest.json（/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out/manifest.json）"
+  ],
+  "armsDir": "/data3/DATA/project/project_meishijiang/m312-wt-c/pet-next/experiments/idle-roi/out",
+  "rerun": "env -u NODE_OPTIONS node --experimental-strip-types --test --test-reporter spec tests/idle-roi/*.test.ts"
+}
