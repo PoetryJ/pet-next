@@ -1,0 +1,139 @@
+[idle-roi] assets-ref=07278fd(?) subpath=experiments/idle-roi/out-v3-yuva -> /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed
+[idle-roi] 质量报告 = a1cd1fb918:pet-next/tests/idle-roi/out/quality-report.json sha256=62777d44e38a
+[idle-roi] build=up-to-date distCss.objectFit=[{"line":28,"text":"object-fit: contain;"},{"line":48,"text":"object-fit: contain;"}] matchesSource=true
+[idle-roi] electron=v43.3.0 attempts=1
+[idle-roi] assetsDir=/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva（subpath=out-v3-yuva）
+[idle-roi]   O: /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/O.webm sha256=6ebca6b20bcc bytes=78419 报告SHA=6ebca6b20bcc match=true
+[idle-roi]   F: /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/F3.webm sha256=08afc85246fe bytes=625108 报告SHA=08afc85246fe match=true
+[idle-roi]   C: /data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/assets-committed/out-v3-yuva/C3.webm sha256=195ae6aa3af0 bytes=631169 报告SHA=195ae6aa3af0 match=true
+[idle-roi] 注意：开跑时 loadavg1=19.02（1 核共享，高位）；本轮 CPU 数字必须与 loadavg 一起读，若各臂不可比只能报"不稳"
+[idle-roi] arm 1/9 O rep=0 loadavg=19.02 18.10 19.65 13/12059 605763
+[idle-roi]   cpu=3.373 s/min (median 5.85%) rss=378.3MB fps=23.98 failures=0
+[idle-roi] arm 2/9 F rep=0 loadavg=21.55 19.18 19.91 12/11945 606719
+[idle-roi]   cpu=4.775 s/min (median 7.9%) rss=380.34MB fps=23.94 failures=0
+[idle-roi] arm 3/9 C rep=0 loadavg=14.11 17.35 19.21 10/11937 607380
+[idle-roi]   cpu=3.737 s/min (median 5.9%) rss=374.49MB fps=23.94 failures=0
+[idle-roi] arm 4/9 C rep=1 loadavg=19.79 17.66 19.12 18/12030 608446
+[idle-roi]   cpu=3.491 s/min (median 5.9%) rss=372.87MB fps=23.94 failures=0
+[idle-roi] arm 5/9 F rep=1 loadavg=31.14 22.22 20.63 29/12081 610109
+[idle-roi]   cpu=4.39 s/min (median 6.9%) rss=380.75MB fps=23.94 failures=0
+[idle-roi] arm 6/9 O rep=1 loadavg=23.21 21.97 20.68 11/11935 610935
+[idle-roi]   cpu=3.362 s/min (median 5.9%) rss=379.07MB fps=23.98 failures=0
+[idle-roi] arm 7/9 O rep=2 loadavg=16.68 20.16 20.15 12/11982 611702
+[idle-roi]   cpu=3.405 s/min (median 5.9%) rss=378.87MB fps=23.99 failures=0
+[idle-roi] arm 8/9 F rep=2 loadavg=17.01 19.26 19.82 196/12070 612364
+[idle-roi]   cpu=4.623 s/min (median 7.9%) rss=381.07MB fps=23.94 failures=0
+[idle-roi] arm 9/9 C rep=2 loadavg=15.42 18.20 19.41 9/11944 613256
+[idle-roi]   cpu=3.68 s/min (median 5.9%) rss=374.56MB fps=23.93 failures=0
+/data3/DATA/project/project_meishijiang/m312r1-wt-d/pet-next/bench/idle-roi/runs/perf-3x60-v3-736fe65/summary.json
+{
+  "stamp": "perf-3x60-v3-736fe65",
+  "perArm": {
+    "O": {
+      "reps": 3,
+      "cpuSecondsPerMinuteMedian": 3.373,
+      "cpuSecondsPerMinuteValues": [
+        3.373,
+        3.362,
+        3.405
+      ],
+      "rssSumMbMedian": 378.87,
+      "rssSumMbValues": [
+        378.3,
+        379.07,
+        378.87
+      ],
+      "loadavg1Median": 17.98,
+      "loadavg1Values": [
+        22.12,
+        17.98,
+        15.6
+      ]
+    },
+    "F": {
+      "reps": 3,
+      "cpuSecondsPerMinuteMedian": 4.623,
+      "cpuSecondsPerMinuteValues": [
+        4.775,
+        4.39,
+        4.623
+      ],
+      "rssSumMbMedian": 380.75,
+      "rssSumMbValues": [
+        380.34,
+        380.75,
+        381.07
+      ],
+      "loadavg1Median": 15.65,
+      "loadavg1Values": [
+        15.65,
+        27.01,
+        15.59
+      ]
+    },
+    "C": {
+      "reps": 3,
+      "cpuSecondsPerMinuteMedian": 3.68,
+      "cpuSecondsPerMinuteValues": [
+        3.737,
+        3.491,
+        3.68
+      ],
+      "rssSumMbMedian": 374.49,
+      "rssSumMbValues": [
+        374.49,
+        372.87,
+        374.56
+      ],
+      "loadavg1Median": 18.6,
+      "loadavg1Values": [
+        13.22,
+        30.64,
+        18.6
+      ]
+    }
+  },
+  "verdict": {
+    "cVsOPercent": null,
+    "cVsFPercent": null,
+    "cVsOPairSupports": 0,
+    "cVsFPairSupports": 3,
+    "pairCount": 3,
+    "rssDeltaPercent": -1.16,
+    "loadDelta": 0.62,
+    "checks": {
+      "cpuMedianDropAtLeast15": false,
+      "cBetterThanFDirection": false,
+      "pairedSupportAtLeast2of3": false,
+      "rssWithin10Percent": true,
+      "loadComparable": true
+    },
+    "pass": false,
+    "reasons": [
+      "缺少 O 或 C 的 CPU 数据",
+      "配对支持 0/3 < 2/3"
+    ],
+    "note": "工程门，非统计显著性；CPU 数值必须与 loadavg 同时解读"
+  },
+  "failures": [],
+  "notRun": [
+    "roi-layout-on-by-flag"
+  ],
+  "loadavg": {
+    "start": {
+      "one": 19.02,
+      "five": 18.1,
+      "fifteen": 19.65,
+      "running": 10,
+      "threads": 12059
+    },
+    "end": {
+      "one": 15.82,
+      "five": 18.2,
+      "fifteen": 19.34,
+      "running": 9,
+      "threads": 11936
+    },
+    "note": "本机 1 核共享；外部 eval 常把 load 拉到 10+，所有 CPU 数值必须与 loadavg 同时解读"
+  }
+}
