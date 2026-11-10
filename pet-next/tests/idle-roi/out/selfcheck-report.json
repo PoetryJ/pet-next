@@ -1,7 +1,7 @@
 {
   "schemaVersion": 1,
   "kind": "idle-roi-selfcheck",
-  "generatedAt": "2026-11-10T10:33:34.922Z",
+  "generatedAt": "2026-11-10T10:39:08.047Z",
   "note": "fixture 由 O 自造，只用于自测与负控；其中 O–C 数值只作参考，不构成对 A 候选的判定",
   "thresholds": {
     "frameCount": 48,

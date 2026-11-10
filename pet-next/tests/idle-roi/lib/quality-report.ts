@@ -12,6 +12,7 @@
 import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
+import { petRoot } from './arms.ts';
 import { GATE_THRESHOLDS, type GateResult } from './gates.ts';
 import type { ComparisonMeasurement } from './measure.ts';
 import type { GitState } from './reference.ts';
@@ -66,6 +67,10 @@ export interface ComparisonRow {
     readonly edgeMae: number;
     readonly edgeP99: number;
     readonly alphaMax: number;
+    /** 整帧（含透明区）逐通道 max：F–C 门的判据就是这个数。 */
+    readonly wholeFrameMax: number;
+    readonly wholeFrameFrame: number;
+    readonly wholeFramePlate: string | null;
   };
   readonly meanOverAllSamples: {
     readonly foregroundMae: number;
@@ -156,6 +161,9 @@ function toComparisonRow(variant: VariantEvaluation, id: string, measurement: Co
       edgeMae: round(worst.edgeMae.mae),
       edgeP99: worst.edgeP99.p99,
       alphaMax: worst.alpha.max,
+      wholeFrameMax: worst.wholeFrameMax.max,
+      wholeFrameFrame: worst.wholeFrameMax.frame,
+      wholeFramePlate: worst.wholeFrameMax.plate,
     },
     meanOverAllSamples: {
       foregroundMae: round(mean.foreground.mae),
@@ -184,6 +192,87 @@ function comparisonRows(variants: readonly VariantEvaluation[]): ComparisonRow[]
     }
   }
   return rows;
+}
+
+/**
+ * 三个数分列（负责人与 Codex 反复要求的口径）：
+ *
+ * A. 本批 F3–C3 直接对照：验证「裁边本身」在同参数成对里有没有误差；
+ * B. 自对照几何（直通 vs O）：验证「这条编码链动不动像素」；
+ * C. O→C3 总损失：验证「相对原片到底差多少」，worst 与 mean 两个字段并列；
+ * 外加 O→F3：F3 自己偏离原片的代价（不许因为 F3 通过就把它藏起来）。
+ *
+ * 每一项都只在报告里指向一个 comparison，不复制、不合并、不互相替代。
+ */
+function headlineBlock(variants: readonly VariantEvaluation[]): Record<string, unknown> {
+  const find = (category: string): VariantEvaluation | undefined => variants.find((item) => item.category === category);
+  const comparison = (variant: VariantEvaluation | undefined, id: string): ComparisonMeasurement | undefined => variant?.measurements[id];
+  const gateState = (variant: VariantEvaluation | undefined, id: string): boolean | null => variant?.gates.find((gate) => gate.id === id)?.pass ?? null;
+  const describe = (variant: VariantEvaluation | undefined, id: string, label: string): Record<string, unknown> | null => {
+    const measurement = comparison(variant, id);
+    if (measurement === undefined) return null;
+    const worst = measurement.worstAcrossFramesAndPlates;
+    const mean = measurement.meanOverAllSamples;
+    return {
+      label,
+      comparison: id,
+      category: variant?.category ?? null,
+      reference: measurement.reference,
+      candidate: measurement.candidate,
+      pass: gateState(variant, id),
+      worstAcrossFramesAndPlates: {
+        foregroundMae: round(worst.foregroundMae.mae),
+        foregroundP99: worst.foregroundP99.p99,
+        foregroundMax: worst.foregroundMax.max,
+        frame: worst.foregroundMae.frame,
+        plate: worst.foregroundMae.plate,
+        edgeMae: round(worst.edgeMae.mae),
+        edgeP99: worst.edgeP99.p99,
+        alphaMax: worst.alpha.max,
+        wholeFrameMax: worst.wholeFrameMax.max,
+      },
+      meanOverAllSamples: {
+        foregroundMae: round(mean.foreground.mae),
+        foregroundP99: mean.foreground.p99,
+        foregroundMax: mean.foreground.max,
+        samples: mean.foreground.samples,
+        alphaMax: mean.alpha.max,
+      },
+      statement:
+        `${label} ${id}：最差前景 MAE ${round(worst.foregroundMae.mae, 4)} LSB（${worst.foregroundMae.mae === 0 ? '全片 48 帧 × 三种底均为 0' : `最差落在帧 ${worst.foregroundMae.frame}/${String(worst.foregroundMae.plate)}`}）、最差 P99 ${worst.foregroundP99.p99}、整帧逐通道 max ${worst.wholeFrameMax.max}、alpha max ${worst.alpha.max}；` +
+        `全片池化（${mean.foreground.samples} 样本）前景 MAE ${round(mean.foreground.mae, 4)} LSB、P99 ${mean.foreground.p99}。两个口径分开写，不取平均当最差、也不取最差当平均。`,
+    };
+  };
+  const selfcontrol = find('yuva-selfcontrol');
+  const candidate = find('f3c3');
+  const historical = find('v2-rgba');
+  const bytes = candidate?.cost?.bytes ?? null;
+  const oToF3 = describe(candidate, 'o-to-f3', 'F3 重编码代价');
+  return {
+    note:
+      'A/B/C 三组数各自独立：A=F3–C3 直接对照（裁边本身），B=自对照（编码链本身），C=O→C3 总损失（相对原片）。' +
+      '任何一组都不能代替另一组，也不把 F3 当作唯一采用参照。',
+    A_f3ToC3Direct: describe(candidate, 'f3-to-c3', 'F3–C3 直接对照'),
+    B_selfControlGeometry: {
+      oToS: describe(selfcontrol, 'o-to-s', '直通 vs O'),
+      planes: selfcontrol?.planes === null || selfcontrol?.planes === undefined ? null : {
+        maxOverPlanes: selfcontrol.planes.maxOverPlanes,
+        identical: selfcontrol.planes.identical,
+        perPlaneMax: {
+          Y: selfcontrol.planes.perPlane.Y.max,
+          U: selfcontrol.planes.perPlane.U.max,
+          V: selfcontrol.planes.perPlane.V.max,
+          A: selfcontrol.planes.perPlane.A.max,
+        },
+        note: selfcontrol.planes.note,
+      },
+      decodedRgb: selfcontrol === undefined ? null : describe(selfcontrol, 'o-to-s', '解码 RGB 与 alpha'),
+    },
+    C_oToC3TotalLoss: describe(candidate, 'o-to-c3', 'O→C3 总损失'),
+    D_oToF3Cost: oToF3 === null ? null : { ...oToF3, bytes: bytes === null ? null : { originalBytes: bytes.O, reencodedBytes: bytes.F, deltaBytes: bytes.F - bytes.O, ratio: Number((bytes.F / bytes.O).toFixed(4)) } },
+    E_v2Historical: describe(historical, 'o-to-c', '原 v2 总损失（历史）'),
+    candidateBytes: bytes,
+  };
 }
 
 /** 归因：全部由实测字段生成。 */
@@ -374,7 +463,14 @@ export function assembleReport(input: ReportInput): AssembledReport {
       candidate: variant.candidate,
       status: variant.status,
       reasons: variant.reasons,
-      armsDir: variant.armsDir === null ? null : path.relative(process.cwd(), variant.armsDir),
+      // 仓库内给相对路径；仓库外（/tmp 之类）给绝对路径，避免 ../../../../ 看不出指向哪。
+      armsDir:
+        variant.armsDir === null
+          ? null
+          : ((): string => {
+              const relative = path.relative(petRoot(), variant.armsDir as string);
+              return relative.startsWith('..') ? (variant.armsDir as string) : relative;
+            })(),
       files: variant.files,
       labels: variant.labels,
       arms: variant.arms,
@@ -387,6 +483,8 @@ export function assembleReport(input: ReportInput): AssembledReport {
       cost: variant.cost,
       localStatus: variant.localStatus,
     })),
+    /** 三个数分列（A 直接对照 / B 自对照 / C 总损失 + F3 代价），各指向下面 comparisons 的一行。 */
+    headline: headlineBlock(input.variants),
     /** 三类分列表：一行一个 (类别, 比较)，最差与平均各占一列。 */
     comparisons: rows,
     attribution: attributionBlock(input.variants, rows),

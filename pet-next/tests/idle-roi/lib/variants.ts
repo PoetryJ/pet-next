@@ -128,7 +128,9 @@ function firstExisting(dir: string, names: readonly string[]): string | null {
 export function resolveVariant(definition: VariantDefinition): { resolved: ResolvedVariant | null; reasons: string[]; needsReproduction?: boolean } {
   const reasons: string[] = [];
   const overrideFile = definition.envFile === undefined ? undefined : process.env[definition.envFile];
-  const overrideDir = process.env[definition.envDir];
+  // 负责人统一用 PET_NEXT_IDLE_ROI_ARMS 指 v3 目录；v2 不吃这个变量（它有自己的历史字节）。
+  const genericDir = definition.category === 'v2-rgba' ? undefined : process.env['PET_NEXT_IDLE_ROI_ARMS'];
+  const overrideDir = process.env[definition.envDir] ?? genericDir;
   let armsDir: string | null;
   if (overrideFile !== undefined && overrideFile.length > 0) {
     const file = absolute(overrideFile);

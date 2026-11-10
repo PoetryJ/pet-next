@@ -1,43 +1,45 @@
 {
   "kind": "idle-roi-arms-copy-v3",
-  "note": "只读副本：从 B 已提交字节取出（只取该提交字节），sha256 与 manifest 交叉核对后才复制。不复算、不改写 B 的产物。",
-  "sourceCommit": "6f59c44fde232defdbb69b0f40a12eb29856a60c",
-  "sourceBranch": "agent/m312r1-b",
+  "note": "只读副本：只取已提交字节，sha256 与 manifest 交叉核对后才复制；不复算、不改写 B 的产物。",
+  "sourceCommit": "07278fd",
+  "sourceCommitFull": "07278fdb329f200cea32e7d18cc2246336e95901",
+  "alsoIdenticalAt": "6f59c44fde232defdbb69b0f40a12eb29856a60c（B 分支 agent/m312r1-b 的 out-v3-yuva，三份 webm 的 sha256 与 07278fd 完全一致）",
+  "sourceBranch": "m38-wt-lead（负责人分支，07278fd 集成）",
   "sourceRepoPath": "pet-next/experiments/idle-roi/out-v3-yuva",
-  "extractCommand": "git -C <m312r1-wt-c> archive 6f59c44fde232defdbb69b0f40a12eb29856a60c -- pet-next/experiments/idle-roi/out-v3-yuva | tar -x -C /tmp/m312r1c-v3 --strip-components=3",
-  "copiedAt": "2026-11-10T18:40:00Z",
+  "extractCommand": "git -C <lead-wt> archive 07278fd pet-next/experiments/idle-roi/out-v3-yuva | tar -x -C /tmp/m312r1-v3 --strip-components=4",
   "crossCheck": {
     "sourceSha256MatchesManifest": true,
     "candidateSha256MatchesManifest": true,
     "manifestSourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
-    "manifestCandidateSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c"
+    "manifestCandidateSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+    "f3Sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1"
   },
-  "missing": "自对照 passthrough.webm 未随 B 提交落盘（B 自己标注\"自检用，不落交付物\"）；评测时按 build-report.json/encode/commands/passthrough 的命令本地复现，复现 sha 与 build-report.selfControl.sha256 一致",
+  "missing": "passthrough.webm（自对照）未随提交落盘；评测按 build-report.json/encode/commands/passthrough 的命令本地复现，复现 sha 与 build-report.selfControl.sha256 一致",
   "files": {
     "O.webm": {
       "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
       "bytes": 78419,
-      "role": "原字节，应等于 manifest.sourceSha256"
+      "role": "原字节，等于 manifest.sourceSha256"
     },
     "F3.webm": {
       "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
       "bytes": 625108,
-      "role": "全画布原生 YUVA F3"
+      "role": "全画布原生 YUVA F3（lutyuv 只改 alpha）"
     },
     "C3.webm": {
       "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
       "bytes": 631169,
-      "role": "ROI 226x286 原生 YUVA C3，应等于 manifest.candidateSha256"
+      "role": "ROI 226x286 原生 YUVA C3，等于 manifest.candidateSha256"
     },
     "manifest.json": {
       "sha256": "34174b5aac8f9670e5e171f1ddb6168944f9412d314333bc70b7d8e634c8a268",
       "bytes": 3021,
-      "role": "契约 §3 的 manifest（parseManifest 逐字段校验）"
+      "role": "契约 §3 的 manifest"
     },
     "build-report.json": {
       "sha256": "c74eaa4b77a614fdf353cf66661c87b396ae9e6437d323a43bf7194e4adfc724",
       "bytes": 31547,
-      "role": "B 的构建记录：命令/滤镜/自对照/计划对照"
+      "role": "B 的构建记录：命令/滤镜/自对照"
     }
   }
 }
