@@ -1,0 +1,7 @@
+harness_exit=0
+arm=baseline source=cdp hz=125 moves=480 display=:141
+product_exit=0
+posts=0
+writes=449 pointermove=470
+failures=none
+not_run=native：Windows 物理鼠标拖动未跑（本机无 Windows；见 README 单条复跑命令）。CDP/fixture 不能冒充物理鼠标输入率。 | main 内 setPosition 时间戳：产品 main 的 bounds 行不含时间，本轮的写入时刻是 bench 读取该行的时刻（上界）；单次成本另用独立微基准给出。
