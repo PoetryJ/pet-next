@@ -14,7 +14,7 @@ import { canonicalJson, emptyState, type MemoryEvent, type MemoryState } from '.
 import { applyPatch } from '../ledger/patch.ts';
 import { stepEvent } from '../ledger/reduce.ts';
 import { activeFactSet, fullRebuild, incrementalRebuild } from '../maintenance/rebuild.ts';
-import { acknowledged, generated, presented, statement, taskChanged, toolResult } from '../testing/factory.ts';
+import { generated, presented, statement, taskChanged, toolResult } from '../testing/factory.ts';
 
 /** 线性同余生成器：固定 seed 可复现。 */
 function lcg(seed: number): () => number {

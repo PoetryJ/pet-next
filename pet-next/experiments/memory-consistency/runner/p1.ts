@@ -97,29 +97,6 @@ function invariantsHold(observation: TrackObservation): boolean {
   );
 }
 
-/** 单条断言求值（只用于统计「共同且都通过」的数量，避免引入第二套判分语义）。 */
-function evaluateOne(observation: TrackObservation, check: Check): boolean {
-  const state = observation.state;
-  switch (check.kind) {
-    case 'event.count':
-      return state.events.length === check.value;
-    case 'conflict.count':
-      return state.conflicts.length === check.value;
-    case 'task.count':
-      return Object.keys(state.tasks).length === check.value;
-    case 'req.count':
-      return Object.keys(state.requests).length === check.value;
-    case 'note.status':
-      return (state.notes[check.noteId ?? '']?.status ?? 'absent') === check.value;
-    case 'patch.disposition':
-      return (observation.patchResults[check.patchIndex ?? 0]?.disposition ?? 'absent') === check.value;
-    case 'session.closed':
-      return (state.sessions[`${'sess-dev'}#${check.epoch ?? 1}`]?.closed ?? 'absent') === check.value;
-    default:
-      return false;
-  }
-}
-
 /** 重放等价：把所有被接受的事件重放进磁盘存储，读回后比较事件层状态。 */
 function replayEquivalence(observation: TrackObservation): { equal: boolean; detail: string } {
   const dir = mkdtempSync(join(tmpdir(), 'p1-replay-'));

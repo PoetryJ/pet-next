@@ -8,7 +8,6 @@ import { requestKey, sessionKey, type MemoryEvent } from '../contracts.ts';
 import {
   acknowledged,
   generated,
-  event,
   presented,
   requestCancelled,
   requestFailed,

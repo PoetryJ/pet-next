@@ -14,7 +14,7 @@
  * @module pet-next/experiments/memory-consistency/cases/build-new
  */
 import { createHash } from 'node:crypto';
-import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -54,7 +54,6 @@ const presented = (channel = 'ui', extra = {}) => ev('response.presented', { cha
 const ack = (a, extra = {}) => ev('user.acknowledged', { ack: a }, extra);
 const tool = (outcome, toolName, extra = {}) => ev('tool.result', { toolName, outcome }, { source: 'runtime', ...extra });
 const task = (change, authority, extra = {}) => ev('task.changed', { change, authority }, { source: 'runtime', ...extra });
-const cancel = (extra = {}) => ev('request.cancelled', { reason: 'user_cancel' }, extra);
 
 const PAIRS = [
   {
