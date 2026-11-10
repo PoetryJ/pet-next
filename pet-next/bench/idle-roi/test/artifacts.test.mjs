@@ -192,6 +192,25 @@ describe('stageCommittedAssets：显式 subpath 必须准确', () => {
   });
 });
 
+  test('subpath 复核模式：两参精确命中，单参不猜', () => {
+    const { root, repo, v1, v2 } = standardRepo();
+    const dest = path.join(root, 'mixed-review');
+    stageCommittedAssets({ repo, ref: v1, dest, subpath: 'experiments/idle-roi/out' });
+    stageCommittedAssets({ repo, ref: v2, dest, subpath: 'pet-next/experiments/idle-roi/out-v2' });
+    // 单参：多候选 → null（不再选回旧 out/）
+    assert.equal(resolveAssetsDir(dest), null);
+    // 两参：精确返回本次 subpath 对应目录，不扫描
+    assert.equal(resolveAssetsDir(dest, { subpath: 'experiments/idle-roi/out-v2' }), path.join(dest, 'experiments/idle-roi/out-v2'));
+    assert.equal(resolveAssetsDir(dest, { subpath: 'pet-next/experiments/idle-roi/out' }), path.join(dest, 'experiments/idle-roi/out'));
+    const detail = resolveAssetsDirDetailed(dest, { subpath: 'experiments/idle-roi/out-v2' });
+    assert.equal(detail.ok, true);
+    assert.equal(detail.source, 'explicit-subpath');
+    // 非法 / 不存在
+    assert.equal(resolveAssetsDirDetailed(dest, { subpath: '../README.md' }).code, 'invalid-subpath');
+    assert.equal(resolveAssetsDirDetailed(dest, { subpath: 'experiments/idle-roi/out-v3' }).code, 'subpath-not-found');
+    assert.equal(resolveAssetsDir(dest, { subpath: 'experiments/idle-roi/out-v3' }), null);
+  });
+
 describe('非法/缺失路径与空产物：一律非零失败', () => {
   test('../README.md、绝对路径、反斜杠、不存在子树 都不返回 ok', () => {
     const { root, repo } = standardRepo();

@@ -330,15 +330,28 @@ function scanManifestDirs(base, maxDepth) {
 }
 
 /**
- * 只在**没有显式 subpath** 时才用：`dir` 本身有 manifest 就用它，否则向下扫描。
- * 0 个候选 → 失败；≥2 个候选 → 失败（报 ambiguous，绝不猜“第一个”）。
+ * 解析素材目录。
+ * - 传 `{subpath}`：**不扫描**，直接返回 `<dir>/<subpath>`（本次调用唯一确定），供调用方
+ *   复核“staged 目录里到底该用哪一份”；路径非法或目录不存在都返回 ok:false。
+ * - 不传 `subpath`：`dir` 本身有 manifest 就用它，否则向下扫描；0 个候选或 2 个以上候选都
+ *   失败（报 ambiguous，绝不猜“第一个”）。
  * @param {string|null} dir
+ * @param {{maxDepth?:number, subpath?:string|null}} [options]
  */
-export function resolveAssetsDirDetailed(dir, { maxDepth = MAX_SCAN_DEPTH } = {}) {
+export function resolveAssetsDirDetailed(dir, { maxDepth = MAX_SCAN_DEPTH, subpath = null } = {}) {
   if (!dir) return { ok: false, code: 'no-dir', dir: null, candidates: [], error: '没有给出素材目录' };
   const base = path.resolve(dir);
   const stat = statOrNull(base);
   if (!stat || !stat.isDirectory()) return { ok: false, code: 'dir-missing', dir: null, candidates: [], error: `素材目录不存在：${base}` };
+  if (subpath !== null && subpath !== undefined && subpath !== '') {
+    const normalized = normalizeAssetsSubpath(subpath);
+    if (!normalized.ok) return { ok: false, code: normalized.code, dir: null, candidates: [], error: normalized.error };
+    const exact = path.join(base, ...normalized.components);
+    if (!existsSync(exact)) {
+      return { ok: false, code: 'subpath-not-found', dir: null, candidates: [exact], error: `显式 subpath 对应的目录不存在：${exact}` };
+    }
+    return { ok: true, code: 'ok', dir: exact, candidates: [exact], source: 'explicit-subpath' };
+  }
   if (existsSync(path.join(base, MANIFEST_FILE))) return { ok: true, code: 'ok', dir: base, candidates: [base], source: 'direct' };
   const candidates = scanManifestDirs(base, maxDepth);
   if (candidates.length === 1) return { ok: true, code: 'ok', dir: candidates[0], candidates, source: 'scan' };
@@ -354,7 +367,7 @@ export function resolveAssetsDirDetailed(dir, { maxDepth = MAX_SCAN_DEPTH } = {}
   };
 }
 
-/** 兼容旧签名：只在唯一候选时返回路径，其它情况返回 null（细节见 resolveAssetsDirDetailed）。 */
+/** 兼容旧签名：只在唯一候选（或给了 subpath 时精确命中）返回路径，否则 null（细节见 resolveAssetsDirDetailed）。 */
 export function resolveAssetsDir(dir, options) {
   const resolved = resolveAssetsDirDetailed(dir, options);
   return resolved.ok ? resolved.dir : null;

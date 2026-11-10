@@ -11,7 +11,8 @@
 | 一（现在） | 工具就绪即可 | `--mode=selfcheck`：只跑 O，证明 /proc 计量、真实解码帧、点击时延、退出/残留都可用 |
 | 二（等负责人通知） | A 的产物过 C 画质门 + 负责人说“可以跑性能” | `--plan=O,F,C --reps=3`，以及其他 agent 停编码/停测试后执行 |
 
-阶段一**不跑 F/C**；F/C 缺失时默认直接失败（`--allow-missing` 才会降级并标 notRun），
+阶段一**不跑 F/C**；F/C 缺失时默认直接失败（`--allow-missing` 才会降级并标 notRun；接了
+阶段门后这类旁路会被门禁拒绝，以 `STAGE-GATE.md` 为准），
 避免“只跑 O 却看起来像做了对照”。
 
 ## 2. 三臂定义与素材路径
@@ -37,6 +38,9 @@ git -C <repo> archive <commit> pet-next/<subpath> |
   调用的内容（旧 `out/` 不删，也不会被当成 v2）。
 - 只有**没有显式 subpath** 时（`--assets-dir=<dir>`）才允许向下扫描 `manifest.json`：
   0 个候选或 ≥2 个候选都直接失败（`manifest-not-found` / `ambiguous-assets-dir`），不猜。
+- 需要复核“该用哪一份”时用精确模式 `resolveAssetsDir(dir, { subpath })`：不扫描，直接返回
+  `<dir>/<subpath>`（`subpath-not-found` / `invalid-subpath` 时为 null）。单参
+  `resolveAssetsDir(dir)` 在 v1/v2 并存的 dest 上返回 null，不会返回旧 `out/`。
 - 路径校验：只接受 `pet-next/` 下的仓库相对路径（前缀可省略）。绝对路径、盘符（`C:/…`）、
   反斜杠路径、`.`/`..` 组件、空路径/空组件、pathspec 通配（`*`、`?`）一律拒绝
   （`invalid-subpath`）。
@@ -71,7 +75,8 @@ candidateSha256` 的那一版）也必须一致——v1/v2 的 F 不同，不能
 | `files[]` | 素材目录里每个文件的 `relative/bytes/sha256`（实测） |
 
 每行 raw.ndjson 还带 `sourceSha256`，`summary.sources` 有三个臂的路径/字节数/SHA。
-不读任何人的未提交工作区快照。`--src= --f-src= --c-src=` 仍可人工覆盖单文件；给了本次
+不读任何人的未提交工作区快照。`--src= --f-src= --c-src=` 仍可人工覆盖单文件（阶段门模式下
+这类覆盖会被门禁拒绝，以 `STAGE-GATE.md` 为准）；给了本次
 素材目录后**缺文件就报 missing，不回退到仓库里另一版本的 F/C**（避免 v1 字节混进 v2 数据）。
 
 ### C 的几何接线（负责人 830b7cb + 9dc035e，默认关闭）
