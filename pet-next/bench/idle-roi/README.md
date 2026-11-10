@@ -39,13 +39,26 @@ git -C <worktree> archive <ref> pet-next/experiments/idle-roi/out |
 `--roi-layout=on` 时工具给产品设：
 
 ```
+# 只给 C 臂：
 PET_NEXT_IDLE_ROI=1
 PET_NEXT_IDLE_ROI_MANIFEST=<staged>/out/manifest.json
-PET_NEXT_IDLE_URL=<staged>/out/C.webm        # F 臂换成 F.webm
+PET_NEXT_IDLE_URL=<staged>/out/C.webm
+
+# O/F 臂：两个 ROI env 都不设（不是设 0）。sha 门比对的是 assets/idle.webm，
+# 开着开关播 O 也会套上 ROI 盒，O 基线会“假失败”。
 ```
 
-产品 `dist` 必须来自含该接线的提交；工具会检查 `dist/electron/main.js` 里是否有
-`PET_NEXT_IDLE_ROI_MANIFEST`，没有就拒绝跑（避免把“文件裁过但没接线”的 C 当成采用候选）。
+产品 `dist` 必须来自含接线的提交；工具在 `dist/electron/main.js`、`dist/contracts/idle-roi.js`、
+`dist/app/page.js` 里找 `PET_NEXT_IDLE_ROI`，找不到就拒绝跑（避免把“文件裁过但没接线”的
+C 当成采用候选）。`experiments/**` 永远不进 dist，不要去那里找接线。
+
+### C 开跑前置（当前阻塞）
+
+负责人 HEAD `4b0b1f0` 的 `app/page.css` 里 ROI 规则仍是 `object-fit: none`：rect 与
+`videoWidth/Height` 都会对，但 226×286 按固有尺寸画进 113×143 盒（2 倍大、右下溢出）。
+本工具会因此判 `contentScalingOk=false` → `roi-layout-not-wired`。**等 `none → contain`
+进 dist 再跑 C**，否则画面对照整轮要重跑（CPU 本身不受 object-fit 影响，但阶段门要求
+布局+画面通过才认收益）。
 
 **只比 rect 会漏判**（B 指出 830b7cb 的 `page.css` 是 `object-fit: none`）：盒子可以正好
 是 104/56/113/143，但 226×286 的候选按原尺寸画进 113×143 盒 → 宠物 2 倍大并溢出。
@@ -57,6 +70,16 @@ PET_NEXT_IDLE_URL=<staged>/out/C.webm        # F 臂换成 F.webm
 
 O/F 臂反向固定基线：`rect 0,0,320×240`、intrinsic `640×360`、`objectFit === 'contain'`；
 不符即记失败，避免拿“被接线改坏的 O”去和 C 比。
+
+C 臂真值（B 独立核对，scale 恒 0.5、窗口 frame:false + resizable:false，所以是精确值）：
+
+| 量 | 期望 |
+|---|---|
+| `#clip` rect | `104 / 56 / 113 / 143` |
+| `videoWidth/Height` | `226 / 286` |
+| `objectFit` | `contain`（4b0b1f0 仍是 none，待修） |
+| `body.idle-roi` | `true`（采样前置；否则 rect 是 0×0） |
+| C 字节 | `08a80ac4…` 225952B；O=`6ebca6b2…` 78419B |
 
 C 的**几何**收益依赖 B 的布局接线（契约第 4 节公式）。接线未落地时产品仍用
 `object-fit: contain` 把裁剪后的视频铺满窗口——此时 C 只是“裁过的文件”，不是采用候选。

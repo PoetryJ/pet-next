@@ -224,6 +224,15 @@ async function runArm(context, { arm, rep }) {
     layout: null,
     exit: null,
     leftovers: [],
+    roiEnvApplied: {
+      enabled: context.roiLayout === true && arm === 'C',
+      env: context.roiLayout === true && arm === 'C'
+        ? {
+            PET_NEXT_IDLE_ROI: '1',
+            PET_NEXT_IDLE_ROI_MANIFEST: context.manifestInfo?.path ?? null,
+          }
+        : null,
+    },
   };
   const armFail = (message) => {
     result.failures.push(message);
@@ -248,7 +257,9 @@ async function runArm(context, { arm, rep }) {
     debugPort,
     idleUrl: pathToFileURL(source.path).href,
     reactionUrl: context.reactionUrl ? pathToFileURL(context.reactionUrl).href : null,
-    roiLayout: context.roiLayout,
+    // 关键：只有 C 臂注入 ROI。O/F 必须两个 env 都不存在——sha 门比对的是
+    // assets/idle.webm，开着开关播 O 也会套上 ROI 盒，O 基线会“假失败”。
+    roiLayout: context.roiLayout && arm === 'C',
     roiManifest: context.manifestInfo?.found ? context.manifestInfo.path : null,
     logTag: tag,
   });
@@ -491,7 +502,8 @@ async function runMissingIdleProbe({ arm, rep, source, armDir, context }) {
       debugPort,
       idleUrl: pathToFileURL(probeCopy).href,
       reactionUrl: context.reactionUrl ? pathToFileURL(context.reactionUrl).href : null,
-      roiLayout: context.roiLayout,
+      // 失败占位用的是缺失的 idle 副本，与 ROI 无关；只有 C 臂保持与主跑一致的开关。
+      roiLayout: context.roiLayout && arm === 'C',
       roiManifest: context.manifestInfo?.found ? context.manifestInfo.path : null,
       logTag: `${arm}-failure`,
     });
@@ -641,6 +653,7 @@ async function writeSummary(context, armResults) {
       pid: entry.pid ?? null,
       wallSec: entry.wallSec ?? null,
       readyEvent: entry.readyEvent ?? null,
+      roiEnvApplied: entry.roiEnvApplied ?? null,
       layout: entry.layout,
       summary: entry.summary,
       probes: entry.probes,
@@ -829,13 +842,17 @@ async function main() {
   const roiLayout = value('roi-layout', 'off') !== 'off';
   let productSupportsRoiWiring = null;
   if (roiLayout) {
-    let mainJs;
-    try {
-      mainJs = readFileSync(path.join(petRoot, 'dist/electron/main.js'), 'utf8');
-    } catch {
-      mainJs = '';
-    }
-    productSupportsRoiWiring = mainJs.includes('PET_NEXT_IDLE_ROI_MANIFEST');
+    // 接线只存在于产品 dist（main.js 读 env/校验，contracts/idle-roi.js 存公式）；
+    // experiments/** 永远不进 dist，别去那里找。
+    const readDist = (relative) => {
+      try {
+        return readFileSync(path.join(petRoot, 'dist', relative), 'utf8');
+      } catch {
+        return '';
+      }
+    };
+    const wiringText = `${readDist('electron/main.js')}\n${readDist('contracts/idle-roi.js')}\n${readDist('app/page.js')}`;
+    productSupportsRoiWiring = wiringText.includes('PET_NEXT_IDLE_ROI');
     if (!productSupportsRoiWiring) {
       console.error(
         '当前 dist 不含 ROI 接线（找不到 PET_NEXT_IDLE_ROI_MANIFEST）：产品建自本 worktree 的 dfeca20。\n' +
