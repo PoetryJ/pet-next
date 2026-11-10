@@ -1,151 +1,107 @@
-# M3-12 待机 ROI：最小接线需求（B → 负责人）
+# M3-12 待机 ROI：接线核对（B 复核负责人已落地的 830b7cb）
 
-本文件只描述 `app/**` 的接线需求。B 不碰 `app/`、`electron/`、`contracts/`；
-下列代码是**建议 diff 的形状**，由负责人裁剪落地。
+负责人在 `830b7cb` 已把接线落在产品树（`contracts/idle-roi.ts` 实现 + `electron/main.ts` 注入 +
+`app/page.ts` 包一层 + `app/page.css` 定位）。B 只复核、不改产品文件；下面是**必须改的一处**
+和若干可选加固。
 
-依赖的纯函数（B 独占路径，已提交）：
+## 0. 结论先行（一处真问题）
 
-- `experiments/idle-roi/layout.ts` → `computeIdleRoiLayout`
-- `experiments/idle-roi/adapter.ts` → `parseIdleRoiManifest` / `decideIdleRoi` / `formatIdleRoiStyle`
+**`app/page.css` 里 `body.idle-roi video#clip { object-fit: none; }` 会把候选画大 2 倍。**
 
-## 0. 不变量（接线时必须保持）
+事实链：
 
-1. **不改播放生命周期**：不新增 `play()/pause()/load()` 调用，不改 `attachPetMedia`、
-   `createPetController`、`createBehaviorPet` 的时序，不新增第二个 `<video>`/第二播放器。
-2. **只对 idle 生效**：`selection.playback === 'single'` 且当前 `visual === 'idle'`
-   才写 ROI；`reaction`（含 preview `short` 的短片）、`placeholder` 一律回全窗口 contain。
-3. **开关关闭 = 零成本**：不 fetch、不 new 监听、不写任何 style/dataset。
-4. **COS 值是 DIP**：直接来自 `formatIdleRoiStyle`，**不得再乘 `devicePixelRatio`**。
-5. **失败即回原片**：`decideIdleRoi` 返回 `kind:'original'` 时清空 ROI 样式并
-   `console.log` 一条 reason；既有失败/占位语义（`media.showPlaceholder()`）完全不动。
-6. `#pet` 命中区域、窗口尺寸、聊天面板、拖动/点击判定不变。
+- 主窗口固定 `320×240` 且 `resizable: false`（`electron/main.ts` 的 `WINDOW_WIDTH/WINDOW_HEIGHT`、`resizable:false`），
+  所以 contain 的 `scale` 恒为 `0.5`；
+- 契约候选 `crop(208,52,226,286)` → 布局 `left=104, top=56, width=113, height=143`（DIP）；
+- C 臂候选的解码分辨率就是 ROI 宽高 `226×286`（契约第 2 节），`<video>` 的固有尺寸即 **226×286 CSS px**；
+- `object-fit: none` 表示**不缩放**、按固有尺寸居中绘制 → 在 113×143 的盒子里画出 226×286，
+  溢出部分被 `overflow: hidden` 裁掉，宠物会显示成 2 倍大且右下偏移。
 
-## 1. 主进程注入（`electron/main.ts`，建议方案 A：同步、无启动竞态）
+改成 `object-fit: contain` 即可精确：盒宽高比 `113:143` 与 `226:286` 完全相等，
+contain 的缩放就是 `0.5`，与 layout 的 `scale` 一致。
 
-页面需要三件东西：**开关**、**manifest**、**当前 idle 字节的 SHA256**。
-`decideIdleRoi` 强制要求 SHA 对齐（缺 SHA 直接回原片），这是"旧 manifest 套新素材"的唯一防线。
-
-方案 A（推荐）：主进程启动时 `fs.readFileSync` manifest，用 `crypto` 校验
-`sourceSha256 === sha256(assets/idle.webm)`，**通过才**把 manifest 内联进页面查询串：
-
-```ts
-// electron/main.ts（示意）
-const roiEnabled = /* 与现有 preview 开关同一处判定，默认 false */ false;
-const query = new URLSearchParams({ /* 现有参数 */ });
-if (roiEnabled) {
-  const manifestText = fs.readFileSync(path.join(root, 'assets/candidates/idle-roi/manifest.json'), 'utf8');
-  const idleSha = sha256File(path.join(root, 'assets/idle.webm'));
-  query.set('idle-roi', Buffer.from(manifestText, 'utf8').toString('base64url'));
-  query.set('idle-roi-sha', idleSha);
-}
+```diff
+ body.idle-roi video#clip {
+   position: absolute;
+   left: var(--idle-roi-left);
+   top: var(--idle-roi-top);
+   width: var(--idle-roi-width);
+   height: var(--idle-roi-height);
+-  object-fit: none;
++  object-fit: contain;   /* 盒与候选同宽高比 → 恰好 0.5 等比，像素级对齐 */
+ }
 ```
 
-- 只有 `enabled` 为真时这几个参数才存在；默认关闭，用户包不受影响（闭包过滤照旧）。
-- 建议把这四个令牌常量放进 `contracts/preview.ts`（负责人独占）：
-  `IDLE_ROI_QUERY = 'idle-roi'`、`IDLE_ROI_SHA_QUERY = 'idle-roi-sha'`。
-- 若坚持方案 B（页面 `fetch(manifestUrl)`），务必**不要**在 idle 播放中晚到 manifest 时
-  重排当前画面（会构成"位置跳动"失败项）：只在**下一次** `setVisual('idle')` 生效。
+（`fill` 在本候选下数值等价，但一旦 A 的最终 crop 宽高比与候选分辨率不一致，`fill` 会拉伸变形，
+`contain` 只会留透明边——选 `contain` 更稳。）
 
-## 2. `app/page.ts`（约 25 行，全部放在 `surface` 旁边）
+## 1. 已核对正确的部分
 
-```ts
-// M3-12：只在主进程注入 idle-roi 时启用；关闭时零解析、零监听。
-import { decideIdleRoi, formatIdleRoiStyle } from '../experiments/idle-roi/adapter.ts';
+| 检查项 | 结论 |
+|---|---|
+| 开关关闭零成本 | `idleRoiSpec === null` 时直接用 `baseMedia`，不包对象、不写 style、不注册监听 ✓ |
+| 只对 idle 生效 | `applyIdleRoi('idle')` 才加类；`reaction`/`short`/`placeholder` 走 `classList.remove` ✓ |
+| 切换回原布局 | `begin()` 与 `showPlaceholder()` 都重算，所以 idle→short→idle、失败占位都恢复 ✓ |
+| 不套旧 metadata | 每次 `begin` 按 `request.clip` 重新判定，没有缓存上一次的布局 ✓ |
+| 不碰播放生命周期 | 只包 `begin`/`showPlaceholder`，`dispose`/`setHidden`/`idleSuspensionState` 原样透传 ✓ |
+| 无第二播放器 | 复用 `#clip`，无新元素/无 Canvas ✓ |
+| DIP 不乘 DPR | 用 `petEl.getBoundingClientRect()`（CSS px = DIP），未读 `devicePixelRatio` ✓ |
+| manifest 与 SHA 对齐 | 主进程 `resolveIdleRoiQuery()`：manifest 合法 **且** `sourceSha256 === sha256(assets/idle.webm)` 才注入；否则打 `idle-roi-skip` ✓ |
+| 双槽不注入 | `parsePreview(preview).playback === 'single'` 才注入 ✓ |
+| 窗口/命中区不变 | 只给 `#clip` 加绝对定位，`#pet` 仍是 100%×100%，指针事件仍绑在 `#pet` ✓ |
 
-const roiRaw = params.get(IDLE_ROI_QUERY);            // base64url(manifest) or null
-const roiSha = params.get(IDLE_ROI_SHA_QUERY) ?? undefined;
-const roiEnabled = roiRaw !== null && selection.playback === 'single';
-const roiManifest: unknown = roiEnabled ? decodeManifest(roiRaw) : null;
+## 2. 可选加固（不影响本轮判定，出问题再动）
 
-/** base64url → JSON；解不开就返回 null（下游按"manifest 无效"回原片）。 */
-function decodeManifest(raw: string): unknown {
-  try {
-    const base64 = raw.replace(/-/g, '+').replace(/_/g, '/');
-    const bytes = Uint8Array.from(atob(base64), (ch) => ch.charCodeAt(0));
-    return JSON.parse(new TextDecoder().decode(bytes)) as unknown;
-  } catch {
-    return null;
-  }
-}
+1. **`#pet` 缺 `position: relative`**。当前 `body` 与 `#pet` 都是 100% 且 `margin: 0`，
+   绝对定位相对视口与相对 `#pet` 数值相同；加一行 `#pet { position: relative; }` 可把语义钉死，
+   且不改变命中区域（`#pet` 尺寸本来就是 100%）。
+2. **没有 resize 重算**。主窗口 `resizable: false`，320×240 恒定，可接受；
+   若将来有 `setBounds`/聊天窗口联动改尺寸，`--idle-roi-*` 会留旧值。
+   届时再加 `resize` 监听，且必须只在 `idleRoiSpec !== null` 时注册（关闭态仍要零监听）。
+3. **写值未取整**。`${layout.left}px` 在 320×240 下恒为整数 `104/56/113/143`，无噪声。
+   若出现非整数窗口，可用 `experiments/idle-roi/adapter.ts` 的 `idleRoiCssVariables(layout)`
+   统一成 3 位小数（`282.5px` 这类），避免 `5.650000000000001px` 进 e2e 断言文本。
+4. **`decideIdleRoi` 在生产没被调用**。生产用"有没有 query 参数"表达开关、用 `applyIdleRoi(clip)`
+   表达 selection，语义与 `decideIdleRoi` 等价但两条实现并存。
+   建议（仅当要做 e2e 一致性断言时）在 `applyIdleRoi` 里改调
+   `decideIdleRoi({ enabled: true, selection: clip, ... })`，让生产与单测走同一判定。
+   现在不改也安全：页面拿到的几何已由主进程校验过。
 
-/** `idle` 写 ROI；其余清空，回到 page.css 的 contain 默认。 */
-function applyIdleRoi(visual: string): void {
-  if (!roiEnabled) return;
-  const decision = decideIdleRoi({
-    selection: visual === 'idle' ? 'idle' : visual === 'reaction' ? 'reaction' : 'placeholder',
-    manifestRaw: roiManifest,
-    viewWidth: window.innerWidth,      // CSS px == DIP，不要再乘 DPR
-    viewHeight: window.innerHeight,
-    enabled: true,
-    sourceSha256: roiSha,
-  });
-  if (decision.kind === 'roi') {
-    const style = formatIdleRoiStyle(decision.layout);   // 四个值成套给出
-    video.dataset.roi = 'on';
-    for (const [key, value] of Object.entries(style)) video.style.setProperty(`--roi-${key}`, value);
-    return;
-  }
-  video.removeAttribute('data-roi');
-  for (const key of ['left', 'top', 'width', 'height']) video.style.removeProperty(`--roi-${key}`);
-  if (visual === 'idle') console.log(JSON.stringify({ event: 'idle-roi', kind: 'original', reason: decision.reason }));
-}
+## 3. 契约使用边界（给 A/C/D）
 
-if (roiEnabled) window.addEventListener('resize', () => applyIdleRoi(document.documentElement.dataset.visual ?? 'placeholder'));
+- `contracts/idle-roi.ts` 是唯一实现；`experiments/idle-roi/layout.ts` 只 `export *`，
+  `experiments/idle-roi/adapter.ts` 只额外提供 CSS 值转换（`idleRoiCssVariables` / `formatIdleRoiStyle`），
+  没有第二份公式。
+- `parseIdleRoiManifest` 会硬拒：`alphaThreshold ≠ 1`、`schemaVersion ≠ 1`、`kind ≠ 'idle-roi'`、
+  sha 非 64 位**小写** hex、crop 宽高非正整数、crop 原点非整数/为负/越界、crop 未偶数对齐、
+  `pts.count ≠ frameCount`、`durationMs ≤ 0`。A 产出时按这组约束对齐。
+- `computeIdleRoiLayout` 只做数值校验（不做判空）：缺 `crop` 对象会抛，
+  必须先过 `parseIdleRoiQuery` / `parseIdleRoiManifest`（页面 `idleRoiSpec === null` 早退即此）。
+- `decideIdleRoi` 的 `sourceSha256` 是**可选**的（契约如此）：不给就不比对。
+  主进程已自行比对，页面侧不传也安全；任何直接吃 manifest 的新调用方**必须**传 sha。
+
+## 4. 验收自查（改完 object-fit 之后）
+
+1. 默认启动（无 `PET_NEXT_IDLE_ROI`）：`body` 无 `idle-roi` 类、无 `--idle-roi-*` 内联值。
+2. `PET_NEXT_IDLE_ROI=1` + `PET_NEXT_IDLE_ROI_MANIFEST=<manifest>`：320×240 窗口下
+   `#clip` 计算样式 `left:104px; top:56px; width:113px; height:143px`，宠物与原片**同位置同尺寸**
+   （用截图叠差或 C 臂还原图对齐验证，允许 ≤1 DIP 误差）。
+3. idle → 点击（reaction）→ idle：reaction 与占位期间 `body` 无 `idle-roi` 类，回 idle 再出现。
+4. 换掉 `assets/idle.webm` 字节（manifest 不动）：启动日志出现 `idle-roi-skip` + `source-sha-mismatch`，
+   页面永远原片。
+5. 隐藏/恢复（`idlePause` 打开时）：类名与 `--idle-roi-*` 不丢；恢复后位置不跳。
+
+## 5. 本分支的运行前提（重要）
+
+我的分支基线是 `dfeca20`，只提交 `experiments/idle-roi/**`；单测 import 的
+`contracts/idle-roi.ts` 由负责人提交（`ad4d20a` 引入、`830b7cb` 补了 query 编解码）。
+
+本分支单独 checkout 时该文件不存在，`import` 会解析失败。跑测试需要先把它物化：
+
+```bash
+git show 830b7cb:pet-next/contracts/idle-roi.ts > pet-next/contracts/idle-roi.ts   # 临时、未提交
+cd pet-next && env -u NODE_OPTIONS node --experimental-strip-types --test --test-reporter spec experiments/idle-roi/*.test.ts
 ```
 
-唯一改动点：在**已存在**的 `surface.setVisual(visual, requestId)` 里加一行
-`applyIdleRoi(visual);`（放在写 `dataset.visual` 之后）。
-
-为什么用 `setVisual` 而不是 `media.begin`：
-
-- `wire.ts` 与 `behavior-pet.ts` 两条路径都会先 `setVisual(clip)` 再 `play`，
-  覆盖 idle / reaction / placeholder 三态，天然跟代际（`requestId`）同步；
-- 不需要碰 `PetMedia` 接口，也不需要包 `media.begin`；
-- `setVisual` 在 `play` 之前，样式先到位再出画面，不会出现"先画全窗口再跳 ROI"。
-
-### 双槽
-
-`selection.playback !== 'single'` 时 `roiEnabled = false`（上面已内置）。
-双槽下 idle 可能落在 `#clip-next`，需要动 `app/pet-media.ts` 的 `showSlot`——
-属于负责人路径，本轮建议**不做**，避免两元素同时带 ROI。若以后要开，
-把 `data-roi` 写成"给可见槽"并在 `showSlot` 里同步切换。
-
-## 3. `app/page.css`（两处小改）
-
-```css
-#pet {
-  position: relative;   /* 新增：给 ROI 的 absolute 定位提供包含块；不影响命中区域 */
-}
-
-video[data-roi='on'] {
-  position: absolute;
-  /* 候选分辨率 = crop 宽高，与 ROI 盒同宽高比，contain 即精确等比，无需 fill */
-  object-fit: contain;
-  left: var(--roi-left);
-  top: var(--roi-top);
-  width: var(--roi-width);
-  height: var(--roi-height);
-}
-```
-
-- `video[data-roi='on']` 的特异性 (0,1,1) 高于现有 `video, img`（0,0,1），无需 `!important`。
-- `#placeholder` 是 `img`，永远不会命中该选择器。
-- 不写死任何像素值：数值全部来自 `formatIdleRoiStyle`，窗口变化由 `resize` 重算。
-
-## 4. 失败与回原片的落点
-
-| 情况 | 结果 | 落点 |
-|---|---|---|
-| 开关关闭 / 未注入参数 | 全窗口 contain，原 `assets/idle.webm` | `page.css` 默认规则 |
-| manifest 缺字段/越界/NaN/提阈值 | `kind:'original'`，reason 写 console | `applyIdleRoi` 清理分支 |
-| `idle-roi-sha` 与素材不符（换了 idle 字节） | 同上 | `decideIdleRoi` → `manifest rejected: sourceSha256 mismatch` |
-| 视口 0/NaN（启动瞬间） | 同上，下一次 `resize`/`setVisual` 自然纠正 | `layout unavailable` |
-| 视频加载失败 | 既有 `media` 失败语义 → `placeholder` | 不动，`setVisual('placeholder')` 自动清 ROI |
-
-## 5. 验收自查（负责人落地后）
-
-1. 默认启动：`?` 无 `idle-roi` 参数 → `#clip` 上无 `data-roi`、无 `--roi-*` 变量、无 `resize` 监听。
-2. 开开关 + 320x240 窗口：`#clip` 计算样式为 `left:104px; top:56px; width:113px; height:143px`。
-3. idle → 点击（reaction）→ idle：reaction 与 placeholder 期间 `data-roi` 不存在，回到 idle 再出现。
-4. 把 `assets/idle.webm` 换字节（不改 manifest）：永远 original，console 有 sha mismatch。
-5. 拖大窗口：`--roi-*` 随 `innerWidth/innerHeight` 变化，无 DPR 参与。
+如果希望 b 分支能独立复跑，请指示我在 `agent/m312-b` 上 cherry-pick 该文件
+（我不会自作主张把 `contracts/` 或 `docs/` 提交进自己分支）。
