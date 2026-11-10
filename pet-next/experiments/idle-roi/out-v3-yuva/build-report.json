@@ -1,0 +1,888 @@
+{
+  "schemaVersion": 1,
+  "kind": "idle-roi-build-report-v3-yuva",
+  "builtAt": "2026-11-10T10:19:01.356Z",
+  "node": "v24.14.0",
+  "ffmpeg": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers",
+  "ffprobe": "ffprobe version 8.0.1 Copyright (c) 2007-2025 the FFmpeg developers",
+  "libvpx": "v1.15.2（libvpx.so.11，ffmpeg --enable-libvpx 链接；解码器启动日志实测）",
+  "host": {
+    "cpus": 384,
+    "loadavg": [
+      20.62,
+      21.79,
+      23.42
+    ],
+    "platform": "linux",
+    "arch": "x64"
+  },
+  "source": {
+    "path": "assets/idle.webm",
+    "bytes": 78419,
+    "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+    "width": 640,
+    "height": 360,
+    "codec": "vp9",
+    "pixelFormat": "yuv420p",
+    "profile": "Profile 0",
+    "colorTags": {
+      "primaries": "unknown",
+      "transfer": "unknown",
+      "matrix": "bt709",
+      "range": "tv"
+    },
+    "alphaMode": "1",
+    "frameRate": "24/1",
+    "timeBase": "1/1000",
+    "durationMs": 1999
+  },
+  "decodePath": {
+    "observed": "ffprobe/容器：pix_fmt=yuv420p + ALPHA_MODE=1（VP9 的 alpha 在 BlockAdditional，不在容器 pix_fmt 里）",
+    "measuredByAlphaExtract": {
+      "F3": {
+        "defaultVp9Decoder": {
+          "alphaPlaneAvailable": false,
+          "error": "ffmpeg 退出码 234：[Parsed_alphaextract_0 @ 0x7fb0a8003400] Requested planes not available. [Parsed_alphaextract_0 @ 0x7fb0a8003400] Failed to configure input pad on Parsed_alphaextract_0 [vf#0:0 @ 0x56496386c680] Error rein"
+        },
+        "libvpxVp9Decoder": {
+          "alphaPlaneAvailable": true
+        }
+      },
+      "C3": {
+        "defaultVp9Decoder": {
+          "alphaPlaneAvailable": false,
+          "error": "ffmpeg 退出码 234：[Parsed_alphaextract_0 @ 0x7f32fc003400] Requested planes not available. [Parsed_alphaextract_0 @ 0x7f32fc003400] Failed to configure input pad on Parsed_alphaextract_0 [vf#0:0 @ 0x55b00d386e00] Error rein"
+        },
+        "libvpxVp9Decoder": {
+          "alphaPlaneAvailable": true
+        }
+      }
+    },
+    "decodedPixelFormatUsedHere": "yuva420p",
+    "note": "带 -c:v libvpx-vp9 解码时 alpha 平面存在，raw 输出为 yuva420p；默认 vp9 解码器实测取不到 alpha 平面（alphaextract 报 requested planes not available）。因此「实际 pixelFormat」必须按解码器分别写，不能只抄 probe 的 yuv420p。"
+  },
+  "route": {
+    "name": "native-yuva",
+    "inputToEncoder": "O.webm 直接作为 ffmpeg 输入，-vf 链首个滤镜即 format=yuva420p（无 rgba/format=rgba/lut，无 scale 自动插入）",
+    "decoderStreamLine": "Stream #0:0: Video: vp9 (libvpx-vp9) (Profile 0), 1 reference frame, yuva420p(tv, bt709/unknown/unknown, progressive), 640x360, SAR 1:1 DAR 16:9, 24 fps, 24 tbr, 1k tbn",
+    "decoderNativePixelFormat": "yuva420p",
+    "autoScalerInserted": {
+      "passthrough": false,
+      "F3": false,
+      "C3": false
+    },
+    "referenceForSelfControl": "O 解码到 yuva420p raw 平面（不加 -frames 截断，48/48 帧），不构造 RGBA raw 输入",
+    "differsFromV2": "v2 用 format=rgba,lut,format=yuva420p 且 C 从 F 派生；v3 全程 YUVA 平面，C3 从 O 派生"
+  },
+  "alphaScan": {
+    "threshold": 1,
+    "source": "O 解码 yuva420p 的 A 平面（alpha 与 luma 同分辨率）",
+    "frames": 48,
+    "union": {
+      "x": 210,
+      "y": 54,
+      "width": 222,
+      "height": 281
+    },
+    "guard": 2,
+    "crop": {
+      "x": 208,
+      "y": 52,
+      "width": 226,
+      "height": 286
+    },
+    "cropArea": 64636,
+    "canvasArea": 230400,
+    "retainedRatio": 0.280538,
+    "foregroundPixelsTotal": 1951279,
+    "outsideCropForegroundPixels": 0,
+    "contractCrop": {
+      "x": 208,
+      "y": 52,
+      "width": 226,
+      "height": 286
+    },
+    "matchesContract": true,
+    "v2CrossCheck": {
+      "union": {
+        "x": 210,
+        "y": 54,
+        "width": 222,
+        "height": 281
+      },
+      "foregroundPixelsTotal": 1951279,
+      "outsideCropForegroundPixels": 0,
+      "note": "v2 的 alpha 扫描走 RGBA；本轮走原生 A 平面。两组数值应相同，用来证明原生 alpha 平面与 RGBA alpha 通道一致。"
+    }
+  },
+  "encode": {
+    "params": {
+      "decoder": "libvpx-vp9",
+      "encoder": "libvpx-vp9",
+      "pixelFormat": "yuva420p",
+      "lossless": true,
+      "crf": null,
+      "gop": 48,
+      "cpuUsed": 2,
+      "deadline": "good",
+      "rowMt": 1,
+      "autoAltRef": 0,
+      "fpsMode": "passthrough",
+      "bitrate": "vbr (b:v 0, constant quality)",
+      "colorArgs": [
+        "-color_range",
+        "tv",
+        "-colorspace",
+        "bt709"
+      ],
+      "colorTagsSourceObserved": {
+        "primaries": "unknown",
+        "transfer": "unknown",
+        "matrix": "bt709",
+        "range": "tv"
+      },
+      "colorTagsPolicy": "只传 O 声明过的 range/matrix；primaries/transfer 保持 unknown，不补 bt709",
+      "muxFlags": "+bitexact（仅去掉随机 SegmentUID/DateUTC）"
+    },
+    "filters": {
+      "passthrough": "format=yuva420p",
+      "F3": "format=yuva420p,lutyuv=y=val:u=val:v=val:a='if(lte(val,1),0,val)'",
+      "C3": "format=yuva420p,lutyuv=y=val:u=val:v=val:a='if(lte(val,1),0,val)',crop=226:286:208:52",
+      "negativeControl": "format=yuva420p,lutyuv=a='if(lte(val,1),0,val)'"
+    },
+    "commands": {
+      "passthrough": [
+        "ffmpeg",
+        "-y",
+        "-hide_banner",
+        "-nostdin",
+        "-loglevel",
+        "verbose",
+        "-c:v",
+        "libvpx-vp9",
+        "-i",
+        "/data3/DATA/project/project_meishijiang/m312r1-wt-b/pet-next/experiments/idle-roi/out-v3-yuva/.tmp-473932/O.webm",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "format=yuva420p",
+        "-fps_mode",
+        "passthrough",
+        "-c:v",
+        "libvpx-vp9",
+        "-pix_fmt",
+        "yuva420p",
+        "-b:v",
+        "0",
+        "-lossless",
+        "1",
+        "-g",
+        "48",
+        "-deadline",
+        "good",
+        "-cpu-used",
+        "2",
+        "-row-mt",
+        "1",
+        "-auto-alt-ref",
+        "0",
+        "-color_range",
+        "tv",
+        "-colorspace",
+        "bt709",
+        "-metadata:s:v:0",
+        "alpha_mode=1",
+        "-an",
+        "-fflags",
+        "+bitexact",
+        "-f",
+        "webm",
+        "/data3/DATA/project/project_meishijiang/m312r1-wt-b/pet-next/experiments/idle-roi/out-v3-yuva/.tmp-473932/passthrough.webm.partial"
+      ],
+      "F3": [
+        "ffmpeg",
+        "-y",
+        "-hide_banner",
+        "-nostdin",
+        "-loglevel",
+        "verbose",
+        "-c:v",
+        "libvpx-vp9",
+        "-i",
+        "/data3/DATA/project/project_meishijiang/m312r1-wt-b/pet-next/experiments/idle-roi/out-v3-yuva/.tmp-473932/O.webm",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "format=yuva420p,lutyuv=y=val:u=val:v=val:a='if(lte(val,1),0,val)'",
+        "-fps_mode",
+        "passthrough",
+        "-c:v",
+        "libvpx-vp9",
+        "-pix_fmt",
+        "yuva420p",
+        "-b:v",
+        "0",
+        "-lossless",
+        "1",
+        "-g",
+        "48",
+        "-deadline",
+        "good",
+        "-cpu-used",
+        "2",
+        "-row-mt",
+        "1",
+        "-auto-alt-ref",
+        "0",
+        "-color_range",
+        "tv",
+        "-colorspace",
+        "bt709",
+        "-metadata:s:v:0",
+        "alpha_mode=1",
+        "-an",
+        "-fflags",
+        "+bitexact",
+        "-f",
+        "webm",
+        "/data3/DATA/project/project_meishijiang/m312r1-wt-b/pet-next/experiments/idle-roi/out-v3-yuva/.tmp-473932/F3.webm.partial"
+      ],
+      "C3": [
+        "ffmpeg",
+        "-y",
+        "-hide_banner",
+        "-nostdin",
+        "-loglevel",
+        "verbose",
+        "-c:v",
+        "libvpx-vp9",
+        "-i",
+        "/data3/DATA/project/project_meishijiang/m312r1-wt-b/pet-next/experiments/idle-roi/out-v3-yuva/.tmp-473932/O.webm",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "format=yuva420p,lutyuv=y=val:u=val:v=val:a='if(lte(val,1),0,val)',crop=226:286:208:52",
+        "-fps_mode",
+        "passthrough",
+        "-c:v",
+        "libvpx-vp9",
+        "-pix_fmt",
+        "yuva420p",
+        "-b:v",
+        "0",
+        "-lossless",
+        "1",
+        "-g",
+        "48",
+        "-deadline",
+        "good",
+        "-cpu-used",
+        "2",
+        "-row-mt",
+        "1",
+        "-auto-alt-ref",
+        "0",
+        "-color_range",
+        "tv",
+        "-colorspace",
+        "bt709",
+        "-metadata:s:v:0",
+        "alpha_mode=1",
+        "-an",
+        "-fflags",
+        "+bitexact",
+        "-f",
+        "webm",
+        "/data3/DATA/project/project_meishijiang/m312r1-wt-b/pet-next/experiments/idle-roi/out-v3-yuva/.tmp-473932/C3.webm.partial"
+      ],
+      "negativeControl": [
+        "ffmpeg",
+        "-y",
+        "-hide_banner",
+        "-nostdin",
+        "-loglevel",
+        "verbose",
+        "-c:v",
+        "libvpx-vp9",
+        "-i",
+        "/data3/DATA/project/project_meishijiang/m312r1-wt-b/pet-next/experiments/idle-roi/out-v3-yuva/.tmp-473932/O.webm",
+        "-map",
+        "0:v:0",
+        "-vf",
+        "format=yuva420p,lutyuv=a='if(lte(val,1),0,val)'",
+        "-fps_mode",
+        "passthrough",
+        "-c:v",
+        "libvpx-vp9",
+        "-pix_fmt",
+        "yuva420p",
+        "-b:v",
+        "0",
+        "-lossless",
+        "1",
+        "-g",
+        "48",
+        "-deadline",
+        "good",
+        "-cpu-used",
+        "2",
+        "-row-mt",
+        "1",
+        "-auto-alt-ref",
+        "0",
+        "-color_range",
+        "tv",
+        "-colorspace",
+        "bt709",
+        "-metadata:s:v:0",
+        "alpha_mode=1",
+        "-an",
+        "-fflags",
+        "+bitexact",
+        "-f",
+        "webm",
+        "/data3/DATA/project/project_meishijiang/m312r1-wt-b/pet-next/experiments/idle-roi/out-v3-yuva/.tmp-473932/negative-control.webm.partial"
+      ]
+    },
+    "filterGraphEvidence": {
+      "passthrough": {
+        "inputStreamLine": "Stream #0:0: Video: vp9 (libvpx-vp9) (Profile 0), 1 reference frame, yuva420p(tv, bt709/unknown/unknown, progressive), 640x360, SAR 1:1 DAR 16:9, 24 fps, 24 tbr, 1k tbn",
+        "libvpx": "v1.15.2",
+        "graphLines": [
+          "w:640 h:360 pixfmt:yuva420p tb:1/1000 fr:24/1 sar:1/1 csp:bt709 range:tv"
+        ],
+        "autoScalerInserted": false
+      },
+      "F3": {
+        "inputStreamLine": "Stream #0:0: Video: vp9 (libvpx-vp9) (Profile 0), 1 reference frame, yuva420p(tv, bt709/unknown/unknown, progressive), 640x360, SAR 1:1 DAR 16:9, 24 fps, 24 tbr, 1k tbn",
+        "libvpx": "v1.15.2",
+        "graphLines": [
+          "w:640 h:360 pixfmt:yuva420p tb:1/1000 fr:24/1 sar:1/1 csp:bt709 range:tv"
+        ],
+        "autoScalerInserted": false
+      },
+      "C3": {
+        "inputStreamLine": "Stream #0:0: Video: vp9 (libvpx-vp9) (Profile 0), 1 reference frame, yuva420p(tv, bt709/unknown/unknown, progressive), 640x360, SAR 1:1 DAR 16:9, 24 fps, 24 tbr, 1k tbn",
+        "libvpx": "v1.15.2",
+        "graphLines": [
+          "w:640 h:360 pixfmt:yuva420p tb:1/1000 fr:24/1 sar:1/1 csp:bt709 range:tv",
+          "w:640 h:360 sar:1/1 -> w:226 h:286 sar:1/1"
+        ],
+        "autoScalerInserted": false
+      }
+    },
+    "note": "两臂参数逐字相同，仅 -vf 多一段 crop；输出写 *.partial，自检通过后原子改名。",
+    "durationsMs": {
+      "passthrough": 1309,
+      "F3": 1492,
+      "C3": 1385,
+      "negativeControl": 1722
+    }
+  },
+  "selfControl": {
+    "label": "原生 YUVA 直通重编码（不改 alpha、不裁剪、不经过 RGBA）",
+    "file": "passthrough.webm（自检用，不落交付物）",
+    "bytes": 619450,
+    "sha256": "d5a226ef08724d408513fc3ada52e90752fc19f778a393e7235584d6b5d9e8cc",
+    "containerPixelFormat": "yuv420p",
+    "decodedPixelFormat": "yuva420p",
+    "alphaMode": "1",
+    "colorTags": {
+      "primaries": "unknown",
+      "transfer": "unknown",
+      "matrix": "bt709",
+      "range": "tv"
+    },
+    "framesDecoded": 48,
+    "planes": {
+      "y": {
+        "equal": true,
+        "max": 0,
+        "mae": 0,
+        "samplesOver2": 0,
+        "samples": 11059200
+      },
+      "u": {
+        "equal": true,
+        "max": 0,
+        "mae": 0,
+        "samplesOver2": 0,
+        "samples": 2764800
+      },
+      "v": {
+        "equal": true,
+        "max": 0,
+        "mae": 0,
+        "samplesOver2": 0,
+        "samples": 2764800
+      },
+      "a": {
+        "equal": true,
+        "max": 0,
+        "mae": 0,
+        "samplesOver2": 0,
+        "samples": 11059200
+      }
+    },
+    "allPlanesEqual": true,
+    "note": "平面比较基准是 O 解码的 yuva420p raw；与 v2「RGBA raw 输入」的自往返不同，本项没有任何 RGB 步骤。"
+  },
+  "candidates": {
+    "F3": {
+      "file": "F3.webm",
+      "bytes": 625108,
+      "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+      "width": 640,
+      "height": 360,
+      "containerPixelFormat": "yuv420p",
+      "decodedPixelFormat": "yuva420p",
+      "alphaMode": "1",
+      "colorTags": {
+        "primaries": "unknown",
+        "transfer": "unknown",
+        "matrix": "bt709",
+        "range": "tv"
+      },
+      "frames": 48,
+      "yuvVsO": {
+        "y": {
+          "equal": true,
+          "max": 0,
+          "mae": 0,
+          "samplesOver2": 0,
+          "samples": 11059200
+        },
+        "u": {
+          "equal": true,
+          "max": 0,
+          "mae": 0,
+          "samplesOver2": 0,
+          "samples": 2764800
+        },
+        "v": {
+          "equal": true,
+          "max": 0,
+          "mae": 0,
+          "samplesOver2": 0,
+          "samples": 2764800
+        }
+      },
+      "alphaVsThresholdedO": {
+        "max": 0,
+        "mae": 0,
+        "samplesOver2": 0
+      },
+      "alphaVsOriginal": {
+        "equal": false,
+        "max": 1,
+        "mae": 0.817890987,
+        "samplesOver2": 0,
+        "samples": 11059200
+      },
+      "alphaAboveThresholdTotal": 1951279,
+      "alphaAboveThresholdOutsideCrop": 0
+    },
+    "C3": {
+      "file": "C3.webm",
+      "bytes": 631169,
+      "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+      "width": 226,
+      "height": 286,
+      "containerPixelFormat": "yuv420p",
+      "decodedPixelFormat": "yuva420p",
+      "alphaMode": "1",
+      "colorTags": {
+        "primaries": "unknown",
+        "transfer": "unknown",
+        "matrix": "bt709",
+        "range": "tv"
+      },
+      "frames": 48,
+      "derivedFrom": "O（独立编码一次，不是从 F3 二次编码）",
+      "vsCroppedF3": {
+        "y": {
+          "equal": true,
+          "max": 0,
+          "mae": 0,
+          "samplesOver2": 0,
+          "samples": 3102528
+        },
+        "u": {
+          "equal": true,
+          "max": 0,
+          "mae": 0,
+          "samplesOver2": 0,
+          "samples": 775632
+        },
+        "v": {
+          "equal": true,
+          "max": 0,
+          "mae": 0,
+          "samplesOver2": 0,
+          "samples": 775632
+        },
+        "a": {
+          "equal": true,
+          "max": 0,
+          "mae": 0,
+          "samplesOver2": 0,
+          "samples": 3102528
+        }
+      },
+      "alphaAboveThresholdTotal": 1951279
+    },
+    "negativeControl": {
+      "filter": "format=yuva420p,lutyuv=a='if(lte(val,1),0,val)'",
+      "bytes": 625906,
+      "sha256": "e2c4cd7617b64e37a38ea7d8b31994227fd65bb31d417da821e7562fd32965fc",
+      "yuvVsO": {
+        "y": {
+          "equal": false,
+          "max": 20,
+          "mae": 0.025328414,
+          "samplesOver2": 35384,
+          "samples": 11059200
+        },
+        "u": {
+          "equal": true,
+          "max": 0,
+          "mae": 0,
+          "samplesOver2": 0,
+          "samples": 2764800
+        },
+        "v": {
+          "equal": true,
+          "max": 0,
+          "mae": 0,
+          "samplesOver2": 0,
+          "samples": 2764800
+        }
+      },
+      "expected": "省略 y/u/v=val 时 lutyuv 默认 clipval 会改色，Y/U/V max 应 >0；这是必须显式保留 y=val:u=val:v=val 的负控。"
+    }
+  },
+  "timeline": {
+    "ptsToleranceMs": 1,
+    "frames": {
+      "O": 48,
+      "F3": 48,
+      "C3": 48
+    },
+    "maxPtsDeltaMs": {
+      "F3": 0,
+      "C3": 0
+    },
+    "ptsMs": {
+      "O": [
+        0,
+        42,
+        83,
+        125,
+        167,
+        208,
+        250,
+        292,
+        333,
+        375,
+        417,
+        458,
+        500,
+        542,
+        583,
+        625,
+        667,
+        708,
+        750,
+        792,
+        833,
+        875,
+        917,
+        958,
+        1000,
+        1042,
+        1083,
+        1125,
+        1167,
+        1208,
+        1250,
+        1292,
+        1333,
+        1375,
+        1417,
+        1458,
+        1500,
+        1542,
+        1583,
+        1625,
+        1667,
+        1708,
+        1750,
+        1792,
+        1833,
+        1875,
+        1917,
+        1958
+      ],
+      "F3": [
+        0,
+        42,
+        83,
+        125,
+        167,
+        208,
+        250,
+        292,
+        333,
+        375,
+        417,
+        458,
+        500,
+        542,
+        583,
+        625,
+        667,
+        708,
+        750,
+        792,
+        833,
+        875,
+        917,
+        958,
+        1000,
+        1042,
+        1083,
+        1125,
+        1167,
+        1208,
+        1250,
+        1292,
+        1333,
+        1375,
+        1417,
+        1458,
+        1500,
+        1542,
+        1583,
+        1625,
+        1667,
+        1708,
+        1750,
+        1792,
+        1833,
+        1875,
+        1917,
+        1958
+      ],
+      "C3": [
+        0,
+        42,
+        83,
+        125,
+        167,
+        208,
+        250,
+        292,
+        333,
+        375,
+        417,
+        458,
+        500,
+        542,
+        583,
+        625,
+        667,
+        708,
+        750,
+        792,
+        833,
+        875,
+        917,
+        958,
+        1000,
+        1042,
+        1083,
+        1125,
+        1167,
+        1208,
+        1250,
+        1292,
+        1333,
+        1375,
+        1417,
+        1458,
+        1500,
+        1542,
+        1583,
+        1625,
+        1667,
+        1708,
+        1750,
+        1792,
+        1833,
+        1875,
+        1917,
+        1958
+      ]
+    },
+    "durationsMs": {
+      "O": 1999,
+      "F3": 2000,
+      "C3": 2000
+    },
+    "loopFrames": 48
+  },
+  "arms": [
+    {
+      "arm": "O",
+      "file": "O.webm",
+      "bytes": 78419,
+      "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+      "width": 640,
+      "height": 360,
+      "frameCount": 48,
+      "durationMs": 1999,
+      "colorTags": {
+        "primaries": "unknown",
+        "transfer": "unknown",
+        "matrix": "bt709",
+        "range": "tv"
+      },
+      "containerPixelFormat": "yuv420p",
+      "decodedPixelFormat": "yuva420p",
+      "alphaMode": "1",
+      "pts": {
+        "count": 48,
+        "firstMs": 0,
+        "lastMs": 1958,
+        "stepMs": 41.66,
+        "minDeltaMs": 41,
+        "maxDeltaMs": 42
+      }
+    },
+    {
+      "arm": "F3",
+      "file": "F3.webm",
+      "bytes": 625108,
+      "sha256": "08afc85246fe845608ae9767af3ea2d6e7632d5a8453b82310f0cff7de10b4a1",
+      "width": 640,
+      "height": 360,
+      "frameCount": 48,
+      "durationMs": 2000,
+      "colorTags": {
+        "primaries": "unknown",
+        "transfer": "unknown",
+        "matrix": "bt709",
+        "range": "tv"
+      },
+      "containerPixelFormat": "yuv420p",
+      "decodedPixelFormat": "yuva420p",
+      "alphaMode": "1",
+      "pts": {
+        "count": 48,
+        "firstMs": 0,
+        "lastMs": 1958,
+        "stepMs": 41.66,
+        "minDeltaMs": 41,
+        "maxDeltaMs": 42
+      }
+    },
+    {
+      "arm": "C3",
+      "file": "C3.webm",
+      "bytes": 631169,
+      "sha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+      "width": 226,
+      "height": 286,
+      "frameCount": 48,
+      "durationMs": 2000,
+      "colorTags": {
+        "primaries": "unknown",
+        "transfer": "unknown",
+        "matrix": "bt709",
+        "range": "tv"
+      },
+      "containerPixelFormat": "yuv420p",
+      "decodedPixelFormat": "yuva420p",
+      "alphaMode": "1",
+      "pts": {
+        "count": 48,
+        "firstMs": 0,
+        "lastMs": 1958,
+        "stepMs": 41.66,
+        "minDeltaMs": 41,
+        "maxDeltaMs": 42
+      },
+      "alphaForegroundPixels": 1951279
+    }
+  ],
+  "selfCheck": {
+    "oBytesEqualToSource": true,
+    "passthroughPlanesEqualO": true,
+    "f3YuvEqualO": true,
+    "f3AlphaEqualsThresholdedO": true,
+    "f3OutsideCropForegroundPixels": 0,
+    "c3EqualsCroppedF3Planes": true,
+    "frameCounts": {
+      "O": 48,
+      "F3": 48,
+      "C3": 48
+    },
+    "ptsToleranceMs": 1,
+    "durationDeltaMs": {
+      "C3vsO": 1
+    },
+    "f3C3ColorTagsEqual": true,
+    "colorTagsEqualO": true,
+    "decoderReadbackFrames": {
+      "F3": 48,
+      "C3": 48
+    },
+    "externalFramehash": {
+      "tool": "ffmpeg -f framehash -pix_fmt yuva420p（每帧 Y/U/V/A 四平面一起做 SHA256）",
+      "frames": {
+        "O": 48,
+        "passthrough": 48,
+        "F3": 48,
+        "C3": 48
+      },
+      "passthroughEqualsO": {
+        "same": true,
+        "countA": 48,
+        "countB": 48,
+        "firstDiff": null
+      },
+      "c3EqualsCroppedF3": {
+        "same": true,
+        "countA": 48,
+        "countB": 48,
+        "firstDiff": null
+      },
+      "f3DiffersFromO": {
+        "same": false,
+        "countA": 48,
+        "countB": 48,
+        "firstDiff": 0,
+        "expected": "F3 的 alpha<=1 被置零，逐帧 MD5 与 O 不同属预期，不是缺陷"
+      }
+    },
+    "method": "全部以实际解码像素平面比对；不用命令行里的 -lossless 字样代替验证。"
+  },
+  "timings": {
+    "decodeOMs": 150,
+    "alphaScanMs": 33,
+    "passthroughEncodeMs": 1309,
+    "f3EncodeMs": 1492,
+    "c3EncodeMs": 1385,
+    "negativeControlMs": 1722,
+    "timelineReadbackMs": 138,
+    "totalMs": 8418
+  },
+  "byteCost": {
+    "source": 78419,
+    "F3": 625108,
+    "C3": 631169,
+    "F3OverO": 7.971,
+    "C3OverO": 8.049
+  },
+  "limits": "仅离线编译与解码回读自检：全 48 帧，无 GUI、无 CPU/RSS、无真实呈帧；不涉及画质门重算（由 C 与负责人另行执行），未改产品接线。"
+}

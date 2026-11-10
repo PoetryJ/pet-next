@@ -1,0 +1,88 @@
+{
+  "schemaVersion": 1,
+  "kind": "idle-roi",
+  "sourcePath": "assets/idle.webm",
+  "sourceSha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a",
+  "candidateSha256": "195ae6aa3af0b28a1d699e3e8fc75779ada6308aef1badcf037b700edecbeb7c",
+  "originalCanvas": {
+    "width": 640,
+    "height": 360
+  },
+  "crop": {
+    "x": 208,
+    "y": 52,
+    "width": 226,
+    "height": 286
+  },
+  "alphaThreshold": 1,
+  "guard": 2,
+  "codec": "vp9",
+  "pixelFormat": "yuva420p",
+  "colorTags": {
+    "primaries": "unknown",
+    "transfer": "unknown",
+    "matrix": "bt709",
+    "range": "tv"
+  },
+  "frameCount": 48,
+  "pts": {
+    "count": 48,
+    "firstMs": 0,
+    "lastMs": 1958,
+    "stepMs": 41.66,
+    "minDeltaMs": 41,
+    "maxDeltaMs": 42
+  },
+  "durationMs": 1999,
+  "loopFrames": 48,
+  "generatedBy": "node experiments/idle-roi/compiler-yuva.mjs --out=experiments/idle-roi/out-v3-yuva",
+  "ffmpeg": "ffmpeg version 8.0.1 Copyright (c) 2000-2025 the FFmpeg developers",
+  "builtAt": "2026-11-10T10:19:01.356Z",
+  "revision": {
+    "version": "v3-yuva",
+    "previous": "v2",
+    "route": "native-yuva",
+    "motivation": "v2 的 F/C 两条链都强制 RGBA→YUV（format=rgba,lut → format=yuva420p），其自往返「下限」同样经过 RGBA；v3 直接从 O 解码到 YUVA 平面再编码，用于判定「重编码必然过不了门」是否只是 RGBA 中转造成的。",
+    "derivation": {
+      "passthrough": "O → format=yuva420p → libvpx-vp9（自对照，1 次编码，仅记录不落交付物）",
+      "F3": "O → format=yuva420p,lutyuv=y=val:u=val:v=val:a=if(lte(val,1),0,val) → libvpx-vp9（1 次编码）",
+      "C3": "O → 同 F3 前缀 + crop=226:286:208:52 → libvpx-vp9（从 O 直接派生，独立 1 次编码；不从 F3 二次编码）",
+      "encodeCount": {
+        "passthrough": 1,
+        "F3": 1,
+        "C3": 1,
+        "negativeControl": 1
+      }
+    },
+    "colorTagPolicy": "O 实际标签 range=tv、matrix=bt709，primaries/transfer=unknown。v3 只显式传 -color_range tv -colorspace bt709，不传 -color_primaries/-color_trc，输出保持 unknown（与 O 一致），不补值。",
+    "v2": {
+      "source": "experiments/idle-roi/out-v2/build-report.json",
+      "route": "RGBA 中转（format=rgba,lut → format=yuva420p，从 F 派生 C）",
+      "alphaScanUnion": {
+        "x": 210,
+        "y": 54,
+        "width": 222,
+        "height": 281
+      },
+      "foregroundPixelsTotal": 1951279,
+      "outsideCropForegroundPixels": 0,
+      "arms": [
+        {
+          "arm": "O",
+          "bytes": 78419,
+          "sha256": "6ebca6b20bcce978f5a52f8333212784b3a642d0b8803c630a455439ebb7df1a"
+        },
+        {
+          "arm": "F",
+          "bytes": 728356,
+          "sha256": "b1c3e8cf5392158ec5e9d3714ba21b5b72555572793867e1e99552d65fc43673"
+        },
+        {
+          "arm": "C",
+          "bytes": 730551,
+          "sha256": "81c8a2f26d024bc6e34429c98dbea50978ec5696d4abed3b23ed2031339b8f4e"
+        }
+      ]
+    }
+  }
+}
