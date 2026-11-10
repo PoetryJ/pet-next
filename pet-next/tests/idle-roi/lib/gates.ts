@@ -237,7 +237,14 @@ export function layoutGate(arms: Arms): GateResult {
       accumulateAlphaBox(originalFrame, canvas.width, canvas.height, GATE_THRESHOLDS.positionAlphaFloor, originalBoxFrame);
       accumulateAlphaBox(originalFrame, canvas.width, canvas.height, GATE_THRESHOLDS.positionAlphaFloor, originalBox);
       accumulateAlphaBox(originalFrame, canvas.width, canvas.height, arms.alphaThreshold, strictOriginal);
-      restoreCrop(readFrame(opened, 'C', frame), arms.crop, canvas.width, canvas.height, restored, arms.restore.dx, arms.restore.dy);
+      // 只有裁过的候选才需要贴回画布；全画布的臂（自对照 S、F3）原样比，
+      // 否则会把一张 640×360 当成 226×286 去裁，量出来的是装置自己的错位。
+      const candidateRaw = readFrame(opened, 'C', frame);
+      if (arms.C.raw.width !== canvas.width || arms.C.raw.height !== canvas.height) {
+        restoreCrop(candidateRaw, arms.crop, canvas.width, canvas.height, restored, arms.restore.dx, arms.restore.dy);
+      } else {
+        restored.set(candidateRaw);
+      }
       const candidateFrame = emptyAlphaBox();
       accumulateAlphaBox(restored, canvas.width, canvas.height, GATE_THRESHOLDS.positionAlphaFloor, candidateFrame);
       accumulateAlphaBox(restored, canvas.width, canvas.height, GATE_THRESHOLDS.positionAlphaFloor, candidateBox);

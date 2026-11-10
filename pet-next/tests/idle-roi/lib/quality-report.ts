@@ -13,7 +13,7 @@ import { mkdirSync, writeFileSync } from 'node:fs';
 import path from 'node:path';
 
 import { GATE_THRESHOLDS, type GateResult } from './gates.ts';
-import type { ComparisonMeasurement, RegionWorst } from './measure.ts';
+import type { ComparisonMeasurement } from './measure.ts';
 import type { GitState } from './reference.ts';
 import { VARIANT_DEFINITIONS, findDefinition, type VariantEvaluation } from './variants.ts';
 
@@ -135,10 +135,6 @@ function verdictSentence(subject: VariantVerdict | null, prerequisites: readonly
 
 function round(value: number, digits = 4): number {
   return Number(value.toFixed(digits));
-}
-
-function worstRow(worst: RegionWorst): { value: number; frame: number; plate: string | null } {
-  return { value: round(worst.mae), frame: worst.frame, plate: worst.plate };
 }
 
 function toComparisonRow(variant: VariantEvaluation, id: string, measurement: ComparisonMeasurement, gate: GateResult | undefined): ComparisonRow {
@@ -278,7 +274,13 @@ function attributionBlock(variants: readonly VariantEvaluation[], rows: readonly
       .filter((variant) => variant.status === 'evaluated')
       .map((variant) => {
         const ofKey = Object.keys(variant.measurements).find((key) => /^o-to-f/.test(key));
-        if (ofKey === undefined) return { category: variant.category, available: false };
+        if (ofKey === undefined) {
+          return {
+            category: variant.category,
+            available: false,
+            statement: `${variant.label}：没有 F 臂（自对照不造 F），所以「F 的偏离」不适用；它自己的参照就是 O，见 o-to-s 行`,
+          };
+        }
         const of = variant.measurements[ofKey]!;
         return {
           category: variant.category,
@@ -380,6 +382,7 @@ export function assembleReport(input: ReportInput): AssembledReport {
       gates: variant.gates,
       measurements: variant.measurements,
       planes: variant.planes,
+      selfControl: variant.selfControl,
       reference: variant.reference,
       cost: variant.cost,
       localStatus: variant.localStatus,

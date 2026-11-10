@@ -57,6 +57,12 @@ export interface ReferenceBlock {
   readonly ffprobe: string;
   /** WebM/VP9 的 alpha 不在基础流的 pix_fmt 里，读报告的人必须知道这一点。 */
   readonly alphaChannelNote: string;
+  /**
+   * 素材取自哪个提交：优先 SOURCE.json 里记的 sourceCommit（只读副本自己声明来源），
+   * 其次 PET_NEXT_IDLE_ROI_ARMS_COMMIT（直接指向别人提交目录时用）。都没有就记 null，不猜。
+   */
+  readonly armsCommit: string | null;
+  readonly armsProvenance: { readonly file: string; readonly sourceCommit: string | null; readonly extractCommand: string | null } | null;
   readonly gaps: readonly string[];
 }
 
@@ -172,6 +178,8 @@ export interface BuildReferenceInput {
   readonly arms: Arms;
   /** 报告里称呼各臂用的名字（S/C3 这类）。 */
   readonly labels: Readonly<Record<ArmKey, string>>;
+  /** 显式声明的素材提交（只有调用方知道这目录是"谁的哪个提交"时才传）。 */
+  readonly armsCommit?: string | null;
 }
 
 /** 组装一份引用块。 */
@@ -232,6 +240,19 @@ export async function buildReference(input: BuildReferenceInput): Promise<Refere
     differences.push('没有可用 manifest：色彩标签只能报实测值，不能报声明值');
   }
 
+  const sourceJsonFile = path.join(armsDir, 'SOURCE.json');
+  let provenance: ReferenceBlock['armsProvenance'] = null;
+  let provenanceCommit: string | null = null;
+  if (existsSync(sourceJsonFile)) {
+    const raw = JSON.parse(readFileSync(sourceJsonFile, 'utf8')) as { sourceCommit?: unknown; extractCommand?: unknown };
+    provenanceCommit = typeof raw.sourceCommit === 'string' ? raw.sourceCommit : null;
+    provenance = {
+      file: path.relative(petRoot(), sourceJsonFile),
+      sourceCommit: provenanceCommit,
+      extractCommand: typeof raw.extractCommand === 'string' ? raw.extractCommand : null,
+    };
+  }
+
   const oActualFirst = Object.entries(actual)[0];
   const sourceFile = path.join(petRoot(), 'assets', 'idle.webm');
   const sourceSha = existsSync(sourceFile) ? sha256File(sourceFile) : '';
@@ -248,6 +269,7 @@ export async function buildReference(input: BuildReferenceInput): Promise<Refere
     },
     manifest: manifestRef,
     buildReport,
+    armsProvenance: provenance,
     actual,
     colorConsistency: { consistent: differences.length === 0, declared, differences },
     evaluationCommands: {
@@ -257,6 +279,7 @@ export async function buildReference(input: BuildReferenceInput): Promise<Refere
     },
     ffmpeg: toolVersion('ffmpeg'),
     ffprobe: toolVersion('ffprobe'),
+    armsCommit: input.armsCommit ?? provenanceCommit ?? null,
     alphaChannelNote:
       'WebM/VP9 的 alpha 存放在独立 BlockAdditional 中：ffprobe 对带 alpha 的文件仍报基础流 pix_fmt=yuv420p，' +
       '由 tag alpha_mode=1 声明；只有显式 -c:v libvpx-vp9 解码才会得到 alpha 平面（本装置解码命令已显式指定）。' +

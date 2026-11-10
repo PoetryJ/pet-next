@@ -35,6 +35,14 @@ const FRAMES = path.join(OUT, 'frames');
 const REPORT = path.join(OUT, 'quality-report.json');
 const RERUN = 'env -u NODE_OPTIONS node --experimental-strip-types --test --test-reporter spec tests/idle-roi/*.test.ts';
 const STRICT = process.env['PET_NEXT_IDLE_ROI_STRICT_GATE'] === '1';
+/**
+ * 严格门覆盖「本轮要判的路线」＝候选 + 它的前置（自对照）。
+ *
+ * 历史类别（v2）仍然全量测量并全部写进报告，但它的失败默认不把测试染红——
+ * 那些字节是上一轮已被拒绝的候选，让它永久把严格门钉死等于让严格门失去作用。
+ * 想让历史类别也硬失败时置 PET_NEXT_IDLE_ROI_STRICT_INCLUDE_HISTORICAL=1。
+ */
+const STRICT_INCLUDE_HISTORICAL = process.env['PET_NEXT_IDLE_ROI_STRICT_INCLUDE_HISTORICAL'] === '1';
 /** 旧 RGBA 路径的自往返默认不跑：它测的是另一条链，不参与本轮判定。 */
 const RUN_ROUNDTRIP = process.env['PET_NEXT_IDLE_ROI_ROUNDTRIP'] === '1';
 
@@ -116,6 +124,10 @@ test('M3-12 画质门：三类分列、全 48 帧独立解码', async (t) => {
     assert.equal(GATE_THRESHOLDS.fToCAlphaMaxLsb, 2, 'F–C alpha 门被改动');
     assert.equal(GATE_THRESHOLDS.alphaThreshold, 1, 'alpha 阈值不是契约固定的 1');
 
+    const gatedCategories = new Set<string>([
+      'f3c3',
+      ...VARIANT_DEFINITIONS.filter((definition) => definition.prerequisiteOf === 'f3c3').map((definition) => definition.category),
+    ]);
     const variants: VariantEvaluation[] = [];
     for (const definition of VARIANT_DEFINITIONS) variants.push(await evaluateVariant(definition, workDir));
 
@@ -163,9 +175,11 @@ test('M3-12 画质门：三类分列、全 48 帧独立解码', async (t) => {
         for (const [id, measurement] of Object.entries(variant.measurements)) {
           assert.equal(measurement.perFrame.length, GATE_THRESHOLDS.frameCount, `${variant.category}/${id} 只有 ${measurement.perFrame.length} 帧逐帧记录`);
         }
+        const gated = gatedCategories.has(variant.category) || STRICT_INCLUDE_HISTORICAL;
         for (const gate of variant.gates) {
           await sub.test(`${gate.id}: ${gate.title}`, (child) => {
-            if (STRICT) assert.equal(gate.pass, true, gateFailureText(gate));
+            if (STRICT && gated) assert.equal(gate.pass, true, gateFailureText(gate));
+            else if (STRICT) child.diagnostic(`历史类别（不计入本轮严格门）${gate.id}: ${gate.pass ? 'pass' : 'FAIL'} — ${gateFailureText(gate)}`);
             else child.diagnostic(`${gate.id}: ${gate.pass ? 'pass' : 'FAIL'} — ${gateFailureText(gate)}`);
           });
         }

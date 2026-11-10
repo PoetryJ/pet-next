@@ -276,7 +276,9 @@ export interface LoadNamedOptions {
  */
 export async function loadNamedArms(dir: string, workDir: string, files: NamedArmFiles, options: LoadNamedOptions = {}): Promise<LoadResult> {
   const problems: string[] = [];
-  const paths = { O: path.join(dir, files.O), F: path.join(dir, files.F), C: path.join(dir, files.C) };
+  // 允许绝对路径：自对照的复现文件落在临时目录里，不在 armsDir 下。
+  const resolve = (name: string): string => (path.isAbsolute(name) ? name : path.join(dir, name));
+  const paths = { O: resolve(files.O), F: resolve(files.F), C: resolve(files.C) };
   const manifestPath = path.join(dir, 'manifest.json');
   for (const [key, file] of Object.entries(paths)) {
     if (!existsSync(file)) problems.push(`缺 ${key}（${path.relative(petRoot(), file)}）`);

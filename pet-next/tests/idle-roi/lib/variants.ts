@@ -9,7 +9,7 @@
  *
  * 每类各一套门、各一套测量。跨类别只允许比较结论，不允许把某一类的数字挪去当另一类的证据。
  */
-import { existsSync, statSync } from 'node:fs';
+import { existsSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 
 import { loadNamedArms, petRoot, type ArmKey, type Arms, type Manifest } from './arms.ts';
@@ -24,6 +24,8 @@ import {
   type GateResult,
 } from './gates.ts';
 import { measureComparison, type ComparisonMeasurement } from './measure.ts';
+import { runMediaTool } from './tool.ts';
+import { sha256File } from './arms.ts';
 import { measurePlaneIdentity, type PlaneIdentityReport } from './planes.ts';
 import { buildReference, type ReferenceBlock } from './reference.ts';
 
@@ -66,7 +68,7 @@ export const VARIANT_DEFINITIONS: readonly VariantDefinition[] = [
     role: '不解 RGB、不裁边、不做 alpha 阈值：只回答「这条编码链本身动不动 Y/U/V/A 与解码 RGB」',
     envDir: 'PET_NEXT_IDLE_ROI_ARMS_SELFCONTROL',
     envFile: 'PET_NEXT_IDLE_ROI_SELFCONTROL_FILE',
-    defaultDirs: ['experiments/idle-roi/out-v3-yuva'],
+    defaultDirs: ['experiments/idle-roi/out-v3-yuva', 'tests/idle-roi/fixtures-v3'],
     fileCandidates: {
       F: ['S.webm', 'selfcontrol.webm', 'passthrough.webm', 'yuva-pass.webm', 'S-passthrough.webm', 'O-pass.webm'],
       C: ['S.webm', 'selfcontrol.webm', 'passthrough.webm', 'yuva-pass.webm', 'S-passthrough.webm', 'O-pass.webm'],
@@ -80,7 +82,7 @@ export const VARIANT_DEFINITIONS: readonly VariantDefinition[] = [
     label: 'F3/C3（原生 YUVA 候选）',
     role: '原生 YUVA 链上的全画布 F3 与 ROI C3；本轮唯一转正候选',
     envDir: 'PET_NEXT_IDLE_ROI_ARMS_F3C3',
-    defaultDirs: ['experiments/idle-roi/out-v3-yuva'],
+    defaultDirs: ['experiments/idle-roi/out-v3-yuva', 'tests/idle-roi/fixtures-v3'],
     fileCandidates: { F: ['F3.webm', 'F.webm'], C: ['C3.webm', 'C.webm'] },
     verifyCandidateSha: true,
     candidate: true,
@@ -100,6 +102,12 @@ export function findDefinition(category: VariantCategory): VariantDefinition {
   return found;
 }
 
+/** 仓库内给相对路径，仓库外（临时目录）给绝对路径，避免出现 ../../../../ 这种看不清的串。 */
+function displayPath(target: string): string {
+  const relative = path.relative(petRoot(), target);
+  return relative.startsWith('..') ? target : relative;
+}
+
 function absolute(candidate: string): string {
   return path.isAbsolute(candidate) ? candidate : path.join(petRoot(), candidate);
 }
@@ -117,7 +125,7 @@ function firstExisting(dir: string, names: readonly string[]): string | null {
  * 只有「显式指定」与「本类别候选名单里唯一命中」两种来源，不做目录遍历猜测：
  * v3 目录里同时躺着自对照与 C3，猜错一次就会把两类的数字混成一份。
  */
-export function resolveVariant(definition: VariantDefinition): { resolved: ResolvedVariant | null; reasons: string[] } {
+export function resolveVariant(definition: VariantDefinition): { resolved: ResolvedVariant | null; reasons: string[]; needsReproduction?: boolean } {
   const reasons: string[] = [];
   const overrideFile = definition.envFile === undefined ? undefined : process.env[definition.envFile];
   const overrideDir = process.env[definition.envDir];
@@ -144,23 +152,31 @@ export function resolveVariant(definition: VariantDefinition): { resolved: Resol
     fName = firstExisting(armsDir, definition.fileCandidates.F);
     cName = firstExisting(armsDir, definition.fileCandidates.C);
   }
-  if (fName === null || cName === null) {
-    reasons.push(
-      `${path.relative(petRoot(), armsDir)} 下缺候选文件（F 试过 ${definition.fileCandidates.F.join('/')}；C 试过 ${definition.fileCandidates.C.join('/')}）`,
-    );
-    return { resolved: null, reasons };
-  }
   for (const required of ['O.webm', 'manifest.json']) {
     if (!existsSync(path.join(armsDir, required))) reasons.push(`${path.relative(petRoot(), armsDir)} 缺 ${required}`);
   }
   if (reasons.length > 0) return { resolved: null, reasons };
-  const labels: Record<ArmKey, string> =
+  const labels0: Record<ArmKey, string> =
     definition.category === 'yuva-selfcontrol'
       ? { O: 'O', F: 'S', C: 'S' }
       : definition.category === 'f3c3'
         ? { O: 'O', F: 'F3', C: 'C3' }
         : { O: 'O', F: 'F', C: 'C' };
-  return { resolved: { definition, armsDir, files: { O: 'O.webm', F: fName, C: cName }, labels }, reasons };
+  if (fName === null || cName === null) {
+    if (definition.category === 'yuva-selfcontrol') {
+      // 自对照文件常常只是自检产物、不随交付物提交；这条路径由构建记录里的命令本地复现。
+      return {
+        resolved: { definition, armsDir, files: { O: 'O.webm', F: '', C: '' }, labels: labels0 },
+        reasons: [],
+        needsReproduction: true,
+      };
+    }
+    reasons.push(
+      `${path.relative(petRoot(), armsDir)} 下缺候选文件（F 试过 ${definition.fileCandidates.F.join('/')}；C 试过 ${definition.fileCandidates.C.join('/')}）`,
+    );
+    return { resolved: null, reasons };
+  }
+  return { resolved: { definition, armsDir, files: { O: 'O.webm', F: fName, C: cName }, labels: labels0 }, reasons };
 }
 
 export interface VariantEvaluation {
@@ -184,6 +200,16 @@ export interface VariantEvaluation {
   readonly gateKinds: Readonly<Record<string, GateKind>>;
   readonly measurements: Readonly<Record<string, ComparisonMeasurement>>;
   readonly planes: PlaneIdentityReport | null;
+  /** 自对照文件的来源（提交内文件 / 由构建记录里的命令本地复现）。 */
+  readonly selfControl: {
+    readonly source: 'committed-file' | 'reproduced-from-build-report' | 'none';
+    readonly file: string | null;
+    readonly sha256: string | null;
+    readonly recordedSha256: string | null;
+    readonly shaMatchesRecorded: boolean | null;
+    readonly command: readonly string[] | null;
+    readonly note: string;
+  } | null;
   /** 已加载的三臂（只在进程内用：关键帧 PNG 需要重读原帧；不进 JSON）。 */
   readonly armsObject: Arms | null;
   readonly localStatus: { readonly pass: boolean; readonly failed: readonly string[] };
@@ -213,9 +239,123 @@ function notRun(definition: VariantDefinition, reasons: readonly string[]): Vari
     gateKinds: {},
     measurements: {},
     planes: null,
+    selfControl: null,
     armsObject: null,
     localStatus: { pass: false, failed: [] },
     cost: null,
+  };
+}
+
+/**
+ * 自对照文件解析：优先用已提交文件；没有就按构建记录里的 passthrough 命令**本地复现**。
+ *
+ * 为什么要复现：B 的 `passthrough.webm` 是自检产物、不落交付物，提交里根本没有这份字节。
+ * 「不信声明、只认字节」在这里只有两条路——要么拿不到就报 not-run（等于没法独立核验），
+ * 要么用同一份 ffmpeg + 记录里那条完整命令重跑一次，再用重跑出来的字节做平面比较。
+ * 后者是可审计的：命令、产物 sha、与 B 记录 sha 是否一致，全部落进报告。
+ */
+async function resolveSelfControlFile(
+  resolved: ResolvedVariant,
+  workDir: string,
+  needsReproduction: boolean,
+): Promise<{
+  file: string | null;
+  meta: NonNullable<VariantEvaluation['selfControl']>;
+}> {
+  if (!needsReproduction) {
+    const file = path.isAbsolute(resolved.files.C) ? resolved.files.C : path.join(resolved.armsDir, resolved.files.C);
+    return {
+      file,
+      meta: {
+        source: 'committed-file',
+        file: path.relative(petRoot(), file),
+        sha256: sha256File(file),
+        recordedSha256: null,
+        shaMatchesRecorded: null,
+        command: null,
+        note: '使用随提交落盘的自对照字节',
+      },
+    };
+  }
+  const buildFile = path.join(resolved.armsDir, 'build-report.json');
+  if (!existsSync(buildFile)) {
+    return {
+      file: null,
+      meta: {
+        source: 'none',
+        file: null,
+        sha256: null,
+        recordedSha256: null,
+        shaMatchesRecorded: null,
+        command: null,
+        note: '既没有自对照文件，也没有 build-report.json：无法复现，判定为 not-run（不接受「B 说全等」作为证据）',
+      },
+    };
+  }
+  const raw = JSON.parse(readFileSync(buildFile, 'utf8')) as unknown;
+  const commands: Array<{ jsonPath: string; command: readonly string[] }> = [];
+  const walk = (node: unknown, pointer: string): void => {
+    if (Array.isArray(node)) {
+      if (node.length > 0 && node.every((item) => typeof item === 'string') && node[0] === 'ffmpeg') {
+        commands.push({ jsonPath: pointer, command: node as string[] });
+        return;
+      }
+      node.forEach((item, index) => walk(item, `${pointer}/${index}`));
+      return;
+    }
+    if (typeof node === 'object' && node !== null) {
+      for (const [key, value] of Object.entries(node as Record<string, unknown>)) walk(value, `${pointer}/${key}`);
+    }
+  };
+  walk(raw, '');
+  const score = (item: { jsonPath: string; command: readonly string[] }): number => {
+    const text = item.command.join(' ');
+    if (/rgba/.test(text)) return -100;
+    if (/lutyuv|alphaextract|drawtext/.test(text)) return -50;
+    let value = 0;
+    if (/passthrough/i.test(item.jsonPath) || /passthrough/i.test(text)) value += 100;
+    if (/format=yuva420p/.test(text)) value += 20;
+    return value;
+  };
+  const best = commands.map((item) => ({ item, value: score(item) })).sort((left, right) => right.value - left.value)[0];
+  if (best === undefined || best.value <= 0) {
+    return {
+      file: null,
+      meta: {
+        source: 'none',
+        file: null,
+        sha256: null,
+        recordedSha256: null,
+        shaMatchesRecorded: null,
+        command: null,
+        note: `build-report.json 里没有「不解 RGB 的 yuva420p 直通」命令（挖到 ${commands.length} 条 ffmpeg 命令）：无法复现，判定 not-run`,
+      },
+    };
+  }
+  const command = [...best.item.command];
+  const inputIndex = command.indexOf('-i');
+  const oPath = path.join(resolved.armsDir, 'O.webm');
+  if (inputIndex >= 0 && inputIndex + 1 < command.length) command[inputIndex + 1] = oPath;
+  const output = path.join(workDir, 'selfcontrol-passthrough.webm');
+  command[command.length - 1] = output;
+  await runMediaTool(command, 300_000);
+  const sha = sha256File(output);
+  const recorded = ((): string | null => {
+    const node = raw as { selfControl?: { sha256?: unknown } };
+    const value = node.selfControl?.sha256;
+    return typeof value === 'string' ? value : null;
+  })();
+  return {
+    file: output,
+    meta: {
+      source: 'reproduced-from-build-report',
+      file: output,
+      sha256: sha,
+      recordedSha256: recorded,
+      shaMatchesRecorded: recorded === null ? null : recorded === sha,
+      command,
+      note: `由 ${displayPath(buildFile)}${best.item.jsonPath} 的命令本地复现（输入换成本目录 O.webm、输出换到临时目录）；B 的 passthrough.webm 未随提交落盘`,
+    },
   };
 }
 
@@ -260,9 +400,17 @@ function selfControlGates(measurement: ComparisonMeasurement, planes: PlaneIdent
 
 /** 评测一个类别：门 + 测量 + 引用 + 代价。任何加载问题都变成 not-run，不猜数据。 */
 export async function evaluateVariant(definition: VariantDefinition, workDir: string): Promise<VariantEvaluation> {
-  const { resolved, reasons } = resolveVariant(definition);
+  const { resolved, reasons, needsReproduction } = resolveVariant(definition);
   if (resolved === null) return notRun(definition, reasons);
-  const loaded = await loadNamedArms(resolved.armsDir, workDir, resolved.files, {
+  let files = resolved.files;
+  let selfControl: VariantEvaluation['selfControl'] = null;
+  if (definition.category === 'yuva-selfcontrol') {
+    const sc = await resolveSelfControlFile(resolved, workDir, needsReproduction === true);
+    if (sc.file === null) return notRun(definition, [sc.meta.note]);
+    selfControl = sc.meta;
+    files = { ...files, F: sc.file, C: sc.file };
+  }
+  const loaded = await loadNamedArms(resolved.armsDir, workDir, files, {
     label: definition.category,
     verifyCandidateSha: definition.verifyCandidateSha,
   });
@@ -310,7 +458,13 @@ export async function evaluateVariant(definition: VariantDefinition, workDir: st
 
   const failed = gates.filter((gate) => !gate.pass).map((gate) => gate.id);
   const labels = resolved.labels;
-  const reference = await buildReference({ armsDir: resolved.armsDir, arms, labels });
+  const reference = await buildReference({
+    armsDir: resolved.armsDir,
+    arms,
+    labels,
+    // 旧 v2 字节的来源由它自己的 fixtures/SOURCE.json 记；B 的提交只对 v3 两类成立。
+    armsCommit: definition.category === 'v2-rgba' ? null : (process.env['PET_NEXT_IDLE_ROI_ARMS_COMMIT'] ?? null),
+  });
   const bytes = { O: statSync(arms.O.file).size, F: statSync(arms.F.file).size, C: statSync(arms.C.file).size };
   const cropArea = arms.crop.width * arms.crop.height;
   const canvasArea = arms.originalCanvas.width * arms.originalCanvas.height;
@@ -322,7 +476,7 @@ export async function evaluateVariant(definition: VariantDefinition, workDir: st
     status: 'evaluated',
     reasons: [],
     armsDir: resolved.armsDir,
-    files: resolved.files,
+    files,
     labels,
     arms: {
       sha256: { O: arms.O.sha256, F: arms.F.sha256, C: arms.C.sha256 },
@@ -335,6 +489,7 @@ export async function evaluateVariant(definition: VariantDefinition, workDir: st
     gateKinds,
     measurements,
     planes,
+    selfControl,
     armsObject: arms,
     localStatus: { pass: failed.length === 0, failed },
     cost: {
