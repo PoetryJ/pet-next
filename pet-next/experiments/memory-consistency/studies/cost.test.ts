@@ -30,9 +30,9 @@ describe('成本研究机制', () => {
     const full = cell.measures.filter((item) => item.op === 'full');
     const inc = cell.measures.filter((item) => item.op === 'incremental');
     assert.equal(full.length, inc.length);
-    const fullScanned = full.reduce((sum, item) => sum + item.eventsScanned, 0);
-    const incScanned = inc.reduce((sum, item) => sum + item.eventsScanned, 0);
-    assert.ok(incScanned < fullScanned, `${incScanned} !< ${fullScanned}`);
+    const fullVisited = full.reduce((sum, item) => sum + item.eventsVisited, 0);
+    const incVisited = inc.reduce((sum, item) => sum + item.eventsVisited, 0);
+    assert.ok(incVisited < fullVisited, `${incVisited} !< ${fullVisited}`);
   });
 
   test('中位数不依赖排序输入', () => {

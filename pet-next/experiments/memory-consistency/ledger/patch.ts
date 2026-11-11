@@ -28,6 +28,11 @@ import { invalidateNotes } from './invalidate.ts';
 export interface PatchOptions {
   /** 校验时允许看见的最大 sequence；超过即 source_not_observed。 */
   readonly openUntilSequence?: number;
+  /**
+   * 同一 patch 内父/子一起更新时，父的「提交后版本」。
+   * 不用它的话，子会绑定到提交前的父版本，提交完整图就不再一致。
+   */
+  readonly projectedNoteVersions?: Readonly<Record<string, number>>;
 }
 
 /** 单个 draft 的依赖重算结果。 */
@@ -87,6 +92,12 @@ export function recomputeDependencies(
     if (scripted !== undefined && scripted !== null) {
       dependencies[depIdForSubject(scripted.subjectKey)] = state.subjectVersions[scripted.subjectKey] ?? 0;
     }
+    // task.changed 自己就带 taskId/revision，是权威来源；
+    // 生产者省略可选 subjectKey 时不能因此漏掉撤销依赖。
+    if (event.kind === 'task.changed' && event.taskId !== undefined) {
+      const taskSubject = event.payload.subjectKey ?? `task:${event.taskId}`;
+      dependencies[depIdForSubject(taskSubject)] = state.subjectVersions[taskSubject] ?? 0;
+    }
   }
 
   if (draft.subjectKey !== undefined) {
@@ -95,8 +106,9 @@ export function recomputeDependencies(
 
   for (const parentId of draft.parentNoteIds) {
     const parent = state.notes[parentId];
-    // 同 patch 内新建的父笔记版本从 1 起算；存在性由 validatePatch 统一判定。
-    dependencies[depIdForNote(parentId)] = parent === undefined ? 1 : parent.version;
+    // 同 patch 内新建/更新的父笔记用「提交后版本」；存在性由 validatePatch 统一判定。
+    const projected = options.projectedNoteVersions?.[parentId];
+    dependencies[depIdForNote(parentId)] = projected ?? (parent === undefined ? 1 : parent.version);
   }
 
   return code === undefined ? { dependencies, problems } : { dependencies, problems, code };
@@ -148,6 +160,115 @@ function detectCycle(state: MemoryState, drafts: readonly NoteDraft[]): string[]
     .filter(([, count]) => count > 0)
     .slice(0, 5)
     .map(([nodeId]) => nodeId);
+}
+
+/** 本次 patch 里每个 draft 提交后的版本。新建从 1 起，更新为旧版本 +1。 */
+function projectVersions(state: MemoryState, patch: MemoryPatch): Record<string, number> {
+  const versions: Record<string, number> = {};
+  for (const draft of patch.notesToUpsert) {
+    const existing = state.notes[draft.noteId];
+    versions[draft.noteId] = existing === undefined ? 1 : existing.version + 1;
+  }
+  return versions;
+}
+
+/** 一致性违规。校验阶段发现任意一条就整份拒绝。 */
+interface ProjectionViolation {
+  readonly noteId?: string;
+  readonly detail: string;
+}
+
+/** 提交后的笔记图投影。校验与发布共用同一份投影，避免两条路径分叉。 */
+export interface PatchProjection {
+  readonly notes: Record<string, Note>;
+  readonly dependents: Record<string, readonly string[]>;
+  readonly invalidatedNoteIds: readonly string[];
+  readonly violations: readonly ProjectionViolation[];
+}
+
+/**
+ * 计算「如果接受这份 patch，笔记图会变成什么」。
+ *
+ * 规则：
+ * - 被重写笔记的下游 active 子笔记，若不在本批里一起重写，必须失效（父变了，子的事实就旧了）；
+ * - 同批父子用提交后版本绑定，最终图不许出现「active 但依赖旧父版本」；
+ * - 只检查本 patch 负责的子图（本批 draft + 被级联失效的笔记），不去评判历史遗留的 subject 过期。
+ */
+export function projectPatch(state: MemoryState, patch: MemoryPatch, options: PatchOptions = {}): PatchProjection {
+  const projected = projectVersions(state, patch);
+  const draftIds = new Set(patch.notesToUpsert.map((draft) => draft.noteId));
+  let notes: Record<string, Note> = { ...state.notes };
+
+  for (const draft of patch.notesToUpsert) {
+    const existing = notes[draft.noteId];
+    const recompute = recomputeDependencies(state, draft, { ...options, projectedNoteVersions: projected });
+    notes[draft.noteId] = {
+      noteId: draft.noteId,
+      text: draft.text,
+      sourceEventIds: [...draft.sourceEventIds],
+      parentNoteIds: [...draft.parentNoteIds],
+      dependencyVersions: { ...recompute.dependencies },
+      status: 'active',
+      generator: draft.generator,
+      ...(draft.subjectKey === undefined ? {} : { subjectKey: draft.subjectKey }),
+      version: projected[draft.noteId] ?? 1,
+      createdByOpId: existing?.createdByOpId ?? patch.opId,
+    };
+  }
+
+  const dependents: Record<string, readonly string[]> = {};
+  for (const note of Object.values(notes)) {
+    for (const depId of Object.keys(note.dependencyVersions)) {
+      dependents[depId] = [...(dependents[depId] ?? []), note.noteId];
+    }
+  }
+
+  const seeds = new Set(patch.notesToInvalidate.map((item) => item.noteId));
+  const cascaded: string[] = [];
+  for (const noteId of draftIds) {
+    for (const child of dependents[depIdForNote(noteId)] ?? []) {
+      if (draftIds.has(child)) continue;
+      const childNote = notes[child];
+      if (childNote !== undefined && childNote.status === 'active') {
+        seeds.add(child);
+        cascaded.push(child);
+      }
+    }
+  }
+
+  let invalidated: readonly string[] = [];
+  if (seeds.size > 0) {
+    const reason =
+      patch.notesToInvalidate.length === 0
+        ? 'parent_note_updated'
+        : patch.notesToInvalidate.map((item) => `${item.noteId}:${item.reason}`).join(', ');
+    const outcome = invalidateNotes({ ...state, notes, dependents }, [...seeds], `patch_invalidated:${reason}`);
+    notes = outcome.notes;
+    invalidated = outcome.invalidatedNoteIds;
+  }
+
+  const touched = new Set<string>([...draftIds, ...invalidated, ...cascaded]);
+  const violations: ProjectionViolation[] = [];
+  for (const noteId of touched) {
+    const note = notes[noteId];
+    if (note === undefined || note.status !== 'active') continue;
+    for (const [depId, declared] of Object.entries(note.dependencyVersions)) {
+      if (!depId.startsWith('note:')) continue;
+      const target = notes[depId.slice('note:'.length)];
+      if (target === undefined) {
+        violations.push({ noteId, detail: `active note ${noteId} depends on missing note ${depId}` });
+        continue;
+      }
+      if (target.version !== declared) {
+        violations.push({
+          noteId,
+          detail: `active note ${noteId} depends on ${depId}@v${declared} but current is v${target.version}`,
+        });
+      }
+    }
+  }
+
+  return { notes, dependents, invalidatedNoteIds: invalidated, violations };
 }
 
 /** 全量校验。不修改任何东西，纯函数。 */
@@ -203,6 +324,7 @@ export function validatePatch(
     });
   }
 
+  const projectedVersions = projectVersions(state, patch);
   const seenNoteIds = new Set<string>();
   for (const draft of patch.notesToUpsert) {
     if (typeof draft !== 'object' || draft === null || !nonEmpty(draft.noteId)) {
@@ -231,7 +353,7 @@ export function validatePatch(
     }
     seenNoteIds.add(draft.noteId);
 
-    const recompute = recomputeDependencies(state, draft, options);
+    const recompute = recomputeDependencies(state, draft, { ...options, projectedNoteVersions: projectedVersions });
     if (recompute.code !== undefined) {
       for (const problem of recompute.problems) {
         fail(recompute.code, problem);
@@ -311,11 +433,42 @@ export function validatePatch(
         noteId: invalidation.noteId,
       });
     }
+    // 失效也是「对某个版本的断言」：没声明目标版本就不知道它失效的是哪一版；
+    // 声明了但与当前版本不符，说明是迟到指令，必须拒绝而不是删掉新版本。
+    const targetDepId = depIdForNote(invalidation.noteId);
+    const declaredVersion = patch.dependencyVersions[targetDepId];
+    if (declaredVersion === undefined) {
+      fail('dependency_undeclared', {
+        topic: 'dependency',
+        detail: `invalidation must declare target version: ${targetDepId}`,
+        noteId: invalidation.noteId,
+        dependencyId: targetDepId,
+      });
+    } else if (declaredVersion !== target.version) {
+      fail('dependency_stale', {
+        topic: 'dependency',
+        detail: `invalidation targets stale version ${targetDepId}: declared ${declaredVersion} != current ${target.version}`,
+        noteId: invalidation.noteId,
+        dependencyId: targetDepId,
+      });
+    }
   }
 
   const cycle = detectCycle(state, patch.notesToUpsert);
   if (cycle !== null) {
     fail('cycle', { topic: 'graph', detail: `dependency cycle: ${cycle.join(' -> ')}` });
+  }
+
+  // 提交后整图一致性：父版本变化必须让旧子笔记失效或重绑，不能留下「active 但依赖旧版」的笔记。
+  if (reasons.length === 0) {
+    const projection = projectPatch(state, patch, options);
+    for (const violation of projection.violations) {
+      fail('dependency_stale', {
+        topic: 'graph',
+        detail: violation.detail,
+        ...(violation.noteId === undefined ? {} : { noteId: violation.noteId }),
+      });
+    }
   }
 
   return { accepted: reasons.length === 0, code: reasons.length === 0 ? 'ok' : code, reasons, recomputedDependencies: recomputed };
@@ -327,36 +480,6 @@ export interface ApplyOutcome {
   readonly verdict: PatchVerdict;
   readonly disposition: 'applied' | 'replayed' | 'rejected';
   readonly invalidatedNoteIds: readonly string[];
-}
-
-function removeFromIndex(
-  index: Record<string, readonly string[]>,
-  noteId: string,
-  dependencyIds: readonly string[],
-): void {
-  for (const depId of dependencyIds) {
-    const list = index[depId];
-    if (list === undefined) continue;
-    const filtered = list.filter((id) => id !== noteId);
-    if (filtered.length === 0) {
-      delete index[depId];
-    } else {
-      index[depId] = filtered;
-    }
-  }
-}
-
-function addToIndex(
-  index: Record<string, readonly string[]>,
-  noteId: string,
-  dependencyIds: readonly string[],
-): void {
-  for (const depId of dependencyIds) {
-    const list = index[depId] ?? [];
-    if (!list.includes(noteId)) {
-      index[depId] = [...list, noteId];
-    }
-  }
 }
 
 /**
@@ -387,45 +510,7 @@ export function applyPatch(
     };
   }
 
-  const notes: Record<string, Note> = { ...state.notes };
-  const dependents: Record<string, readonly string[]> = {};
-  for (const [depId, list] of Object.entries(state.dependents)) {
-    dependents[depId] = [...list];
-  }
-
-  for (const draft of patch.notesToUpsert) {
-    const existing = notes[draft.noteId];
-    if (existing !== undefined) {
-      removeFromIndex(dependents, draft.noteId, Object.keys(existing.dependencyVersions));
-    }
-    // 笔记记录的是从来源重算出的依赖，不是草稿自报值（草稿值只用于校验提交声明）。
-    const recompute = recomputeDependencies(state, draft, options);
-    const nextNote: Note = {
-      noteId: draft.noteId,
-      text: draft.text,
-      sourceEventIds: [...draft.sourceEventIds],
-      parentNoteIds: [...draft.parentNoteIds],
-      dependencyVersions: { ...recompute.dependencies },
-      status: 'active',
-      generator: draft.generator,
-      ...(draft.subjectKey === undefined ? {} : { subjectKey: draft.subjectKey }),
-      version: existing === undefined ? 1 : existing.version + 1,
-      createdByOpId: existing?.createdByOpId ?? patch.opId,
-    };
-    notes[draft.noteId] = nextNote;
-    addToIndex(dependents, draft.noteId, Object.keys(nextNote.dependencyVersions));
-  }
-
-  const seeds = patch.notesToInvalidate.map((item) => item.noteId);
-  const reason =
-    patch.notesToInvalidate.length === 0
-      ? ''
-      : patch.notesToInvalidate.map((item) => `${item.noteId}:${item.reason}`).join(', ');
-  const outcome =
-    seeds.length === 0
-      ? { notes, invalidatedNoteIds: [] as readonly string[] }
-      : invalidateNotes({ ...state, notes, dependents }, seeds, `patch_invalidated:${reason}`);
-
+  const projection = projectPatch(state, patch, options);
   const commitOrder = Object.keys(state.appliedOps).length + 1;
   const appliedOps = {
     ...state.appliedOps,
@@ -440,13 +525,13 @@ export function applyPatch(
   return {
     state: {
       ...state,
-      notes: outcome.notes,
-      dependents,
+      notes: projection.notes,
+      dependents: projection.dependents,
       appliedOps,
       globalVersion: state.globalVersion + 1,
     },
     verdict,
     disposition: 'applied',
-    invalidatedNoteIds: outcome.invalidatedNoteIds,
+    invalidatedNoteIds: projection.invalidatedNoteIds,
   };
 }

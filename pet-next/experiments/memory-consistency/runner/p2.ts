@@ -6,12 +6,12 @@
  *
  * @module pet-next/experiments/memory-consistency/runner/p2
  */
-import { writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { runPlatformChecks } from '../platform/checks.ts';
 import { median, runCostStudy, type CostReport, type OpMeasure } from '../studies/cost.ts';
 import { cannedProvider, dryRun, loadManifest } from '../future-run/runner.ts';
+import { gateMeta, isMainModule, writeGateReport } from './gate.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -21,7 +21,9 @@ function summarise(measures: readonly OpMeasure[], op: 'full' | 'incremental') {
     op,
     samples: subset.length,
     medianMs: Math.round(median(subset.map((item) => item.elapsedMs)) * 100) / 100,
-    medianEventsScanned: median(subset.map((item) => item.eventsScanned)),
+    medianEventsVisited: median(subset.map((item) => item.eventsVisited)),
+    medianUniqueEventsTouched: median(subset.map((item) => item.uniqueEventsTouched)),
+    medianIndexLookups: median(subset.map((item) => item.indexLookups)),
     medianNotesExamined: median(subset.map((item) => item.notesExamined)),
     medianNotesRebuilt: median(subset.map((item) => item.notesRebuilt)),
     medianBytesRead: median(subset.map((item) => item.bytesRead)),
@@ -42,7 +44,10 @@ export interface P2Report {
       readonly incremental: ReturnType<typeof summarise>;
     }[];
     readonly limits: readonly string[];
-    readonly speedClaimAllowed: boolean;
+    readonly equivalence: boolean;
+    /** 性能/可扩展主张：本轮撤回，报告里必须原样写出。 */
+    readonly speedClaimAllowed: false;
+    readonly speedClaimWithdrawnReason: string;
     readonly host: { readonly node: string; readonly cpuCount: number; readonly loadAverage: readonly number[] };
   };
   readonly platform: ReturnType<typeof runPlatformChecks>;
@@ -50,10 +55,14 @@ export interface P2Report {
     readonly exitCode: number;
     readonly arms: number;
     readonly samples: number;
-    readonly calls: number;
-    readonly callsByKind: Record<string, number>;
-    readonly reservedUtf16: number;
-    readonly budgetUtf16: number;
+    readonly plannedOperations: number;
+    readonly reservations: number;
+    readonly providerAttempts: number;
+    readonly perArmPlanned: Record<string, number>;
+    readonly perArmReserved: Record<string, number>;
+    readonly globalReserved: number;
+    readonly armBudget: number;
+    readonly globalBudget: number | null;
     readonly failures: number;
     readonly implicitRetries: number;
   };
@@ -81,7 +90,9 @@ export function computeP2(): P2Report {
       mechanism: cost.mechanism,
       scale,
       limits: cost.limits,
-      speedClaimAllowed: cost.speedClaimAllowed,
+      equivalence: cost.equivalence,
+      speedClaimAllowed: false,
+      speedClaimWithdrawnReason: cost.speedClaimWithdrawnReason,
       host: { node: cost.node, cpuCount: cost.cpuCount, loadAverage: cost.loadAverage },
     },
     platform,
@@ -89,31 +100,37 @@ export function computeP2(): P2Report {
       exitCode: future.exitCode,
       arms: future.arms,
       samples: future.samples,
-      calls: future.calls,
-      callsByKind: { ...future.callsByKind },
-      reservedUtf16: future.reservedUtf16,
-      budgetUtf16: future.budgetUtf16,
+      plannedOperations: future.plannedOperations,
+      reservations: future.reservations.length,
+      providerAttempts: future.providerAttempts,
+      perArmPlanned: { ...future.perArmPlanned },
+      perArmReserved: { ...future.perArmReserved },
+      globalReserved: future.globalReserved,
+      armBudget: future.armBudget,
+      globalBudget: future.globalBudget,
       failures: future.failures,
       implicitRetries: future.implicitRetries,
     },
     passed_gate:
-      cost.speedClaimAllowed &&
+      cost.equivalence &&
       cost.mechanism.equivalent &&
       scale.every((cell) => cell.equivalent) &&
       platform.passed &&
       future.exitCode === 0 &&
-      future.implicitRetries === 0,
+      future.implicitRetries === 0 &&
+      future.providerAttempts === future.attempts.length &&
+      future.reservations.length === future.plannedOperations,
   };
 }
 
-if (process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(process.argv[1], import.meta.url)) {
   const outIndex = process.argv.indexOf('--out');
   const outDir = outIndex >= 0 ? process.argv[outIndex + 1] : join(HERE, '..', 'out');
   if (outDir === undefined) throw new Error('--out needs a value');
   const report = computeP2();
-  writeFileSync(join(outDir, 'p2.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  writeGateReport(outDir, 'p2.json', 'P2', report as unknown as Record<string, unknown>, gateMeta());
   process.stdout.write(
-    `${report.passed_gate ? 'PASS' : 'FAIL'} P2 mechanism=${report.cost.mechanism.equivalent} platform=${report.platform.passed} future=${report.futureRun.calls}calls/${report.futureRun.exitCode}\n`,
+    `${report.passed_gate ? 'PASS' : 'FAIL'} P2 mechanism=${report.cost.mechanism.equivalent} platform=${report.platform.passed} future=plan${report.futureRun.plannedOperations}/attempts${report.futureRun.providerAttempts}/exit${report.futureRun.exitCode}\n`,
   );
   process.exit(report.passed_gate ? 0 : 1);
 }

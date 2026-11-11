@@ -24,6 +24,8 @@ export const STATE_SCHEMA_VERSION = 'memory-state/v1' as const;
 export const PATCH_SCHEMA_VERSION = 'memory-patch/v1' as const;
 /** 结果文件版本。run.mjs 与 eval 共用。 */
 export const RESULT_SCHEMA_VERSION = 'memory-result/v1' as const;
+/** 门禁结果信封版本。run.mjs 只认这个版本；缺字段一律判失败。 */
+export const GATE_SCHEMA_VERSION = 'memory-gate/v1' as const;
 
 /** 事件来源。产品侧只有这三类写入者。 */
 export type EventSource = 'user' | 'runtime' | 'model';
@@ -261,7 +263,7 @@ export interface NoteDraft {
   readonly subjectKey?: string;
 }
 
-/** 补丁里的失效指令。原因必填，不能空。 */
+/** 补丁里的失效指令。原因必填，不能空；目标版本必须在 dependencyVersions 里声明。 */
 export interface NoteInvalidate {
   readonly noteId: string;
   readonly reason: string;
@@ -476,13 +478,23 @@ export interface CheckpointManifest {
   readonly previousCheckpointId?: string;
 }
 
-/** load 返回值。恢复报告要能说明尾部是否被隔离。 */
+/** 尾部隔离记录：原字节单独落盘，日志截断到修复点。 */
+export interface TailQuarantine {
+  /** 隔离文件名（相对于存储目录）。 */
+  readonly file: string;
+  readonly bytes: number;
+  readonly sha256: string;
+}
+
+/** load 返回值。恢复报告要能说明尾部是否被隔离、是否已可安全写入。 */
 export interface LoadValue {
   readonly state: MemoryState;
   readonly eventCount: number;
   readonly appliedPatchCount: number;
   readonly checkpointId?: string;
   readonly isolatedTailBytes: number;
+  /** 有坏尾时给出隔离文件；没有坏尾则缺省。 */
+  readonly tailQuarantine?: TailQuarantine;
   readonly diagnostics: readonly string[];
 }
 
@@ -667,4 +679,40 @@ export function requiredIdsPresent(event: MemoryEvent): boolean {
     default:
       return false;
   }
+}
+
+/**
+ * 门禁结果信封。run.mjs 用它判断「这次结果是不是这次跑的」：
+ * schema / gateId / runId / sourceCommit 全对且 passed_gate 为真才算通过。
+ * 只检查子进程退出码不足以判断（空脚本 exit 0 会假通过）。
+ */
+export interface GateEnvelope {
+  readonly schemaVersion: typeof GATE_SCHEMA_VERSION;
+  readonly gateId: 'G1' | 'P1' | 'P2';
+  /** 本次运行 id；由 run.mjs 生成并传入，禁止复用上一次的产物。 */
+  readonly runId: string;
+  /** 被测源码身份：git HEAD，或在无 .git 的归档中显式声明。 */
+  readonly sourceCommit: string;
+  readonly startedAt: string;
+  readonly finishedAt: string;
+  readonly passed_gate: boolean;
+}
+
+/**
+ * 成本计数。约定：
+ * - eventsVisited 是「实际访问事件对象的次数」，遍历一次全量就 +N，不能只算命中；
+ * - uniqueEventsTouched 是去重后的条数；
+ * - indexBuilds / indexLookups 是索引本身的建立与查询次数；
+ * - bytesRead 是被读取对象的序列化字节，不是补丁大小。
+ * 任何报告不得把 eventsVisited 叫作「扫描命中数」，也不得把 uniqueEventsTouched 当工作量。
+ */
+export interface CostCounters {
+  readonly eventsVisited: number;
+  readonly uniqueEventsTouched: number;
+  readonly indexBuilds: number;
+  readonly indexLookups: number;
+  readonly notesExamined: number;
+  readonly notesRebuilt: number;
+  readonly bytesRead: number;
+  readonly bytesWritten: number;
 }

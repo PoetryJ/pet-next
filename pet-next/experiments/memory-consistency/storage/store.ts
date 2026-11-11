@@ -20,8 +20,8 @@ import {
   readFileSync,
   renameSync,
   statSync,
+  truncateSync,
   unlinkSync,
-  writeFileSync,
   writeSync,
 } from 'node:fs';
 import { join } from 'node:path';
@@ -41,6 +41,7 @@ import {
   type MemoryStore,
   type StoreErrorCode,
   type StoreResult,
+  type TailQuarantine,
 } from '../contracts.ts';
 import { applyPatch } from '../ledger/patch.ts';
 import { stepEvent } from '../ledger/reduce.ts';
@@ -53,6 +54,20 @@ const LOCK_FILE = 'writer.lock';
 
 const EVENT_RECORD = 'event';
 const PATCH_RECORD = 'patch';
+
+/**
+ * 目录 fsync：POSIX 上让 rename 真正落盘。
+ * Windows 不能对目录句柄 fsync，这里按平台显式跳过；跳过是平台事实，不是吞掉错误。
+ */
+function syncDirectory(dir: string): void {
+  if (process.platform === 'win32') return;
+  const fd = openSync(dir, 'r');
+  try {
+    fsyncSync(fd);
+  } finally {
+    closeSync(fd);
+  }
+}
 
 interface EventRecord {
   readonly type: typeof EVENT_RECORD;
@@ -93,6 +108,9 @@ export class JsonlStore implements MemoryStore {
   private lastCheckpointId: string | undefined;
   private readonly diagnostics: string[] = [];
   private lastIsolatedTailBytes = 0;
+  /** 尾部修复失败后禁止写入：宁可不写，也不能在坏尾后面追加。 */
+  private writeBlocked = false;
+  private lastQuarantine: TailQuarantine | undefined;
 
   private readonly dir: string;
 
@@ -126,6 +144,7 @@ export class JsonlStore implements MemoryStore {
 
   append(event: MemoryEvent): StoreResult<AppendValue> {
     if (this.closed) return err('io_error', 'store closed');
+    if (this.writeBlocked) return err('io_error', 'write blocked: tail repair incomplete');
     if (event.sequence <= this.state.lastSequence && this.state.eventIndex[event.eventId] === undefined) {
       // 日志按接收顺序落盘，重放必须与在线一致，所以拒绝非单调 sequence。
       return err('not_supported', `sequence_not_monotonic:${event.sequence}<=${this.state.lastSequence}`);
@@ -173,6 +192,7 @@ export class JsonlStore implements MemoryStore {
 
   commitPatch(patch: MemoryPatch): StoreResult<CommitValue> {
     if (this.closed) return err('io_error', 'store closed');
+    if (this.writeBlocked) return err('io_error', 'write blocked: tail repair incomplete');
     const outcome = applyPatch(this.state, patch);
     if (outcome.disposition === 'replayed') {
       const prior = this.state.appliedOps[patch.opId];
@@ -280,7 +300,25 @@ export class JsonlStore implements MemoryStore {
       const parsedTail = this.replayTail(state, tail, offset);
       if (!parsedTail.ok) return parsedTail;
       state = parsedTail.value.state;
-      this.diagnostics.push(`tail:${parsedTail.value.isolatedTailBytes}b isolated`);
+      const repaired = this.repairTail(
+        buffer,
+        parsedTail.value.keepBytes,
+        parsedTail.value.completeLeftover,
+        parsedTail.value.isolatedTailBytes,
+      );
+      if (!repaired.ok) return repaired;
+      if (repaired.value !== null) {
+        // 隔离事实对本次 store 实例保持可见：后续再 load 也不该「忘掉」曾经修过坏尾。
+        this.lastIsolatedTailBytes = repaired.value.bytes;
+        this.lastQuarantine = repaired.value;
+      }
+      if (repaired.value !== null) {
+        this.diagnostics.push(`tail:${repaired.value.bytes}b quarantined:${repaired.value.file}`);
+        this.logBytes = statSync(logPath).size;
+      } else if (parsedTail.value.completeLeftover) {
+        this.diagnostics.push('tail:completed-missing-newline');
+        this.logBytes = statSync(logPath).size;
+      }
     }
 
     this.state = state;
@@ -297,6 +335,7 @@ export class JsonlStore implements MemoryStore {
         appliedPatchCount: this.appliedPatchCount,
         ...(checkpointId === undefined ? {} : { checkpointId }),
         isolatedTailBytes: this.lastIsolatedTailBytes,
+        ...(this.lastQuarantine === undefined ? {} : { tailQuarantine: this.lastQuarantine }),
         diagnostics: [...this.diagnostics],
       },
     };
@@ -311,14 +350,16 @@ export class JsonlStore implements MemoryStore {
     const statePath = join(this.dir, snapshotFileName(checkpointId));
     const tmpState = `${statePath}.tmp`;
     try {
-      writeFileSync(tmpState, stateRaw, 'utf8');
-      const fd = openSync(tmpState, 'r');
+      // 用可写句柄落盘 + fsync：Windows 对只读句柄 fsync 会 EPERM。
+      const stateFd = openSync(tmpState, 'w');
       try {
-        fsyncSync(fd);
+        writeSync(stateFd, Buffer.from(stateRaw, 'utf8'));
+        fsyncSync(stateFd);
       } finally {
-        closeSync(fd);
+        closeSync(stateFd);
       }
       renameSync(tmpState, statePath);
+      syncDirectory(this.dir);
     } catch (cause) {
       return err('io_error', `snapshot write failed: ${String(cause)}`);
     }
@@ -342,14 +383,15 @@ export class JsonlStore implements MemoryStore {
     const manifestPath = join(this.dir, MANIFEST_FILE);
     const tmpManifest = `${manifestPath}.tmp`;
     try {
-      writeFileSync(tmpManifest, canonicalJson(manifest as unknown), 'utf8');
-      const fd = openSync(tmpManifest, 'r');
+      const manifestFd = openSync(tmpManifest, 'w');
       try {
-        fsyncSync(fd);
+        writeSync(manifestFd, Buffer.from(canonicalJson(manifest as unknown), 'utf8'));
+        fsyncSync(manifestFd);
       } finally {
-        closeSync(fd);
+        closeSync(manifestFd);
       }
       renameSync(tmpManifest, manifestPath);
+      syncDirectory(this.dir);
     } catch (cause) {
       return err('io_error', `manifest write failed: ${String(cause)}`);
     }
@@ -386,20 +428,41 @@ export class JsonlStore implements MemoryStore {
     base: MemoryState,
     tail: Buffer,
     absoluteOffset: number,
-  ): StoreResult<{ state: MemoryState; isolatedTailBytes: number }> {
-    this.lastIsolatedTailBytes = 0;
-    if (tail.length === 0) return { ok: true, durable: true, value: { state: base, isolatedTailBytes: 0 } };
+  ): StoreResult<{ state: MemoryState; isolatedTailBytes: number; keepBytes: number; completeLeftover: boolean }> {
+    let isolatedTailBytes = 0;
+    if (tail.length === 0) {
+      return { ok: true, durable: true, value: { state: base, isolatedTailBytes: 0, keepBytes: 0, completeLeftover: false } };
+    }
     const text = tail.toString('utf8');
     const endsWithNewline = text.endsWith('\n');
     const rawLines = text.split('\n');
     const lines = rawLines.slice(0, -1);
     const leftover = endsWithNewline ? '' : (rawLines[rawLines.length - 1] ?? '');
-    if (!endsWithNewline && leftover.length > 0) {
-      this.lastIsolatedTailBytes = Buffer.byteLength(leftover, 'utf8');
-    }
 
     let state = base;
     let consumed = 0;
+    const apply = (parsed: LogRecord, at: number): StoreResult<MemoryState> => {
+      if (parsed.type === EVENT_RECORD) {
+        const outcome = stepEvent(state, parsed.event);
+        if (outcome.disposition !== 'applied') {
+          return err(
+            'corrupt_log',
+            `log event not applicable: ${parsed.event.eventId} (${outcome.disposition} ${outcome.reason ?? ''})`,
+            at,
+          );
+        }
+        state = outcome.state;
+        return { ok: true, durable: true, value: state };
+      }
+      const applied = applyPatch(state, parsed.patch);
+      if (applied.disposition === 'replayed') return { ok: true, durable: true, value: state };
+      if (applied.disposition === 'rejected') {
+        return err('corrupt_log', `log patch rejected: ${parsed.opId} (${applied.verdict.code})`, at);
+      }
+      state = applied.state;
+      return { ok: true, durable: true, value: state };
+    };
+
     for (const line of lines) {
       consumed += Buffer.byteLength(line, 'utf8') + 1;
       if (line.trim() === '') continue;
@@ -407,30 +470,89 @@ export class JsonlStore implements MemoryStore {
       if (typeof parsed === 'string') {
         return err('corrupt_log', `bad log line: ${parsed}`, absoluteOffset + consumed - line.length - 1);
       }
-      if (parsed.type === EVENT_RECORD) {
-        const outcome = stepEvent(state, parsed.event);
-        if (outcome.disposition !== 'applied') {
-          return err(
-            'corrupt_log',
-            `log event not applicable: ${parsed.event.eventId} (${outcome.disposition} ${outcome.reason ?? ''})`,
-            absoluteOffset + consumed,
-          );
-        }
-        state = outcome.state;
-        continue;
-      }
-      const applied = applyPatch(state, parsed.patch);
-      if (applied.disposition === 'replayed') continue;
-      if (applied.disposition === 'rejected') {
-        return err(
-          'corrupt_log',
-          `log patch rejected: ${parsed.opId} (${applied.verdict.code})`,
-          absoluteOffset + consumed,
-        );
-      }
-      state = applied.state;
+      const applied = apply(parsed, absoluteOffset + consumed);
+      if (!applied.ok) return applied;
     }
-    return { ok: true, durable: true, value: { state, isolatedTailBytes: this.lastIsolatedTailBytes } };
+
+    // 末行没有换行：能完整解析就补一个换行（这是完整记录，不是坏尾）；
+    // 解析失败才是真正的半条记录，必须隔离 + 截断，不能只是记个字节数。
+    let completeLeftover = false;
+    if (!endsWithNewline && leftover.length > 0) {
+      const parsed = parseLine(leftover);
+      if (typeof parsed === 'string') {
+        isolatedTailBytes = Buffer.byteLength(leftover, 'utf8');
+      } else {
+        const applied = apply(parsed, absoluteOffset + consumed);
+        if (!applied.ok) return applied;
+        completeLeftover = true;
+        consumed += Buffer.byteLength(leftover, 'utf8');
+      }
+    }
+    return {
+      ok: true,
+      durable: true,
+      value: { state, isolatedTailBytes, keepBytes: consumed, completeLeftover },
+    };
+  }
+
+  /**
+   * 修复尾部：坏字节原样落到隔离文件并 fsync，再把日志截断到最后一条完整记录。
+   * 任何一步失败都让本次 load 失败——宁可不打开，也不能带着坏尾继续接受写入。
+   */
+  private repairTail(
+    buffer: Buffer,
+    keepBytes: number,
+    completeLeftover: boolean,
+    isolatedTailBytes: number,
+  ): StoreResult<TailQuarantine | null> {
+    const logPath = join(this.dir, LOG_FILE);
+    try {
+      if (completeLeftover) {
+        const fd = openSync(logPath, 'a');
+        try {
+          writeSync(fd, Buffer.from('\n', 'utf8'));
+          fsyncSync(fd);
+        } finally {
+          closeSync(fd);
+        }
+      }
+      if (isolatedTailBytes === 0) return { ok: true, durable: true, value: null };
+
+      const badBytes = buffer.subarray(buffer.length - isolatedTailBytes);
+      const digest = sha256Hex(badBytes.toString('utf8'));
+      const file = `tail-quarantine-${digest.slice(0, 12)}.bin`;
+      const target = join(this.dir, file);
+      // 同名路径已存在时只接受「常规文件」：目录/设备等一律当修复失败，不能假装隔离成功。
+      const existingStat = existsSync(target) ? statSync(target) : undefined;
+      if (existingStat !== undefined && !existingStat.isFile()) {
+        return err('io_error', `tail repair failed: quarantine path is not a regular file: ${file}`);
+      }
+      if (existingStat === undefined) {
+        const fd = openSync(target, 'w');
+        try {
+          writeSync(fd, badBytes);
+          fsyncSync(fd);
+        } finally {
+          closeSync(fd);
+        }
+      }
+      const keepLength = buffer.length - isolatedTailBytes;
+      if (keepLength !== keepBytes) {
+        // 消费长度与截断点必须一致，否则说明解析与修复对「哪一段是完整记录」理解不同。
+        return err('corrupt_log', `tail repair mismatch: keep ${keepLength} != parsed ${keepBytes}`);
+      }
+      truncateSync(logPath, keepBytes);
+      const fd = openSync(logPath, 'r+');
+      try {
+        fsyncSync(fd);
+      } finally {
+        closeSync(fd);
+      }
+      return { ok: true, durable: true, value: { file, bytes: isolatedTailBytes, sha256: digest } };
+    } catch (cause) {
+      this.writeBlocked = true;
+      return err('io_error', `tail repair failed: ${String(cause)}`);
+    }
   }
 }
 

@@ -49,7 +49,7 @@
   ],
   "patches": [
     {
-      "patchId": "N7-v1-p1",
+      "patchId": "p1",
       "buildAtSequence": 1,
       "applyAtSequence": 2,
       "reusePriorOpId": null,

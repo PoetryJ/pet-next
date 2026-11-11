@@ -4,9 +4,10 @@
  * 只证明「测过的进程内行为」。断电与文件系统永久损坏没有测，报告里也不许写。
  */
 import assert from 'node:assert/strict';
-import { existsSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
+import { existsSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
-import { join } from 'node:path';
+import { dirname, join } from 'node:path';
+import { fileURLToPath } from 'node:url';
 import { describe, test } from 'node:test';
 import {
   PATCH_SCHEMA_VERSION,
@@ -189,7 +190,7 @@ describe('存取与恢复', () => {
 });
 
 describe('损坏分类', () => {
-  test('尾部半条记录被隔离并报告，不假装成功', () => {
+  test('尾部半条记录被隔离到独立文件并截断，随后写入可再次恢复', () => {
     const dir = tempDir();
     try {
       const store = open(dir);
@@ -197,15 +198,80 @@ describe('损坏分类', () => {
       store.close();
       const logPath = join(dir, 'events.log');
       const before = readFileSync(logPath, 'utf8');
-      writeFileSync(logPath, `${before}{"type":"event","event":{"schemaVer`, 'utf8');
+      const fragment = '{"type":"event","event":{"schemaVer';
+      writeFileSync(logPath, `${before}${fragment}`, 'utf8');
 
+      // 第一次恢复：隔离坏尾 + 截断，并允许继续写入。
       const reopened = open(dir);
       const loaded = reopened.load();
       assert.equal(loaded.ok, true);
       if (!loaded.ok) return;
       assert.equal(loaded.value.state.events.length, 1);
-      assert.ok(loaded.value.isolatedTailBytes > 0);
+      assert.equal(loaded.value.isolatedTailBytes, Buffer.byteLength(fragment, 'utf8'));
+      const quarantine = loaded.value.tailQuarantine;
+      assert.ok(quarantine !== undefined, '坏尾必须落到独立文件');
+      assert.equal(readFileSync(join(dir, quarantine.file), 'utf8'), fragment);
+      assert.equal(readFileSync(logPath, 'utf8'), before, '日志必须截断到最后一条完整记录');
+
+      // 第二次恢复：确认过的写入必须能读回，不能因为旧坏尾再次 corrupt。
+      assert.equal(reopened.append(statement(2, 'e2', 'B', 'pref:b')).ok, true);
       reopened.close();
+      const third = open(dir);
+      assert.deepEqual(third.getState().events.map((event) => event.eventId), ['e1', 'e2']);
+      third.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('末行是完整记录但缺换行：补换行而不是当坏尾隔离', () => {
+    const dir = tempDir();
+    try {
+      const store = open(dir);
+      assert.equal(store.append(statement(1, 'e1', 'A', 'pref:a')).ok, true);
+      store.close();
+      const logPath = join(dir, 'events.log');
+      const withNewline = readFileSync(logPath, 'utf8');
+      writeFileSync(logPath, withNewline.trimEnd(), 'utf8');
+
+      const reopened = open(dir);
+      const loaded = reopened.load();
+      assert.equal(loaded.ok, true);
+      if (!loaded.ok) return;
+      assert.equal(loaded.value.isolatedTailBytes, 0, '完整记录不是坏尾');
+      assert.equal(loaded.value.tailQuarantine, undefined);
+      assert.equal(readFileSync(logPath, 'utf8'), withNewline, '补回换行后与修复前一致');
+      assert.equal(reopened.append(statement(2, 'e2', 'B', 'pref:b')).ok, true);
+      reopened.close();
+      const third = open(dir);
+      assert.deepEqual(third.getState().events.map((event) => event.eventId), ['e1', 'e2']);
+      third.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('隔离文件写不出去时必须拒开，不允许带着坏尾继续写', () => {
+    const dir = tempDir();
+    try {
+      const store = open(dir);
+      assert.equal(store.append(statement(1, 'e1', 'A', 'pref:a')).ok, true);
+      store.close();
+      const logPath = join(dir, 'events.log');
+      const fragment = '{"type":"event","event":{"schemaVer';
+      writeFileSync(logPath, `${readFileSync(logPath, 'utf8')}${fragment}`, 'utf8');
+      // 用一个同名目录占住隔离文件路径，让修复必然失败。
+      const digest = sha256Hex(fragment).slice(0, 12);
+      mkdirSync(join(dir, `tail-quarantine-${digest}.bin`));
+
+      const reopened = JsonlStore.open(dir);
+      assert.equal(reopened.ok, false);
+      if (reopened.ok) return;
+      assert.equal(reopened.code, 'io_error');
+      assert.match(reopened.detail, /tail repair failed/);
+
+      // 修复失败后不得截断或丢弃坏尾原字节：原文件仍保留完整原文，供人工处理。
+      assert.equal(readFileSync(logPath, 'utf8').endsWith(fragment), true);
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
@@ -276,6 +342,36 @@ describe('损坏分类', () => {
     } finally {
       rmSync(dir, { recursive: true, force: true });
     }
+  });
+
+  test('checkpoint 用可写句柄落盘：关闭重开后快照仍可校验', () => {
+    const dir = tempDir();
+    try {
+      const store = open(dir);
+      assert.equal(store.append(statement(1, 'e1', 'A', 'pref:a')).ok, true);
+      const checkpoint = store.checkpoint();
+      assert.equal(checkpoint.ok, true, checkpoint.ok ? '' : checkpoint.detail);
+      store.close();
+      const reopened = open(dir);
+      const loaded = reopened.load();
+      assert.equal(loaded.ok, true);
+      if (!loaded.ok) return;
+      assert.equal(loaded.value.state.events.length, 1);
+      reopened.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('源码不再对只读句柄 fsync（Windows EPERM 的根因）', () => {
+    const source = readFileSync(join(dirname(fileURLToPath(import.meta.url)), 'store.ts'), 'utf8');
+    // 只读句柄 + fsync 在 Windows 上必然 EPERM；这里守住「不再对临时文件这么做」。
+    assert.equal(/openSync\(tmp[A-Za-z]*, 'r'\)/.test(source), false, '仍对临时文件用只读句柄');
+    // 目录 fsync 仍是 POSIX 语义，但必须显式按平台跳过 Windows。
+    assert.match(source, /function syncDirectory/);
+    assert.match(source, /process\.platform === 'win32'\) return;/);
+    assert.match(source, /openSync\(tmpState, 'w'\)/);
+    assert.match(source, /openSync\(tmpManifest, 'w'\)/);
   });
 
   test('第二个写者被明确拒绝', () => {

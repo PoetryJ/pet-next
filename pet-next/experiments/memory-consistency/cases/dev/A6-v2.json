@@ -80,7 +80,7 @@
   ],
   "patches": [
     {
-      "patchId": "A6-v2-p1",
+      "patchId": "p1",
       "buildAtSequence": 3,
       "applyAtSequence": 3,
       "reusePriorOpId": null,

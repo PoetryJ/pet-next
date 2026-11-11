@@ -25,6 +25,9 @@ node experiments/memory-consistency/run.mjs --demo
 
 # 列出现有套件与门禁
 node experiments/memory-consistency/run.mjs --list
+
+# 每次运行写新目录（默认 out/runs/<runId>）；归档无 .git 时必须显式给源码身份
+node experiments/memory-consistency/run.mjs --all --out=/tmp/run-1 --source-commit=<sha>
 ```
 
 `run.mjs` 本身是纯 JS；它用 `--experimental-strip-types` 拉起子进程，所以入口命令不需要额外 flag。
@@ -57,6 +60,18 @@ v1.1 的两处向后兼容增量：
 1. `EventPayload.subjectKey`：`task.changed` 可显式给 subject 键，缺省约定 `task:<taskId>`。
 2. `patchDigest` 不含 `snapshotVersion`：一次网络重试只要笔记内容与依赖声明不变，仍算同载荷。
 
+R1 追加的三条硬约束（都有对应回归）：
+
+1. **来源依赖**：`task.changed` 自带 `taskId/revision`，补丁必须据此推导 `subject:task:<id>` 依赖；
+   省略可选 `subjectKey` 不能再绕过撤销检查。
+2. **失效也是版本断言**：`notesToInvalidate` 的目标版本必须写进 `dependencyVersions`；
+   父笔记更新会级联失效下游 active 笔记，同批父子用「提交后版本」绑定，最终图不一致就整份拒绝。
+3. **门禁信封**：`memory-gate/v1` 的 `schemaVersion/gateId/runId/sourceCommit/passed_gate` 必须与本次运行一致；
+   缺文件、坏 JSON、旧 runId、`passed_gate=false`、空脚本 exit 0 一律判失败。
+
+成本口径（`CostCounters`）：`eventsVisited` 是真实迭代次数，`uniqueEventsTouched` 是去重条数，
+`indexBuilds/indexLookups` 分开记；**不得把命中数叫扫描数**。
+
 ## 目录
 
 ```
@@ -82,20 +97,22 @@ run.mjs               入口
 `out/summary.json` 记录每个套件/门禁的退出码、耗时与原始日志路径；`out/g1.json`、`out/p1.json`、`out/p2.json` 是门禁明细。
 
 - **G1**：48 条开发轨迹（24 对）143 条断言全绿；六种错误实现各自被指定反例检出；零外呼有静态扫描与 `fetch` 哨兵两重证据。
-- **P1**：16 条新模板轨迹独立通过；防泄漏审计同时检查「标签哨兵」「未来事件」「序列化输入」；反事实配对要求行为不同、双方不变量成立、重复执行一致。
-- **P2**：维护等价成立后才比较成本；主指标是扫描/重建/读写量，墙钟时间只作参考（共享主机、单核配额）。
+- **P1**：16 条新模板轨迹独立通过；防泄漏审计在**带补丁**的状态上跑，并报告覆盖度（active/invalidated/派生笔记、来源 ID 必须非零）；反事实只比行为（排除 trackId/时间戳），换名不得产生差异；重放把事件 + 已接受补丁一起过 store，关库重开后比笔记/版本/状态，另有「只存事件」负控。
+- **P2**：维护等价成立后才比较成本；主指标是真实访问次数与重建条数，墙钟时间只作参考（共享主机、单核配额）。**R1 撤回性能主张**：局部重建仍是「每个受影响槽位扫一遍事件日志」，10k 事件实测约 1.9k 次访问 vs 全量约 1950k，不是索引加速。
 
 ## 明确未证明
 
 - 真实模型生成质量、长程语义记忆、用户是否读到：全部 not-run。
 - 断电/文件系统永久损坏下的耐久性：未测；只证明被测过的进程崩溃恢复。
 - 高依赖扇出（一个笔记被很多下游依赖）下的成本：未构造，not-run。
-- Windows 实跑：本机无 Windows 环境，not-run；命令见 `platform` 报告。
+- Windows 实跑：本机无 Windows 环境，not-run；`platform/windows-r1.ps1` 是待复验脚本。checkpoint 的 fsync 已改成可写句柄（原实现只读句柄在 Windows 会 EPERM），但**未在 Windows 实跑**。
 - 浏览器交互：演示页只做生成物与内容校验，未在真实浏览器点击验证。
 
 ## 已知限制
 
 - 单写者：同一目录第二个写者被拒绝（`writer_busy`），不声称多写者支持。
+- 坏尾修复：隔离文件写不出去时整个 `open` 失败（宁可不打开），不会带着坏尾继续接受写入。
+- 局部重建的 `eventsVisited` 与事件条数线性相关；不要把它读成 O(1)。
 - 日志要求 `sequence` 单调，否则拒绝写入（保证在线状态与重放一致）。
 - 保留错误码 `not_found`、`tail_incomplete` 当前没有路径发出：前者留给未来的按 id 查询接口，后者由「隔离尾部」的返回值表达而不单列错误。
 - root 下 `chmod` 不构成权限测试，平台检查会标 `not_proven`。

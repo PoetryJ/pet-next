@@ -587,7 +587,8 @@ function materialize(pair, flip) {
     note: '输入轨迹；期望标签独立存放于 eval/expected/dev.json，策略输入不含 pairId/类别/期望。',
     events,
     patches: (raw.patches ?? []).map((spec, index) => ({
-      patchId: `${trackId}-p${index + 1}`,
+      // 补丁 id 不嵌轨迹名：名字属于评分标签，不能出现在策略可见状态里。
+      patchId: `p${index + 1}`,
       buildAtSequence: spec.buildAtSequence,
       applyAtSequence: spec.applyAtSequence ?? null,
       reusePriorOpId: spec.reusePriorOpId ?? null,

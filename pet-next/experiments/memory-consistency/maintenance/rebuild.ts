@@ -18,6 +18,8 @@ import {
   depIdForNote,
   depIdForSubject,
   requestKey,
+  type CostCounters,
+  type MemoryEvent,
   type MemoryPatch,
   type MemoryState,
   type Note,
@@ -31,14 +33,53 @@ export interface DesiredNote {
   readonly draft: NoteDraft;
 }
 
-/** 构建统计。只算操作量，不假装是性能结论。 */
-export interface BuildStats {
-  readonly eventsScanned: number;
-  readonly notesExamined: number;
-  readonly notesRebuilt: number;
-  readonly indexLookups: number;
-  readonly bytesRead: number;
-  readonly bytesWritten: number;
+/**
+ * 构建统计。
+ *
+ * 口径（与 contracts.CostCounters 一致）：
+ * - eventsVisited：真实迭代到的事件对象次数；遍历 3 遍就是 3 倍，不能只算命中；
+ * - uniqueEventsTouched：去重后的事件数；
+ * - indexBuilds / indexLookups：本轮建立的索引条目数 / 查询次数（当前没有索引，故 builds=0）；
+ * - bytesRead：实际读到的唯一事件序列化字节；
+ * - bytesWritten：提交补丁的序列化字节。
+ */
+export type BuildStats = CostCounters;
+
+/** 一次构建的计数器。 */
+interface Counter {
+  eventsVisited: number;
+  readonly unique: Set<string>;
+  bytesRead: number;
+  indexLookups: number;
+}
+
+function newCounter(): Counter {
+  return { eventsVisited: 0, unique: new Set<string>(), bytesRead: 0, indexLookups: 0 };
+}
+
+/**
+ * 把 state.events 包一层计数：每次迭代元素就 +1。
+ * 用 Proxy 而不是改所有循环，是为了保证「报出的次数」就是「真实发生的次数」。
+ */
+function countedState(state: MemoryState, counter: Counter): MemoryState {
+  const events = new Proxy(state.events as MemoryEvent[], {
+    get(target, property, receiver) {
+      if (property === Symbol.iterator) {
+        return function* iterator() {
+          for (const event of target) {
+            counter.eventsVisited += 1;
+            if (!counter.unique.has(event.eventId)) {
+              counter.unique.add(event.eventId);
+              counter.bytesRead += bytes(JSON.stringify(event));
+            }
+            yield event;
+          }
+        };
+      }
+      return Reflect.get(target, property, receiver);
+    },
+  });
+  return { ...state, events };
 }
 
 /** 构建输出。 */
@@ -181,8 +222,14 @@ function allSlots(state: MemoryState): string[] {
   return slots.sort();
 }
 
-/** 从当前状态收集变更相关的槽位（局部重建用）。 */
-function affectedSlots(state: MemoryState, change: ChangeSet): Set<string> {
+/**
+ * 从当前状态收集变更相关的槽位（局部重建用）。
+ *
+ * 修复点：下游依赖遍历原来把 **noteId** 当 **slot** 入队，导致
+ * `depIdForNote(noteIdFor(n:x))` 变成 `note:n:n:x`，派生笔记永远找不到；
+ * 现在统一在 noteId 空间遍历，出队时再换回 slot，并且真正并入 affected。
+ */
+function affectedSlots(state: MemoryState, change: ChangeSet, counter: Counter): Set<string> {
   const affected = new Set<string>();
   for (const subjectKey of change.subjectKeys) affected.add(subjectKey);
   for (const key of change.requestKeys) affected.add(requestSlot(key));
@@ -196,17 +243,20 @@ function affectedSlots(state: MemoryState, change: ChangeSet): Set<string> {
     if (event.taskId !== undefined) affected.add(`task:${event.taskId}`);
   }
 
-  // 下游派生笔记：父笔记被改动时一并重算。
-  const queue = [...affected];
-  const seen = new Set(queue);
+  // 下游派生笔记：父笔记被改动时一并重算（按 noteId 遍历，避免 slot/noteId 混用）。
+  const queue = [...affected].map((slot) => noteIdFor(slot));
+  const seenNotes = new Set(queue);
   while (queue.length > 0) {
-    const slot = queue.shift();
-    if (slot === undefined) continue;
-    const downstream = state.dependents[depIdForNote(noteIdFor(slot))] ?? [];
+    const noteId = queue.shift();
+    if (noteId === undefined) continue;
+    counter.indexLookups += 1;
+    const downstream = state.dependents[depIdForNote(noteId)] ?? [];
     for (const child of downstream) {
-      if (seen.has(child)) continue;
-      seen.add(child);
+      if (seenNotes.has(child)) continue;
+      seenNotes.add(child);
       queue.push(child);
+      const childSlot = child.startsWith('n:') ? child.slice(2) : child;
+      affected.add(childSlot);
     }
   }
   return affected;
@@ -217,7 +267,7 @@ function buildPatch(
   slots: readonly string[],
   opId: string,
   producer: 'full-rebuild' | 'incremental',
-): { patch: MemoryPatch; notesRebuilt: number; examined: number; dependents: number } {
+): { patch: MemoryPatch; notesRebuilt: number; examined: number } {
   const dependencyVersions: Record<string, number> = {};
   const notesToUpsert: NoteDraft[] = [];
   const notesToInvalidate: { noteId: string; reason: string }[] = [];
@@ -230,6 +280,8 @@ function buildPatch(
     if (desired === undefined) {
       if (existing !== undefined && existing.status !== 'invalidated') {
         notesToInvalidate.push({ noteId: existing.noteId, reason: `slot_no_longer_desired:${slot}` });
+        // 失效也是版本断言：必须声明目标版本，否则迟到的失效会删掉新版本。
+        dependencyVersions[depIdForNote(existing.noteId)] = existing.version;
       }
       continue;
     }
@@ -268,51 +320,51 @@ function buildPatch(
     },
     notesRebuilt: notesToUpsert.length,
     examined,
-    dependents: Object.keys(state.dependents).length,
   };
 }
 
 /** 全量重建：枚举所有槽位。 */
 export function fullRebuild(state: MemoryState, opId: string): BuildOutput {
-  const slots = allSlots(state);
-  const built = buildPatch(state, slots, opId, 'full-rebuild');
-  const bytesRead = bytes(JSON.stringify(state.events));
+  const counter = newCounter();
+  const counted = countedState(state, counter);
+  const slots = allSlots(counted);
+  const built = buildPatch(counted, slots, opId, 'full-rebuild');
   return {
     patch: built.patch,
     stats: {
-      eventsScanned: state.events.length,
+      eventsVisited: counter.eventsVisited,
+      uniqueEventsTouched: counter.unique.size,
+      indexBuilds: 0,
+      indexLookups: counter.indexLookups + slots.length,
       notesExamined: built.examined,
       notesRebuilt: built.notesRebuilt,
-      indexLookups: built.dependents,
-      bytesRead,
+      bytesRead: counter.bytesRead,
       bytesWritten: bytes(JSON.stringify(built.patch)),
     },
   };
 }
 
-/** 局部重建：只重算变更集触及的槽位与其下游。 */
+/**
+ * 局部重建：只重算变更集触及的槽位与其下游。
+ *
+ * 注意：这仍然是「按槽位扫描事件日志」，不是索引查表。
+ * 计数如实反映 visits，因此不能用它宣称 O(1) 或索引级加速。
+ */
 export function incrementalRebuild(state: MemoryState, change: ChangeSet, opId: string): BuildOutput {
-  const slots = [...affectedSlots(state, change)].sort();
-  const built = buildPatch(state, slots, opId, 'incremental');
-  let eventsScanned = 0;
-  for (const event of state.events) {
-    if (change.eventIds.includes(event.eventId)) eventsScanned += 1;
-    else if (
-      event.payload.scripted !== undefined &&
-      event.payload.scripted !== null &&
-      change.subjectKeys.includes(event.payload.scripted.subjectKey)
-    ) {
-      eventsScanned += 1;
-    }
-  }
+  const counter = newCounter();
+  const counted = countedState(state, counter);
+  const slots = [...affectedSlots(counted, change, counter)].sort();
+  const built = buildPatch(counted, slots, opId, 'incremental');
   return {
     patch: built.patch,
     stats: {
-      eventsScanned,
+      eventsVisited: counter.eventsVisited,
+      uniqueEventsTouched: counter.unique.size,
+      indexBuilds: 0,
+      indexLookups: counter.indexLookups + slots.length,
       notesExamined: built.examined,
       notesRebuilt: built.notesRebuilt,
-      indexLookups: built.dependents,
-      bytesRead: bytes(JSON.stringify(change)),
+      bytesRead: counter.bytesRead,
       bytesWritten: bytes(JSON.stringify(built.patch)),
     },
   };

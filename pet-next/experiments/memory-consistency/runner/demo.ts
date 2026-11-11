@@ -18,6 +18,7 @@ import { reduce } from '../ledger/reduce.ts';
 import { fullRebuild } from '../maintenance/rebuild.ts';
 import { POLICIES } from '../policies/compile.ts';
 import { runAllScenarios } from '../product-replay/replay.ts';
+import { isMainModule } from './gate.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT_ROOT = join(HERE, '..', 'out');
@@ -146,7 +147,7 @@ async function buildScenario(trackId: string): Promise<DemoScenario> {
       ...summariseState(stepState.state),
       contexts: contextsFor(stepState.state, stepState.state.events),
       maintenance: {
-        eventsScanned: rebuilt.stats.eventsScanned,
+        eventsVisited: rebuilt.stats.eventsVisited,
         notesExamined: rebuilt.stats.notesExamined,
         notesRebuilt: rebuilt.stats.notesRebuilt,
         bytesRead: rebuilt.stats.bytesRead,
@@ -192,7 +193,7 @@ async function buildProductScenario(): Promise<DemoScenario> {
       text: eventText(event as never),
       ...summariseState(state),
       contexts: contextsFor(state, state.events),
-      maintenance: { eventsScanned: 0, notesExamined: 0, notesRebuilt: 0, bytesRead: 0, bytesWritten: 0 },
+      maintenance: { eventsVisited: 0, uniqueEventsTouched: 0, notesExamined: 0, notesRebuilt: 0, bytesRead: 0, bytesWritten: 0 },
       rejected: [],
     });
   }
@@ -499,4 +500,4 @@ async function main(): Promise<void> {
   process.stdout.write(`demo written: ${join(demoDir, 'index.html')} (${size} bytes) ${digest}\n`);
 }
 
-await main();
+if (isMainModule(process.argv[1], import.meta.url)) await main();

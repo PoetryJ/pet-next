@@ -8,9 +8,12 @@
  *
  * @module pet-next/experiments/memory-consistency/eval/harness
  */
-import { readFileSync } from 'node:fs';
+import { mkdtempSync, readFileSync, rmSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
 import {
   PATCH_SCHEMA_VERSION,
+  canonicalJson,
   emptyState,
   requestKey,
   sessionKey,
@@ -24,6 +27,7 @@ import {
 } from '../contracts.ts';
 import { applyPatch, recomputeDependencies, reduce } from '../ledger/index.ts';
 import { stepEvent } from '../ledger/reduce.ts';
+import { JsonlStore } from '../storage/store.ts';
 
 /** 轨迹里的补丁规格（C 产出的输入，不含依赖版本）。 */
 export interface TrackPatchSpec {
@@ -156,6 +160,8 @@ export interface TrackTrace {
     readonly sequence: number;
     readonly state: MemoryState;
     readonly rejected: readonly { readonly eventId: string; readonly reason: string }[];
+    /** 这一步交付的补丁（含补丁本体），用于「事件 + 补丁」完整重放。 */
+    readonly delivered: readonly { readonly patchId: string; readonly patch: MemoryPatch }[];
   }[];
   readonly patchResults: readonly PatchObservation[];
   readonly rejectedEvents: readonly { readonly eventId: string; readonly reason: string }[];
@@ -171,7 +177,12 @@ export function traceTrack(track: TrackFile, options: RunOptions = {}): TrackTra
   const patchResults: PatchObservation[] = [];
   const rejected: { eventId: string; reason: string }[] = [];
   const appliedOpIds: string[] = [];
-  const stepStates: { sequence: number; state: MemoryState; rejected: { eventId: string; reason: string }[] }[] = [];
+  const stepStates: {
+    sequence: number;
+    state: MemoryState;
+    rejected: { eventId: string; reason: string }[];
+    delivered: { patchId: string; patch: MemoryPatch }[];
+  }[] = [];
 
   const pending = new Map<number, TrackPatchSpec[]>();
   const tail: TrackPatchSpec[] = [];
@@ -187,10 +198,12 @@ export function traceTrack(track: TrackFile, options: RunOptions = {}): TrackTra
 
   let state = emptyState();
 
+  let currentDelivered: { patchId: string; patch: MemoryPatch }[] = [];
   const deliver = (spec: TrackPatchSpec): void => {
     const stateAtBuild = reduce(track.events, { openUntilSequence: spec.buildAtSequence }).state;
     const patch = buildPatch(spec, stateAtBuild, appliedOpIds);
     appliedOpIds.push(patch.opId);
+    currentDelivered.push({ patchId: spec.patchId, patch });
     const outcome = applyPatch(state, patch);
     if (!outcome.verdict.accepted && mutation?.forceApplyOnReject === true) {
       state = forceUpsert(state, patch);
@@ -216,10 +229,11 @@ export function traceTrack(track: TrackFile, options: RunOptions = {}): TrackTra
     if (mutation?.afterStep !== undefined) {
       state = mutation.afterStep(state, event);
     }
+    currentDelivered = [];
     for (const spec of pending.get(original.sequence) ?? []) {
       deliver(spec);
     }
-    stepStates.push({ sequence: original.sequence, state, rejected: [...rejected] });
+    stepStates.push({ sequence: original.sequence, state, rejected: [...rejected], delivered: currentDelivered });
   }
   for (const spec of tail) {
     deliver(spec);
@@ -295,4 +309,156 @@ export function taskOf(state: MemoryState, sessionId: string, taskId: string) {
 /** 便于调试：某条会话视图。 */
 export function sessionOf(state: MemoryState, sessionId: string, epoch: number) {
   return state.sessions[sessionKey(sessionId, epoch)];
+}
+
+/**
+ * 行为投影：只保留「实现行为」相关字段，排除 trackId / 时间戳这类身份信息。
+ *
+ * 反事实比较必须用这个：同内容换名不能产生行为差异。
+ * 状态里的 notes 连文本、版本、依赖一起算，避免「笔记丢了但摘要一样」。
+ */
+export function behaviorProjection(observation: TrackObservation): Record<string, unknown> {
+  const state = observation.state;
+  return {
+    events: state.events.map((event) => ({
+      eventId: event.eventId,
+      sequence: event.sequence,
+      kind: event.kind,
+      sessionId: event.sessionId,
+      sessionEpoch: event.sessionEpoch,
+      ...(event.requestId === undefined ? {} : { requestId: event.requestId }),
+      ...(event.taskId === undefined ? {} : { taskId: event.taskId }),
+      ...(event.taskRevision === undefined ? {} : { taskRevision: event.taskRevision }),
+      payload: event.payload,
+    })),
+    requests: state.requests,
+    tasks: state.tasks,
+    subjectVersions: state.subjectVersions,
+    sessions: state.sessions,
+    notes: Object.values(state.notes)
+      .sort((a, b) => (a.noteId < b.noteId ? -1 : 1))
+      .map((note) => ({
+        noteId: note.noteId,
+        text: note.text,
+        status: note.status,
+        version: note.version,
+        dependencyVersions: note.dependencyVersions,
+        parentNoteIds: note.parentNoteIds,
+        sourceEventIds: note.sourceEventIds,
+        invalidationReason: note.invalidationReason ?? '',
+      })),
+    appliedOps: Object.values(state.appliedOps).sort((a, b) => a.commitOrder - b.commitOrder),
+    rejectedPatches: state.rejectedPatches,
+    conflicts: state.conflicts,
+    patchResults: observation.patchResults.map((item) => ({
+      patchId: item.patchId,
+      disposition: item.disposition,
+      code: item.code,
+    })),
+    rejectedEvents: observation.rejectedEvents,
+  };
+}
+
+/** 行为摘要（不含身份字段）。 */
+export function behaviorDigest(observations: readonly TrackObservation[]): string {
+  return canonicalJson(observations.map((item) => behaviorProjection(item)));
+}
+
+/** store 重放结果。 */
+export interface StoreReplayResult {
+  readonly ok: boolean;
+  readonly equal: boolean;
+  readonly notes: readonly string[];
+  readonly detail: string;
+  readonly error?: string;
+}
+
+/**
+ * 完整重放：事件与已接受的补丁按原顺序写入 store，close 后开新实例恢复，
+ * 再与直接运行的终态逐字段比较（笔记、版本、状态、补丁结论、幂等记录）。
+ *
+ * 只存事件不存补丁的实现会在这里丢笔记，因此该函数天然是 A1-v1 的负控。
+ */
+export function replayThroughStore(track: TrackFile): StoreReplayResult {
+  const trace = traceTrack(track);
+  const direct = trace.finalState;
+  const dir = mkdtempSync(join(tmpdir(), 'memory-replay-'));
+  try {
+    const opened = JsonlStore.open(dir);
+    if (!opened.ok) return { ok: false, equal: false, notes: [], detail: `${opened.code}: ${opened.detail}` };
+    const store = opened.value;
+    const accepted = new Set(trace.finalState.events.map((event) => event.eventId));
+    const outcomes: { opId: string; disposition: 'applied' | 'replayed' | 'rejected'; code: string }[] = [];
+    let conflictEvents = 0;
+    for (const step of trace.steps) {
+      const original = track.events.find((item) => item.sequence === step.sequence);
+      if (original !== undefined && accepted.has(original.eventId)) {
+        const appended = store.append(original);
+        if (!appended.ok && appended.code === 'event_conflict') {
+          // 冲突事件在内存里进 conflicts 表；store 不持久化该表，这里只核对数量一致。
+          conflictEvents += 1;
+        } else if (!appended.ok) {
+          return { ok: false, equal: false, notes: [], detail: `append ${original.eventId}: ${appended.code}` };
+        }
+      }
+      for (const delivered of step.delivered) {
+        const committed = store.commitPatch(delivered.patch);
+        outcomes.push({
+          opId: delivered.patch.opId,
+          disposition: committed.ok ? committed.value.disposition : 'rejected',
+          code: committed.ok ? 'ok' : committed.code,
+        });
+        if (!committed.ok && committed.code !== 'patch_rejected' && committed.code !== 'patch_conflict') {
+          return { ok: false, equal: false, notes: [], detail: `commit ${delivered.patchId}: ${committed.detail}` };
+        }
+      }
+    }
+    const beforeClose = durableProjection(store.getState());
+    store.close();
+    const reopened = JsonlStore.open(dir);
+    if (!reopened.ok) return { ok: false, equal: false, notes: [], detail: `${reopened.code}: ${reopened.detail}` };
+    const restored = reopened.value.getState();
+    reopened.value.close();
+    const sameMemory = durableProjection(restored) === durableProjection(direct);
+    const stableAcrossClose = beforeClose === durableProjection(restored);
+    // 补丁结论必须一致：内存判 applied 的，store 里必须有 appliedOps；判 rejected 的必须没有。
+    // 幂等重放（同 opId 同载荷）不算新提交；被拒补丁不能出现在 appliedOps 里。
+    const dispositionsConsistent = outcomes.every((outcome) => {
+      if (outcome.disposition !== 'rejected') return restored.appliedOps[outcome.opId] !== undefined;
+      // op_conflict 的语义就是「同名 opId 已被另一份载荷占用」，所以它必须存在；
+      // 其它拒绝（依赖过期等）则必须完全没落库。
+      return outcome.code === 'patch_conflict'
+        ? restored.appliedOps[outcome.opId] !== undefined
+        : restored.appliedOps[outcome.opId] === undefined;
+    });
+    const conflictsConsistent = conflictEvents === direct.conflicts.length;
+    return {
+      ok: true,
+      equal: sameMemory && stableAcrossClose && dispositionsConsistent && conflictsConsistent,
+      notes: Object.keys(restored.notes).sort(),
+      detail: `events=${restored.events.length} patches=${Object.keys(restored.appliedOps).length} notes=${Object.keys(restored.notes).length}`,
+    };
+  } finally {
+    rmSync(dir, { recursive: true, force: true });
+  }
+}
+
+/**
+ * 持久层可比投影：只比「重开之后还应该存在」的东西。
+ *
+ * 不比的字段：rejectedPatches（内存审计轨迹，被拒补丁不写日志，重开自然没有）、
+ * conflicts（同上，store 不持久化冲突表，由调用方单独核对数量）。
+ */
+function durableProjection(state: MemoryState): string {
+  return canonicalJson({
+    events: state.events.map((event) => ({ eventId: event.eventId, sequence: event.sequence })),
+    requests: state.requests,
+    tasks: state.tasks,
+    subjectVersions: state.subjectVersions,
+    sessions: state.sessions,
+    notes: state.notes,
+    appliedOps: state.appliedOps,
+    globalVersion: state.globalVersion,
+    lastSequence: state.lastSequence,
+  });
 }

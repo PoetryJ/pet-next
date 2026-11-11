@@ -1,0 +1,107 @@
+{
+  "trackId": "A7-v2",
+  "pairId": "A7",
+  "class": "dependency-graph",
+  "variant": "v2",
+  "keyCondition": "父笔记更新后，旧子笔记必须失效",
+  "sourceCategory": "synthetic",
+  "executionCategory": "scripted",
+  "note": "派生笔记覆盖用例；不含 pairId/期望标签。",
+  "events": [
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e1",
+      "sessionId": "sess-1",
+      "sessionEpoch": 1,
+      "sequence": 1,
+      "occurredAt": "2026-11-10T12:00:01.000Z",
+      "observedAt": "2026-11-10T12:00:01.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "周报用简体中文，先给结论",
+        "scripted": {
+          "subjectKey": "pref:weekly-report",
+          "valueText": "简体中文",
+          "kindHint": "preference"
+        }
+      }
+    },
+    {
+      "schemaVersion": "memory-event/v1",
+      "eventId": "e2",
+      "sessionId": "sess-1",
+      "sessionEpoch": 1,
+      "sequence": 2,
+      "occurredAt": "2026-11-10T12:00:02.000Z",
+      "observedAt": "2026-11-10T12:00:02.005Z",
+      "source": "user",
+      "kind": "user.statement",
+      "payload": {
+        "text": "周报改成英文",
+        "scripted": {
+          "subjectKey": "pref:weekly-report",
+          "valueText": "英文",
+          "kindHint": "preference"
+        }
+      }
+    }
+  ],
+  "patches": [
+    {
+      "patchId": "p1",
+      "buildAtSequence": 1,
+      "applyAtSequence": 1,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "parent-weekly",
+          "text": "周报用简体中文",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [],
+          "dependencyVersions": {},
+          "generator": "scripted",
+          "subjectKey": "pref:weekly-report"
+        },
+        {
+          "noteId": "child-weekly-format",
+          "text": "周报格式：简体中文 + 先给结论",
+          "sourceEventIds": [
+            "e1"
+          ],
+          "parentNoteIds": [
+            "parent-weekly"
+          ],
+          "dependencyVersions": {},
+          "generator": "scripted"
+        }
+      ],
+      "notesToInvalidate": []
+    },
+    {
+      "patchId": "p2",
+      "buildAtSequence": 2,
+      "applyAtSequence": 2,
+      "reusePriorOpId": null,
+      "dropSubjectDependency": false,
+      "notesToUpsert": [
+        {
+          "noteId": "parent-weekly",
+          "text": "周报用英文",
+          "sourceEventIds": [
+            "e1",
+            "e2"
+          ],
+          "parentNoteIds": [],
+          "dependencyVersions": {},
+          "generator": "scripted",
+          "subjectKey": "pref:weekly-report"
+        }
+      ],
+      "notesToInvalidate": []
+    }
+  ]
+}

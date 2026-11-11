@@ -1,0 +1,18 @@
+{
+  "schemaVersion": "memory-cases/v1",
+  "generator": "cases/build-derived.mjs",
+  "counts": {
+    "tracks": 2,
+    "pairs": 1
+  },
+  "files": [
+    {
+      "name": "A7-v1.json",
+      "sha256": "0bb2795ecf237bc660b222ae90f2c821bbf4b780b60fc031e436d1accc2e738a"
+    },
+    {
+      "name": "A7-v2.json",
+      "sha256": "6ab8bb529c5a57b7bd410148c715c60c849b8503be43e764d936fcc5fd5d1988"
+    }
+  ]
+}

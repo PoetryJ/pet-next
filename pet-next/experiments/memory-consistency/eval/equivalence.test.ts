@@ -78,14 +78,16 @@ describe('D4a 维护语义等价', () => {
     assert.deepEqual(noteView(fullApplied.state), noteView(incApplied.state));
   });
 
-  test('局部重建确实少干活：重建条数明显少于全量', () => {
+  test('局部重建少检查槽位，但事件访问量按「槽位×日志」计', () => {
     const base = baseline(300);
     const newEvents = Array.from({ length: 10 }, (_, i) => makeEvent(301 + i));
     const afterEvents = applyEvents(base.state, newEvents);
     const full = fullRebuild(afterEvents, 'op-full-2');
     const inc = incrementalRebuild(afterEvents, changeSetOf(newEvents), 'op-inc-2');
     assert.ok(inc.stats.notesExamined < full.stats.notesExamined, `${inc.stats.notesExamined} !< ${full.stats.notesExamined}`);
-    assert.ok(inc.stats.eventsScanned <= full.stats.eventsScanned);
+    // 口径：eventsVisited 是真实迭代次数。局部仍按槽位扫日志，不能宣称 O(1)。
+    assert.ok(inc.stats.eventsVisited <= full.stats.eventsVisited, `${inc.stats.eventsVisited} !<= ${full.stats.eventsVisited}`);
+    assert.ok(inc.stats.eventsVisited >= inc.stats.uniqueEventsTouched, 'visits 不能少于去重条数');
   });
 
   test('等价门能失败：漏掉变更集的局部重建必须被发现', () => {

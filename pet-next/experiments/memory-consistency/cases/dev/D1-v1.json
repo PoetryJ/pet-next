@@ -64,7 +64,7 @@
   ],
   "patches": [
     {
-      "patchId": "D1-v1-p1",
+      "patchId": "p1",
       "buildAtSequence": 2,
       "applyAtSequence": 2,
       "reusePriorOpId": null,
@@ -85,7 +85,7 @@
       "notesToInvalidate": []
     },
     {
-      "patchId": "D1-v1-p2",
+      "patchId": "p2",
       "buildAtSequence": 2,
       "applyAtSequence": null,
       "reusePriorOpId": null,

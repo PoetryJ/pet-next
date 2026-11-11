@@ -66,7 +66,9 @@ export interface OpMeasure {
   readonly op: 'full' | 'incremental';
   readonly correction: number;
   readonly elapsedMs: number;
-  readonly eventsScanned: number;
+  readonly eventsVisited: number;
+  readonly uniqueEventsTouched: number;
+  readonly indexLookups: number;
   readonly notesExamined: number;
   readonly notesRebuilt: number;
   readonly bytesRead: number;
@@ -102,7 +104,11 @@ export interface CostReport {
   readonly mechanism: MechanismReport;
   readonly scale: readonly ScaleCell[];
   readonly limits: readonly string[];
-  readonly speedClaimAllowed: boolean;
+  /** 等价成立。它只说明两条路径结果一致，不说明谁更快。 */
+  readonly equivalence: boolean;
+  /** 性能/可扩展性主张：本轮撤回。 */
+  readonly speedClaimAllowed: false;
+  readonly speedClaimWithdrawnReason: string;
 }
 
 function now(): number {
@@ -149,7 +155,9 @@ function measureCorrections(
             op,
             correction: index,
             elapsedMs: Math.round(elapsed * 100) / 100,
-            eventsScanned: built.stats.eventsScanned,
+            eventsVisited: built.stats.eventsVisited,
+            uniqueEventsTouched: built.stats.uniqueEventsTouched,
+            indexLookups: built.stats.indexLookups,
             notesExamined: built.stats.notesExamined,
             notesRebuilt: built.stats.notesRebuilt,
             bytesRead: built.stats.bytesRead,
@@ -216,7 +224,13 @@ export function scaleCheck(sizes: readonly number[] = [100, 1000, 10_000], corre
   return cells;
 }
 
-/** 汇总：只在等价成立时才允许讨论效率方向。 */
+/**
+ * 汇总。
+ *
+ * 诚实结论（见 15000 行注释与 REVIEW F4a）：局部重建按「受影响槽位」枚举，
+ * 但每个槽位仍然线性扫一遍事件日志（10k 事件实测约 2002 次访问 vs 全量 20020）。
+ * 因此撤回「索引级/可扩展」主张，只保留操作量事实。
+ */
 export function runCostStudy(): CostReport {
   const mechanism = mechanismCheck();
   const scale = scaleCheck();
@@ -230,11 +244,14 @@ export function runCostStudy(): CostReport {
     mechanism,
     scale,
     limits: [
-      '依赖扇出固定为 1（每 subject 一条槽位笔记）；高扇出未构造，相关结论 not-run。',
+      '局部重建仍是「每个受影响槽位扫一遍事件日志」，不是索引查表；不宣称 O(1) 或可扩展性。',
       '墙钟时间来自共享主机上的单核配额进程，负载波动大，不据此宣布速度提升。',
       '8000 事件是机制样本，不是 8000 个独立模型样本。',
+      '依赖扇出只到 1；高扇出成本未测（见 maintenance/rebuild.test.ts 的定性覆盖）。',
     ],
-    speedClaimAllowed: equivalent,
+    equivalence: equivalent,
+    speedClaimAllowed: false,
+    speedClaimWithdrawnReason: '局部路径仍按槽位线性扫描事件日志；原「50 vs 9574」的对比口径不成立，已撤下。',
   };
 }
 

@@ -230,7 +230,9 @@ export function runPlatformChecks(): PlatformReport {
     checks,
     windows: {
       status: 'not_run',
-      reason: '本机无 Windows 环境；不用 Linux 结果代替跨平台结论。',
+      reason:
+        '本机无 Windows 环境。R1 已把 checkpoint 的 fsync 改为可写句柄（原实现在 Windows 上对只读 fd fsync 会 EPERM），' +
+        '但该修复尚未在 Windows 实跑，必须待复验；不得用 Linux 结果代替跨平台结论。',
       command: [
         'powershell -NoProfile -Command "cd C:\\path\\to\\pet-next; $env:PATH=\\"C:\\Program Files\\nodejs;$env:PATH\\"; node --experimental-strip-types --test --test-reporter=spec experiments/memory-consistency/storage/store.test.ts experiments/memory-consistency/recovery/recovery.test.ts"',
         'powershell -NoProfile -Command "cd C:\\path\\to\\pet-next; node experiments/memory-consistency/run.mjs --all"',

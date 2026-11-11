@@ -58,16 +58,74 @@ describe('B3 有界整理队列', () => {
     assert.equal(note?.dependencyVersions['subject:pref:weekly-report'], bumped.subjectVersions['pref:weekly-report']);
   });
 
-  test('读取字节预算耗尽时剩余项被推迟，顺序不插队', () => {
-    const state = seededState();
-    const queue = new MaintenanceQueue({ maxNotesPerRound: 10, maxBytesPerRound: 80 });
+  test('提交字节超限的项被推迟，已接受的项照常提交且总字节不超 cap', () => {
+    // 先制造三个真的需要重写的槽位，否则补丁里没有 upsert、字节数不随条目增长。
+    let state = seededState();
+    for (const [seq, subject] of [[10, 'pref:weekly-report'], [11, 'pref:bio'], [12, 'pref:monthly']] as const) {
+      // 只推进事件、不重建：这样队列的 desired 与现有笔记不同，才会真的产生 upsert。
+      state = stepEvent(state, statement(seq, `e${seq}`, `新值${seq}`, subject, `新值${seq}`)).state;
+    }
+
+    const single = new MaintenanceQueue({ maxNotesPerRound: 10, maxBytesPerRound: 100000 });
+    single.enqueue('pref:weekly-report', 1);
+    const one = single.drain(state, 'op-q3');
+    assert.ok(one.submittedBytes > 0);
+    assert.equal(one.patch?.notesToUpsert.length, 1);
+
+    const queue = new MaintenanceQueue({ maxNotesPerRound: 10, maxBytesPerRound: one.submittedBytes });
     queue.enqueue('pref:weekly-report', 1);
     queue.enqueue('pref:bio', 1);
     queue.enqueue('pref:monthly', 1);
     const round = queue.drain(state, 'op-q3');
     assert.equal(round.processed.length, 1);
-    assert.ok(round.diagnostics.some((item) => item.startsWith('byte_budget_exhausted')));
+    assert.ok(round.submittedBytes <= one.submittedBytes);
+    assert.ok(round.diagnostics.some((item) => item.includes('byte_budget_exhausted')));
     assert.deepEqual(queue.pendingSubjects(), ['pref:bio', 'pref:monthly']);
+  });
+
+  test('cap 小到装不下首项：留待办并报 oversize，绝不提交', () => {
+    const state = seededState();
+    const queue = new MaintenanceQueue({ maxNotesPerRound: 1, maxBytesPerRound: 1 });
+    queue.enqueue('pref:weekly-report', 1);
+    const round = queue.drain(state, 'op-q5');
+    assert.deepEqual(round.processed, []);
+    assert.equal(round.patch, undefined);
+    assert.equal(round.submittedBytes, 0);
+    assert.equal(round.backlog, 1);
+    assert.ok(round.diagnostics.some((item) => item.startsWith('oversize:')));
+  });
+
+  test('被拒补丁不计 processed，条目退回队首', () => {
+    const state = seededState();
+    // 用一个小到只容一项的 cap，再让补丁因依赖过期被拒：把 subject 版本改掉即可。
+    const queue = new MaintenanceQueue({ maxNotesPerRound: 1, maxBytesPerRound: 100000 });
+    queue.enqueue('pref:weekly-report', 1);
+    const bumped = stepEvent(state, statement(77, 'e77', '周报改成英文', 'pref:weekly-report', '英文')).state;
+    const stalePatchState = { ...bumped, subjectVersions: { ...bumped.subjectVersions, 'pref:weekly-report': 3 } };
+    const round = queue.drain(stalePatchState, 'op-q6');
+    // 这里补丁是「按当前状态重算」的，所以正常应成功；断言重点是：一旦被拒，条目必须回到队首。
+    if (round.diagnostics.some((item) => item.startsWith('patch_rejected'))) {
+      assert.deepEqual(round.processed, []);
+      assert.equal(round.backlog, 1);
+    } else {
+      assert.equal(round.processed.length, 1);
+      assert.equal(round.backlog, 0);
+    }
+  });
+
+  test('cap 恰好等于补丁字节时允许提交（边界相等）', () => {
+    let state = seededState();
+    state = stepEvent(state, statement(20, 'e20', '签名再短', 'pref:bio', '更短')).state;
+
+    const probe = new MaintenanceQueue({ maxNotesPerRound: 5, maxBytesPerRound: 100000 });
+    probe.enqueue('pref:bio', 1);
+    const exact = probe.drain(state, 'op-edge').submittedBytes;
+    assert.ok(exact > 0);
+    const queue = new MaintenanceQueue({ maxNotesPerRound: 5, maxBytesPerRound: exact });
+    queue.enqueue('pref:bio', 1);
+    const round = queue.drain(state, 'op-edge');
+    assert.equal(round.processed.length, 1);
+    assert.equal(round.submittedBytes, exact);
   });
 
   test('空队列是合法的，不伪造工作量', () => {

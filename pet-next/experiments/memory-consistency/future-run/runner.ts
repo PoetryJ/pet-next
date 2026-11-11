@@ -2,14 +2,23 @@
  * 未来模型实验的 dry-run 执行器。
  *
  * 这一版**没有 live 传输**：不 import 任何网络模块，不读 API key，不探测模型地址。
- * provider 只能是注入的 FakeProvider（内存函数）。因此本文只能产出「调用清单与预算占用」，
- * 不能产出任何模型效果数字。
+ * provider 只能是注入的 stub（内存函数）。
+ *
+ * 三个数必须分开，禁止互相顶替（REVIEW F4c）：
+ * - plannedOperations：计划里要做多少次操作；
+ * - reservations：实际做成了多少次额度预留（每次调用前预留，失败也不退还）；
+ * - providerAttempts：真实 stub 调用次数，每次都有 attemptId。
+ * 旧实现把预留条目数叫 calls/attempts（528 vs 实际 120），那是把计划当成执行。
+ *
+ * 配额：每臂独立（manifest.frozen.totalUtf16BudgetPerArm），另有可选全局上限。
+ * 超额在「动作发生之前」拒绝，不许借别的臂的余额，也不许静默重试。
  *
  * @module pet-next/experiments/memory-consistency/future-run/runner
  */
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { isMainModule } from '../runner/gate.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 export const MANIFEST_PATH = join(HERE, 'manifest.json');
@@ -29,6 +38,8 @@ export interface FutureManifest {
     };
     /** 每臂允许预留的字符上限（不是 token，也不报价）。 */
     readonly totalUtf16BudgetPerArm: number;
+    /** 可选全局上限；缺省表示只按臂限。 */
+    readonly totalUtf16BudgetGlobal?: number;
   };
   readonly arms: readonly {
     readonly id: string;
@@ -51,14 +62,31 @@ export interface FutureManifest {
   };
 }
 
-/** 预算占用记录。 */
+/** 计划中的一次操作（纯数据，不产生副作用）。 */
+export interface PlannedOperation {
+  readonly armId: string;
+  readonly sampleIndex: number;
+  readonly kind: CallKind;
+  readonly cost: number;
+  /** 这一操作是否真的会调用 provider stub。 */
+  readonly invokesProvider: boolean;
+}
+
+/** 一次额度预留。 */
 export interface Reservation {
   readonly armId: string;
   readonly sampleIndex: number;
   readonly kind: CallKind;
   readonly reservedUtf16: number;
-  readonly attempts: number;
-  readonly outcome: 'ok' | 'failed' | 'skipped';
+}
+
+/** 一次真实 provider 尝试。 */
+export interface Attempt {
+  readonly attemptId: string;
+  readonly armId: string;
+  readonly sampleIndex: number;
+  readonly outcome: 'ok' | 'failed';
+  readonly failure?: string;
 }
 
 /** 计划执行结果。 */
@@ -66,123 +94,165 @@ export interface DryRunResult {
   readonly exitCode: number;
   readonly arms: number;
   readonly samples: number;
-  readonly calls: number;
-  readonly callsByKind: Readonly<Record<CallKind, number>>;
-  readonly reservedUtf16: number;
-  readonly budgetUtf16: number;
-  readonly attempts: number;
-  readonly implicitRetries: number;
-  readonly failures: number;
+  readonly plannedOperations: number;
   readonly reservations: readonly Reservation[];
+  readonly attempts: readonly Attempt[];
+  readonly providerAttempts: number;
+  readonly failures: number;
+  readonly perArmPlanned: Readonly<Record<string, number>>;
+  readonly perArmReserved: Readonly<Record<string, number>>;
+  readonly globalReserved: number;
+  readonly armBudget: number;
+  readonly globalBudget: number | null;
+  readonly exceededArms: readonly string[];
+  readonly exceededGlobal: boolean;
+  readonly implicitRetries: number;
   readonly notes: readonly string[];
 }
 
-/** 注入的假 provider。只有它能让 dry-run 产生「回答」。 */
+/** 注入的 stub provider。只有它能让 dry-run 产生「回答」。 */
 export type FakeProvider = (input: { readonly armId: string; readonly sampleIndex: number }) => { readonly text: string } | { readonly error: string };
 
-/** 预算上限来自 manifest 的每臂上限，不按计划结果反推。 */
-function armBudget(manifest: FutureManifest): number {
-  return manifest.frozen.totalUtf16BudgetPerArm * manifest.arms.length;
-}
-
-/**
- * 跑计划。overBudgetUtf16 用来模拟「预算不足」的自检；正常路径应为 0。
- * provider 失败只计一次 attempt，不重试。
- */
-export function dryRun(
-  manifest: FutureManifest,
-  provider: FakeProvider,
-  options: { readonly overBudgetUtf16?: number } = {},
-): DryRunResult {
-  const reservations: Reservation[] = [];
-  const callsByKind: Record<CallKind, number> = { read: 0, retrieve: 0, 'memory-write': 0, consolidate: 0, score: 0 };
-  const budget = armBudget(manifest) + (options.overBudgetUtf16 ?? 0);
-  let reserved = 0;
-  let failures = 0;
-
-  const reserve = (armId: string, sampleIndex: number, kind: CallKind, amount: number): boolean => {
-    if (reserved + amount > budget) return false;
-    reserved += amount;
-    callsByKind[kind] += 1;
-    reservations.push({ armId, sampleIndex, kind, reservedUtf16: amount, attempts: 1, outcome: 'ok' });
-    return true;
-  };
-
+/** 按 manifest 生成完整计划。纯函数，可单独核对条数。 */
+export function planOperations(manifest: FutureManifest): PlannedOperation[] {
+  const budget = manifest.frozen.characterBudgets;
+  const plan: PlannedOperation[] = [];
   for (const arm of manifest.arms) {
-    const consolidateCalls = arm.backgroundConsolidation ? manifest.callsPerSample.consolidate.whenBackground : manifest.callsPerSample.consolidate.otherwise;
+    const consolidate = arm.backgroundConsolidation
+      ? manifest.callsPerSample.consolidate.whenBackground
+      : manifest.callsPerSample.consolidate.otherwise;
     for (let sample = 0; sample < manifest.frozen.samples; sample += 1) {
-      if (!reserve(arm.id, sample, 'read', 0)) return overBudget(reservations, callsByKind, reserved, budget, failures, manifest.arms.length, manifest.frozen.samples);
-      if (!reserve(arm.id, sample, 'retrieve', manifest.frozen.characterBudgets.contextUtf16Units)) {
-        return overBudget(reservations, callsByKind, reserved, budget, failures, manifest.arms.length, manifest.frozen.samples);
+      for (let index = 0; index < manifest.callsPerSample.read; index += 1) {
+        plan.push({ armId: arm.id, sampleIndex: sample, kind: 'read', cost: 0, invokesProvider: false });
       }
-      const answer = provider({ armId: arm.id, sampleIndex: sample });
-      if ('error' in answer) {
-        failures += 1;
-        reservations.push({
+      for (let index = 0; index < manifest.callsPerSample.retrieve; index += 1) {
+        plan.push({
           armId: arm.id,
           sampleIndex: sample,
-          kind: 'memory-write',
-          reservedUtf16: 0,
-          attempts: 0,
-          outcome: 'failed',
+          kind: 'retrieve',
+          cost: budget.contextUtf16Units,
+          invokesProvider: true,
         });
-        continue;
       }
-      if (!reserve(arm.id, sample, 'memory-write', manifest.frozen.characterBudgets.noteUtf16Units)) {
-        return overBudget(reservations, callsByKind, reserved, budget, failures, manifest.arms.length, manifest.frozen.samples);
+      for (let index = 0; index < manifest.callsPerSample.memoryWrite; index += 1) {
+        plan.push({ armId: arm.id, sampleIndex: sample, kind: 'memory-write', cost: budget.noteUtf16Units, invokesProvider: false });
       }
-      for (let i = 0; i < consolidateCalls; i += 1) {
-        if (!reserve(arm.id, sample, 'consolidate', manifest.frozen.characterBudgets.noteUtf16Units)) {
-          return overBudget(reservations, callsByKind, reserved, budget, failures, manifest.arms.length, manifest.frozen.samples);
-        }
+      for (let index = 0; index < consolidate; index += 1) {
+        plan.push({ armId: arm.id, sampleIndex: sample, kind: 'consolidate', cost: budget.noteUtf16Units, invokesProvider: false });
       }
-      if (!reserve(arm.id, sample, 'score', manifest.frozen.characterBudgets.responseUtf16Units)) {
-        return overBudget(reservations, callsByKind, reserved, budget, failures, manifest.arms.length, manifest.frozen.samples);
+      for (let index = 0; index < manifest.callsPerSample.score; index += 1) {
+        plan.push({ armId: arm.id, sampleIndex: sample, kind: 'score', cost: budget.responseUtf16Units, invokesProvider: false });
       }
     }
   }
+  return plan;
+}
 
+function emptyResult(manifest: FutureManifest, plan: number): DryRunResult {
+  const perArmPlanned: Record<string, number> = {};
+  for (const arm of manifest.arms) perArmPlanned[arm.id] = 0;
   return {
     exitCode: 0,
     arms: manifest.arms.length,
     samples: manifest.frozen.samples,
-    calls: reservations.length,
-    callsByKind,
-    reservedUtf16: reserved,
-    budgetUtf16: budget,
-    attempts: reservations.reduce((sum, item) => sum + item.attempts, 0),
+    plannedOperations: plan,
+    reservations: [],
+    attempts: [],
+    providerAttempts: 0,
+    failures: 0,
+    perArmPlanned,
+    perArmReserved: { ...perArmPlanned },
+    globalReserved: 0,
+    armBudget: manifest.frozen.totalUtf16BudgetPerArm,
+    globalBudget: manifest.frozen.totalUtf16BudgetGlobal ?? null,
+    exceededArms: [],
+    exceededGlobal: false,
     implicitRetries: manifest.reservationPolicy.implicitRetries,
-    failures,
-    reservations,
-    notes: [
-      'dry-run 只算调用与预算；没有任何真实模型请求。',
-      '字符预算不是 token 预算，也没有报价。',
-    ],
+    notes: [],
   };
 }
 
-function overBudget(
-  reservations: Reservation[],
-  callsByKind: Record<CallKind, number>,
-  reserved: number,
-  budget: number,
-  failures: number,
-  arms: number,
-  samples: number,
-): DryRunResult {
+/**
+ * 跑计划。stub 失败只计一次 attempt，不重试、不退还额度。
+ * exitCode：0 正常；3 预算不足（动作前拒绝）；4 provider 失败。
+ */
+export function dryRun(manifest: FutureManifest, provider: FakeProvider): DryRunResult {
+  const plan = planOperations(manifest);
+  const base = emptyResult(manifest, plan.length);
+  const perArmPlanned: Record<string, number> = { ...base.perArmPlanned };
+  for (const op of plan) perArmPlanned[op.armId] = (perArmPlanned[op.armId] ?? 0) + 1;
+
+  const reservations: Reservation[] = [];
+  const attempts: Attempt[] = [];
+  const perArmReserved: Record<string, number> = {};
+  for (const arm of manifest.arms) perArmReserved[arm.id] = 0;
+  const exceededArms = new Set<string>();
+  let globalReserved = 0;
+  let exceededGlobal = false;
+  let failures = 0;
+  let attemptSeq = 0;
+
+  for (const op of plan) {
+    if (exceededArms.has(op.armId)) continue;
+    if (exceededGlobal) continue;
+
+    const armUsed = perArmReserved[op.armId] ?? 0;
+    if (armUsed + op.cost > manifest.frozen.totalUtf16BudgetPerArm) {
+      // 动作发生前拒绝；不借别臂余额，也不把这一条算成 attempt。
+      exceededArms.add(op.armId);
+      continue;
+    }
+    const globalBudget = manifest.frozen.totalUtf16BudgetGlobal;
+    if (globalBudget !== undefined && globalReserved + op.cost > globalBudget) {
+      exceededGlobal = true;
+      continue;
+    }
+
+    perArmReserved[op.armId] = armUsed + op.cost;
+    globalReserved += op.cost;
+    reservations.push({ armId: op.armId, sampleIndex: op.sampleIndex, kind: op.kind, reservedUtf16: op.cost });
+
+    if (!op.invokesProvider) continue;
+    attemptSeq += 1;
+    const answer = provider({ armId: op.armId, sampleIndex: op.sampleIndex });
+    if ('error' in answer) {
+      failures += 1;
+      attempts.push({
+        attemptId: `attempt-${String(attemptSeq).padStart(4, '0')}`,
+        armId: op.armId,
+        sampleIndex: op.sampleIndex,
+        outcome: 'failed',
+        failure: answer.error,
+      });
+      // 失败后不重试、不退额度；该样本余下操作不再执行。
+      continue;
+    }
+    attempts.push({
+      attemptId: `attempt-${String(attemptSeq).padStart(4, '0')}`,
+      armId: op.armId,
+      sampleIndex: op.sampleIndex,
+      outcome: 'ok',
+    });
+  }
+
+  const exitCode = exceededArms.size > 0 || exceededGlobal ? 3 : failures > 0 ? 4 : 0;
   return {
-    exitCode: 3,
-    arms,
-    samples,
-    calls: reservations.length,
-    callsByKind,
-    reservedUtf16: reserved,
-    budgetUtf16: budget,
-    attempts: reservations.reduce((sum, item) => sum + item.attempts, 0),
-    implicitRetries: 0,
-    failures,
+    ...base,
+    exitCode,
     reservations,
-    notes: ['预算不足：在预留阶段就停止，未发起任何后续调用。'],
+    attempts,
+    providerAttempts: attempts.length,
+    failures,
+    perArmPlanned: { ...perArmPlanned },
+    perArmReserved: { ...perArmReserved },
+    globalReserved,
+    exceededArms: [...exceededArms].sort(),
+    exceededGlobal,
+    notes: [
+      'dry-run 只算计划、预留与 stub 尝试；没有任何真实模型请求。',
+      '字符预算不是 token 预算，也没有报价。',
+      exceededArms.size > 0 ? `超额臂在动作前被拒：${[...exceededArms].sort().join(',')}` : '',
+    ].filter((item) => item !== ''),
   };
 }
 
@@ -191,12 +261,24 @@ export function loadManifest(path = MANIFEST_PATH): FutureManifest {
   return JSON.parse(readFileSync(path, 'utf8')) as FutureManifest;
 }
 
-/** 默认假 provider：确定性文本，不访问任何外部服务。 */
-export const cannedProvider: FakeProvider = (input) => ({ text: `arm=${input.armId} sample=${input.sampleIndex} 的假回答` });
+/** 默认 stub provider：确定性文本，不访问任何外部服务。 */
+export const cannedProvider: FakeProvider = (input) => ({ text: `arm=${input.armId} sample=${input.sampleIndex} 的 stub 回答` });
 
-if (process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(process.argv[1], import.meta.url)) {
   const manifest = loadManifest();
   const result = dryRun(manifest, cannedProvider);
-  process.stdout.write(`${JSON.stringify({ exitCode: result.exitCode, calls: result.calls, reservedUtf16: result.reservedUtf16, budgetUtf16: result.budgetUtf16 }, null, 2)}\n`);
+  process.stdout.write(
+    `${JSON.stringify(
+      {
+        exitCode: result.exitCode,
+        plannedOperations: result.plannedOperations,
+        reservations: result.reservations.length,
+        providerAttempts: result.providerAttempts,
+        globalReserved: result.globalReserved,
+      },
+      null,
+      2,
+    )}\n`,
+  );
   process.exit(result.exitCode);
 }

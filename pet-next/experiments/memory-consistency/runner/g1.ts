@@ -16,6 +16,7 @@ import {
   runMutationSuite,
 } from '../eval/dataset.ts';
 import { scoreTrack } from '../eval/scorer.ts';
+import { gateMeta, isMainModule, writeGateReport } from './gate.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 
@@ -113,12 +114,12 @@ export function computeG1(): G1Report {
   };
 }
 
-if (process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(process.argv[1], import.meta.url)) {
   const outIndex = process.argv.indexOf('--out');
   const outDir = outIndex >= 0 ? process.argv[outIndex + 1] : join(HERE, '..', 'out');
   if (outDir === undefined) throw new Error('--out needs a value');
   const report = computeG1();
-  writeFileSync(join(outDir, 'g1.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  writeGateReport(outDir, 'g1.json', 'G1', report as unknown as Record<string, unknown>, gateMeta());
   writeFileSync(join(outDir, 'g1-tracks.json'), `${JSON.stringify({ gate: 'G1', tracks: report.perTrack }, null, 2)}\n`, 'utf8');
   process.stdout.write(`${report.passed_gate ? 'PASS' : 'FAIL'} G1 tracks=${report.trackCount} checks=${report.checks} failed=${report.failed}\n`);
   process.exit(report.passed_gate ? 0 : 1);

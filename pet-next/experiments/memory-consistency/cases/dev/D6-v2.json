@@ -30,7 +30,7 @@
   ],
   "patches": [
     {
-      "patchId": "D6-v2-p1",
+      "patchId": "p1",
       "buildAtSequence": 1,
       "applyAtSequence": null,
       "reusePriorOpId": null,

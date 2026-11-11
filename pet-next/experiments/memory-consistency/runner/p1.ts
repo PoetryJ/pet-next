@@ -5,26 +5,32 @@
  *
  * @module pet-next/experiments/memory-consistency/runner/p1
  */
-import { mkdtempSync, rmSync, writeFileSync } from 'node:fs';
+import { mkdtempSync, rmSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { canonicalJson, type Budget, type MemoryEvent } from '../contracts.ts';
+import { canonicalJson, type Budget } from '../contracts.ts';
 import {
   evaluateDataset,
   loadDevTracks,
   loadExpectations,
   loadTracks,
+  DERIVED_TRACKS_DIR,
   NEW_EXPECTATIONS_PATH,
   NEW_TRACKS_DIR,
-  observationDigest,
   DEV_TRACKS_DIR,
 } from '../eval/dataset.ts';
 import { auditPolicyInputs } from '../eval/leakage.ts';
-import { runTrack, type TrackObservation } from '../eval/harness.ts';
+import {
+  behaviorDigest,
+  replayThroughStore,
+  runTrack,
+  type TrackObservation,
+} from '../eval/harness.ts';
 import type { Check, ExpectationFile } from '../eval/scorer.ts';
 import { POLICIES } from '../policies/compile.ts';
 import { JsonlStore } from '../storage/store.ts';
+import { gateMeta, isMainModule, writeGateReport } from './gate.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const BUDGET: Budget = { utf16Units: 2000, utf8Bytes: 6000 };
@@ -71,11 +77,10 @@ function contrastPair(
   return {
     pairId: left.pairId,
     differingChecks: differing,
-    // 有些差异只出现在一侧独有的断言上（例如新增 rejectedEvent 断言），
-    // 因此再给一条与断言写法无关的判据：两份观测摘要必须不同。
-    behaviorDiffers: observationDigest([leftObs]) !== observationDigest([rightObs]),
+    // 只比行为，不比名字：同内容换 trackId 不得算差异。
+    behaviorDiffers: behaviorDigest([leftObs]) !== behaviorDigest([rightObs]),
     invariantsHold: invariantsHold(leftObs) && invariantsHold(rightObs),
-    deterministic: observationDigest([leftObs, rightObs]) === observationDigest([runTrack(left), runTrack(right)]),
+    deterministic: behaviorDigest([leftObs, rightObs]) === behaviorDigest([runTrack(left), runTrack(right)]),
   };
 }
 
@@ -89,40 +94,44 @@ function invariantsHold(observation: TrackObservation): boolean {
   const ids = state.events.map((event) => event.eventId);
   const unique = new Set(ids).size === ids.length;
   const maxSequence = Math.max(0, ...state.events.map((event) => event.sequence));
+  const dispositionsValid = observation.patchResults.every(
+    (item) => item.disposition === 'applied' || item.disposition === 'replayed' || item.disposition === 'rejected',
+  );
+  const appliedConsistent = appliedPatches === Object.keys(state.appliedOps).length;
   return (
     state.globalVersion === state.events.length + appliedPatches &&
     state.lastSequence === maxSequence &&
     unique &&
-    observation.patchResults.length === observation.patchResults.length
+    dispositionsValid &&
+    appliedConsistent
   );
 }
 
-/** 重放等价：把所有被接受的事件重放进磁盘存储，读回后比较事件层状态。 */
-function replayEquivalence(observation: TrackObservation): { equal: boolean; detail: string } {
-  const dir = mkdtempSync(join(tmpdir(), 'p1-replay-'));
+/**
+ * 重放等价：事件 + 已接受补丁一起写入 store，close 后开新实例恢复，
+ * 与直接运行的终态逐字段比较（含笔记、版本、依赖、补丁结论）。
+ */
+function replayEquivalence(track: ReturnType<typeof loadDevTracks>[number]) {
+  const result = replayThroughStore(track);
+  return { trackId: track.trackId, equal: result.ok && result.equal, detail: result.error ?? result.detail };
+}
+
+/** 负控：只存事件的实现必须被判不等，否则重放检查就是空的。 */
+function eventOnlyNegativeControl(track: ReturnType<typeof loadDevTracks>[number]): { trackId: string; detected: boolean; detail: string } {
+  const observation = runTrack(track);
+  const dir = mkdtempSync(join(tmpdir(), 'p1-negative-'));
   try {
     const opened = JsonlStore.open(dir);
-    if (!opened.ok) return { equal: false, detail: `${opened.code}: ${opened.detail}` };
-    const store = opened.value;
-    const accepted = new Set(observation.state.events.map((event: MemoryEvent) => event.eventId));
-    for (const event of observation.state.events) {
-      const result = store.append(event);
-      if (!result.ok) return { equal: false, detail: `append ${event.eventId}: ${result.code}` };
-    }
-    const loaded = store.load();
-    if (!loaded.ok) return { equal: false, detail: `load: ${loaded.code}` };
-    const fields = (state: typeof observation.state) =>
-      canonicalJson({
-        events: state.events.map((event) => event.eventId),
-        requests: state.requests,
-        tasks: state.tasks,
-        subjectVersions: state.subjectVersions,
-        sessions: state.sessions,
-        conflicts: state.conflicts,
-      });
-    const equal = fields(loaded.value.state) === fields(observation.state);
-    store.close();
-    return { equal, detail: `events=${accepted.size}` };
+    if (!opened.ok) return { trackId: track.trackId, detected: false, detail: opened.detail };
+    for (const event of observation.state.events) opened.value.append(event);
+    const restored = opened.value.getState();
+    opened.value.close();
+    const detected = canonicalJson(restored) !== canonicalJson(observation.state);
+    return {
+      trackId: track.trackId,
+      detected,
+      detail: `notes direct=${Object.keys(observation.state.notes).length} restored=${Object.keys(restored.notes).length}`,
+    };
   } finally {
     rmSync(dir, { recursive: true, force: true });
   }
@@ -148,13 +157,14 @@ export function computeP1() {
     .sort((a, b) => (a[0] < b[0] ? -1 : 1))
     .map(([, pair]) => contrastPair(pair, observations, devExpectations));
 
-  const replayChecks = devTracks.slice(0, 8).map((track) => {
-    const observation = runTrack(track);
-    return { trackId: track.trackId, ...replayEquivalence(observation) };
-  });
+  const replayChecks = devTracks.map((track) => replayEquivalence(track));
+  const negativeControls = ['A1-v1', 'A1-v2', 'A5-v1']
+    .map((trackId) => devTracks.find((track) => track.trackId === trackId))
+    .filter((track): track is NonNullable<typeof track> => track !== undefined)
+    .map((track) => eventOnlyNegativeControl(track));
 
   const leakAudit = auditPolicyInputs(
-    [...devTracks.slice(0, 8), ...newTracks.slice(0, 8)],
+    [...devTracks.slice(0, 8), ...newTracks.slice(0, 8), ...loadTracks(DERIVED_TRACKS_DIR)],
     POLICIES,
     BUDGET,
   );
@@ -162,7 +172,15 @@ export function computeP1() {
   const newFailed = newResult.score.failed;
   const contrastsValid = contrasts.every((item) => item.behaviorDiffers && item.invariantsHold && item.deterministic);
   const replayValid = replayChecks.every((item) => item.equal);
+  const negativeValid = negativeControls.every((item) => item.detected);
   const leakClean = leakAudit.findings.length === 0;
+  const coverage = leakAudit.coverage;
+  const leakCoverageValid =
+    coverage !== undefined &&
+    coverage.inputsWithActiveNotes > 0 &&
+    coverage.inputsWithInvalidatedNotes > 0 &&
+    coverage.inputsWithDerivedNotes > 0 &&
+    coverage.outputsWithSourceIds > 0;
 
   return {
     gate: 'P1',
@@ -180,7 +198,9 @@ export function computeP1() {
       tracks: leakAudit.tracks,
       samples: leakAudit.samples,
       findings: leakAudit.findings,
+      coverage,
       budget: BUDGET,
+      note: '状态来自带补丁的执行轨迹；coverage 全为 0 时说明审计没看到笔记，不能算通过。',
     },
     counterfactual: {
       pairs: contrasts.length,
@@ -189,8 +209,16 @@ export function computeP1() {
       deterministic: contrasts.every((item) => item.deterministic),
       details: contrasts,
     },
-    replay: { checks: replayChecks, allEqual: replayValid },
-    passed_gate: newFailed === 0 && newResult.score.missingExpectations.length === 0 && contrastsValid && replayValid && leakClean,
+    replay: { checks: replayChecks, allEqual: replayValid, negativeControls, allNegativeDetected: negativeValid 
+    },
+    passed_gate:
+      newFailed === 0 &&
+      newResult.score.missingExpectations.length === 0 &&
+      contrastsValid &&
+      replayValid &&
+      negativeValid &&
+      leakClean &&
+      leakCoverageValid,
   };
 }
 
@@ -198,12 +226,12 @@ function newSetSize(values: readonly string[]): number {
   return new Set(values).size;
 }
 
-if (process.argv[1] !== undefined && import.meta.url === `file://${process.argv[1]}`) {
+if (isMainModule(process.argv[1], import.meta.url)) {
   const outIndex = process.argv.indexOf('--out');
   const outDir = outIndex >= 0 ? process.argv[outIndex + 1] : join(HERE, '..', 'out');
   if (outDir === undefined) throw new Error('--out needs a value');
   const report = computeP1();
-  writeFileSync(join(outDir, 'p1.json'), `${JSON.stringify(report, null, 2)}\n`, 'utf8');
+  writeGateReport(outDir, 'p1.json', 'P1', report as unknown as Record<string, unknown>, gateMeta());
   process.stdout.write(
     `${report.passed_gate ? 'PASS' : 'FAIL'} P1 new=${report.newTemplates.tracks}/${report.newTemplates.checks} leak=${report.leakage.findings.length} replay=${report.replay.allEqual}\n`,
   );

@@ -7,6 +7,7 @@
  *   子进程自己带 flag，所以入口命令可以是最朴素的 `node run.mjs --verify`。
  * - 每个测试套件与门禁的退出码、stdout 原文都落盘，报告里引用的是原始结果，不是二次叙述。
  * - 缺模块就显式写 not_run，绝不把「没跑」算成通过。
+ * - 门禁结果必须带本次 runId 与源码身份；只有子进程 exit 0 不够（空脚本 exit 0 会假通过）。
  *
  * 用法：
  *   node experiments/memory-consistency/run.mjs --all
@@ -14,17 +15,21 @@
  *   node experiments/memory-consistency/run.mjs --gate=G1
  *   node experiments/memory-consistency/run.mjs --verify
  *   node experiments/memory-consistency/run.mjs --demo
+ *   node experiments/memory-consistency/run.mjs --all --out=/tmp/run-x --source-commit=<sha>
  *
  * @module pet-next/experiments/memory-consistency/run
  */
 import { execFileSync, spawnSync } from 'node:child_process';
-import { createHash } from 'node:crypto';
+import { createHash, randomBytes } from 'node:crypto';
 import { existsSync, mkdirSync, readFileSync, readdirSync, statSync, writeFileSync } from 'node:fs';
 import { dirname, join, relative } from 'node:path';
 import { fileURLToPath } from 'node:url';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const REPO_ROOT = join(HERE, '..', '..');
+
+/** 门禁结果信封版本。与 contracts.ts 的 GATE_SCHEMA_VERSION 必须一致。 */
+const GATE_SCHEMA = 'memory-gate/v1';
 
 /** 测试套件。每个套件都是独立可复跑的 node --test 调用。 */
 const SUITES = [
@@ -36,9 +41,10 @@ const SUITES = [
   { id: 'eval', title: '独立评分与负控', files: ['eval/dev-set.test.ts', 'eval/no-network.test.ts', 'eval/equivalence.test.ts'] },
   { id: 'replay', title: '产品纯模块回放', files: ['product-replay/replay.test.ts'] },
   { id: 'demo', title: '离线演示生成物', files: ['demo/demo.test.ts'] },
-  { id: 'queue', title: '有界整理队列', files: ['maintenance/queue.test.ts'] },
+  { id: 'queue', title: '有界整理队列与依赖链', files: ['maintenance/queue.test.ts', 'maintenance/rebuild.test.ts'] },
   { id: 'future', title: '未来 runner dry-run', files: ['future-run/runner.test.ts'] },
   { id: 'studies', title: '成本与平台', files: ['studies/cost.test.ts', 'platform/checks.test.ts'] },
+  { id: 'gate', title: '门禁信封与 CLI 入口', files: ['runner/gate.test.ts'] },
 ];
 
 /** 门禁脚本。文件不存在就记 not_run。 */
@@ -49,7 +55,17 @@ const GATES = [
 ];
 
 function parseArgs(argv) {
-  const args = { suites: [], gates: [], all: false, verify: false, demo: false, list: false, out: null };
+  const args = {
+    suites: [],
+    gates: [],
+    all: false,
+    verify: false,
+    demo: false,
+    list: false,
+    out: null,
+    runId: null,
+    sourceCommit: null,
+  };
   for (const item of argv) {
     if (item === '--all') args.all = true;
     else if (item === '--verify') args.verify = true;
@@ -58,6 +74,8 @@ function parseArgs(argv) {
     else if (item.startsWith('--suite=')) args.suites.push(item.slice('--suite='.length));
     else if (item.startsWith('--gate=')) args.gates.push(item.slice('--gate='.length));
     else if (item.startsWith('--out=')) args.out = item.slice('--out='.length);
+    else if (item.startsWith('--run-id=')) args.runId = item.slice('--run-id='.length);
+    else if (item.startsWith('--source-commit=')) args.sourceCommit = item.slice('--source-commit='.length);
     else {
       process.stderr.write(`unknown argument: ${item}\n`);
       process.exit(2);
@@ -88,6 +106,18 @@ function gitDirty() {
   } catch {
     return -1;
   }
+}
+
+/**
+ * 被测源码身份：显式声明优先，其次 git HEAD，最后 unknown。
+ * 归档没有 .git 时调用方必须显式给出，不允许借用外层工作区 HEAD。
+ */
+function resolveSourceCommit(explicit) {
+  const flagged = explicit ?? process.env.MEMORY_SOURCE_COMMIT ?? process.env.SOURCE_COMMIT ?? null;
+  if (flagged !== null && flagged !== '') return { value: flagged, source: 'explicit' };
+  const head = gitHead();
+  if (head !== 'unknown') return { value: head, source: 'git' };
+  return { value: 'unknown', source: 'unknown' };
 }
 
 /** 跑一个测试套件，返回退出码与解析出的计数。原文另存。 */
@@ -129,38 +159,91 @@ function runSuite(suite, outDir) {
   };
 }
 
-/** 跑一个门禁脚本。脚本自己写 JSON，本函数只收集退出码与 stdout。 */
-function runGate(gate, outDir) {
+/**
+ * 校验门禁结果：只看退出码是不够的。
+ * 缺文件 / 坏 JSON / schema 不符 / gateId 不符 / runId 过期 / 源码身份不明或不同 / passed_gate=false
+ * 都必须判失败，并给出可读原因。
+ */
+function verifyGateResult(gate, outDir, identity, exitCode) {
+  const reasons = [];
+  if (exitCode !== 0) reasons.push(`subprocess_exit:${String(exitCode)}`);
+  const path = join(outDir, gate.result);
+  if (!existsSync(path)) {
+    reasons.push('result_missing');
+    return { ok: false, reasons, envelope: null };
+  }
+  let parsed;
+  try {
+    parsed = JSON.parse(readFileSync(path, 'utf8'));
+  } catch {
+    reasons.push('result_invalid_json');
+    return { ok: false, reasons, envelope: null };
+  }
+  const envelope = parsed?.envelope;
+  if (envelope === undefined || envelope === null) {
+    reasons.push('envelope_missing');
+    return { ok: false, reasons, envelope: null };
+  }
+  if (envelope.schemaVersion !== GATE_SCHEMA) reasons.push(`schema_mismatch:${String(envelope.schemaVersion)}`);
+  if (envelope.gateId !== gate.id) reasons.push(`gate_id_mismatch:${String(envelope.gateId)}`);
+  if (envelope.runId !== identity.runId) reasons.push(`stale_run_id:${String(envelope.runId)}`);
+  if (identity.sourceCommit === 'unknown') reasons.push('source_commit_unknown');
+  else if (envelope.sourceCommit !== identity.sourceCommit) reasons.push(`source_commit_mismatch:${String(envelope.sourceCommit)}`);
+  if (envelope.passed_gate !== true) reasons.push('passed_gate_false');
+  return { ok: reasons.length === 0, reasons, envelope };
+}
+
+/** 跑一个门禁脚本。信封核对通过才算 pass。 */
+function runGate(gate, outDir, identity) {
   const script = join(HERE, gate.script);
   if (!existsSync(script)) {
     return { id: gate.id, title: gate.title, status: 'not_run', reason: `missing ${gate.script}` };
   }
-  const started = Date.now();
+  const startedAt = new Date().toISOString();
   const result = spawnSync(process.execPath, ['--experimental-strip-types', script, '--out', outDir], {
     cwd: REPO_ROOT,
     encoding: 'utf8',
     timeout: 900_000,
+    env: {
+      ...process.env,
+      MEMORY_RUN_ID: identity.runId,
+      MEMORY_SOURCE_COMMIT: identity.sourceCommit,
+      MEMORY_GATE_STARTED_AT: startedAt,
+    },
   });
-  const elapsedMs = Date.now() - started;
+  const elapsedMs = Date.now() - Date.parse(startedAt);
   const logDir = join(outDir, 'logs');
   mkdirSync(logDir, { recursive: true });
   writeFileSync(join(logDir, `${gate.id.toLowerCase()}.log`), `${result.stdout ?? ''}\n--- stderr ---\n${result.stderr ?? ''}`, 'utf8');
+  const verification = verifyGateResult(gate, outDir, identity, result.status ?? -1);
   return {
     id: gate.id,
     title: gate.title,
-    status: result.status === 0 ? 'pass' : 'fail',
+    status: verification.ok ? 'pass' : 'fail',
     exitCode: result.status,
     elapsedMs,
     stdout: (result.stdout ?? '').trim(),
     resultFile: gate.result,
+    verification: {
+      ok: verification.ok,
+      reasons: verification.reasons,
+      envelope: verification.envelope === null ? null : {
+        schemaVersion: verification.envelope.schemaVersion,
+        gateId: verification.envelope.gateId,
+        runId: verification.envelope.runId,
+        sourceCommit: verification.envelope.sourceCommit,
+        passed_gate: verification.envelope.passed_gate,
+      },
+    },
     command: `node --experimental-strip-types experiments/memory-consistency/${gate.script}`,
   };
 }
 
 function main() {
   const args = parseArgs(process.argv.slice(2));
-  const outDir = args.out ?? join(HERE, 'out');
-  mkdirSync(outDir, { recursive: true });
+  const runId = args.runId ?? `${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${randomBytes(3).toString('hex')}`;
+  const source = resolveSourceCommit(args.sourceCommit);
+  const identity = { runId, sourceCommit: source.value };
 
   if (args.list) {
     for (const suite of SUITES) process.stdout.write(`suite ${suite.id}\t${suite.title}\n`);
@@ -168,7 +251,10 @@ function main() {
     return 0;
   }
 
+  // 演示不是门禁：保持固定输出目录，方便直接打开。
   if (args.demo) {
+    const outDir = args.out ?? join(HERE, 'out');
+    mkdirSync(outDir, { recursive: true });
     const demoSrc = join(HERE, 'runner', 'demo.ts');
     if (!existsSync(demoSrc)) {
       process.stdout.write('not_run: runner/demo.ts missing\n');
@@ -178,6 +264,7 @@ function main() {
       cwd: REPO_ROOT,
       encoding: 'utf8',
       timeout: 300_000,
+      env: { ...process.env, MEMORY_RUN_ID: runId, MEMORY_SOURCE_COMMIT: identity.sourceCommit },
     });
     process.stdout.write(`${result.stdout ?? ''}${result.stderr ?? ''}`);
     return result.status === 0 ? 0 : 1;
@@ -201,21 +288,26 @@ function main() {
     return 2;
   }
 
-  // --verify 的确定性检查：拿上一轮的 g1 摘要与新结果比对，不一致就失败。
+  // 默认每次运行写新目录；显式 --out 时由调用方负责「新目录」，但 runId 仍会防止复用旧结果。
+  const outDir = args.out ?? join(HERE, 'out', 'runs', runId);
+  mkdirSync(outDir, { recursive: true });
+  const freshDir = !existsSync(join(outDir, 'summary.json'));
+
+  // --verify 的确定性检查：拿上一次的 g1 摘要与新结果比对。
+  const lastDigestPath = join(HERE, 'out', 'last-g1-digest.json');
   let previousDigest = null;
-  if (args.verify) {
-    const previousPath = join(outDir, 'g1.json');
-    if (existsSync(previousPath)) {
-      try {
-        previousDigest = JSON.parse(readFileSync(previousPath, 'utf8')).observationDigest ?? null;
-      } catch {
-        previousDigest = null;
-      }
+  if (args.verify && existsSync(lastDigestPath)) {
+    try {
+      previousDigest = JSON.parse(readFileSync(lastDigestPath, 'utf8')).digest ?? null;
+    } catch {
+      previousDigest = null;
     }
   }
 
+  const startedAt = new Date().toISOString();
   const suiteReports = selectedSuites.map((suite) => runSuite(suite, outDir));
-  const gateReports = selectedGates.map((gate) => runGate(gate, outDir));
+  const gateReports = selectedGates.map((gate) => runGate(gate, outDir, identity));
+  const finishedAt = new Date().toISOString();
 
   let determinism = { checked: false, previousDigest, currentDigest: null, equal: null };
   if (args.verify) {
@@ -234,16 +326,26 @@ function main() {
       currentDigest,
       equal: previousDigest !== null && currentDigest !== null ? previousDigest === currentDigest : null,
     };
+    if (currentDigest !== null) {
+      mkdirSync(dirname(lastDigestPath), { recursive: true });
+      writeFileSync(lastDigestPath, `${JSON.stringify({ digest: currentDigest, runId, at: finishedAt }, null, 2)}\n`, 'utf8');
+    }
   }
 
   const summary = {
     schemaVersion: 'memory-run/v1',
-    generatedAt: new Date().toISOString(),
+    runId,
+    sourceCommit: identity.sourceCommit,
+    sourceCommitSource: source.source,
+    startedAt,
+    finishedAt,
     node: process.version,
     platform: `${process.platform} ${process.arch}`,
     gitHead: gitHead(),
     dirtyExperimentFiles: gitDirty(),
     mode: args.verify ? 'verify' : 'run',
+    outDir,
+    freshDir,
     suites: suiteReports,
     gates: gateReports,
     determinism,
@@ -253,7 +355,6 @@ function main() {
   writeFileSync(join(outDir, 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`, 'utf8');
 
   // 结果清单：只对本次实际生成的产物算 hash，避免把本文件自身算进去。
-  const resultsDir = outDir;
   const artifacts = [];
   const walk = (dir) => {
     for (const name of readdirSync(dir).sort()) {
@@ -265,11 +366,11 @@ function main() {
         continue;
       }
       if (name === 'SHA256SUMS.txt') continue;
-      artifacts.push({ file: relative(resultsDir, path), bytes: stat.size, sha256: sha256File(path) });
+      artifacts.push({ file: relative(outDir, path), bytes: stat.size, sha256: sha256File(path) });
     }
   };
-  walk(resultsDir);
-  writeFileSync(join(outDir, 'artifacts.json'), `${JSON.stringify({ generatedAt: new Date().toISOString(), artifacts }, null, 2)}\n`, 'utf8');
+  walk(outDir);
+  writeFileSync(join(outDir, 'artifacts.json'), `${JSON.stringify({ generatedAt: finishedAt, runId, artifacts }, null, 2)}\n`, 'utf8');
   writeFileSync(
     join(outDir, 'SHA256SUMS.txt'),
     `${artifacts.filter((item) => item.file !== 'SHA256SUMS.txt').map((item) => `${item.sha256}  ${item.file}`).join('\n')}\n`,
@@ -282,7 +383,8 @@ function main() {
     process.stdout.write(`${item.id.padEnd(width)}  ${String(item.status).padEnd(8)}${tests}${item.reason === undefined ? '' : ` ${item.reason}`}\n`);
   }
   for (const item of gateReports) {
-    process.stdout.write(`${item.id.padEnd(width)}  ${String(item.status).padEnd(8)}${item.reason === undefined ? '' : ` ${item.reason}`}${item.stdout === undefined ? '' : ` ${item.stdout}`}\n`);
+    const reasons = item.verification?.reasons?.length ? ` {${item.verification.reasons.join(',')}}` : '';
+    process.stdout.write(`${item.id.padEnd(width)}  ${String(item.status).padEnd(8)}${item.reason === undefined ? '' : ` ${item.reason}`}${item.stdout === undefined ? '' : ` ${item.stdout}`}${reasons}\n`);
   }
 
   const failed = [...suiteReports, ...gateReports].filter((item) => item.status === 'fail');
@@ -290,9 +392,10 @@ function main() {
   if (determinism.checked) {
     process.stdout.write(`determinism ${determinism.equal ? 'OK' : 'DIFF'}\n`);
   } else if (args.verify) {
-    process.stdout.write('determinism not checked (no previous g1.json)\n');
+    process.stdout.write('determinism not checked (no previous digest)\n');
   }
-  process.stdout.write(`\nresults: ${relative(REPO_ROOT, outDir)}\n`);
+  process.stdout.write(`\nrun ${runId}  source ${identity.sourceCommit} (${source.source})\n`);
+  process.stdout.write(`results: ${relative(REPO_ROOT, outDir)}\n`);
   if (notRun.length > 0) process.stdout.write(`not_run: ${notRun.map((item) => item.id).join(', ')}\n`);
   if (determinism.checked && determinism.equal === false) return 1;
   return failed.length === 0 ? 0 : 1;

@@ -20,6 +20,8 @@ export const DEV_EXPECTATIONS_PATH = join(HERE, 'expected', 'dev.json');
 /** 新模板集轨迹目录与独立期望。 */
 export const NEW_TRACKS_DIR = join(HERE, '..', 'cases', 'new');
 export const NEW_EXPECTATIONS_PATH = join(HERE, 'expected', 'new.json');
+/** 派生笔记用例目录：只服务泄漏审计与依赖图回归，不并入开发集基线。 */
+export const DERIVED_TRACKS_DIR = join(HERE, '..', 'cases', 'derived');
 
 /** 读取开发集全部轨迹（按文件名排序，保证可复现）。 */
 export function loadDevTracks(dir = DEV_TRACKS_DIR): TrackFile[] {

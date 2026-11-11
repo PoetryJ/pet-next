@@ -245,7 +245,8 @@ function materialize(pair, flip) {
     note: '新模板输入轨迹；期望标签在 eval/expected/new.json，跑之前已冻结。',
     events,
     patches: raw.patches.map((spec, index) => ({
-      patchId: `${trackId}-p${index + 1}`,
+      // 补丁 id 不嵌轨迹名：名字属于评分标签，不能出现在策略可见状态里。
+      patchId: `p${index + 1}`,
       buildAtSequence: spec.buildAtSequence,
       applyAtSequence: spec.applyAtSequence ?? null,
       reusePriorOpId: spec.reusePriorOpId ?? null,
