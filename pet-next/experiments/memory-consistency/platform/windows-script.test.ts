@@ -18,11 +18,13 @@ const raw = readFileSync(join(HERE, 'windows-r1.ps1'));
 const text = raw.toString('utf8');
 
 describe('Windows 脚本契约（静态）', () => {
-  test('UTF-8 BOM + CRLF：Windows PowerShell 5 才能正确解析中文', () => {
+  test('UTF-8 BOM：Windows PowerShell 5 才不会把中文字符串解析坏', () => {
     assert.equal(raw[0], 0xef);
     assert.equal(raw[1], 0xbb);
     assert.equal(raw[2], 0xbf);
-    assert.ok(raw.includes(Buffer.from('\r\n')), '必须是 CRLF');
+    // 换行由 .gitattributes 保证（仓库内存 LF，checkout 到 Windows 变 CRLF）。
+    const attrs = readFileSync(join(HERE, '.gitattributes'), 'utf8');
+    assert.match(attrs, /\*\.ps1 text eol=crlf/);
   });
 
   test('用 $PSScriptRoot 定位仓库根，不依赖调用目录', () => {
