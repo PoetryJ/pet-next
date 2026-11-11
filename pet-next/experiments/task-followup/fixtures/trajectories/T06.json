@@ -1,0 +1,77 @@
+{
+  "id": "T06",
+  "group": "dev",
+  "name": "崩溃恢复：重启后同一委托继续",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "variants": [
+    {
+      "id": "a",
+      "steps": [
+        {
+          "kind": "delegate",
+          "title": "跟进 E17 恢复",
+          "goal": "重启后回答",
+          "at": "2026-11-11T08:00:00.000Z"
+        },
+        {
+          "kind": "artifact",
+          "experimentId": "E17",
+          "runId": "run-01",
+          "revision": 1,
+          "status": "partial",
+          "total": 40,
+          "passed": 29,
+          "failed": 11,
+          "at": "2026-11-11T08:10:00.000Z"
+        },
+        {
+          "kind": "restart",
+          "at": "2026-11-11T08:11:00.000Z"
+        },
+        {
+          "kind": "answer",
+          "option": "auto",
+          "at": "2026-11-11T08:12:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "steps": [
+        {
+          "kind": "delegate",
+          "title": "跟进 E17 恢复两次",
+          "goal": "多次重启",
+          "at": "2026-11-11T08:00:00.000Z"
+        },
+        {
+          "kind": "restart",
+          "at": "2026-11-11T08:01:00.000Z"
+        },
+        {
+          "kind": "artifact",
+          "experimentId": "E17",
+          "runId": "run-01",
+          "revision": 1,
+          "status": "partial",
+          "total": 40,
+          "passed": 29,
+          "failed": 11,
+          "at": "2026-11-11T08:10:00.000Z"
+        },
+        {
+          "kind": "restart",
+          "at": "2026-11-11T08:11:00.000Z"
+        },
+        {
+          "kind": "answer",
+          "option": "auto",
+          "at": "2026-11-11T08:12:00.000Z"
+        }
+      ]
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

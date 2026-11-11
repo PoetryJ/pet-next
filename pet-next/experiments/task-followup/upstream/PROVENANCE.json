@@ -1,0 +1,25 @@
+{
+  "upstreamRepository": "https://github.com/deepseek-ai/dsh-superagent-prototype",
+  "upstreamCommit": "8c32a9dc5d72c033816c6a8110b37f40cf94fba4",
+  "license": "MIT",
+  "licenseFile": "LICENSE",
+  "licenseSha256": "6d66f91815b720e18cfb2b3552043a0359236aec9a1a6917787900546f6ce550",
+  "vendoredFiles": {
+    "assignments.ts": "6acf4b858b35d95c875680e39b1e3c41557bbe6d39f65031bb26927289327065",
+    "engine.ts": "bd9a4caff834859877d1a08ccddebc990d0e1ca568674b80f9d59ce5adcac827",
+    "errors.ts": "aa7532a2d1f8c443608683ef1231bf3d81b842f67a87d9b77742b5c76d515009",
+    "evals.ts": "38916de24ec6e1a27118dd5d7a7efa67bf7a2dfdbab26fb59d377516269e2fc8",
+    "ids.ts": "bc4bc6fd43ea1377087ff2815706c57f0200666aeb4a7711a40489c377f141ab",
+    "index.ts": "a5a1cf43f02eafaf520a5bfaf5e76b71ba521d04ee648cfcf12b3843cc474a3e",
+    "intake.ts": "323aadefea69436ba23ed2de3bdbaad673d61915be9e239f3233ecf551a74179",
+    "memory.ts": "36cefca987a4e533369a414e52e3fb4754945ae942bb021f8e5cf23c186cf536",
+    "model.ts": "982155fe6a03c887a7ac4475c6d1592d12aa23c5fe3698403c93bbfd6469d44a",
+    "part.ts": "437c4f4bcc05e836c056cdb45bbf451e55242d62b602b489f4df902be112e73e",
+    "ports.ts": "0b44f1cd716d64776b0e3ea74a158cf0effd92e763b1b13c7705e766e9225a43",
+    "reasons.ts": "dc29e0c3c52e4ffd6e8f27a618cbe704a83fdbd9c5a1b99a1e0c4184d5c33af4",
+    "replies.ts": "5a8821a1b9d951d2255709543e0be762c6d3204bca07a77ff17c7bfe82ba66f4",
+    "stage.ts": "b935012a654d2a68ca20cb27909ddc8dceafb704b56a16a23a08036a546141df",
+    "tickets.ts": "1d9f964ad34b54cbb0403bde16af58851e5e80111177ce73a27b6034e9af940e"
+  },
+  "note": "15 个 src/core 文件字节不改；本目录 tests/ 与 vitest.config.ts 为原样副本，只用于回归。"
+}

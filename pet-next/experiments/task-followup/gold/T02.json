@@ -1,0 +1,11 @@
+{
+  "trajectoryId": "T02",
+  "variants": {
+    "a": {
+      "mustComplete": false,
+      "requiredDecisions": [],
+      "maxNotifications": 0,
+      "expectedStatus": "active"
+    }
+  }
+}

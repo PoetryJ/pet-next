@@ -1,0 +1,14 @@
+{
+  "trajectoryId": "T10",
+  "variants": {
+    "a": {
+      "mustComplete": true,
+      "requiredDecisions": [
+        "insufficient_result",
+        "tool_failed"
+      ],
+      "maxNotifications": 2,
+      "expectedStatus": "completed"
+    }
+  }
+}

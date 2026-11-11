@@ -1,0 +1,27 @@
+{
+  "id": "T13",
+  "group": "heldout",
+  "name": "无关事件：别的实验落盘不打扰",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进 E17 无关",
+      "goal": "只观察本任务",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "unrelated",
+      "experimentId": "E18",
+      "at": "2026-11-11T08:10:00.000Z"
+    },
+    {
+      "kind": "tick",
+      "minutes": 30,
+      "at": "2026-11-11T08:40:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

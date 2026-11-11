@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>桌宠持续跟进 · R4 离线原型</title>
+<style>
+  :root {
+    --bg: #0f1217; --panel: #161b23; --line: #242c38; --text: #e6ebf2; --muted: #8b97a8;
+    --accent: #5ec8b0; --warn: #e0b25a; --bad: #e07a7a; --good: #6cc58a;
+  }
+  * { box-sizing: border-box; }
+  body { margin: 0; background: var(--bg); color: var(--text); font: 14px/1.55 "SF Sans", "Noto Sans SC", system-ui, sans-serif; }
+  header { display: flex; align-items: baseline; gap: 12px; padding: 16px 22px; border-bottom: 1px solid var(--line); }
+  header h1 { font-size: 16px; margin: 0; font-weight: 600; letter-spacing: .3px; }
+  .chip { font-size: 12px; color: var(--accent); border: 1px solid #2c4a46; background: #12211f; border-radius: 999px; padding: 2px 9px; }
+  .muted { color: var(--muted); font-size: 12px; }
+  main { display: grid; grid-template-columns: 280px 1fr 340px; gap: 0; min-height: calc(100vh - 57px); }
+  .col { padding: 16px 18px; border-right: 1px solid var(--line); overflow: auto; max-height: calc(100vh - 57px); }
+  .col:last-child { border-right: none; }
+  h2 { font-size: 12px; text-transform: uppercase; letter-spacing: .12em; color: var(--muted); margin: 4px 0 10px; }
+  .task { padding: 10px 11px; border: 1px solid var(--line); border-radius: 7px; margin-bottom: 8px; cursor: pointer; background: #131820; }
+  .task.active { border-color: #35645b; background: #14201f; }
+  .task .t { font-weight: 600; margin-bottom: 4px; }
+  .badge { display: inline-block; font-size: 11px; padding: 1px 7px; border-radius: 4px; border: 1px solid var(--line); color: var(--muted); }
+  .badge.awaiting_result { color: var(--warn); border-color: #4a3d22; }
+  .badge.awaiting_decision { color: #7fb6ff; border-color: #2a3f5c; }
+  .badge.analyzing { color: var(--accent); border-color: #2c4a46; }
+  .badge.completed { color: var(--good); border-color: #2c4a32; }
+  .badge.cancelled, .badge.failed { color: var(--bad); border-color: #4a2c2c; }
+  .card { border: 1px solid var(--line); border-radius: 8px; padding: 12px 14px; margin-bottom: 12px; background: var(--panel); }
+  .card h3 { margin: 0 0 8px; font-size: 13px; color: var(--muted); font-weight: 600; }
+  .kv { display: grid; grid-template-columns: 92px 1fr; gap: 4px 10px; font-size: 13px; }
+  .kv div:nth-child(odd) { color: var(--muted); }
+  code, .mono { font-family: "SF Mono", "JetBrains Mono", ui-monospace, monospace; font-size: 12px; word-break: break-all; }
+  .question { border-color: #2a3f5c; background: #131a24; }
+  .question p { margin: 0 0 10px; }
+  .options { display: flex; flex-wrap: wrap; gap: 8px; }
+  button { background: #1d2530; color: var(--text); border: 1px solid #2e3a4a; border-radius: 6px; padding: 6px 11px; font-size: 13px; cursor: pointer; }
+  button:hover { border-color: var(--accent); color: var(--accent); }
+  button.primary { background: #17302c; border-color: #2c4a46; color: var(--accent); }
+  button:disabled { opacity: .45; cursor: default; }
+  input, select { width: 100%; background: #10151c; color: var(--text); border: 1px solid #2a3341; border-radius: 6px; padding: 6px 8px; font-size: 13px; }
+  form .row { margin-bottom: 8px; }
+  label { display: block; font-size: 12px; color: var(--muted); margin-bottom: 3px; }
+  .empty { color: var(--muted); font-size: 13px; }
+  .ok { color: var(--good); }
+  .bad { color: var(--bad); }
+  details summary { cursor: pointer; color: var(--muted); font-size: 12px; }
+  .toast { position: fixed; right: 18px; bottom: 18px; background: #1b232e; border: 1px solid #33404f; padding: 9px 13px; border-radius: 7px; font-size: 13px; max-width: 420px; }
+  .hint { font-size: 12px; color: var(--muted); margin-top: 6px; }
+</style>
+</head>
+<body>
+<header>
+  <h1>桌宠持续跟进</h1>
+  <span class="chip" id="policy">P3 · scripted-rule</span>
+  <span class="muted" id="now"></span>
+  <span class="muted" style="margin-left:auto">离线规则原型：不调用模型、不联网、所有状态来自后端 SQLite</span>
+</header>
+<main>
+  <section class="col">
+    <h2>长期委托</h2>
+    <div id="tasks"></div>
+    <h2 style="margin-top:18px">新建委托</h2>
+    <form id="delegate">
+      <div class="row"><label>标题</label><input name="title" value="跟进实验 E17，结果出来后提出下一步" /></div>
+      <div class="row"><label>目标</label><input name="goal" value="E17 结果不足时分析失败样本并给出可核验产物" /></div>
+      <div class="row"><button class="primary" type="submit">创建</button></div>
+    </form>
+    <h2 style="margin-top:18px">本地事件</h2>
+    <form id="seed">
+      <div class="row"><label>实验</label><input name="experimentId" value="E17" /></div>
+      <div class="row"><label>状态</label>
+        <select name="status"><option value="partial">partial</option><option value="failed">failed</option><option value="succeeded">succeeded</option></select>
+      </div>
+      <div class="row"><label>revision</label><input name="revision" value="1" /></div>
+      <div class="row"><label>失败数 / 总数</label><input name="failed" value="11" /></div>
+      <div class="row"><button type="submit">写入 result.json</button></div>
+      <div class="hint">写到受控工作区 inbox/，再点“扫描 inbox”。</div>
+    </form>
+    <div style="display:flex; gap:8px; margin-top:10px">
+      <button id="scan">扫描 inbox</button>
+      <button id="recover">恢复</button>
+    </div>
+  </section>
+
+  <section class="col" id="detail">
+    <div class="empty">还没有委托。先在左侧创建。</div>
+  </section>
+
+  <section class="col">
+    <h2>当前任务状态</h2>
+    <div id="side" class="empty">无</div>
+    <h2 style="margin-top:18px">通知队列</h2>
+    <div id="notifications" class="empty">无</div>
+    <h2 style="margin-top:18px">操作</h2>
+    <form id="change">
+      <div class="row"><label>更正目标</label><input name="goal" placeholder="新的目标或约束" /></div>
+      <div class="row"><button type="submit">提交更正</button></div>
+    </form>
+    <div style="margin-top:8px"><button id="cancel">取消任务</button></div>
+    <div class="hint" style="margin-top:14px">
+      本页只读 <code>/api/state</code>；回答与创建都经 runtime 持久化。
+      静默时段与提醒额度来自显式配置，不从行为推断偏好。
+    </div>
+  </section>
+</main>
+<div id="toast" class="toast" style="display:none"></div>
+
+<script>
+const state = { selected: null, data: null };
+const $ = (id) => document.getElementById(id);
+const esc = (v) => String(v ?? '').replace(/[&<>"]/g, (c) => ({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const short = (v) => v ? String(v).slice(0, 12) : '—';
+function toast(text) {
+  const el = $('toast'); el.textContent = text; el.style.display = 'block';
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => { el.style.display = 'none'; }, 3200);
+}
+async function api(path, body) {
+  const res = await fetch(path, body ? { method: 'POST', headers: { 'content-type': 'application/json' }, body: JSON.stringify(body) } : {});
+  const json = await res.json();
+  if (!json.ok) toast(json.error || json.result?.detail || '操作失败');
+  return json;
+}
+async function refresh() {
+  const url = state.selected ? `/api/state?ticket=${encodeURIComponent(state.selected)}` : '/api/state';
+  const data = await (await fetch(url)).json();
+  state.data = data;
+  if (!state.selected && data.tasks.length) state.selected = data.tasks[0].ticketId;
+  render();
+}
+function render() {
+  const data = state.data;
+  if (!data) return;
+  $('policy').textContent = `${data.policy} · ${data.implementation}`;
+  $('now').textContent = `注入时钟 ${data.now}`;
+  $('tasks').innerHTML = data.tasks.length ? data.tasks.map((t) => `
+    <div class="task ${t.ticketId === state.selected ? 'active' : ''}" data-id="${t.ticketId}">
+      <div class="t">${esc(t.title)}</div>
+      <span class="badge ${esc(t.stage)}">${esc(t.stage)}</span>
+      <span class="muted">r${t.taskRevision}</span>
+    </div>`).join('') : '<div class="empty">无委托</div>';
+  document.querySelectorAll('.task').forEach((el) => el.onclick = () => { state.selected = el.dataset.id; refresh(); });
+  const ex = data.selected;
+  if (!ex) { $('detail').innerHTML = '<div class="empty">还没有委托。</div>'; $('side').innerHTML = '<div class="empty">无</div>'; return; }
+  const t = ex.task;
+  const att = t.openAttention;
+  const ticket = ex.upstream.ticket;
+  $('detail').innerHTML = `
+    <h2>${esc(t.title)}</h2>
+    <div class="card">
+      <div class="kv">
+        <div>目标</div><div>${esc(t.goal)}</div>
+        <div>阶段</div><div><span class="badge ${esc(t.stage)}">${esc(t.stage)}</span> <span class="muted">r${t.taskRevision} · ${esc(t.status)}</span></div>
+        <div>委托</div><div class="mono">${esc(ex.ticketId)}</div>
+        <div>assignment</div><div class="mono">${esc(short(t.assignmentId))}</div>
+        <div>上游 ticket</div><div>${ticket.ended ? `已结束：${esc(ticket.ended.outcome)}` : '进行中'} · ${ticket.attention ? '上游有开放问题' : '上游无开放问题'}</div>
+      </div>
+    </div>
+    ${att ? `<div class="card question">
+      <h3>需要你选择</h3>
+      <p>${esc(att.question)}</p>
+      <div class="options">${att.options.map((o) => `<button data-option="${esc(o.id)}">${esc(o.label)}</button>`).join('')}</div>
+      <div class="hint mono">attention ${esc(short(att.attentionId))} · 绑定 r${att.taskRevision} · 证据 ${att.evidenceRefs.length} 条</div>
+    </div>` : ''}
+    ${t.result ? `<div class="card">
+      <h3>最近结果</h3>
+      <div class="kv">
+        <div>run</div><div class="mono">${esc(t.result.runId)} r${t.result.revision}</div>
+        <div>状态</div><div>${esc(t.result.status)}</div>
+        <div>指标</div><div>${t.result.metrics.failed}/${t.result.metrics.total} 失败 · score ${t.result.metrics.score ?? '—'}</div>
+        <div>产物</div><div class="mono">${esc(t.result.artifactPath || '—')}</div>
+        <div>SHA</div><div class="mono">${esc(short(t.result.artifactSha))}</div>
+        <div>结果文件</div><div class="mono">${esc(t.result.resultPath || '—')} · ${esc(short(t.result.resultFileSha))}</div>
+      </div>
+    </div>` : '<div class="card"><h3>最近结果</h3><div class="empty">还没有结果，任务在等待（关掉面板也仍在）。</div></div>'}
+    ${t.analysis ? `<div class="card">
+      <h3>已核验产物</h3>
+      <div class="kv">
+        <div>分析文件</div><div class="mono">${esc(t.analysis.artifactPath)}</div>
+        <div>SHA</div><div class="mono">${esc(t.analysis.artifactSha)}</div>
+        <div>回执</div><div class="mono">${esc(t.analysis.receiptId)}</div>
+      </div>
+    </div>` : ''}
+    ${t.completion ? `<div class="card"><h3>完成依据</h3>
+      <div class="kv"><div>时间</div><div>${esc(t.completion.at)}</div>
+      <div>核对路径</div><div class="mono">${t.completion.checkedPaths.map(esc).join('<br>')}</div></div></div>` : ''}
+    <details class="card"><summary>证据与决策记录（${ex.decisions.length} 条提案 / ${ex.receipts.length} 条回执）</summary>
+      <div class="mono" style="margin-top:8px">${ex.decisions.slice(-8).map((d) => `${esc(d.createdAt)} ${esc(d.kind)} ${esc(d.decisionKey)} → ${esc(d.outcome)}`).join('<br>') || '无'}</div>
+      <div class="mono" style="margin-top:8px">${ex.receipts.map((r) => `${esc(r.tool)} ok=${r.ok} ${esc(short(r.outputSha256))} ${esc(r.outputPath || '')}`).join('<br>') || '无回执'}</div>
+    </details>
+    <details class="card"><summary>诊断</summary><div class="mono" style="margin-top:8px">${t.diagnostics.map(esc).join('<br>') || '无'}</div></details>
+  `;
+  document.querySelectorAll('[data-option]').forEach((el) => el.onclick = async () => {
+    el.disabled = true;
+    const res = await api('/api/answer', { ticketId: t.ticketId, attentionId: att.attentionId, taskRevision: att.taskRevision, optionId: el.dataset.option });
+    toast(res.ok ? '已记录选择并推进任务' : '回答被拒绝（可能已过期）');
+    await refresh();
+  });
+  $('side').innerHTML = `<div class="card"><div class="kv">
+    <div>阶段</div><div>${esc(t.stage)}</div>
+    <div>事件游标</div><div>${t.eventCursor}</div>
+    <div>记忆游标</div><div>${t.memoryCursor}</div>
+    <div>尝试</div><div>${t.attempt}</div>
+    <div>最近提案</div><div>${t.lastProposal ? esc(t.lastProposal.kind) + ' · ' + esc(t.lastProposal.outcome) : '—'}</div>
+    <div>目标满足</div><div>${t.completion ? '<span class="ok">是（有回执与 SHA）</span>' : '否'}</div>
+    <div>诊断</div><div class="mono">${t.diagnostics.slice(-2).map(esc).join('<br>') || '无'}</div>
+  </div></div>`;
+  $('notifications').innerHTML = ex ? (data.notifications.length
+    ? data.notifications.slice(-6).reverse().map((n) => `<div class="card" style="margin-bottom:6px"><div class="mono">${esc(n.createdAt)}</div>${esc(n.text)}</div>`).join('')
+    : '<div class="empty">没有主动提醒（可能处于静默或没有新决定）</div>') : '<div class="empty">无</div>';
+}
+$('delegate').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const res = await api('/api/delegate', { title: f.get('title'), goal: f.get('goal') });
+  if (res.ok) { state.selected = res.ticketId; toast('委托已创建并持久化'); }
+  await refresh();
+};
+$('seed').onsubmit = async (e) => {
+  e.preventDefault();
+  const f = new FormData(e.target);
+  const res = await api('/api/seed', {
+    experimentId: f.get('experimentId'), status: f.get('status'), revision: Number(f.get('revision')),
+    failed: Number(f.get('failed')), total: 40, passed: 40 - Number(f.get('failed')),
+  });
+  if (res.ok) toast('result.json 已原子写入 inbox');
+  await refresh();
+};
+$('scan').onclick = async () => {
+  if (!state.selected) return toast('先创建委托');
+  const res = await api('/api/scan', { ticketId: state.selected, experimentId: 'E17' });
+  if (res.ok) toast(`扫描完成：${res.findings.map((f) => f.status).join(', ') || '没有文件'}`);
+  await refresh();
+};
+$('recover').onclick = async () => { const res = await api('/api/recover', {}); toast(res.ok ? '恢复完成' : '恢复失败'); await refresh(); };
+$('change').onsubmit = async (e) => {
+  e.preventDefault();
+  if (!state.selected) return toast('先创建委托');
+  const goal = new FormData(e.target).get('goal');
+  if (!goal) return toast('填写新目标');
+  const res = await api('/api/change', { ticketId: state.selected, goal });
+  toast(res.ok ? `目标已更正为 r${res.taskRevision}，旧提案失效` : '更正被拒绝');
+  await refresh();
+};
+$('cancel').onclick = async () => {
+  if (!state.selected) return toast('先创建委托');
+  const res = await api('/api/cancel', { ticketId: state.selected, reason: 'panel cancel' });
+  toast(res.ok ? '任务已取消；取消后到达的结果只留档' : '取消失败');
+  await refresh();
+};
+refresh();
+setInterval(refresh, 1500);
+</script>
+</body>
+</html>

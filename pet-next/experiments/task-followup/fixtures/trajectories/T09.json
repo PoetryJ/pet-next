@@ -1,0 +1,48 @@
+{
+  "id": "T09",
+  "group": "heldout",
+  "name": "旧问题回答：stale_answer 不推进新任务",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进 E17 旧问题",
+      "goal": "旧回答不解锁",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 29,
+      "failed": 11,
+      "at": "2026-11-11T08:10:00.000Z"
+    },
+    {
+      "kind": "change",
+      "goal": "改为只统计失败聚类，不再跑全量",
+      "at": "2026-11-11T08:15:00.000Z"
+    },
+    {
+      "kind": "answer",
+      "option": "stale",
+      "at": "2026-11-11T08:16:00.000Z"
+    },
+    {
+      "kind": "tick",
+      "minutes": 5,
+      "at": "2026-11-11T08:21:00.000Z"
+    },
+    {
+      "kind": "answer",
+      "option": "auto",
+      "at": "2026-11-11T08:22:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

@@ -1,0 +1,38 @@
+{
+  "id": "T05",
+  "group": "dev",
+  "name": "取消后迟到结果：只留档，不产生行动",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进 E17 取消",
+      "goal": "取消测试",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "cancel",
+      "reason": "fixture cancel",
+      "at": "2026-11-11T08:05:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 29,
+      "failed": 11,
+      "at": "2026-11-11T08:10:00.000Z"
+    },
+    {
+      "kind": "tick",
+      "minutes": 30,
+      "at": "2026-11-11T08:40:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

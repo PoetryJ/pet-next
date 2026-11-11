@@ -1,0 +1,33 @@
+{
+  "id": "T12",
+  "group": "heldout",
+  "name": "真实回执完成：读产物与 SHA",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进 E17 回执",
+      "goal": "回执驱动完成",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 29,
+      "failed": 11,
+      "at": "2026-11-11T08:10:00.000Z"
+    },
+    {
+      "kind": "answer",
+      "option": "auto",
+      "at": "2026-11-11T08:12:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

@@ -1,0 +1,51 @@
+{
+  "id": "T10",
+  "group": "heldout",
+  "name": "工具失败：记录失败，不自动重试",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进 E17 失败无重试",
+      "goal": "失败留待明确下一步",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 29,
+      "failed": 11,
+      "at": "2026-11-11T08:10:00.000Z"
+    },
+    {
+      "kind": "deleteResult",
+      "at": "2026-11-11T08:12:00.000Z"
+    },
+    {
+      "kind": "answer",
+      "option": "auto",
+      "at": "2026-11-11T08:13:00.000Z"
+    },
+    {
+      "kind": "tick",
+      "minutes": 5,
+      "at": "2026-11-11T08:18:00.000Z"
+    },
+    {
+      "kind": "restoreResult",
+      "at": "2026-11-11T08:20:00.000Z"
+    },
+    {
+      "kind": "answer",
+      "option": "retry_analysis",
+      "at": "2026-11-11T08:22:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

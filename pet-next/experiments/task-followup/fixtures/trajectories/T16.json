@@ -1,0 +1,61 @@
+{
+  "id": "T16",
+  "group": "heldout",
+  "name": "证据冲突：同 revision 不同 SHA 需具体问题",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进 E17 冲突",
+      "goal": "冲突要具体选择",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 29,
+      "failed": 11,
+      "at": "2026-11-11T08:10:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 31,
+      "failed": 9,
+      "at": "2026-11-11T08:11:00.000Z",
+      "contentSalt": "conflict"
+    },
+    {
+      "kind": "answer",
+      "option": "keep_current",
+      "at": "2026-11-11T08:12:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 2,
+      "status": "partial",
+      "total": 40,
+      "passed": 35,
+      "failed": 5,
+      "at": "2026-11-11T08:20:00.000Z"
+    },
+    {
+      "kind": "answer",
+      "option": "auto",
+      "at": "2026-11-11T08:21:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

@@ -1,0 +1,13 @@
+{
+  "trajectoryId": "T11",
+  "variants": {
+    "a": {
+      "mustComplete": false,
+      "requiredDecisions": [
+        "insufficient_result"
+      ],
+      "maxNotifications": 1,
+      "expectedStatus": "active"
+    }
+  }
+}

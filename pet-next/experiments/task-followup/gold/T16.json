@@ -1,0 +1,14 @@
+{
+  "trajectoryId": "T16",
+  "variants": {
+    "a": {
+      "mustComplete": true,
+      "requiredDecisions": [
+        "evidence_conflict",
+        "insufficient_result"
+      ],
+      "maxNotifications": 2,
+      "expectedStatus": "completed"
+    }
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "id": "T02",
+  "group": "dev",
+  "name": "无结果等待：保留待办，不打扰",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进实验 E21",
+      "goal": "等 E21 结果",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "tick",
+      "minutes": 60,
+      "at": "2026-11-11T09:00:00.000Z"
+    },
+    {
+      "kind": "tick",
+      "minutes": 240,
+      "at": "2026-11-11T13:00:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

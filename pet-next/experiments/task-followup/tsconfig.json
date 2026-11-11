@@ -1,0 +1,34 @@
+{
+  "compilerOptions": {
+    "target": "ES2023",
+    "lib": [
+      "ES2023"
+    ],
+    "module": "NodeNext",
+    "moduleResolution": "NodeNext",
+    "strict": true,
+    "noEmit": true,
+    "allowImportingTsExtensions": true,
+    "skipLibCheck": true,
+    "forceConsistentCasingInFileNames": true,
+    "types": [
+      "node"
+    ],
+    "typeRoots": [
+      "./tooling/node_modules/@types"
+    ]
+  },
+  "include": [
+    "contracts.ts",
+    "paths.ts",
+    "runtime/**/*.ts",
+    "memory-bridge/**/*.ts",
+    "attention/**/*.ts",
+    "decision/**/*.ts",
+    "tools/**/*.ts",
+    "eval/**/*.ts",
+    "cli/**/*.ts",
+    "upstream/src/core/**/*.ts",
+    "tests/**/*.ts"
+  ]
+}

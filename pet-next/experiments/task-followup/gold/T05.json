@@ -1,0 +1,11 @@
+{
+  "trajectoryId": "T05",
+  "variants": {
+    "a": {
+      "mustComplete": false,
+      "requiredDecisions": [],
+      "maxNotifications": 0,
+      "expectedStatus": "cancelled"
+    }
+  }
+}

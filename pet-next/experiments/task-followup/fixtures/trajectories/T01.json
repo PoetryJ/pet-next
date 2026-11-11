@@ -1,0 +1,33 @@
+{
+  "id": "T01",
+  "group": "dev",
+  "name": "正常结果：失败样本分析后完成",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进实验 E17",
+      "goal": "E17 结果不足时分析失败样本并给出产物",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 29,
+      "failed": 11,
+      "at": "2026-11-11T08:10:00.000Z"
+    },
+    {
+      "kind": "answer",
+      "option": "auto",
+      "at": "2026-11-11T08:12:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

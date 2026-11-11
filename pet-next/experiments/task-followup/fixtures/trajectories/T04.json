@@ -1,0 +1,100 @@
+{
+  "id": "T04",
+  "group": "dev",
+  "name": "结果更正：新 revision 覆盖，乱序旧 revision 留档",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "variants": [
+    {
+      "id": "a",
+      "steps": [
+        {
+          "kind": "delegate",
+          "title": "跟进 E17 更正",
+          "goal": "用最新 revision",
+          "at": "2026-11-11T08:00:00.000Z"
+        },
+        {
+          "kind": "artifact",
+          "experimentId": "E17",
+          "runId": "run-01",
+          "revision": 1,
+          "status": "partial",
+          "total": 40,
+          "passed": 29,
+          "failed": 11,
+          "at": "2026-11-11T08:10:00.000Z"
+        },
+        {
+          "kind": "artifact",
+          "experimentId": "E17",
+          "runId": "run-01",
+          "revision": 2,
+          "status": "partial",
+          "total": 40,
+          "passed": 35,
+          "failed": 5,
+          "at": "2026-11-11T08:20:00.000Z"
+        },
+        {
+          "kind": "artifact",
+          "experimentId": "E17",
+          "runId": "run-01",
+          "revision": 1,
+          "status": "partial",
+          "total": 40,
+          "passed": 29,
+          "failed": 11,
+          "at": "2026-11-11T08:25:00.000Z",
+          "contentSalt": "late"
+        },
+        {
+          "kind": "answer",
+          "option": "auto",
+          "at": "2026-11-11T08:30:00.000Z"
+        }
+      ]
+    },
+    {
+      "id": "b",
+      "steps": [
+        {
+          "kind": "delegate",
+          "title": "跟进 E17 乱序",
+          "goal": "旧 revision 不覆盖新值",
+          "at": "2026-11-11T08:00:00.000Z"
+        },
+        {
+          "kind": "artifact",
+          "experimentId": "E17",
+          "runId": "run-01",
+          "revision": 2,
+          "status": "partial",
+          "total": 40,
+          "passed": 35,
+          "failed": 5,
+          "at": "2026-11-11T08:10:00.000Z"
+        },
+        {
+          "kind": "artifact",
+          "experimentId": "E17",
+          "runId": "run-01",
+          "revision": 1,
+          "status": "partial",
+          "total": 40,
+          "passed": 29,
+          "failed": 11,
+          "at": "2026-11-11T08:15:00.000Z",
+          "contentSalt": "late"
+        },
+        {
+          "kind": "answer",
+          "option": "auto",
+          "at": "2026-11-11T08:20:00.000Z"
+        }
+      ]
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

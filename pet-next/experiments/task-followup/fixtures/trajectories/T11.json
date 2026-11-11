@@ -1,0 +1,37 @@
+{
+  "id": "T11",
+  "group": "heldout",
+  "name": "无产物假完成：worker 自称完成不算数",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进 E17 假完成",
+      "goal": "必须核验回执",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 29,
+      "failed": 11,
+      "at": "2026-11-11T08:10:00.000Z"
+    },
+    {
+      "kind": "fakeCompletion",
+      "at": "2026-11-11T08:12:00.000Z"
+    },
+    {
+      "kind": "tick",
+      "minutes": 10,
+      "at": "2026-11-11T08:22:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

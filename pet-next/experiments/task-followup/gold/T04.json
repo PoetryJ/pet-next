@@ -1,0 +1,21 @@
+{
+  "trajectoryId": "T04",
+  "variants": {
+    "a": {
+      "mustComplete": true,
+      "requiredDecisions": [
+        "insufficient_result"
+      ],
+      "maxNotifications": 1,
+      "expectedStatus": "completed"
+    },
+    "b": {
+      "mustComplete": true,
+      "requiredDecisions": [
+        "insufficient_result"
+      ],
+      "maxNotifications": 1,
+      "expectedStatus": "completed"
+    }
+  }
+}

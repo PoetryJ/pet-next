@@ -1,0 +1,42 @@
+{
+  "id": "T14",
+  "group": "heldout",
+  "name": "重启后已答问题不再问",
+  "clockStart": "2026-11-11T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "title": "跟进 E17 已答",
+      "goal": "重启不重复问",
+      "at": "2026-11-11T08:00:00.000Z"
+    },
+    {
+      "kind": "artifact",
+      "experimentId": "E17",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 29,
+      "failed": 11,
+      "at": "2026-11-11T08:10:00.000Z"
+    },
+    {
+      "kind": "answer",
+      "option": "auto",
+      "at": "2026-11-11T08:12:00.000Z"
+    },
+    {
+      "kind": "restart",
+      "at": "2026-11-11T08:13:00.000Z"
+    },
+    {
+      "kind": "tick",
+      "minutes": 60,
+      "at": "2026-11-11T09:13:00.000Z"
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

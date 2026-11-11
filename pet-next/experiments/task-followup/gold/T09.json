@@ -1,0 +1,13 @@
+{
+  "trajectoryId": "T09",
+  "variants": {
+    "a": {
+      "mustComplete": true,
+      "requiredDecisions": [
+        "insufficient_result"
+      ],
+      "maxNotifications": 2,
+      "expectedStatus": "completed"
+    }
+  }
+}
