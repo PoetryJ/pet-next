@@ -1,7 +1,7 @@
 {
   "schemaVersion": "shadow-expected-manifest/v1",
-  "storiesSha256": "3afd02bfc67cfe076f505a6d214f4aa51af1bb4f569105ff3cda11e5759c79bb",
-  "expectedSha256": "fe2e2d170742e79f200e2d85ade0f1eda4ec84089832b31bc0baf9b015ed6dc8",
+  "storiesSha256": "a60699192524cd8e01f33fd0f93344a426d720b02d926632af574da64edde820",
+  "expectedSha256": "f3bc5014c19dba79f3a730ac44c4ab06c71b108193d0f5079b9c7e7ba722f814",
   "count": 8,
   "budget": {
     "utf16": 4000,

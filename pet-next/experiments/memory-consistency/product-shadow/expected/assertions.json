@@ -4,9 +4,20 @@
   "note": "先冻结本文件与 stories.json 的 sha256，再运行；结果不能回改。",
   "assertions": {
     "S1": {
-      "title": "偏好在多轮后被短历史淘汰，重新提问仍需要该证据",
+      "title": "偏好经真实会话写入后，被产品四轮短历史淘汰，重新提问仍需要长程证据",
       "question": "我周报想要什么格式来着？",
       "expect": {
+        "finalTurnIndex": 5,
+        "finalQuestion": "我周报想要什么格式来着？",
+        "turnMustIncludeText": [
+          {
+            "turnIndex": 1,
+            "text": "周报要中文，先给草稿。"
+          }
+        ],
+        "finalHistoryMustExcludeText": [
+          "周报要中文，先给草稿。"
+        ],
         "mustIncludeSourceIds": [
           "e1"
         ],
@@ -27,6 +38,8 @@
       "title": "偏好被明确更正，旧值不能作为当前有效记忆",
       "question": "周报现在怎么发？",
       "expect": {
+        "finalTurnIndex": 1,
+        "finalQuestion": "周报现在怎么发？",
         "mustIncludeSourceIds": [
           "e2"
         ],
@@ -51,6 +64,8 @@
       "title": "待办被撤销，旧 active 承诺不得重新注入",
       "question": "周报任务现在什么状态？",
       "expect": {
+        "finalTurnIndex": 1,
+        "finalQuestion": "周报任务现在什么状态？",
         "mustIncludeSourceIds": [
           "e3"
         ],
@@ -75,6 +90,8 @@
       "title": "无关偏好更正不误伤另一条仍有效的事实",
       "question": "周报要什么格式？",
       "expect": {
+        "finalTurnIndex": 1,
+        "finalQuestion": "周报要什么格式？",
         "mustIncludeSourceIds": [
           "e1"
         ],
@@ -97,6 +114,8 @@
       "title": "reset/new session 与 store 关闭重开：长程记忆恢复、epoch 隔离",
       "question": "我偏好用什么语言？",
       "expect": {
+        "finalTurnIndex": 1,
+        "finalQuestion": "我偏好用什么语言？",
         "mustIncludeSourceIds": [
           "e1"
         ],
@@ -117,6 +136,8 @@
       "title": "旧笔记补丁在更正后迟到：被拒且最终请求不得使用旧笔记",
       "question": "周报怎么发？",
       "expect": {
+        "finalTurnIndex": 1,
+        "finalQuestion": "周报怎么发？",
         "mustIncludeSourceIds": [
           "e2"
         ],
@@ -138,9 +159,17 @@
       }
     },
     "S7": {
-      "title": "请求被取消：不能推导用户已确认，迟到回复不得恢复旧会话历史",
-      "question": "我时区设的是哪？",
+      "title": "请求被取消：不能推导用户已确认；迟到回复落定后再发一轮，历史仍未回填取消文本",
+      "question": "再确认一下，我时区设的是哪？",
       "expect": {
+        "finalTurnIndex": 2,
+        "finalQuestion": "再确认一下，我时区设的是哪？",
+        "allowedNonOkTurns": [
+          {
+            "turnIndex": 0,
+            "status": "cancelled"
+          }
+        ],
         "mustIncludeSourceIds": [
           "e1"
         ],
@@ -163,6 +192,8 @@
       "title": "接近预算上限的长来源ID/中文/emoji：两种字节口径合规、来源完整",
       "question": "我周报的排版偏好是什么？",
       "expect": {
+        "finalTurnIndex": 4,
+        "finalQuestion": "我周报的排版偏好是什么？",
         "mustIncludeSourceIds": [
           "e-long-source-identifier-0001"
         ],

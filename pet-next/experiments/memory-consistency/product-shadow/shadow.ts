@@ -3,8 +3,14 @@
  *
  * 用法：
  *   node --experimental-strip-types product-shadow/shadow.ts --out=<新目录>
+ *   node --experimental-strip-types product-shadow/shadow.ts --out=<新目录> --fixture=<name>
  *
  * 每次都必须给新目录：已有 summary.json 时拒绝启动，避免覆盖成功/失败产物。
+ *
+ * 负控 fixture（R3.1 F1 验收）：--fixture=<final-too-long|no-final-request|
+ * final-cancelled|provider-error> 以 S2 为模板构造目标轮失败场景并真实跑
+ * 两臂。fixture 检出（断言失败）时命令非零退出，失败码与目标轮身份留证；
+ * 若被先前成功请求掩盖（假通过）反而退出 0，即为评分缺陷暴露。
  *
  * @module pet-next/experiments/memory-consistency/product-shadow/shadow
  */
@@ -13,7 +19,7 @@ import { existsSync, mkdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { cleanupRun, runStory, productSourceHashes } from './runner.ts';
-import { finalRequest, scoreStory, summarize, visibleText } from './score.ts';
+import { scoreStory, summarize, targetRequestsOfTurn, visibleTextOfTurn } from './score.ts';
 import type { ArmId, AssertionResult, StoryFile, StoryRun } from './contracts.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -131,12 +137,97 @@ table{border-collapse:collapse;width:100%;font-size:12px}th,td{text-align:left;p
 </script></body></html>`;
 }
 
+/** 负控 fixture 名单与构造（以 S2 为模板；评分必须检出，否则评分有缺陷）。 */
+const FIXTURES = ['final-too-long', 'no-final-request', 'final-cancelled', 'provider-error'] as const;
+type FixtureName = (typeof FIXTURES)[number];
+
+function buildFixture(base: StoryFile, name: FixtureName): { story: StoryFile; providerFailAtTurn?: number } {
+  const finalTurnIndex = base.expect.finalTurnIndex;
+  const withTurns = (turns: StoryFile['turns'], storyId: string): StoryFile => ({ ...base, storyId, turns });
+  switch (name) {
+    case 'final-too-long':
+      return {
+        story: withTurns(
+          base.turns.map((turn, index) => (index === finalTurnIndex ? { ...turn, user: '超'.repeat(501) } : turn)),
+          `S2-final-too-long`,
+        ),
+      };
+    case 'no-final-request':
+      return { story: withTurns(base.turns.slice(0, finalTurnIndex), `S2-no-final-request`) };
+    case 'final-cancelled':
+      return {
+        story: withTurns(
+          base.turns.map((turn, index) => (index === finalTurnIndex ? { ...turn, cancel: true } : turn)),
+          `S2-final-cancelled`,
+        ),
+      };
+    case 'provider-error':
+      return { story: { ...base, storyId: `S2-provider-error` }, providerFailAtTurn: finalTurnIndex };
+  }
+}
+
+async function runFixture(name: FixtureName, outDir: string): Promise<number> {
+  if (!FIXTURES.includes(name)) {
+    process.stderr.write(`unknown fixture: ${name} (choose from ${FIXTURES.join(', ')})\n`);
+    return 2;
+  }
+  if (existsSync(join(outDir, `fixture-${name}.json`))) {
+    process.stderr.write(`refusing to overwrite existing fixture run: ${outDir}\n`);
+    return 3;
+  }
+  const { stories, expectedSha256 } = loadStories();
+  const template = stories.find((story) => story.storyId === 'S2');
+  if (template === undefined) throw new Error('fixture template S2 missing');
+  const built = buildFixture(template, name);
+  const runId = `${new Date().toISOString().replace(/[-:.TZ]/g, '').slice(0, 14)}-${Math.random().toString(16).slice(2, 8)}`;
+  const runs: StoryRun[] = [];
+  for (const arm of ['H', 'M'] as ArmId[]) {
+    const run = await runStory(built.story, arm, runId, built.providerFailAtTurn === undefined ? {} : { providerFailAtTurn: built.providerFailAtTurn });
+    runs.push(run);
+    cleanupRun(run);
+  }
+  const assertions = scoreStory(built.story.storyId, built.story.expect, runs);
+  const failed = assertions.filter((item) => !item.ok);
+  const expectedFailureIds = [
+    'target-turn-requested',
+    'target-turn-ok',
+    'target-question-verbatim',
+    'turns-sound',
+  ];
+  const detected = failed.filter((item) => expectedFailureIds.includes(item.id));
+  const record = {
+    schemaVersion: 'shadow-fixture/v1',
+    fixture: name,
+    runId,
+    generatedAt: new Date().toISOString(),
+    expectedSha256,
+    templateStoryId: 'S2',
+    turns: Object.fromEntries(runs.map((run) => [run.armId, run.turns.filter((turn) => turn.index >= 0)])),
+    targetRequestCounts: Object.fromEntries(
+      runs.map((run) => [run.armId, run.requests.filter((request) => request.turnIndex === built.story.expect.finalTurnIndex).length]),
+    ),
+    assertions,
+    failedCount: failed.length,
+    detectedFailureIds: detected.map((item) => `${item.armId}:${item.id}`),
+    verdict: detected.length > 0 && failed.length > 0 ? 'detected' : 'MASKED',
+  };
+  writeFileSync(join(outDir, `fixture-${name}.json`), `${JSON.stringify(record, null, 2)}\n`, 'utf8');
+  process.stdout.write(`${record.verdict === 'detected' ? 'FAIL(expected)' : 'MASKED(BUG)'} fixture=${name} failed=${failed.length} detected=${record.detectedFailureIds.join(',')}\n`);
+  // 负控检出 = 评分工作正常 = 真实非零退出；被掩盖（MASKED）是评分缺陷，退出 4 引起注意。
+  return record.verdict === 'detected' ? 1 : 4;
+}
+
 async function main(): Promise<number> {
   const outArg = process.argv.find((item) => item.startsWith('--out='));
   const outDir = outArg === undefined ? '' : outArg.slice('--out='.length);
   if (outDir === '') {
-    process.stderr.write('usage: --out=<new directory>\n');
+    process.stderr.write('usage: --out=<new directory> [--fixture=<name>]\n');
     return 2;
+  }
+  const fixtureArg = process.argv.find((item) => item.startsWith('--fixture='));
+  if (fixtureArg !== undefined) {
+    mkdirSync(outDir, { recursive: true });
+    return runFixture(fixtureArg.slice('--fixture='.length) as FixtureName, outDir);
   }
   if (existsSync(join(outDir, 'summary.json'))) {
     process.stderr.write(`refusing to overwrite existing run: ${outDir}\n`);
@@ -169,7 +260,7 @@ async function main(): Promise<number> {
     assertions.push(...scoreStory(story.storyId, story.expect, storyRuns));
   }
 
-  const summary = summarize(runs, assertions);
+  const summary = summarize(runs, assertions, new Map(stories.map((story) => [story.storyId, story.expect])));
   const result = {
     schemaVersion: 'shadow-run/v1',
     runId,
@@ -194,14 +285,15 @@ async function main(): Promise<number> {
   const demoStories = stories.map((story) => {
     const h = runs.find((run) => run.storyId === story.storyId && run.armId === 'H');
     const m = runs.find((run) => run.storyId === story.storyId && run.armId === 'M');
-    const hReq = h === undefined ? undefined : finalRequest(h);
-    const mReq = m === undefined ? undefined : finalRequest(m);
+    const finalTurnIndex = story.expect.finalTurnIndex;
+    const hReq = h === undefined ? undefined : targetRequestsOfTurn(h, finalTurnIndex)[0];
+    const mReq = m === undefined ? undefined : targetRequestsOfTurn(m, finalTurnIndex)[0];
     return {
       storyId: story.storyId,
       title: story.title,
       arms: {
-        H: { text: h === undefined ? '' : visibleText(h), utf16: hReq?.utf16 ?? 0, utf8: hReq?.utf8 ?? 0 },
-        M: { text: m === undefined ? '' : visibleText(m), utf16: mReq?.utf16 ?? 0, utf8: mReq?.utf8 ?? 0 },
+        H: { text: h === undefined ? '' : visibleTextOfTurn(h, finalTurnIndex), utf16: hReq?.utf16 ?? 0, utf8: hReq?.utf8 ?? 0 },
+        M: { text: m === undefined ? '' : visibleTextOfTurn(m, finalTurnIndex), utf16: mReq?.utf16 ?? 0, utf8: mReq?.utf8 ?? 0 },
       },
     };
   });

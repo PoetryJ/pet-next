@@ -45,13 +45,22 @@ export interface RestartSpec {
   readonly afterTurn: number;
 }
 
-/** 冻结的断言（先写、后跑；hash 进 expected/manifest.json）。 */
+/**
+ * 冻结的断言（先写、后跑；hash 进 expected/manifest.json）。
+ *
+ * R3.1 目标轮身份契约（F1 修复）：评分必须绑定 `finalTurnIndex` 指定的目标轮，
+ * 禁止「取 requests 数组末项」的回退——先前成功请求不得掩盖目标轮缺失/失败。
+ */
 export interface StoryExpectation {
-  /** M 臂最终请求必须出现的 sourceIds（当前证据）。 */
+  /** 目标轮（最终问题轮）的下标，从 0 起。评分与 demo 一律以该轮为准。 */
+  readonly finalTurnIndex: number;
+  /** 目标轮用户输入的冻结原文：目标请求最后一条 user 消息必须以它逐字结尾。 */
+  readonly finalQuestion: string;
+  /** M 臂目标请求必须出现的 sourceIds（当前证据）。 */
   readonly mustIncludeSourceIds: readonly string[];
-  /** M 臂最终请求必须出现的文本片段。 */
+  /** M 臂目标请求必须出现的文本片段。 */
   readonly mustIncludeText: readonly string[];
-  /** 两臂最终请求都不得把旧值当当前记忆（文本片段）。 */
+  /** 两臂目标请求都不得把旧值当当前记忆（文本片段）。 */
   readonly mustNotIncludeText: readonly string[];
   /** 两臂都不得出现这些 sourceIds（被更正/撤销的来源）。 */
   readonly mustNotIncludeSourceIds: readonly string[];
@@ -63,8 +72,23 @@ export interface StoryExpectation {
   readonly budget: { readonly utf16: number; readonly utf8: number };
   /** 该故事是否允许 M 与 H 请求体完全相同（无可用记忆时）。 */
   readonly allowIdentical?: boolean;
-  /** 预算压力下限：M 最终请求的 UTF16 必须 ≥ 该值，否则说明没测到预算边界。 */
+  /** 预算压力下限：M 目标请求的 UTF16 必须 ≥ 该值，否则说明没测到预算边界。 */
   readonly budgetPressureUtf16?: number;
+  /**
+   * 指定轮的请求可见文本必须包含给定片段（两臂）。
+   * R3.1 F2：证明证据「确实进入过历史」，如 S1 首轮偏好出现在随后轮的请求里。
+   */
+  readonly turnMustIncludeText?: readonly { readonly turnIndex: number; readonly text: string }[];
+  /**
+   * 目标请求的历史部分（最后一条 user 消息之前的所有消息）不得包含的完整轮文本。
+   * R3.1 F2：证明产品默认淘汰确实发生，如 S1 首轮偏好在最终历史中已被挤出。
+   */
+  readonly finalHistoryMustExcludeText?: readonly string[];
+  /**
+   * 允许的非 ok 轮（精确匹配 turnIndex 与 status），如 S7 的预期中途取消。
+   * 列表外的任何非 ok 轮（含目标轮）都判失败。
+   */
+  readonly allowedNonOkTurns?: readonly { readonly turnIndex: number; readonly status: string }[];
 }
 
 /** 一个固定故事。 */
@@ -101,8 +125,18 @@ export interface StoryRun {
   readonly armId: ArmId;
   readonly runId: string;
   readonly storeDir: string;
-  /** 每轮会话结果（ok/error/cancelled）。 */
-  readonly turns: readonly { readonly index: number; readonly status: string; readonly text?: string; readonly note?: string }[];
+  /**
+   * 每轮会话结果（ok/error/cancelled）。
+   * R3.1：error 轮保留产品返回的 `code`（too-long/busy/timeout/provider-error…），
+   * 失败码原样留证，不得被先前成功请求掩盖。
+   */
+  readonly turns: readonly {
+    readonly index: number;
+    readonly status: string;
+    readonly code?: string;
+    readonly text?: string;
+    readonly note?: string;
+  }[];
   /** 捕获到的请求（每轮一条，含被取消/失败前已发出的）。 */
   readonly requests: readonly CapturedRequest[];
   /** 记忆选择记录：选中/丢弃与原因。 */

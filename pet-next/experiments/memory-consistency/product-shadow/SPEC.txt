@@ -50,8 +50,10 @@ R3 桌宠真实会话路径的离线记忆对照 · 冻结规格
   · system 与当前问题为固定开销，先保留；可变部分按顺序裁剪：
       a. 从最老的**完整轮**开始丢弃历史（不截半轮）；
       b. 再按选择顺序丢弃记忆笔记（从最低分开始整条丢弃）。
-  · 裁剪不到上限 -> 显式失败（BudgetExceeded），该轮记录 budgetFailures 并以非零状态结束，
-    绝不截断 JSON、不截断 sourceId、不调用后再统计。
+  · 裁剪不到上限 -> 显式失败（BudgetExceeded），绝不截断 JSON、不截断 sourceId、不调用后再统计。
+  · R3.1 定性：产品会话有 500 字符输入上限，system 与当前问题的固定开销远小于 4000 UTF16，
+    因此「固定开销本身超限」在会话内不可达；runner 的 budgetFailures 是直接喂巨大问题时
+    trimToBudget 纯函数的契约反例记录，**不参与评分判定**（评分只看真实捕获请求的双口径合规）。
   · 包装器在调用前用与 provider 相同的组装规则算出预期 messages 并度量；
     捕获桩拿到实际 body 后再核对一次（逐字比较 messages），不一致即失败。
 
@@ -61,14 +63,31 @@ R3 桌宠真实会话路径的离线记忆对照 · 冻结规格
   · 真实网络调用次数必须为 0；stub 调用次数单列，不能并进「0 调用」。
 
 七、评分（读回捕获的 messages，不看内部 compile.text）
+  R3.1 目标轮身份（F1）：
+  · 所有「最终请求」断言语义不变，但对象必须是 expectation.finalTurnIndex 指定的目标轮，
+    禁止取 requests 数组末项；目标轮请求缺失/重复即失败，先前成功请求不得掩盖。
+  · 每臂 target-turn-requested（目标轮恰 1 条请求）、target-turn-ok（目标轮 status=ok，
+    error 时保留产品 code）、target-question-verbatim（末条 user 以冻结问题逐字结尾）、
+    turns-sound（预期取消 allowedNonOkTurns 之外的任何非 ok 轮都算意外失败）。
+  R3.1 真实写入与淘汰（F2）：
+  · turnMustIncludeText：指定早期轮请求必须包含证据原文（证明证据经真实 session 进入历史）。
+  · finalHistoryMustExcludeText：目标请求的历史部分不得含被挤出轮文本（证明产品四轮淘汰发生；
+    记忆块在末条 user 内，不属于历史，不会误伤 M 证据）。
   指标：
-  · 当前必要证据可见率：mustIncludeSourceIds 是否出现在 M 最终消息
+  · 当前必要证据可见率：mustIncludeSourceIds / mustIncludeText 在 M 目标请求的逐项可见比例
+    （requiredVisible: 分子/分母/百分比）；requestCoverageRate 单列为「有目标请求的 M 臂比例」，
+    旧 requiredVisibleRate 口径（有任意请求即算）已废弃。
   · 过期来源被选作当前记忆次数：mustNotIncludeSourceIds / mustNotIncludeText 是否出现（H、M 都查）
   · 无关事实保留：故事 4 的另一条有效事实是否仍在 M 中
   · 重启等价：重启前后 M 的记忆块逐字一致
-  · 预算合规：UTF16/UTF8 双口径
+  · 预算合规：UTF16/UTF8 双口径（全部真实请求）
   · stub 尝试次数、真实网络次数、读写字节
   不计算「答案准确率」，不评价固定回复文本质量。
+
+  负控 fixture（验收用，node shadow.ts --out=<新目录> --fixture=<name>）：
+  final-too-long / no-final-request / final-cancelled / provider-error。
+  fixture 检出（断言失败）时命令非零退出并记录轮状态/失败码；若被先前成功请求掩盖
+  而假通过，退出 4（MASKED）暴露评分缺陷。
 
 八、非目标
   真实模型效果、四策略优胜、成本收益、界面呈现/已读、断电耐久、生产发布。

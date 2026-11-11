@@ -61,13 +61,14 @@ const note = (noteId, text, sourceEventIds, subjectKey) => ({ noteId, text, sour
 const stories = [
   {
     storyId: 'S1',
-    title: '偏好在多轮后被短历史淘汰，重新提问仍需要该证据',
+    title: '偏好经真实会话写入后，被产品四轮短历史淘汰，重新提问仍需要长程证据',
     question: '我周报想要什么格式来着？',
     events: [statement(1, 'e1', '周报要中文，先给草稿。', 'pref:weekly-report', '中文草稿')],
     patches: [
       { patchId: 'p1', buildAtSequence: 1, applyAtSequence: 1, notes: [note('n:pref:weekly-report', '周报偏好：中文、先给草稿', ['e1'], 'pref:weekly-report')] },
     ],
     turns: [
+      { user: '周报要中文，先给草稿。', stub },
       { user: '今天天气不错', stub },
       { user: '讲个冷笑话', stub },
       { user: '我有点困', stub },
@@ -75,6 +76,10 @@ const stories = [
       { user: '我周报想要什么格式来着？', stub },
     ],
     expect: {
+      finalTurnIndex: 5,
+      finalQuestion: '我周报想要什么格式来着？',
+      turnMustIncludeText: [{ turnIndex: 1, text: '周报要中文，先给草稿。' }],
+      finalHistoryMustExcludeText: ['周报要中文，先给草稿。'],
       mustIncludeSourceIds: ['e1'],
       mustIncludeText: ['先给草稿'],
       mustNotIncludeText: [],
@@ -101,6 +106,8 @@ const stories = [
       { user: '周报现在怎么发？', stub },
     ],
     expect: {
+      finalTurnIndex: 1,
+      finalQuestion: '周报现在怎么发？',
       mustIncludeSourceIds: ['e2'],
       mustIncludeText: ['直接发送'],
       mustNotIncludeText: ['先给草稿'],
@@ -128,6 +135,8 @@ const stories = [
       { user: '周报任务现在什么状态？', stub },
     ],
     expect: {
+      finalTurnIndex: 1,
+      finalQuestion: '周报任务现在什么状态？',
       mustIncludeSourceIds: ['e3'],
       mustIncludeText: ['cancelled@r2'],
       mustNotIncludeText: ['created@r1'],
@@ -163,6 +172,8 @@ const stories = [
       { user: '周报要什么格式？', stub },
     ],
     expect: {
+      finalTurnIndex: 1,
+      finalQuestion: '周报要什么格式？',
       mustIncludeSourceIds: ['e1'],
       mustIncludeText: ['先给草稿'],
       mustNotIncludeText: ['签名偏好：简短'],
@@ -186,6 +197,8 @@ const stories = [
     ],
     restart: { afterTurn: 0 },
     expect: {
+      finalTurnIndex: 1,
+      finalQuestion: '我偏好用什么语言？',
       mustIncludeSourceIds: ['e1'],
       mustIncludeText: ['中文'],
       mustNotIncludeText: [],
@@ -213,6 +226,8 @@ const stories = [
       { user: '周报怎么发？', stub },
     ],
     expect: {
+      finalTurnIndex: 1,
+      finalQuestion: '周报怎么发？',
       mustIncludeSourceIds: ['e2'],
       mustIncludeText: ['直接发送'],
       mustNotIncludeText: ['先给草稿'],
@@ -224,8 +239,8 @@ const stories = [
   },
   {
     storyId: 'S7',
-    title: '请求被取消：不能推导用户已确认，迟到回复不得恢复旧会话历史',
-    question: '我时区设的是哪？',
+    title: '请求被取消：不能推导用户已确认；迟到回复落定后再发一轮，历史仍未回填取消文本',
+    question: '再确认一下，我时区设的是哪？',
     events: [statement(1, 'e1', '我在东京。', 'pref:timezone', '东京')],
     patches: [
       { patchId: 'p1', buildAtSequence: 1, applyAtSequence: 1, notes: [note('n:pref:timezone', '时区偏好：东京', ['e1'], 'pref:timezone')] },
@@ -233,8 +248,12 @@ const stories = [
     turns: [
       { user: '这条会被取消，别记进历史', stub, cancel: true },
       { user: '我时区设的是哪？', stub },
+      { user: '再确认一下，我时区设的是哪？', stub },
     ],
     expect: {
+      finalTurnIndex: 2,
+      finalQuestion: '再确认一下，我时区设的是哪？',
+      allowedNonOkTurns: [{ turnIndex: 0, status: 'cancelled' }],
       mustIncludeSourceIds: ['e1'],
       mustIncludeText: ['东京'],
       mustNotIncludeText: ['这条会被取消'],
@@ -273,6 +292,8 @@ const stories = [
       { user: '我周报的排版偏好是什么？', stub },
     ],
     expect: {
+      finalTurnIndex: 4,
+      finalQuestion: '我周报的排版偏好是什么？',
       mustIncludeSourceIds: ['e-long-source-identifier-0001'],
       budgetPressureUtf16: 2000,
       mustIncludeText: ['中文排版+表格'],

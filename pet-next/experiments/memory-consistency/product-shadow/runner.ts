@@ -118,8 +118,16 @@ interface Session {
  *
  * 每轮：session.send → 包装器（M 才注入记忆）→ 产品 provider 序列化 → 捕获桩。
  * 重启点：close store → reopen → 重建 history/session（历史清空，长程记忆保留）。
+ *
+ * R3.1 负控：`options.providerFailAtTurn` 让指定轮的产品 fetch 抛错（provider-error），
+ * 请求不发出、捕获桩不计数；评分必须判目标轮失败，而非被先前成功请求掩盖。
  */
-export async function runStory(story: StoryFile, arm: ArmId, runId: string): Promise<StoryRun> {
+export async function runStory(
+  story: StoryFile,
+  arm: ArmId,
+  runId: string,
+  options: { readonly providerFailAtTurn?: number } = {},
+): Promise<StoryRun> {
   const storeDir = mkdtempSync(join(tmpdir(), `shadow-${story.storyId}-${arm}-`));
   const opened = JsonlStore.open(storeDir);
   if (!opened.ok) throw new Error(`store open failed: ${opened.code} ${opened.detail}`);
@@ -127,19 +135,29 @@ export async function runStory(story: StoryFile, arm: ArmId, runId: string): Pro
 
   const capture = createCaptureHarness({ defer: true });
   const restore = capture.installSentinel();
+  let currentTurn = -1;
+  const providerFetch =
+    options.providerFailAtTurn === undefined
+      ? capture.fetchImpl
+      : (async (input: unknown, init?: unknown) => {
+          if (currentTurn === options.providerFailAtTurn) {
+            throw new Error(`injected provider failure at turn ${String(options.providerFailAtTurn)}`);
+          }
+          return capture.fetchImpl(input as RequestInfo, init as RequestInit | undefined);
+        }) as unknown as typeof fetch;
   const provider = createQwenChatProvider({
     baseUrl: 'http://127.0.0.1:9/v1',
     model: 'shadow-offline-stub',
-    fetchImpl: capture.fetchImpl,
+    fetchImpl: providerFetch,
   });
 
   const selectionRecords: SelectionRecord[] = [];
+  // 纯函数契约反例（trimToBudget 上限）：非产品会话失败，仅审计记录，不参与评分判定。
   const budgetFailures: string[] = [];
   const trims: { turnIndex: number; droppedHistory: number; droppedNotes: readonly string[]; utf16: number; utf8: number }[] = [];
-  let currentTurn = -1;
   const fingerprints: { at: string; sha: string; notes: number; active: number }[] = [];
   const requests: CapturedRequest[] = [];
-  const turns: { index: number; status: string; text?: string; note?: string }[] = [];
+  const turns: { index: number; status: string; code?: string; text?: string; note?: string }[] = [];
 
   /** M 的包装器：调用前选记忆、裁预算、核对投影。 */
   const complete = async (input: {
@@ -249,6 +267,7 @@ export async function runStory(story: StoryFile, arm: ArmId, runId: string): Pro
       turns.push({
         index,
         status: result.status,
+        ...(result.code === undefined ? {} : { code: result.code }),
         ...(result.text === undefined ? {} : { text: result.text }),
         note: `stub=${sent}`,
       });
@@ -274,7 +293,10 @@ export async function runStory(story: StoryFile, arm: ArmId, runId: string): Pro
       }
     }
 
-    // 3) 预算失败路径：同一套裁剪函数，喂一个必然超限的问题。
+    // 3) 预算失败路径：trimToBudget 纯函数契约反例（非产品会话）。
+    //    会话内不可达的说明：产品会话输入上限 500 字符，加上 system 与已裁历史后的
+    //    固定开销远小于 4000 UTF16 预算，因此超限只能由直接构造的巨大问题触发；
+    //    这里记录的 BudgetExceeded 是裁剪函数契约证据，不参与评分判定。
     try {
       const huge = '超'.repeat(MESSAGE_BUDGET.utf16);
       trimToBudget(huge, [], []);
