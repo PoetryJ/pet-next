@@ -1,0 +1,20 @@
+{
+  "name": "pet-followup-r4-experiment",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "description": "R4 12h 隔离实验：可持续跟进、可重启恢复、可核验完成的桌宠原型",
+  "engines": {
+    "node": ">=22.12.0"
+  },
+  "scripts": {
+    "demo": "node run.mjs demo",
+    "test": "node run.mjs test",
+    "typecheck": "node run.mjs typecheck",
+    "eval": "node run.mjs eval",
+    "verify": "node run.mjs verify-eval",
+    "negative": "node run.mjs negative",
+    "audit": "node tools/audit.mjs",
+    "upstream": "node upstream/node_modules/vitest/vitest.mjs run --root upstream"
+  }
+}
