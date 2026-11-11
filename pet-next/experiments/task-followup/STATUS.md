@@ -13,11 +13,13 @@
 | C1 受控工作区与事件源 | 完成 | `tools/`；原子写入、SHA 校验、partial JSON、同 SHA 去重、乱序 revision 留档；watch + 启动补读。 |
 | C2 独立评估 | 完成 | 16 轨迹（8+8）、gold 独立、72 份 raw、`verify-eval` 0 失配、5 负控全 detected。 |
 | D 可操作演示 | 完成（UI 部分验证） | `demo/panel.html`、`node run.mjs demo` 18 项 PASS；面板仅 HTTP/CLI 验证，浏览器未验（见 LIMITS）。 |
+| R3.1 回归（只读） | 完成 | Node 24.14.0：13 套件 192/192 + G1/P1/P2；四 fixture 均 exit1 detected；`--out=/tmp`，R3.1 目录零 diff。 |
 | 封包 | 完成 | 交付目录以最终文件现算 MANIFEST/SHA；bundle 从 90fb4cd 起。 |
 
 ## 检查数字（现算）
 
 - 单测：35/35（`out/logs/test.log`）。
+- R3.1 回归：192/192，G1/P1/P2 通过，四 fixture detected（`out/logs/r31-regression.log`、`r31-fixture-*.log`）。
 - 上游原测试：144/144（`out/upstream/vitest-verbose.log`，exit 0）。
 - 评估：72 次运行（4 策略 × 18 机会），`out/eval/raw/`。
 - 独立重评：72 份文件，0 失配（`out/logs/verify-eval.log`）。
