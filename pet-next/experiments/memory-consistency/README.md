@@ -69,6 +69,13 @@ R1 追加的三条硬约束（都有对应回归）：
 3. **门禁信封**：`memory-gate/v1` 的 `schemaVersion/gateId/runId/sourceCommit/passed_gate` 必须与本次运行一致；
    缺文件、坏 JSON、旧 runId、`passed_gate=false`、空脚本 exit 0 一律判失败。
 
+R2 追加的两条契约：
+
+1. **尾段偏移**：`replayTail` 返回的截断位置是相对**整个日志文件**的绝对偏移（已含 checkpoint offset），
+   `repairTail` 只接受绝对位置；持久化格式不变。
+2. **反事实判据**：只认两侧独立 expected 派生出的 flip/stable/presence 字段，输入事件、trackId、时间戳不参与；
+   泄漏审计按 class 全量覆盖四类 + derived，缺类即不通过。
+
 成本口径（`CostCounters`）：`eventsVisited` 是真实迭代次数，`uniqueEventsTouched` 是去重条数，
 `indexBuilds/indexLookups` 分开记；**不得把命中数叫扫描数**。
 
@@ -113,6 +120,9 @@ run.mjs               入口
 - 单写者：同一目录第二个写者被拒绝（`writer_busy`），不声称多写者支持。
 - 坏尾修复：隔离文件写不出去时整个 `open` 失败（宁可不打开），不会带着坏尾继续接受写入。
 - 局部重建的 `eventsVisited` 与事件条数线性相关；不要把它读成 O(1)。
+- 互斥的 POSIX 权限位在 Windows 上不存在：`readonly-dir` 在 Windows/root 下是 `not_proven`，
+  错误传播另由 `controlled-io-failure` 证明。
+- **Windows 全套尚未在本仓库执行**：`platform.windows.status=not_run`，入口脚本 `platform/windows-r1.ps1` 待 Codex 补验。
 - 日志要求 `sequence` 单调，否则拒绝写入（保证在线状态与重放一致）。
 - 保留错误码 `not_found`、`tail_incomplete` 当前没有路径发出：前者留给未来的按 id 查询接口，后者由「隔离尾部」的返回值表达而不单列错误。
 - root 下 `chmod` 不构成权限测试，平台检查会标 `not_proven`。
