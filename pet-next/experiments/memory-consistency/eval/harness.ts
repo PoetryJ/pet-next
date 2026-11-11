@@ -312,25 +312,15 @@ export function sessionOf(state: MemoryState, sessionId: string, epoch: number) 
 }
 
 /**
- * 行为投影：只保留「实现行为」相关字段，排除 trackId / 时间戳这类身份信息。
+ * 行为投影：只保留**输出**，排除输入事件、trackId、时间戳这类身份信息。
  *
- * 反事实比较必须用这个：同内容换名不能产生行为差异。
+ * R2-B：旧投影把 events（payload/kind）也算进来，导致「只换输入事件」就能满足
+ * 反事实差异判据。输入不是行为，输出才是；这里删掉 events，只留状态与补丁结论。
  * 状态里的 notes 连文本、版本、依赖一起算，避免「笔记丢了但摘要一样」。
  */
 export function behaviorProjection(observation: TrackObservation): Record<string, unknown> {
   const state = observation.state;
   return {
-    events: state.events.map((event) => ({
-      eventId: event.eventId,
-      sequence: event.sequence,
-      kind: event.kind,
-      sessionId: event.sessionId,
-      sessionEpoch: event.sessionEpoch,
-      ...(event.requestId === undefined ? {} : { requestId: event.requestId }),
-      ...(event.taskId === undefined ? {} : { taskId: event.taskId }),
-      ...(event.taskRevision === undefined ? {} : { taskRevision: event.taskRevision }),
-      payload: event.payload,
-    })),
     requests: state.requests,
     tasks: state.tasks,
     subjectVersions: state.subjectVersions,

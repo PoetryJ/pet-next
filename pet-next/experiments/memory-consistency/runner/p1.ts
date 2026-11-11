@@ -22,12 +22,19 @@ import {
 } from '../eval/dataset.ts';
 import { auditPolicyInputs } from '../eval/leakage.ts';
 import {
-  behaviorDigest,
   replayThroughStore,
   runTrack,
   type TrackObservation,
 } from '../eval/harness.ts';
-import type { Check, ExpectationFile } from '../eval/scorer.ts';
+import type { ExpectationFile } from '../eval/scorer.ts';
+import {
+  buildPairSpec,
+  compareBehavior,
+  tamperStableField,
+  withFrozenOutputs,
+  type BehaviorComparison,
+  type PairSpec,
+} from '../eval/behavior-spec.ts';
 import { POLICIES } from '../policies/compile.ts';
 import { JsonlStore } from '../storage/store.ts';
 import { gateMeta, isMainModule, writeGateReport } from './gate.ts';
@@ -36,16 +43,10 @@ const HERE = dirname(fileURLToPath(import.meta.url));
 const BUDGET: Budget = { utf16Units: 2000, utf8Bytes: 6000 };
 
 /** 反事实：同一对里只改关键事件。这里检查差异存在且不整体翻车。 */
-interface PairContrast {
-  readonly pairId: string;
-  readonly differingChecks: readonly string[];
-  readonly behaviorDiffers: boolean;
+interface PairContrast extends BehaviorComparison {
+  readonly spec: { readonly flipFields: readonly string[]; readonly stableFields: readonly string[]; readonly presenceFields: readonly string[] };
   readonly invariantsHold: boolean;
   readonly deterministic: boolean;
-}
-
-function checkKey(check: Check): string {
-  return [check.kind, check.noteId ?? '', check.taskId ?? '', check.requestId ?? '', check.flag ?? '', String(check.patchIndex ?? ''), String(check.index ?? ''), check.subjectKey ?? ''].join('|');
 }
 
 function contrastPair(
@@ -62,25 +63,33 @@ function contrastPair(
   const rightObs = observations.get(right.trackId);
   if (leftObs === undefined || rightObs === undefined) throw new Error('missing observation');
 
-  const leftChecks = leftExpect.checks.map((check) => ({ key: checkKey(check), check }));
-  const rightChecks = new Map(rightExpect.checks.map((check) => [checkKey(check), check]));
-  const differing: string[] = [];
-
-  for (const item of leftChecks) {
-    const other = rightChecks.get(item.key);
-    if (other === undefined) continue;
-    if (JSON.stringify(item.check.value) !== JSON.stringify(other.value)) {
-      differing.push(item.key);
-    }
-  }
+  // 判据来自两侧独立期望，不看事件/名字/时间戳。
+  const spec: PairSpec = buildPairSpec(left.pairId, left.trackId, leftExpect.checks, right.trackId, rightExpect.checks);
+  const comparison = compareBehavior(leftObs, rightObs, spec);
+  const projection = canonicalJson([leftObs.state.requests, leftObs.state.tasks, leftObs.state.notes]);
 
   return {
-    pairId: left.pairId,
-    differingChecks: differing,
-    // 只比行为，不比名字：同内容换 trackId 不得算差异。
-    behaviorDiffers: behaviorDigest([leftObs]) !== behaviorDigest([rightObs]),
+    ...comparison,
+    spec: {
+      flipFields: spec.flipFields,
+      stableFields: spec.stableFields,
+      presenceFields: spec.presenceFields,
+    },
     invariantsHold: invariantsHold(leftObs) && invariantsHold(rightObs),
-    deterministic: behaviorDigest([leftObs, rightObs]) === behaviorDigest([runTrack(left), runTrack(right)]),
+    // 确定性只看输出投影：同一输入跑两次必须得到同一组输出。
+    deterministic:
+      projection ===
+        canonicalJson([
+          runTrack(left).state.requests,
+          runTrack(left).state.tasks,
+          runTrack(left).state.notes,
+        ]) &&
+      canonicalJson([rightObs.state.requests, rightObs.state.tasks, rightObs.state.notes]) ===
+        canonicalJson([
+          runTrack(right).state.requests,
+          runTrack(right).state.tasks,
+          runTrack(right).state.notes,
+        ]),
   };
 }
 
@@ -163,24 +172,82 @@ export function computeP1() {
     .filter((track): track is NonNullable<typeof track> => track !== undefined)
     .map((track) => eventOnlyNegativeControl(track));
 
-  const leakAudit = auditPolicyInputs(
-    [...devTracks.slice(0, 8), ...newTracks.slice(0, 8), ...loadTracks(DERIVED_TRACKS_DIR)],
-    POLICIES,
-    BUDGET,
-  );
+  // 泄漏审计按 class 确定性覆盖四类 + derived，不再 slice 前 8。
+  const leakAudit = auditPolicyInputs([...devTracks, ...newTracks, ...loadTracks(DERIVED_TRACKS_DIR)], POLICIES, BUDGET);
+
+  // 负控 A：输入不同、输出冻结相同 -> 必须不判差异（每一对都要过）。
+  const inputOnlyNegative = [...byPair.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([, pair]) => {
+      const [left, right] = pair;
+      if (left === undefined || right === undefined) throw new Error('pair needs two tracks');
+      const l = observations.get(left.trackId);
+      const r = observations.get(right.trackId);
+      if (l === undefined || r === undefined) throw new Error('missing observation');
+      const lExp = devExpectations.assertions[left.trackId];
+      const rExp = devExpectations.assertions[right.trackId];
+      if (lExp === undefined || rExp === undefined) throw new Error('missing expectations');
+      const spec = buildPairSpec(left.pairId, left.trackId, lExp.checks, right.trackId, rExp.checks);
+      const frozen = withFrozenOutputs(l, r);
+      const comparison = compareBehavior(frozen, l, spec);
+      return { pairId: left.pairId, rejected: comparison.classifiedDifferent === false, comparison };
+    });
+
+  // 负控 B：应保持的字段被额外改动 -> 必须不判差异，并且要报出具体字段。
+  const stableTamper = [...byPair.entries()]
+    .sort((a, b) => (a[0] < b[0] ? -1 : 1))
+    .map(([, pair]) => {
+      const [left, right] = pair;
+      if (left === undefined || right === undefined) throw new Error('pair needs two tracks');
+      const l = observations.get(left.trackId);
+      const r = observations.get(right.trackId);
+      if (l === undefined || r === undefined) throw new Error('missing observation');
+      const lExp = devExpectations.assertions[left.trackId];
+      const rExp = devExpectations.assertions[right.trackId];
+      if (lExp === undefined || rExp === undefined) throw new Error('missing expectations');
+      const spec = buildPairSpec(left.pairId, left.trackId, lExp.checks, right.trackId, rExp.checks);
+      const tampered = tamperStableField(l, spec);
+      if (tampered === undefined) return { pairId: left.pairId, applicable: false, rejected: true, field: null };
+      const comparison = compareBehavior(tampered.observation, r, spec);
+      return {
+        pairId: left.pairId,
+        applicable: true,
+        rejected: comparison.classifiedDifferent === false && comparison.stableHeld === false,
+        field: tampered.field,
+      };
+    });
+
+  // 负控 C：同内容换名 -> 不产生差异。
+  const renameControl = [...byPair.values()].map((pair) => {
+    const [left] = pair;
+    if (left === undefined) throw new Error('pair needs tracks');
+    const l = observations.get(left.trackId);
+    const lExp = devExpectations.assertions[left.trackId];
+    if (l === undefined || lExp === undefined) throw new Error('missing observation');
+    const spec = buildPairSpec(left.pairId, left.trackId, lExp.checks, left.trackId, lExp.checks);
+    const renamed: TrackObservation = { ...l, trackId: `${l.trackId}-renamed` };
+    return { pairId: left.pairId, rejected: compareBehavior(l, renamed, spec).classifiedDifferent === false };
+  });
 
   const newFailed = newResult.score.failed;
-  const contrastsValid = contrasts.every((item) => item.behaviorDiffers && item.invariantsHold && item.deterministic);
+  const devFailed = devResult.score.failed;
+  const contrastsValid = contrasts.every(
+    (item) => item.classifiedDifferent && item.invariantsHold && item.deterministic,
+  );
   const replayValid = replayChecks.every((item) => item.equal);
   const negativeValid = negativeControls.every((item) => item.detected);
+  const inputOnlyValid = inputOnlyNegative.every((item) => item.rejected);
+  const stableTamperValid = stableTamper.every((item) => item.rejected);
+  const renameValid = renameControl.every((item) => item.rejected);
   const leakClean = leakAudit.findings.length === 0;
   const coverage = leakAudit.coverage;
+  // 四类行为 + derived 必须每类都有真实笔记输入与来源输出，缺一类即不算通过。
   const leakCoverageValid =
     coverage !== undefined &&
-    coverage.inputsWithActiveNotes > 0 &&
-    coverage.inputsWithInvalidatedNotes > 0 &&
+    coverage.missingClasses.length === 0 &&
     coverage.inputsWithDerivedNotes > 0 &&
-    coverage.outputsWithSourceIds > 0;
+    coverage.inputsWithRequests > 0 &&
+    Object.values(coverage.byPolicy).every((item) => item.samples > 0 && item.outputsWithSourceIds > 0);
 
   return {
     gate: 'P1',
@@ -199,22 +266,35 @@ export function computeP1() {
       samples: leakAudit.samples,
       findings: leakAudit.findings,
       coverage,
+      missingClasses: coverage?.missingClasses ?? ['coverage_unavailable'],
+      byClass: coverage?.byClass ?? {},
+      byPolicy: coverage?.byPolicy ?? {},
       budget: BUDGET,
-      note: '状态来自带补丁的执行轨迹；coverage 全为 0 时说明审计没看到笔记，不能算通过。',
+      note: '全部 dev/new/derived 轨迹（非 slice）按 class 统计；每类都要有笔记输入与来源输出，缺类即不通过。',
     },
     counterfactual: {
       pairs: contrasts.length,
-      allPairsHaveDifference: contrasts.every((item) => item.behaviorDiffers),
+      criteria: 'flip/stable/presence 来自两侧独立 expected；输入事件、trackId、时间戳不参与判定',
+      allPairsHaveDifference: contrasts.every((item) => item.classifiedDifferent),
       allPairsKeepInvariant: contrasts.every((item) => item.invariantsHold),
       deterministic: contrasts.every((item) => item.deterministic),
       details: contrasts,
+      negativeControls: {
+        inputOnly: { checks: inputOnlyNegative, allRejected: inputOnlyValid },
+        stableTamper: { checks: stableTamper, allRejected: stableTamperValid },
+        renameOnly: { checks: renameControl, allRejected: renameValid },
+      },
     },
     replay: { checks: replayChecks, allEqual: replayValid, negativeControls, allNegativeDetected: negativeValid 
     },
     passed_gate:
       newFailed === 0 &&
+      devFailed === 0 &&
       newResult.score.missingExpectations.length === 0 &&
       contrastsValid &&
+      inputOnlyValid &&
+      stableTamperValid &&
+      renameValid &&
       replayValid &&
       negativeValid &&
       leakClean &&

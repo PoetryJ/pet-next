@@ -30,7 +30,9 @@ export interface PlatformReport {
   readonly node: string;
   readonly uid: number;
   readonly checks: readonly PlatformCheck[];
-  readonly windows: { readonly status: 'not_run'; readonly command: string; readonly reason: string };
+  /** 本进程所在平台就是 Windows 时，status=measured；否则 not_run + 待补验说明。 */
+  readonly windows: { readonly status: 'measured' | 'not_run'; readonly command: string; readonly reason: string };
+  readonly scope: { readonly platform: string; readonly node: string; readonly permissionCapability: string };
   readonly passed: boolean;
 }
 
@@ -62,32 +64,77 @@ function chineseSpacePath(): PlatformCheck {
   }
 }
 
-/** 只读目录：root 下 chmod 无效，必须承认测不到。 */
+/**
+ * 只读目录：只有「POSIX 且非 root」才能建立真实权限限制。
+ * Windows 没有 POSIX 目录权限位，root 会绕过权限位——两者都必须标 not_proven，
+ * 不能把「写成功了」当成实现失败，也不能把「没测」写成通过。
+ */
 function readOnlyDir(): PlatformCheck {
+  const uid = typeof process.getuid === 'function' ? process.getuid() : -1;
+  if (process.platform === 'win32') {
+    return {
+      id: 'readonly-dir',
+      title: '无写权限目录（POSIX 权限位）',
+      status: 'not_proven',
+      detail: 'Windows 没有 POSIX 目录权限位；chmod 不构成权限测试。错误传播由 controlled-io-failure 用例覆盖',
+    };
+  }
+  if (uid === 0) {
+    return {
+      id: 'readonly-dir',
+      title: '无写权限目录（POSIX 权限位）',
+      status: 'not_proven',
+      detail: 'root 绕过权限位；错误传播由 controlled-io-failure 用例覆盖',
+    };
+  }
   const root = mkdtempSync(join(tmpdir(), 'mem-ro-'));
   const dir = join(root, 'readonly');
   mkdirSync(dir, { recursive: true });
   try {
     chmodSync(dir, 0o500);
     const opened = JsonlStore.open(dir);
-    const uid = typeof process.getuid === 'function' ? process.getuid() : -1;
     if (opened.ok) {
       opened.value.close();
-      return {
-        id: 'readonly-dir',
-        title: '无写权限目录',
-        status: uid === 0 ? 'not_proven' : 'fail',
-        detail: uid === 0 ? 'root 绕过权限位，本项不能证明失败路径' : '只读目录居然可以写入',
-      };
+      return { id: 'readonly-dir', title: '无写权限目录（POSIX 权限位）', status: 'fail', detail: '只读目录居然可以写入' };
     }
     return {
       id: 'readonly-dir',
-      title: '无写权限目录',
+      title: '无写权限目录（POSIX 权限位）',
       status: opened.code === 'io_error' ? 'pass' : 'fail',
       detail: `${opened.code}: ${opened.detail}`,
     };
   } finally {
     chmodSync(dir, 0o700);
+    rmSync(root, { recursive: true, force: true });
+  }
+}
+
+/**
+ * 可控 I/O 拒绝：把一个**文件**当成 store 目录。
+ * 这在两个平台都确定失败，用来证明错误沿 store 接口传播（不依赖 chmod）。
+ */
+function controlledIoFailure(): PlatformCheck {
+  const root = mkdtempSync(join(tmpdir(), 'mem-io-'));
+  const filePath = join(root, 'not-a-directory');
+  try {
+    writeFileSync(filePath, 'x', 'utf8');
+    const opened = JsonlStore.open(filePath);
+    if (opened.ok) {
+      opened.value.close();
+      return {
+        id: 'controlled-io-failure',
+        title: '可控 I/O 失败传播',
+        status: 'fail',
+        detail: '文件路径被当成目录打开了',
+      };
+    }
+    return {
+      id: 'controlled-io-failure',
+      title: '可控 I/O 失败传播',
+      status: opened.code === 'io_error' ? 'pass' : 'fail',
+      detail: `${opened.code}: ${opened.detail}`,
+    };
+  } finally {
     rmSync(root, { recursive: true, force: true });
   }
 }
@@ -217,22 +264,31 @@ export function runPlatformChecks(): PlatformReport {
   const checks: PlatformCheck[] = [
     chineseSpacePath(),
     readOnlyDir(),
+    controlledIoFailure(),
     corruptManifest(),
     closedStore(),
     orphanSnapshot(),
     patchOnChinesePath(),
   ];
   const uid = typeof process.getuid === 'function' ? process.getuid() : -1;
+  const onWindows = process.platform === 'win32';
+  const permissionCapability = onWindows
+    ? 'no-posix-mode'
+    : uid === 0
+      ? 'root-bypasses-mode'
+      : 'posix-mode-enforced';
   return {
     platform: `${process.platform} ${process.arch}`,
     node: process.version,
     uid,
     checks,
+    scope: { platform: `${process.platform} ${process.arch}`, node: process.version, permissionCapability },
     windows: {
-      status: 'not_run',
-      reason:
-        '本机无 Windows 环境。R1 已把 checkpoint 的 fsync 改为可写句柄（原实现在 Windows 上对只读 fd fsync 会 EPERM），' +
-        '但该修复尚未在 Windows 实跑，必须待复验；不得用 Linux 结果代替跨平台结论。',
+      // 本进程就在 Windows 上：这份报告本身就是 Windows 证据，不能再写「本机无 Windows」。
+      status: onWindows ? 'measured' : 'not_run',
+      reason: onWindows
+        ? '本进程运行在 Windows：上面的 checks 就是本机实测；POSIX 权限位不适用时标 not_proven。'
+        : '本机无 Windows 环境（当前平台 ' + process.platform + '）：Windows 门未通过，待 Codex 在本机补验；不得用 Linux 结果代替跨平台结论。',
       command: [
         'powershell -NoProfile -Command "cd C:\\path\\to\\pet-next; $env:PATH=\\"C:\\Program Files\\nodejs;$env:PATH\\"; node --experimental-strip-types --test --test-reporter=spec experiments/memory-consistency/storage/store.test.ts experiments/memory-consistency/recovery/recovery.test.ts"',
         'powershell -NoProfile -Command "cd C:\\path\\to\\pet-next; node experiments/memory-consistency/run.mjs --all"',

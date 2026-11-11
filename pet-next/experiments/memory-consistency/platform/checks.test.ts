@@ -29,16 +29,36 @@ describe('平台边界', () => {
     assert.equal(byId.get('patch-cn-path')?.status, 'pass', byId.get('patch-cn-path')?.detail);
   });
 
-  test('只读目录在 root 下标 not_proven，不假装通过', () => {
+  test('只读目录在 root/Windows 下标 not_proven，不假装通过', () => {
     const check = byId.get('readonly-dir');
     assert.ok(check !== undefined);
     assert.ok(check.status === 'pass' || check.status === 'not_proven');
-    if (report.uid === 0) assert.equal(check.status, 'not_proven');
+    if (report.uid === 0 || process.platform === 'win32') assert.equal(check.status, 'not_proven');
+    if (process.platform === 'win32') assert.match(check.detail, /Windows|POSIX/);
   });
 
-  test('Windows 一律 not_run 且给出可执行命令', () => {
-    assert.equal(report.windows.status, 'not_run');
-    assert.match(report.windows.command, /powershell/i);
-    assert.match(report.windows.reason, /Windows/);
+  test('可控 I/O 失败沿 store 传播（跨平台，不依赖 chmod）', () => {
+    const check = byId.get('controlled-io-failure');
+    assert.ok(check !== undefined);
+    assert.equal(check.status, 'pass', check.detail);
+    assert.match(check.detail, /io_error/);
+  });
+
+  test('权限能力按实际平台报告', () => {
+    if (process.platform === 'win32') assert.equal(report.scope.permissionCapability, 'no-posix-mode');
+    else if (report.uid === 0) assert.equal(report.scope.permissionCapability, 'root-bypasses-mode');
+    else assert.equal(report.scope.permissionCapability, 'posix-mode-enforced');
+    assert.equal(report.scope.platform, `${process.platform} ${process.arch}`);
+  });
+
+  test('Windows 状态绑定实际平台：本机非 Windows 时 not_run 并说明待补验', () => {
+    if (process.platform === 'win32') {
+      assert.equal(report.windows.status, 'measured');
+      assert.match(report.windows.reason, /Windows/);
+    } else {
+      assert.equal(report.windows.status, 'not_run');
+      assert.match(report.windows.reason, /待 Codex|无 Windows/);
+    }
+    assert.match(report.windows.command, /windows-r1.ps1|powershell/i);
   });
 });

@@ -38,12 +38,12 @@ const SUITES = [
   { id: 'policies', title: '四策略与预算', files: ['policies/policies.test.ts'] },
   { id: 'storage', title: '磁盘日志与快照', files: ['storage/store.test.ts'] },
   { id: 'recovery', title: '进程崩溃恢复', files: ['recovery/recovery.test.ts'] },
-  { id: 'eval', title: '独立评分与负控', files: ['eval/dev-set.test.ts', 'eval/no-network.test.ts', 'eval/equivalence.test.ts'] },
+  { id: 'eval', title: '独立评分与负控', files: ['eval/dev-set.test.ts', 'eval/no-network.test.ts', 'eval/equivalence.test.ts', 'eval/behavior-spec.test.ts'] },
   { id: 'replay', title: '产品纯模块回放', files: ['product-replay/replay.test.ts'] },
   { id: 'demo', title: '离线演示生成物', files: ['demo/demo.test.ts'] },
   { id: 'queue', title: '有界整理队列与依赖链', files: ['maintenance/queue.test.ts', 'maintenance/rebuild.test.ts'] },
   { id: 'future', title: '未来 runner dry-run', files: ['future-run/runner.test.ts'] },
-  { id: 'studies', title: '成本与平台', files: ['studies/cost.test.ts', 'platform/checks.test.ts'] },
+  { id: 'studies', title: '成本与平台', files: ['studies/cost.test.ts', 'platform/checks.test.ts', 'platform/windows-script.test.ts'] },
   { id: 'gate', title: '门禁信封与 CLI 入口', files: ['runner/gate.test.ts'] },
 ];
 

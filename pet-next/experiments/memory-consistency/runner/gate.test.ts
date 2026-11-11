@@ -12,30 +12,34 @@ import { execFileSync } from 'node:child_process';
 import { cpSync, mkdirSync, mkdtempSync, readFileSync, rmSync, writeFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
+import { pathToFileURL } from 'node:url';
 import { fileURLToPath } from 'node:url';
 import { describe, test } from 'node:test';
 import { GATE_SCHEMA_VERSION } from '../contracts.ts';
-import { gateMeta, isMainModule, writeGateReport } from './gate.ts';
+import { fileUrlForPath, gateMeta, isMainModule, writeGateReport } from './gate.ts';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const EXPERIMENT = join(HERE, '..');
 
 describe('CLI 入口判定', () => {
-  test('普通 posix 路径能识别为入口', () => {
-    const file = '/repo/pet-next/experiments/memory-consistency/runner/g1.ts';
-    assert.equal(isMainModule(file, `file://${file}`), true);
+  test('宿主自建路径与 URL 能识别为入口（跨平台）', () => {
+    // 用宿主 API 同时造路径和 URL，避免手拼 file:// 在 Windows 上带盘符失配。
+    const file = join(tmpdir(), 'repo', 'pet-next', 'runner', 'g1.ts');
+    assert.equal(isMainModule(file, pathToFileURL(file).href), true);
   });
 
   test('含空格与中文的路径也识别为入口（旧实现会因百分号编码失配）', () => {
-    const file = '/tmp/记忆 实验/memory-consistency/runner/g1.ts';
-    const moduleUrl = new URL(`file://${encodeURI(file)}`).href;
+    const file = join(tmpdir(), '记忆 实验', 'memory-consistency', 'runner', 'g1.ts');
+    const moduleUrl = pathToFileURL(file).href;
     assert.equal(isMainModule(file, moduleUrl), true);
     // 旧写法对照：直接拼 file:// 一定失配。
     assert.notEqual(`file://${file}`, moduleUrl);
   });
 
-  test('Windows 风格路径不会因为盘符与反斜杠而漏判', () => {
+  test('纯转换契约：Windows 字面路径在任意宿主都能归一化', () => {
+    // 这是「纯转换」，不依赖宿主 pathToFileURL；真正的入口判定另测。
     const file = 'C:\\repo\\pet-next\\experiments\\memory-consistency\\runner\\g1.ts';
+    assert.equal(fileUrlForPath(file), 'C:/repo/pet-next/experiments/memory-consistency/runner/g1.ts');
     assert.equal(isMainModule(file, 'file:///C:/repo/pet-next/experiments/memory-consistency/runner/g1.ts'), true);
   });
 
@@ -78,7 +82,8 @@ describe('门禁信封', () => {
 });
 
 describe('run.mjs 不接受假通过', () => {
-  const sandbox = mkdtempSync(join(tmpdir(), 'gate-run-'));
+  // 沙箱路径带空格与中文：CLI 入口判定与子进程启动都在这种路径下真实执行。
+  const sandbox = mkdtempSync(join(tmpdir(), 'gate run 记忆-'));
 
   const makeSandbox = (g1Source: string): string => {
     const root = join(sandbox, `case-${Math.random().toString(36).slice(2, 8)}`);
@@ -145,6 +150,11 @@ process.exit(0);
     assert.notEqual(result.code, 0);
     assert.match(result.stdout, /passed_gate_false/);
     rmSync(join(dir, '..', '..'), { recursive: true, force: true });
+  });
+
+  test('正控路径本身含空格与中文（不是纯字面断言）', () => {
+    assert.match(sandbox, /记忆/);
+    assert.match(sandbox, / /);
   });
 
   test('正确信封才通过（runId 由 run.mjs 生成并核对）', () => {

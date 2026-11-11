@@ -277,6 +277,128 @@ describe('损坏分类', () => {
     }
   });
 
+  test('checkpoint 后立即坏尾：按绝对偏移截断，checkpoint 前缀不变', () => {
+    const dir = tempDir();
+    try {
+      const store = open(dir);
+      assert.equal(store.append(statement(1, 'e1', 'A', 'pref:a')).ok, true);
+      assert.equal(store.checkpoint().ok, true);
+      store.close();
+
+      const logPath = join(dir, 'events.log');
+      const original = readFileSync(logPath);
+      const manifest = JSON.parse(readFileSync(join(dir, 'checkpoint.json'), 'utf8')) as { logBytes: number; logSha256: string };
+      const prefix = original.subarray(0, manifest.logBytes);
+      const fragment = '{"type":"event","event":{"schemaVer';
+      writeFileSync(logPath, Buffer.concat([original, Buffer.from(fragment, 'utf8')]));
+
+      const reopened = open(dir);
+      const loaded = reopened.load();
+      assert.equal(loaded.ok, true, loaded.ok ? '' : loaded.detail);
+      if (!loaded.ok) return;
+      assert.equal(loaded.value.isolatedTailBytes, Buffer.byteLength(fragment, 'utf8'));
+      assert.deepEqual(reopened.getState().events.map((event) => event.eventId), ['e1']);
+      // 坏字节原样隔离 + 截断点等于 checkpoint 偏移（不是尾段内偏移）。
+      const quarantine = loaded.value.tailQuarantine;
+      assert.ok(quarantine !== undefined);
+      assert.equal(readFileSync(join(dir, quarantine.file), 'utf8'), fragment);
+      assert.equal(readFileSync(logPath).equals(prefix), true, '日志必须截断到 checkpoint 边界');
+      assert.equal(sha256Hex(prefix.toString('utf8')), manifest.logSha256, 'checkpoint 前缀不得被改动');
+
+      // 恢复后继续写，再重启：两条都在且不重复。
+      assert.equal(reopened.append(statement(2, 'e2', 'B', 'pref:b')).ok, true);
+      reopened.close();
+      const third = open(dir);
+      assert.deepEqual(third.getState().events.map((event) => event.eventId), ['e1', 'e2']);
+      third.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('checkpoint 后有完整新记录再坏尾：只切坏尾，保留 checkpoint 之后的完整记录', () => {
+    const dir = tempDir();
+    try {
+      const store = open(dir);
+      assert.equal(store.append(statement(1, 'e1', 'A', 'pref:a')).ok, true);
+      assert.equal(store.checkpoint().ok, true);
+      assert.equal(store.append(statement(2, 'e2', 'B', 'pref:b')).ok, true);
+      store.close();
+
+      const logPath = join(dir, 'events.log');
+      const beforeCorruption = readFileSync(logPath);
+      const fragment = '{"type":"event","event":{"schemaVer';
+      writeFileSync(logPath, Buffer.concat([beforeCorruption, Buffer.from(fragment, 'utf8')]));
+
+      const reopened = open(dir);
+      const loaded = reopened.load();
+      assert.equal(loaded.ok, true, loaded.ok ? '' : loaded.detail);
+      if (!loaded.ok) return;
+      // e2 是 checkpoint 之后的完整记录，必须保留。
+      assert.deepEqual(reopened.getState().events.map((event) => event.eventId), ['e1', 'e2']);
+      assert.equal(readFileSync(logPath).equals(beforeCorruption), true);
+
+      assert.equal(reopened.append(statement(3, 'e3', 'C', 'pref:c')).ok, true);
+      reopened.close();
+      const third = open(dir);
+      assert.deepEqual(third.getState().events.map((event) => event.eventId), ['e1', 'e2', 'e3']);
+      third.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('checkpoint 后完整末行缺换行：补换行，不当坏尾', () => {
+    const dir = tempDir();
+    try {
+      const store = open(dir);
+      assert.equal(store.append(statement(1, 'e1', 'A', 'pref:a')).ok, true);
+      assert.equal(store.checkpoint().ok, true);
+      assert.equal(store.append(statement(2, 'e2', 'B', 'pref:b')).ok, true);
+      store.close();
+
+      const logPath = join(dir, 'events.log');
+      const withNewline = readFileSync(logPath, 'utf8');
+      writeFileSync(logPath, withNewline.trimEnd(), 'utf8');
+
+      const reopened = open(dir);
+      const loaded = reopened.load();
+      assert.equal(loaded.ok, true, loaded.ok ? '' : loaded.detail);
+      if (!loaded.ok) return;
+      assert.equal(loaded.value.isolatedTailBytes, 0);
+      assert.equal(readFileSync(logPath, 'utf8'), withNewline, '补回换行后与修复前一致');
+      assert.deepEqual(reopened.getState().events.map((event) => event.eventId), ['e1', 'e2']);
+      reopened.close();
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
+  test('checkpoint 后隔离失败：拒开且不动原文件', () => {
+    const dir = tempDir();
+    try {
+      const store = open(dir);
+      assert.equal(store.append(statement(1, 'e1', 'A', 'pref:a')).ok, true);
+      assert.equal(store.checkpoint().ok, true);
+      store.close();
+
+      const logPath = join(dir, 'events.log');
+      const fragment = '{"type":"event","event":{"schemaVer';
+      const corrupted = Buffer.concat([readFileSync(logPath), Buffer.from(fragment, 'utf8')]);
+      writeFileSync(logPath, corrupted);
+      mkdirSync(join(dir, `tail-quarantine-${sha256Hex(fragment).slice(0, 12)}.bin`));
+
+      const reopened = JsonlStore.open(dir);
+      assert.equal(reopened.ok, false);
+      if (reopened.ok) return;
+      assert.equal(reopened.code, 'io_error');
+      assert.match(reopened.detail, /tail repair failed/);
+      assert.equal(readFileSync(logPath).equals(corrupted), true, '修复失败不得截断');
+    } finally {
+      rmSync(dir, { recursive: true, force: true });
+    }
+  });
+
   test('中段坏行直接失败，不做「修好再报成功」', () => {
     const dir = tempDir();
     try {

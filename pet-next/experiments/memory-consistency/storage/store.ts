@@ -302,7 +302,7 @@ export class JsonlStore implements MemoryStore {
       state = parsedTail.value.state;
       const repaired = this.repairTail(
         buffer,
-        parsedTail.value.keepBytes,
+        parsedTail.value.keepAbsoluteBytes,
         parsedTail.value.completeLeftover,
         parsedTail.value.isolatedTailBytes,
       );
@@ -423,15 +423,26 @@ export class JsonlStore implements MemoryStore {
     }
   }
 
-  /** 只解析日志尾部；半条尾记录隔离，中段损坏直接失败。 */
+  /**
+   * 只解析日志尾部；半条尾记录隔离，中段损坏直接失败。
+   *
+   * 偏移契约（R2-A）：`tail` 从 `absoluteOffset` 开始，而截断操作作用在**整个文件**上。
+   * 因此这里返回的 `keepAbsoluteBytes` 必须已经加上 `absoluteOffset`；
+   * 调用方不得再把它当成「尾段内偏移」二次换算，否则有 checkpoint 时会算出
+   * `keep 373 != parsed 0` 这类错误。
+   */
   private replayTail(
     base: MemoryState,
     tail: Buffer,
     absoluteOffset: number,
-  ): StoreResult<{ state: MemoryState; isolatedTailBytes: number; keepBytes: number; completeLeftover: boolean }> {
+  ): StoreResult<{ state: MemoryState; isolatedTailBytes: number; keepAbsoluteBytes: number; completeLeftover: boolean }> {
     let isolatedTailBytes = 0;
     if (tail.length === 0) {
-      return { ok: true, durable: true, value: { state: base, isolatedTailBytes: 0, keepBytes: 0, completeLeftover: false } };
+      return {
+        ok: true,
+        durable: true,
+        value: { state: base, isolatedTailBytes: 0, keepAbsoluteBytes: absoluteOffset, completeLeftover: false },
+      };
     }
     const text = tail.toString('utf8');
     const endsWithNewline = text.endsWith('\n');
@@ -491,7 +502,7 @@ export class JsonlStore implements MemoryStore {
     return {
       ok: true,
       durable: true,
-      value: { state, isolatedTailBytes, keepBytes: consumed, completeLeftover },
+      value: { state, isolatedTailBytes, keepAbsoluteBytes: absoluteOffset + consumed, completeLeftover },
     };
   }
 
@@ -501,7 +512,7 @@ export class JsonlStore implements MemoryStore {
    */
   private repairTail(
     buffer: Buffer,
-    keepBytes: number,
+    keepAbsoluteBytes: number,
     completeLeftover: boolean,
     isolatedTailBytes: number,
   ): StoreResult<TailQuarantine | null> {
@@ -537,11 +548,11 @@ export class JsonlStore implements MemoryStore {
         }
       }
       const keepLength = buffer.length - isolatedTailBytes;
-      if (keepLength !== keepBytes) {
+      if (keepLength !== keepAbsoluteBytes) {
         // 消费长度与截断点必须一致，否则说明解析与修复对「哪一段是完整记录」理解不同。
-        return err('corrupt_log', `tail repair mismatch: keep ${keepLength} != parsed ${keepBytes}`);
+        return err('corrupt_log', `tail repair mismatch: keep ${keepLength} != parsed ${keepAbsoluteBytes}`);
       }
-      truncateSync(logPath, keepBytes);
+      truncateSync(logPath, keepAbsoluteBytes);
       const fd = openSync(logPath, 'r+');
       try {
         fsyncSync(fd);

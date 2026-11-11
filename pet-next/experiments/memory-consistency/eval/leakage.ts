@@ -12,6 +12,8 @@
  * @module pet-next/experiments/memory-consistency/eval/leakage
  */
 import { canonicalJson, type Budget, type MemoryPolicy } from '../contracts.ts';
+import { applyPatch } from '../ledger/patch.ts';
+import { fullRebuild } from '../maintenance/rebuild.ts';
 import { traceTrack, type TrackFile } from './harness.ts';
 
 /** 一条泄漏发现。空数组代表通过。 */
@@ -21,13 +23,37 @@ export interface LeakFinding {
   readonly detail: string;
 }
 
-/** 审计覆盖度：非零才说明真的看到了笔记。 */
-export interface LeakCoverage {
+/** 单类/单策略的覆盖度。 */
+export interface ScopedCoverage {
+  readonly tracks: number;
+  readonly samples: number;
   readonly inputsWithActiveNotes: number;
   readonly inputsWithInvalidatedNotes: number;
-  readonly inputsWithDerivedNotes: number;
+  readonly inputsWithNotes: number;
   readonly outputsWithSourceIds: number;
-  readonly totalInputs: number;
+}
+
+/** 审计覆盖度：非零才说明真的看到了笔记。 */
+export interface LeakCoverage extends ScopedCoverage {
+  readonly inputsWithDerivedNotes: number;
+  readonly inputsWithRequests: number;
+  readonly byClass: Readonly<Record<string, ScopedCoverage>>;
+  readonly byPolicy: Readonly<Record<string, ScopedCoverage>>;
+  readonly requiredClasses: readonly string[];
+  readonly missingClasses: readonly string[];
+}
+
+/** 四类行为 + 派生依赖必须都被真实覆盖。 */
+export const REQUIRED_LEAK_CLASSES = [
+  'state-update',
+  'generation-presentation',
+  'tool-result',
+  'stale-patch',
+  'dependency-graph',
+] as const;
+
+function emptyScoped(): { tracks: number; samples: number; inputsWithActiveNotes: number; inputsWithInvalidatedNotes: number; inputsWithNotes: number; outputsWithSourceIds: number } {
+  return { tracks: 0, samples: 0, inputsWithActiveNotes: 0, inputsWithInvalidatedNotes: 0, inputsWithNotes: 0, outputsWithSourceIds: 0 };
 }
 
 export interface LeakAuditReport {
@@ -51,34 +77,76 @@ export function auditPolicyInputs(
 ): LeakAuditReport {
   const findings: LeakFinding[] = [];
   let samples = 0;
+  const byClass: Record<string, ReturnType<typeof emptyScoped>> = {};
+  const byPolicy: Record<string, ReturnType<typeof emptyScoped>> = {};
+  for (const policy of policies) byPolicy[policy.id] = emptyScoped();
   const coverage = {
+    tracks: 0,
+    samples: 0,
     inputsWithActiveNotes: 0,
     inputsWithInvalidatedNotes: 0,
     inputsWithDerivedNotes: 0,
+    inputsWithNotes: 0,
+    inputsWithRequests: 0,
     outputsWithSourceIds: 0,
     totalInputs: 0,
   };
 
   for (const track of tracks) {
     const labels = [track.trackId, track.pairId, track.keyCondition];
+    const trackClass = track.class;
+    const scoped = byClass[trackClass] ?? emptyScoped();
+    byClass[trackClass] = scoped;
+    scoped.tracks += 1;
+    coverage.tracks += 1;
     const trace = traceTrack(track);
     const stride = Math.max(1, step);
     let lastSampled = 0;
     for (const traceStep of trace.steps) {
       if (lastSampled !== 0 && traceStep.sequence - lastSampled < stride) continue;
       lastSampled = traceStep.sequence;
-      const state = traceStep.state;
+      // 每个 trace 边界都查两相：原始状态 + 一轮整理后的状态。
+      // 生成/呈现/工具结果这几类轨迹本身没有补丁，只有整理后才会出现笔记；
+      // 两相都查既覆盖真实边界，也不会把「没有笔记」说成覆盖。
+      const consolidated = applyPatch(
+        traceStep.state,
+        fullRebuild(traceStep.state, `op-audit-${traceStep.sequence}`).patch,
+      ).state;
+      const phases: readonly { phase: 'raw' | 'consolidated'; state: typeof traceStep.state }[] = [
+        { phase: 'raw', state: traceStep.state },
+        { phase: 'consolidated', state: consolidated },
+      ];
+      for (const { state } of phases) {
       const notes = Object.values(state.notes);
-      if (notes.some((note) => note.status === 'active')) coverage.inputsWithActiveNotes += 1;
-      if (notes.some((note) => note.status === 'invalidated')) coverage.inputsWithInvalidatedNotes += 1;
-      if (notes.some((note) => note.parentNoteIds.length > 0)) coverage.inputsWithDerivedNotes += 1;
+      const hasActive = notes.some((note) => note.status === 'active');
+      const hasInvalidated = notes.some((note) => note.status === 'invalidated');
+      const hasNotes = notes.length > 0;
+      const hasDerived = notes.some((note) => note.parentNoteIds.length > 0);
+      const hasRequests = Object.keys(state.requests).length > 0;
+      coverage.samples += 1;
+      scoped.samples += 1;
+      if (hasActive) { coverage.inputsWithActiveNotes += 1; scoped.inputsWithActiveNotes += 1; }
+      if (hasInvalidated) { coverage.inputsWithInvalidatedNotes += 1; scoped.inputsWithInvalidatedNotes += 1; }
+      if (hasNotes) { coverage.inputsWithNotes += 1; scoped.inputsWithNotes += 1; }
+      if (hasDerived) coverage.inputsWithDerivedNotes += 1;
+      if (hasRequests) coverage.inputsWithRequests += 1;
 
       for (const policy of policies) {
         samples += 1;
         coverage.totalInputs += 1;
         const input = { state, events: state.events, query: { text: '当前进展？' }, budget };
         const context = policy.compile(input);
-        if (context.sourceIds.length > 0) coverage.outputsWithSourceIds += 1;
+        const policyScoped = byPolicy[policy.id] ?? emptyScoped();
+        byPolicy[policy.id] = policyScoped;
+        policyScoped.samples += 1;
+        if (context.sourceIds.length > 0) {
+          coverage.outputsWithSourceIds += 1;
+          scoped.outputsWithSourceIds += 1;
+          policyScoped.outputsWithSourceIds += 1;
+        }
+        if (hasNotes) policyScoped.inputsWithNotes += 1;
+        if (hasActive) policyScoped.inputsWithActiveNotes += 1;
+        if (hasInvalidated) policyScoped.inputsWithInvalidatedNotes += 1;
         const serialized = canonicalJson(input);
         for (const sentinel of [...labels, ...SENTINELS]) {
           if (sentinel === '') continue;
@@ -117,8 +185,25 @@ export function auditPolicyInputs(
           }
         }
       }
+      }
     }
   }
 
-  return { tracks: tracks.length, samples, findings, coverage };
+  const missingClasses = REQUIRED_LEAK_CLASSES.filter((name) => {
+    const scoped = byClass[name];
+    return scoped === undefined || scoped.samples === 0 || scoped.inputsWithNotes === 0 || scoped.outputsWithSourceIds === 0;
+  });
+
+  return {
+    tracks: tracks.length,
+    samples,
+    findings,
+    coverage: {
+      ...coverage,
+      byClass,
+      byPolicy,
+      requiredClasses: [...REQUIRED_LEAK_CLASSES],
+      missingClasses,
+    },
+  };
 }

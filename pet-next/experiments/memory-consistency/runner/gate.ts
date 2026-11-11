@@ -18,7 +18,7 @@ import { GATE_SCHEMA_VERSION, type GateEnvelope } from '../contracts.ts';
  * pathToFileURL 依赖宿主平台：在 POSIX 上遇到 `C:\x\y.ts` 会当成相对路径。
  * 这里显式识别 Windows 风格路径，保证同一段代码在两个平台都能判断入口。
  */
-function normalizeFileUrl(pathOrUrl: string): string {
+export function fileUrlForPath(pathOrUrl: string): string {
   const windowsStyle = /^[A-Za-z]:[\\/]/.test(pathOrUrl) || pathOrUrl.includes('\\');
   let url: string;
   if (pathOrUrl.startsWith('file:')) {
@@ -35,8 +35,8 @@ function normalizeFileUrl(pathOrUrl: string): string {
 export function isMainModule(argvPath: string | undefined, moduleUrl: string): boolean {
   if (argvPath === undefined || argvPath === '') return false;
   try {
-    const left = normalizeFileUrl(argvPath);
-    const right = normalizeFileUrl(moduleUrl);
+    const left = fileUrlForPath(argvPath);
+    const right = fileUrlForPath(moduleUrl);
     return process.platform === 'win32' ? left.toLowerCase() === right.toLowerCase() : left === right;
   } catch {
     return false;
