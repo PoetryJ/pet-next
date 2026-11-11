@@ -45,6 +45,7 @@ const SUITES = [
   { id: 'future', title: '未来 runner dry-run', files: ['future-run/runner.test.ts'] },
   { id: 'studies', title: '成本与平台', files: ['studies/cost.test.ts', 'platform/checks.test.ts', 'platform/windows-script.test.ts'] },
   { id: 'gate', title: '门禁信封与 CLI 入口', files: ['runner/gate.test.ts'] },
+  { id: 'shadow', title: 'R3 真实会话路径（8故事×2臂）', files: ['product-shadow/shadow.test.ts'] },
 ];
 
 /** 门禁脚本。文件不存在就记 not_run。 */
@@ -61,6 +62,7 @@ function parseArgs(argv) {
     all: false,
     verify: false,
     demo: false,
+    shadow: false,
     list: false,
     out: null,
     runId: null,
@@ -70,6 +72,7 @@ function parseArgs(argv) {
     if (item === '--all') args.all = true;
     else if (item === '--verify') args.verify = true;
     else if (item === '--demo') args.demo = true;
+    else if (item === '--shadow') args.shadow = true;
     else if (item === '--list') args.list = true;
     else if (item.startsWith('--suite=')) args.suites.push(item.slice('--suite='.length));
     else if (item.startsWith('--gate=')) args.gates.push(item.slice('--gate='.length));
@@ -249,6 +252,26 @@ function main() {
     for (const suite of SUITES) process.stdout.write(`suite ${suite.id}\t${suite.title}\n`);
     for (const gate of GATES) process.stdout.write(`gate  ${gate.id}\t${gate.title}\n`);
     return 0;
+  }
+
+  // R3：真实会话路径的 8×2 对照，输出到 <out>/shadow（每次新 runId 目录）。
+  if (args.shadow) {
+    const baseOut = args.out ?? join(HERE, 'out');
+    mkdirSync(baseOut, { recursive: true });
+    const script = join(HERE, 'product-shadow', 'shadow.ts');
+    if (!existsSync(script)) {
+      process.stdout.write('not_run: product-shadow/shadow.ts missing\n');
+      return 1;
+    }
+    const shadowOut = join(baseOut, 'shadow');
+    const result = spawnSync(process.execPath, ['--experimental-strip-types', script, `--out=${shadowOut}`], {
+      cwd: REPO_ROOT,
+      encoding: 'utf8',
+      timeout: 600_000,
+      env: { ...process.env, MEMORY_RUN_ID: runId, MEMORY_SOURCE_COMMIT: identity.sourceCommit },
+    });
+    process.stdout.write(`${result.stdout ?? ''}${result.stderr ?? ''}`);
+    return result.status === 0 ? 0 : 1;
   }
 
   // 演示不是门禁：保持固定输出目录，方便直接打开。

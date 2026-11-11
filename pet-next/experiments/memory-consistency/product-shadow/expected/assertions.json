@@ -1,0 +1,184 @@
+{
+  "schemaVersion": "shadow-expected/v1",
+  "writtenBeforeExecution": true,
+  "note": "先冻结本文件与 stories.json 的 sha256，再运行；结果不能回改。",
+  "assertions": {
+    "S1": {
+      "title": "偏好在多轮后被短历史淘汰，重新提问仍需要该证据",
+      "question": "我周报想要什么格式来着？",
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e1"
+        ],
+        "mustIncludeText": [
+          "先给草稿"
+        ],
+        "mustNotIncludeText": [],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    "S2": {
+      "title": "偏好被明确更正，旧值不能作为当前有效记忆",
+      "question": "周报现在怎么发？",
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e2"
+        ],
+        "mustIncludeText": [
+          "直接发送"
+        ],
+        "mustNotIncludeText": [
+          "先给草稿"
+        ],
+        "mustNotIncludeSourceIds": [
+          "e1"
+        ],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    "S3": {
+      "title": "待办被撤销，旧 active 承诺不得重新注入",
+      "question": "周报任务现在什么状态？",
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e3"
+        ],
+        "mustIncludeText": [
+          "cancelled@r2"
+        ],
+        "mustNotIncludeText": [
+          "created@r1"
+        ],
+        "mustNotIncludeSourceIds": [
+          "e2"
+        ],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    "S4": {
+      "title": "无关偏好更正不误伤另一条仍有效的事实",
+      "question": "周报要什么格式？",
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e1"
+        ],
+        "mustIncludeText": [
+          "先给草稿"
+        ],
+        "mustNotIncludeText": [
+          "签名偏好：简短"
+        ],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    "S5": {
+      "title": "reset/new session 与 store 关闭重开：长程记忆恢复、epoch 隔离",
+      "question": "我偏好用什么语言？",
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e1"
+        ],
+        "mustIncludeText": [
+          "中文"
+        ],
+        "mustNotIncludeText": [],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": true,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    "S6": {
+      "title": "旧笔记补丁在更正后迟到：被拒且最终请求不得使用旧笔记",
+      "question": "周报怎么发？",
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e2"
+        ],
+        "mustIncludeText": [
+          "直接发送"
+        ],
+        "mustNotIncludeText": [
+          "先给草稿"
+        ],
+        "mustNotIncludeSourceIds": [
+          "e1"
+        ],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    "S7": {
+      "title": "请求被取消：不能推导用户已确认，迟到回复不得恢复旧会话历史",
+      "question": "我时区设的是哪？",
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e1"
+        ],
+        "mustIncludeText": [
+          "东京"
+        ],
+        "mustNotIncludeText": [
+          "这条会被取消"
+        ],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    "S8": {
+      "title": "接近预算上限的长来源ID/中文/emoji：两种字节口径合规、来源完整",
+      "question": "我周报的排版偏好是什么？",
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e-long-source-identifier-0001"
+        ],
+        "budgetPressureUtf16": 2000,
+        "mustIncludeText": [
+          "中文排版+表格"
+        ],
+        "mustNotIncludeText": [],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    }
+  }
+}

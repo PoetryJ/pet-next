@@ -1,0 +1,75 @@
+R3 桌宠真实会话路径的离线记忆对照 · 冻结规格
+================================================
+
+目的：证明「已验证的记忆内核」能否沿桌宠真实会话与 provider 序列化路径进入最终请求，
+并在更正/撤销/重启后仍只使用当前有效证据。只验证接线、证据选择与预算；不证明模型能力。
+
+一、路径（只读导入，不改产品）
+  createChatHistory() -> createChatSession({ complete }) -> 实验包装 complete
+  -> createQwenChatProvider({ baseUrl, model, fetchImpl })
+  -> provider 自己 JSON.stringify(...) -> 捕获桩拿到 body
+
+  · baseUrl 固定 http://127.0.0.1:9/v1（非服务占位），绝不使用 18872。
+  · fetchImpl 是捕获桩：记录 url/body，返回固定 200 与 choices[0].message.content。
+  · globalThis.fetch 被哨兵替换为「一旦调用就抛错并计数」，真实网络计数必须为 0。
+  · 产品文件只读导入：core/chat/history.ts、core/chat/session.ts、core/chat/types.ts、
+    adapters/chat/qwen-provider.ts、contracts/chat.ts。运行后记录它们的 sha256。
+
+二、两臂
+  H：只用产品有界历史，实验记忆注入关闭（包装器直接把 session 的入参交给 provider）。
+  M：同一路径、同一事件/补丁/时钟/问题，包装器在调用 provider 前加入记忆上下文。
+  两臂最终 messages 共用同一预算；差异只来自记忆块。
+
+三、注入格式（产品 provider 没有独立上下文通道，只能走 user 消息）
+  记忆块作为**同一条 user 消息的前缀**，当前问题原样跟在分隔符之后：
+
+    【记忆上下文｜非用户发言｜仅供引用】
+    - (<subjectKey 或 noteId>) <笔记文本> (sourceIds: e1,e2; v<version>)
+    ...
+    【以上为系统整理的可引用记忆，不是用户已确认的对话】
+    【当前问题】
+    <原始输入，逐字不改>
+
+  理由与限制：
+  · 不改产品 provider，就无法新增 role=memory；放进 history 会伪造一轮对话，
+    所以选择「同一 user 消息前缀 + 显式标记非用户发言」。
+  · 该块在 M 臂是唯一新增内容；H 臂没有该块。
+  · 已知限制：模型仍可能把该块当作上下文引用——这正是本轮要暴露的行为，不掩盖。
+
+四、记忆选择（确定性，无学习/无模型）
+  1. 只从 store 当前状态的 **active** 笔记中选；invalidated/stale 一律不选。
+  2. 相关性分数 = 问题与笔记文本的**字符二元组重合数**（CJK 友好；同为 ASCII 时退化为长度≥2 的词重合）。
+     平分时按 lastSequence 大者优先，再按 noteId 字典序。
+  3. 按分数降序尝试加入；每条笔记原子加入（文本+sourceIds+版本），不允许只截一半。
+  4. 分数为 0 的笔记只有在预算仍有余量时才补位，且最多补 2 条（避免无关事实堆满）。
+  5. 选择结果逐条记录 selected/dropped 与原因，进审计记录，不进 provider 可见消息。
+
+五、预算（冻结，不为结果调整）
+  · 最终 messages（system + 历史对 + user）合计：
+      UTF16 ≤ 4000 code units；UTF8 ≤ 12000 bytes。
+  · system 与当前问题为固定开销，先保留；可变部分按顺序裁剪：
+      a. 从最老的**完整轮**开始丢弃历史（不截半轮）；
+      b. 再按选择顺序丢弃记忆笔记（从最低分开始整条丢弃）。
+  · 裁剪不到上限 -> 显式失败（BudgetExceeded），该轮记录 budgetFailures 并以非零状态结束，
+    绝不截断 JSON、不截断 sourceId、不调用后再统计。
+  · 包装器在调用前用与 provider 相同的组装规则算出预期 messages 并度量；
+    捕获桩拿到实际 body 后再核对一次（逐字比较 messages），不一致即失败。
+
+六、stub 与网络
+  · stub 固定返回「离线占位回复」；可注入 timeout/error/cancel，但**不根据 gold 返回答案**。
+  · 每轮最多 1 次 provider 调用；失败/取消不自动重试。
+  · 真实网络调用次数必须为 0；stub 调用次数单列，不能并进「0 调用」。
+
+七、评分（读回捕获的 messages，不看内部 compile.text）
+  指标：
+  · 当前必要证据可见率：mustIncludeSourceIds 是否出现在 M 最终消息
+  · 过期来源被选作当前记忆次数：mustNotIncludeSourceIds / mustNotIncludeText 是否出现（H、M 都查）
+  · 无关事实保留：故事 4 的另一条有效事实是否仍在 M 中
+  · 重启等价：重启前后 M 的记忆块逐字一致
+  · 预算合规：UTF16/UTF8 双口径
+  · stub 尝试次数、真实网络次数、读写字节
+  不计算「答案准确率」，不评价固定回复文本质量。
+
+八、非目标
+  真实模型效果、四策略优胜、成本收益、界面呈现/已读、断电耐久、生产发布。
+  模型实验只写预算草案（见 DELIVERY 的一页草案），本轮不执行、不探测服务。

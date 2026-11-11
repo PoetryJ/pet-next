@@ -27,6 +27,15 @@ describe('Windows 脚本契约（静态）', () => {
     assert.match(attrs, /\*\.ps1 text eol=crlf/);
   });
 
+  test('明确要求 PowerShell 7：低于 7 直接 exit 2 并打印正确命令', () => {
+    assert.match(text, /\$PSVersionTable\.PSVersion\.Major -lt 7/);
+    assert.match(text, /exit 2/);
+    assert.match(text, /pwsh -NoProfile -File/);
+    // 不再宣称 PS5.1 支持
+    assert.equal(/Windows PowerShell 5\.1 与 pwsh 7 均可/.test(text), false);
+    assert.match(text, /只支持 PowerShell 7/);
+  });
+
   test('用 $PSScriptRoot 定位仓库根，不依赖调用目录', () => {
     assert.match(text, /\$PSScriptRoot/);
     assert.match(text, /Resolve-Path \(Join-Path \$PSScriptRoot/);

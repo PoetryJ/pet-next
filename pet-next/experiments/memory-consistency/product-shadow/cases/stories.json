@@ -1,0 +1,850 @@
+{
+  "schemaVersion": "shadow-stories/v1",
+  "generatedBy": "product-shadow/cases/build-stories.mjs",
+  "stories": [
+    {
+      "storyId": "S1",
+      "title": "偏好在多轮后被短历史淘汰，重新提问仍需要该证据",
+      "question": "我周报想要什么格式来着？",
+      "events": [
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e1",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 1,
+          "occurredAt": "2026-11-10T12:00:01.000Z",
+          "observedAt": "2026-11-10T12:00:01.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "周报要中文，先给草稿。",
+            "scripted": {
+              "subjectKey": "pref:weekly-report",
+              "valueText": "中文草稿",
+              "kindHint": "preference"
+            }
+          }
+        }
+      ],
+      "patches": [
+        {
+          "patchId": "p1",
+          "buildAtSequence": 1,
+          "applyAtSequence": 1,
+          "notes": [
+            {
+              "noteId": "n:pref:weekly-report",
+              "text": "周报偏好：中文、先给草稿",
+              "sourceEventIds": [
+                "e1"
+              ],
+              "subjectKey": "pref:weekly-report"
+            }
+          ]
+        }
+      ],
+      "turns": [
+        {
+          "user": "今天天气不错",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "讲个冷笑话",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "我有点困",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "推荐一首歌",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "我周报想要什么格式来着？",
+          "stub": "离线占位回复"
+        }
+      ],
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e1"
+        ],
+        "mustIncludeText": [
+          "先给草稿"
+        ],
+        "mustNotIncludeText": [],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    {
+      "storyId": "S2",
+      "title": "偏好被明确更正，旧值不能作为当前有效记忆",
+      "question": "周报现在怎么发？",
+      "events": [
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e1",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 1,
+          "occurredAt": "2026-11-10T12:00:01.000Z",
+          "observedAt": "2026-11-10T12:00:01.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "周报先给草稿。",
+            "scripted": {
+              "subjectKey": "pref:weekly-report",
+              "valueText": "先给草稿",
+              "kindHint": "preference"
+            }
+          }
+        },
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e2",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 2,
+          "occurredAt": "2026-11-10T12:00:02.000Z",
+          "observedAt": "2026-11-10T12:00:02.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "改成直接发送。",
+            "scripted": {
+              "subjectKey": "pref:weekly-report",
+              "valueText": "直接发送",
+              "kindHint": "preference"
+            }
+          }
+        }
+      ],
+      "patches": [
+        {
+          "patchId": "p1",
+          "buildAtSequence": 1,
+          "applyAtSequence": 1,
+          "notes": [
+            {
+              "noteId": "n:pref:weekly-report",
+              "text": "周报偏好：先给草稿",
+              "sourceEventIds": [
+                "e1"
+              ],
+              "subjectKey": "pref:weekly-report"
+            }
+          ]
+        },
+        {
+          "patchId": "p2",
+          "buildAtSequence": 2,
+          "applyAtSequence": 2,
+          "notes": [
+            {
+              "noteId": "n:pref:weekly-report",
+              "text": "周报偏好：直接发送",
+              "sourceEventIds": [
+                "e2"
+              ],
+              "subjectKey": "pref:weekly-report"
+            }
+          ]
+        }
+      ],
+      "turns": [
+        {
+          "user": "早",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "周报现在怎么发？",
+          "stub": "离线占位回复"
+        }
+      ],
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e2"
+        ],
+        "mustIncludeText": [
+          "直接发送"
+        ],
+        "mustNotIncludeText": [
+          "先给草稿"
+        ],
+        "mustNotIncludeSourceIds": [
+          "e1"
+        ],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    {
+      "storyId": "S3",
+      "title": "待办被撤销，旧 active 承诺不得重新注入",
+      "question": "周报任务现在什么状态？",
+      "events": [
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e1",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 1,
+          "occurredAt": "2026-11-10T12:00:01.000Z",
+          "observedAt": "2026-11-10T12:00:01.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "记一下周报任务。",
+            "scripted": {
+              "subjectKey": "task:weekly-report",
+              "valueText": "周报",
+              "kindHint": "task"
+            }
+          }
+        },
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e2",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 2,
+          "occurredAt": "2026-11-10T12:00:02.000Z",
+          "observedAt": "2026-11-10T12:00:02.005Z",
+          "source": "runtime",
+          "kind": "task.changed",
+          "payload": {
+            "change": "created",
+            "authority": "explicit"
+          },
+          "taskId": "weekly-report",
+          "taskRevision": 1
+        },
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e3",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 3,
+          "occurredAt": "2026-11-10T12:00:03.000Z",
+          "observedAt": "2026-11-10T12:00:03.005Z",
+          "source": "runtime",
+          "kind": "task.changed",
+          "payload": {
+            "change": "cancelled",
+            "authority": "explicit"
+          },
+          "taskId": "weekly-report",
+          "taskRevision": 2
+        }
+      ],
+      "patches": [
+        {
+          "patchId": "p1",
+          "buildAtSequence": 2,
+          "applyAtSequence": 2,
+          "notes": [
+            {
+              "noteId": "n:task:weekly-report",
+              "text": "周报任务：已创建（created@r1）",
+              "sourceEventIds": [
+                "e2"
+              ],
+              "subjectKey": "task:weekly-report"
+            }
+          ]
+        },
+        {
+          "patchId": "p2",
+          "buildAtSequence": 3,
+          "applyAtSequence": 3,
+          "notes": [
+            {
+              "noteId": "n:task:weekly-report",
+              "text": "周报任务：已撤销（cancelled@r2）",
+              "sourceEventIds": [
+                "e3"
+              ],
+              "subjectKey": "task:weekly-report"
+            }
+          ]
+        }
+      ],
+      "turns": [
+        {
+          "user": "任务还在吗",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "周报任务现在什么状态？",
+          "stub": "离线占位回复"
+        }
+      ],
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e3"
+        ],
+        "mustIncludeText": [
+          "cancelled@r2"
+        ],
+        "mustNotIncludeText": [
+          "created@r1"
+        ],
+        "mustNotIncludeSourceIds": [
+          "e2"
+        ],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    {
+      "storyId": "S4",
+      "title": "无关偏好更正不误伤另一条仍有效的事实",
+      "question": "周报要什么格式？",
+      "events": [
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e1",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 1,
+          "occurredAt": "2026-11-10T12:00:01.000Z",
+          "observedAt": "2026-11-10T12:00:01.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "周报先给草稿。",
+            "scripted": {
+              "subjectKey": "pref:weekly-report",
+              "valueText": "先给草稿",
+              "kindHint": "preference"
+            }
+          }
+        },
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e2",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 2,
+          "occurredAt": "2026-11-10T12:00:02.000Z",
+          "observedAt": "2026-11-10T12:00:02.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "签名用简短一点。",
+            "scripted": {
+              "subjectKey": "pref:bio",
+              "valueText": "简短",
+              "kindHint": "preference"
+            }
+          }
+        },
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e3",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 3,
+          "occurredAt": "2026-11-10T12:00:03.000Z",
+          "observedAt": "2026-11-10T12:00:03.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "签名再详细些。",
+            "scripted": {
+              "subjectKey": "pref:bio",
+              "valueText": "详细",
+              "kindHint": "preference"
+            }
+          }
+        }
+      ],
+      "patches": [
+        {
+          "patchId": "p1",
+          "buildAtSequence": 2,
+          "applyAtSequence": 2,
+          "notes": [
+            {
+              "noteId": "n:pref:weekly-report",
+              "text": "周报偏好：先给草稿",
+              "sourceEventIds": [
+                "e1"
+              ],
+              "subjectKey": "pref:weekly-report"
+            },
+            {
+              "noteId": "n:pref:bio",
+              "text": "签名偏好：简短",
+              "sourceEventIds": [
+                "e2"
+              ],
+              "subjectKey": "pref:bio"
+            }
+          ]
+        },
+        {
+          "patchId": "p2",
+          "buildAtSequence": 3,
+          "applyAtSequence": 3,
+          "notes": [
+            {
+              "noteId": "n:pref:bio",
+              "text": "签名偏好：详细",
+              "sourceEventIds": [
+                "e3"
+              ],
+              "subjectKey": "pref:bio"
+            }
+          ]
+        }
+      ],
+      "turns": [
+        {
+          "user": "随便聊聊",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "周报要什么格式？",
+          "stub": "离线占位回复"
+        }
+      ],
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e1"
+        ],
+        "mustIncludeText": [
+          "先给草稿"
+        ],
+        "mustNotIncludeText": [
+          "签名偏好：简短"
+        ],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    {
+      "storyId": "S5",
+      "title": "reset/new session 与 store 关闭重开：长程记忆恢复、epoch 隔离",
+      "question": "我偏好用什么语言？",
+      "events": [
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e1",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 1,
+          "occurredAt": "2026-11-10T12:00:01.000Z",
+          "observedAt": "2026-11-10T12:00:01.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "我习惯用中文。",
+            "scripted": {
+              "subjectKey": "pref:language",
+              "valueText": "中文",
+              "kindHint": "preference"
+            }
+          }
+        }
+      ],
+      "patches": [
+        {
+          "patchId": "p1",
+          "buildAtSequence": 1,
+          "applyAtSequence": 1,
+          "notes": [
+            {
+              "noteId": "n:pref:language",
+              "text": "语言偏好：中文",
+              "sourceEventIds": [
+                "e1"
+              ],
+              "subjectKey": "pref:language"
+            }
+          ]
+        }
+      ],
+      "turns": [
+        {
+          "user": "你好",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "我偏好用什么语言？",
+          "stub": "离线占位回复"
+        }
+      ],
+      "restart": {
+        "afterTurn": 0
+      },
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e1"
+        ],
+        "mustIncludeText": [
+          "中文"
+        ],
+        "mustNotIncludeText": [],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": true,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    {
+      "storyId": "S6",
+      "title": "旧笔记补丁在更正后迟到：被拒且最终请求不得使用旧笔记",
+      "question": "周报怎么发？",
+      "events": [
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e1",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 1,
+          "occurredAt": "2026-11-10T12:00:01.000Z",
+          "observedAt": "2026-11-10T12:00:01.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "周报先给草稿。",
+            "scripted": {
+              "subjectKey": "pref:weekly-report",
+              "valueText": "先给草稿",
+              "kindHint": "preference"
+            }
+          }
+        },
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e2",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 2,
+          "occurredAt": "2026-11-10T12:00:02.000Z",
+          "observedAt": "2026-11-10T12:00:02.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "改成直接发送。",
+            "scripted": {
+              "subjectKey": "pref:weekly-report",
+              "valueText": "直接发送",
+              "kindHint": "preference"
+            }
+          }
+        }
+      ],
+      "patches": [
+        {
+          "patchId": "p1",
+          "buildAtSequence": 1,
+          "applyAtSequence": 1,
+          "notes": [
+            {
+              "noteId": "n:pref:weekly-report",
+              "text": "周报偏好：先给草稿",
+              "sourceEventIds": [
+                "e1"
+              ],
+              "subjectKey": "pref:weekly-report"
+            }
+          ]
+        },
+        {
+          "patchId": "p2",
+          "buildAtSequence": 2,
+          "applyAtSequence": 2,
+          "notes": [
+            {
+              "noteId": "n:pref:weekly-report",
+              "text": "周报偏好：直接发送",
+              "sourceEventIds": [
+                "e2"
+              ],
+              "subjectKey": "pref:weekly-report"
+            }
+          ]
+        },
+        {
+          "patchId": "p3-stale",
+          "buildAtSequence": 1,
+          "applyAtSequence": 2,
+          "notes": [
+            {
+              "noteId": "n:pref:weekly-report-2",
+              "text": "周报偏好：先给草稿",
+              "sourceEventIds": [
+                "e1"
+              ],
+              "subjectKey": "pref:weekly-report"
+            }
+          ]
+        }
+      ],
+      "turns": [
+        {
+          "user": "早",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "周报怎么发？",
+          "stub": "离线占位回复"
+        }
+      ],
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e2"
+        ],
+        "mustIncludeText": [
+          "直接发送"
+        ],
+        "mustNotIncludeText": [
+          "先给草稿"
+        ],
+        "mustNotIncludeSourceIds": [
+          "e1"
+        ],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    {
+      "storyId": "S7",
+      "title": "请求被取消：不能推导用户已确认，迟到回复不得恢复旧会话历史",
+      "question": "我时区设的是哪？",
+      "events": [
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e1",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 1,
+          "occurredAt": "2026-11-10T12:00:01.000Z",
+          "observedAt": "2026-11-10T12:00:01.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "我在东京。",
+            "scripted": {
+              "subjectKey": "pref:timezone",
+              "valueText": "东京",
+              "kindHint": "preference"
+            }
+          }
+        }
+      ],
+      "patches": [
+        {
+          "patchId": "p1",
+          "buildAtSequence": 1,
+          "applyAtSequence": 1,
+          "notes": [
+            {
+              "noteId": "n:pref:timezone",
+              "text": "时区偏好：东京",
+              "sourceEventIds": [
+                "e1"
+              ],
+              "subjectKey": "pref:timezone"
+            }
+          ]
+        }
+      ],
+      "turns": [
+        {
+          "user": "这条会被取消，别记进历史",
+          "stub": "离线占位回复",
+          "cancel": true
+        },
+        {
+          "user": "我时区设的是哪？",
+          "stub": "离线占位回复"
+        }
+      ],
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e1"
+        ],
+        "mustIncludeText": [
+          "东京"
+        ],
+        "mustNotIncludeText": [
+          "这条会被取消"
+        ],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    },
+    {
+      "storyId": "S8",
+      "title": "接近预算上限的长来源ID/中文/emoji：两种字节口径合规、来源完整",
+      "question": "我周报的排版偏好是什么？",
+      "events": [
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e-long-source-identifier-0001",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 1,
+          "occurredAt": "2026-11-10T12:00:01.000Z",
+          "observedAt": "2026-11-10T12:00:01.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "周报用中文排版，标题加粗，数据用表格，附一句总结。",
+            "scripted": {
+              "subjectKey": "pref:weekly-layout",
+              "valueText": "中文排版+表格",
+              "kindHint": "preference"
+            }
+          }
+        },
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e-long-source-identifier-0002",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 2,
+          "occurredAt": "2026-11-10T12:00:02.000Z",
+          "observedAt": "2026-11-10T12:00:02.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂",
+            "scripted": {
+              "subjectKey": "pref:background",
+              "valueText": "长背景",
+              "kindHint": "preference"
+            }
+          }
+        },
+        {
+          "schemaVersion": "memory-event/v1",
+          "eventId": "e-long-source-identifier-0003",
+          "sessionId": "sess-shadow",
+          "sessionEpoch": 1,
+          "sequence": 3,
+          "occurredAt": "2026-11-10T12:00:03.000Z",
+          "observedAt": "2026-11-10T12:00:03.005Z",
+          "source": "user",
+          "kind": "user.statement",
+          "payload": {
+            "text": "另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚",
+            "scripted": {
+              "subjectKey": "pref:reading",
+              "valueText": "读书笔记",
+              "kindHint": "preference"
+            }
+          }
+        }
+      ],
+      "patches": [
+        {
+          "patchId": "p1",
+          "buildAtSequence": 3,
+          "applyAtSequence": 3,
+          "notes": [
+            {
+              "noteId": "n:pref:weekly-layout",
+              "text": "周报排版：中文排版+表格",
+              "sourceEventIds": [
+                "e-long-source-identifier-0001"
+              ],
+              "subjectKey": "pref:weekly-layout"
+            },
+            {
+              "noteId": "n:pref:background",
+              "text": "背景说明：无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂无关的长篇背景说明🙂",
+              "sourceEventIds": [
+                "e-long-source-identifier-0002"
+              ],
+              "subjectKey": "pref:background"
+            },
+            {
+              "noteId": "n:pref:reading",
+              "text": "读书笔记：另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚另一段无关的读书笔记📚",
+              "sourceEventIds": [
+                "e-long-source-identifier-0003"
+              ],
+              "subjectKey": "pref:reading"
+            }
+          ]
+        }
+      ],
+      "turns": [
+        {
+          "user": "在吗",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "聊点别的",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "今天几号",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "随便说点什么",
+          "stub": "离线占位回复"
+        },
+        {
+          "user": "我周报的排版偏好是什么？",
+          "stub": "离线占位回复"
+        }
+      ],
+      "expect": {
+        "mustIncludeSourceIds": [
+          "e-long-source-identifier-0001"
+        ],
+        "budgetPressureUtf16": 2000,
+        "mustIncludeText": [
+          "中文排版+表格"
+        ],
+        "mustNotIncludeText": [],
+        "mustNotIncludeSourceIds": [],
+        "memoryBlock": "present-in-M",
+        "restartEquivalent": false,
+        "budget": {
+          "utf16": 4000,
+          "utf8": 12000
+        }
+      }
+    }
+  ]
+}

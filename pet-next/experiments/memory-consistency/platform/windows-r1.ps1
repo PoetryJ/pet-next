@@ -1,12 +1,13 @@
 ﻿<#
-R2 Windows 验收入口（Windows PowerShell 5.1 与 pwsh 7 均可）。
+R3 Windows 验收入口：**只支持 PowerShell 7（pwsh）**。PS5.1 在本机实测会把 node 的 stderr 当 NativeCommandError，已明确不验收。
 文件以 UTF-8 BOM + CRLF 保存：Windows PowerShell 5 读无 BOM 的 UTF-8 会在中文处 ParserError。
 
 用法（在任意目录）：
-  powershell -ExecutionPolicy Bypass -File <repo>\pet-next\experiments\memory-consistency\platform\windows-r1.ps1 -SourceCommit <40位sha>
+  pwsh -NoProfile -File <repo>\pet-next\experiments\memory-consistency\platform\windows-r1.ps1 -SourceCommit <40位sha>
   pwsh -File ... -SourceCommit <sha> [-OutDir <目录>] [-SelfTest]
 
 约束：
+- 低于 PowerShell 7 直接 exit 2，并打印正确命令（不尝试兼容 PS5.1）。
 - 必须显式给 -SourceCommit；归档没有 .git，不允许借用外层仓库 HEAD。
 - 每个子命令的退出码都记录；任何一步非零，脚本最终非零退出。
 - -SelfTest 用 fake-node（全部 exit 7）验证「子进程失败 => 包装脚本失败」，不跑真实测试。
@@ -18,6 +19,13 @@ param(
 )
 
 $ErrorActionPreference = "Stop"
+
+if ($PSVersionTable.PSVersion.Major -lt 7) {
+  Write-Host ("需要 PowerShell 7 (pwsh)；当前版本 {0}" -f $PSVersionTable.PSVersion)
+  Write-Host "正确命令： pwsh -NoProfile -File <脚本路径> -SourceCommit <40位sha> [-OutDir <目录>]"
+  Write-Host "PS5.1 不在验收范围（node stderr 会被当成 NativeCommandError）。"
+  exit 2
+}
 
 # 脚本位于 <repo>/pet-next/experiments/memory-consistency/platform/
 $RepoRoot = (Resolve-Path (Join-Path $PSScriptRoot "..\..\..")).Path
