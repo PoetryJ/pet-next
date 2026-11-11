@@ -12,7 +12,7 @@
 | B2 介入决策与强基线 | 完成 | P0–P3；`decision/rules.ts`；问题合并/静默/额度；H1 消融 `out/eval/ablation.json`。 |
 | C1 受控工作区与事件源 | 完成 | `tools/`；原子写入、SHA 校验、partial JSON、同 SHA 去重、乱序 revision 留档；watch + 启动补读。 |
 | C2 独立评估 | 完成 | 16 轨迹（8+8）、gold 独立、72 份 raw、`verify-eval` 0 失配、5 负控全 detected。 |
-| D 可操作演示 | 完成（UI 部分验证） | `demo/panel.html`、`node run.mjs demo` 13 项 PASS；面板仅 HTTP/CLI 验证，浏览器未验（见 LIMITS）。 |
+| D 可操作演示 | 完成（UI 部分验证） | `demo/panel.html`、`node run.mjs demo` 18 项 PASS；面板仅 HTTP/CLI 验证，浏览器未验（见 LIMITS）。 |
 | 封包 | 完成 | 交付目录以最终文件现算 MANIFEST/SHA；bundle 从 90fb4cd 起。 |
 
 ## 检查数字（现算）
@@ -22,7 +22,7 @@
 - 评估：72 次运行（4 策略 × 18 机会），`out/eval/raw/`。
 - 独立重评：72 份文件，0 失配（`out/logs/verify-eval.log`）。
 - 负控：5/5 detected（各自子进程 exit 1）。
-- 演示：13 项断言 PASS，每步独立进程。
+- 演示：18 项断言 PASS，每步独立进程。
 - 离线静态审计：29 个代码文件，0 个禁用端点/网络客户端；R3.1 diff 0；上游指纹 0 失败。
 
 ## 未完成 / pending
