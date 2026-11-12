@@ -101,6 +101,47 @@ test('分析/receipt 的输入身份与当前结果不一致时不得完成', ()
   }
 })
 
+test('冲突事件不污染已采用版本的输入身份', () => {
+  const h = harness()
+  try {
+    const d = h.built.runtime.delegate({ title: '冲突身份', goal: '采用版本保持可核验', goalCondition: ANALYSIS_GOAL, at: h.clock.now() })
+    h.clock.set('2026-11-11T08:10:00.000Z')
+    const seed = h.seed()
+    h.observe(d.ticketId, seed.resultPath)
+    answerOpen(h, d.ticketId, 'analyze_failing')
+    const before = h.built.runtime.getTask(d.ticketId)
+    assert.equal(before.status, 'completed')
+    // 追加一条同 revision 不同 SHA 的冲突观察事件：不得改变“采用版本”的身份解析。
+    const payload = {
+      ...before.result!,
+      metrics: { total: 40, passed: 31, failed: 9, score: 0.775 },
+      artifactSha: 'ab'.repeat(32),
+      resultFileSha: 'cd'.repeat(32),
+    }
+    h.built.db.insertEvent(
+      {
+        schema: 'pet-followup-event/v1',
+        eventId: stableId('ev', 'artifact.observed', 'conflict', 'r1'),
+        sourceId: 'inbox/E17/run-01',
+        sourceRevision: 'r1:conflict',
+        observedAt: h.clock.now(),
+        ticketId: d.ticketId,
+        taskRevision: before.taskRevision,
+        kind: 'artifact.observed',
+        payload,
+        contentSha256: stableId('sha', payload.artifactSha, payload.resultFileSha),
+      },
+      h.clock.now(),
+    )
+    const check = h.built.runtime.completionCheck(h.built.runtime.getTask(d.ticketId))
+    assert.equal(check.ok, true)
+    assert.equal(check.inputConsistent, true)
+    assert.equal(check.inputRef?.resultFileSha, before.result!.resultFileSha)
+  } finally {
+    h.dispose()
+  }
+})
+
 test('老格式回执没有输入身份时 fail closed，不补写假身份', () => {
   const h = harness()
   try {

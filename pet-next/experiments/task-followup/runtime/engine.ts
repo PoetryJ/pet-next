@@ -819,9 +819,13 @@ export class FollowupRuntime {
           })
           if (reported) {
             this.completeTask(this.requireTask(fresh.ticketId), check)
-            restored.push(fresh.ticketId)
-            details.push(`task ${fresh.ticketId}: resumed to verified completion without restarting assignment`)
-            continue
+            const completed = this.requireTask(fresh.ticketId)
+            if (completed.status === 'completed') {
+              restored.push(fresh.ticketId)
+              details.push(`task ${fresh.ticketId}: resumed to verified completion without restarting assignment`)
+              continue
+            }
+            details.push(`task ${fresh.ticketId}: ready report sent but ticket not ended; falling back to assignment restart`)
           }
         }
         this.db.atomic(() => {
@@ -1038,18 +1042,33 @@ export class FollowupRuntime {
     if (!result.artifactSha) reasons.push('artifact_sha_missing')
     if (!result.artifactPath) reasons.push('artifact_path_missing')
     if (!task.assignmentId) reasons.push('assignment_missing')
+    // 必须找“当前采用版本”的那条事件；冲突时最后一条事件可能不是被采用的版本。
     const event = this.db
       .listEvents(task.ticketId)
-      .filter((item) => item.kind === 'artifact.observed')
+      .filter((item) => {
+        if (item.kind !== 'artifact.observed') return false
+        const payload = item.payload as unknown as ArtifactPayload
+        return (
+          payload.runId === result.runId &&
+          payload.revision === result.revision &&
+          payload.resultFileSha === result.resultFileSha &&
+          payload.artifactSha === result.artifactSha
+        )
+      })
       .at(-1)
     if (!event) {
-      reasons.push('artifact_event_missing')
-    } else {
-      const payload = event.payload as unknown as ArtifactPayload
-      if (payload.runId !== result.runId) reasons.push('event_run_mismatch')
-      if (payload.revision !== result.revision) reasons.push('event_revision_mismatch')
-      if (payload.resultFileSha !== result.resultFileSha) reasons.push('event_result_sha_mismatch')
-      if (payload.artifactSha !== result.artifactSha) reasons.push('event_artifact_sha_mismatch')
+      const latest = this.db
+        .listEvents(task.ticketId)
+        .filter((item) => item.kind === 'artifact.observed')
+        .at(-1)
+      if (!latest) reasons.push('artifact_event_missing')
+      else {
+        const payload = latest.payload as unknown as ArtifactPayload
+        if (payload.runId !== result.runId) reasons.push('event_run_mismatch')
+        if (payload.revision !== result.revision) reasons.push('event_revision_mismatch')
+        if (payload.resultFileSha !== result.resultFileSha) reasons.push('event_result_sha_mismatch')
+        if (payload.artifactSha !== result.artifactSha) reasons.push('event_artifact_sha_mismatch')
+      }
     }
     if (reasons.length) return { ref: null, reasons }
     return {

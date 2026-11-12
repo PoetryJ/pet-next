@@ -88,7 +88,7 @@ PET_FOLLOWUP_CRASH_AT=receipt_persisted node run.mjs answer --ticket <id> --opti
 node run.mjs eval            # 4 策略 × 18 个机会，写 out/eval/raw 与 scores
 node run.mjs verify-eval     # 独立重评 72 份 raw，逐项比对
 node run.mjs negative        # 10 个负控，每个独立子进程；detected → exit 1
-node run.mjs test            # 45 个单测
+node run.mjs test            # 47 个单测
 node run.mjs typecheck       # 需要 tooling/node_modules（见下）
 node tools/r41-acceptance.mjs . out/r41-acceptance   # 真实子进程 27 项断言
 node tools/audit.mjs         # 边界静态审计 + R3.1 diff + 上游指纹
