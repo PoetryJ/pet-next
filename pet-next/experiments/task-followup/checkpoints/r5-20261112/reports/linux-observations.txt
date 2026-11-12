@@ -1,0 +1,7 @@
+R5 independent Linux observations
+1. All delivered Linux regression commands passed on fixed HEAD ff7e1b82c70fae098dc93abc8a1c9bac46fac592.
+2. R5 demo actually emits 26 PASS assertions, not 23. Both source archive and standalone bundle clone pass them.
+3. In both real-clock R5 demos, one logical quiet waiting decision accumulates 10 wake_jobs rows. Restarted service runs 5 iterations but consumes 7 quiet wakes. Notifications do not duplicate. The current demo no-busy-loop assertion accepts these records.
+4. Relevant source: runtime/engine.ts syncWake 906-919 computes dueAt from now plus minGap; runtime/scheduler.ts idFor includes dueAt and schedule saves each different id. This is redundant wake/storage work, not proof of an unbounded CPU busy loop.
+5. Independent 30-second already-delivered-open-question sample: 30 iterations, 0 wakes, exit0. This does not exercise the delayed-delivery accumulation window and does not negate observation 3.
+6. No overnight stability claim: measured service runs are seconds or 30 seconds.

@@ -1,0 +1,9 @@
+{
+  "scope": "recursive plaintext and archive high-confidence credential patterns; not proof against all secret formats",
+  "archiveSha256": "4a05ad3f7b7d8e5e1ef69dae65dad6aebae0dfa736d4a0d4c02e505b65c0c9b6",
+  "filesScanned": 5488,
+  "bytesScanned": 155306233,
+  "archives": 9,
+  "unsafeArchivePaths": [],
+  "findings": []
+}

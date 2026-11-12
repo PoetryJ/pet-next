@@ -1,0 +1,379 @@
+{
+  "schema": "independent-r5-real-service/v1",
+  "source": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\followup-r5-review-20261112\\中文 path\\source\\pet-next\\experiments\\task-followup",
+  "out": "C:\\Users\\Administrator\\Documents\\ChatGPT\\工作学习\\dsh-pet-research\\followup-r5-review-20261112\\windows\\realtime-independent",
+  "node": "v24.22.1",
+  "platform": "win32",
+  "createdAt": "2026-11-12T10:11:50.176Z",
+  "noFakeClock": true,
+  "noManualTickOrWake": true,
+  "noBrowser": true,
+  "checks": [
+    {
+      "scope": "natural-continuation",
+      "name": "initial question exists",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "known input refusal persisted",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "independent service running on real clock",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "before restoration no tool receipt",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "without browser or CLI tick restored input automatically asks",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "automatic question does not authorize execution",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "bounded real service exits normally",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "repeated service cycles do not repeat question delivery",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "one logical min-gap wait has at most one persisted job",
+      "ok": false,
+      "detail": {
+        "count": 4,
+        "jobs": [
+          {
+            "id": "wake-job-f2451dac468b6182",
+            "due": "2026-11-12T10:11:31.052Z",
+            "status": "done",
+            "attempts": 1
+          },
+          {
+            "id": "wake-job-d27ce533ebb85ac5",
+            "due": "2026-11-12T10:11:31.218Z",
+            "status": "done",
+            "attempts": 1
+          },
+          {
+            "id": "wake-job-f33fd6e6d69ea339",
+            "due": "2026-11-12T10:11:31.384Z",
+            "status": "done",
+            "attempts": 1
+          },
+          {
+            "id": "wake-job-8f9983a5a5146896",
+            "due": "2026-11-12T10:11:31.551Z",
+            "status": "done",
+            "attempts": 1
+          }
+        ]
+      }
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "new visible authorization completes exactly once",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "natural-continuation",
+      "name": "one actual tool receipt after new authorization",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "future-online",
+      "name": "future job persisted before due",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "future-online",
+      "name": "service exits normally",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "future-online",
+      "name": "persisted job actually claimed and completed once",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "future-online",
+      "name": "actual wake logged after due",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "future-online",
+      "name": "restart does not reprocess same job",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "offline-cross-due",
+      "name": "future job persisted before due",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "offline-cross-due",
+      "name": "due passed while no service with no processing",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "offline-cross-due",
+      "name": "service exits normally",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "offline-cross-due",
+      "name": "persisted job actually claimed and completed once",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "offline-cross-due",
+      "name": "actual wake logged after due",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "offline-cross-due",
+      "name": "restart does not reprocess same job",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "cancel-stale-unknown",
+      "name": "unknown state from real process crash42",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "cancel-stale-unknown",
+      "name": "cancel and obsolete task version cannot notify",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "cancel-stale-unknown",
+      "name": "cancel and old-version job no longer runnable",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "cancel-stale-unknown",
+      "name": "unknown effect keeps reconciliation block and zero receipts",
+      "ok": true,
+      "detail": null
+    },
+    {
+      "scope": "cancel-stale-unknown",
+      "name": "unknown cannot gain a new reminder",
+      "ok": true,
+      "detail": null
+    }
+  ],
+  "total": 27,
+  "failed": [
+    {
+      "scope": "natural-continuation",
+      "name": "one logical min-gap wait has at most one persisted job",
+      "ok": false,
+      "detail": {
+        "count": 4,
+        "jobs": [
+          {
+            "id": "wake-job-f2451dac468b6182",
+            "due": "2026-11-12T10:11:31.052Z",
+            "status": "done",
+            "attempts": 1
+          },
+          {
+            "id": "wake-job-d27ce533ebb85ac5",
+            "due": "2026-11-12T10:11:31.218Z",
+            "status": "done",
+            "attempts": 1
+          },
+          {
+            "id": "wake-job-f33fd6e6d69ea339",
+            "due": "2026-11-12T10:11:31.384Z",
+            "status": "done",
+            "attempts": 1
+          },
+          {
+            "id": "wake-job-8f9983a5a5146896",
+            "due": "2026-11-12T10:11:31.551Z",
+            "status": "done",
+            "attempts": 1
+          }
+        ]
+      }
+    }
+  ],
+  "results": {
+    "natural-continuation": {
+      "automaticAttention": "attn-e87b834f5033db414b6d65b7",
+      "serviceClock": "real",
+      "notifications": 1,
+      "receipts": 1,
+      "wakeLog": 4
+    },
+    "future-online": {
+      "jobId": "wake-job-94f41a6fa21def19",
+      "dueAt": "2026-11-12T10:11:37.840Z",
+      "state": "done",
+      "attempts": 1,
+      "wakes": [
+        {
+          "at": "2026-11-12T10:11:37.869Z",
+          "event": "wake",
+          "action": "woken",
+          "jobId": "wake-job-94f41a6fa21def19",
+          "detail": "catch_up",
+          "proposals": 0,
+          "notifications": 0
+        }
+      ]
+    },
+    "offline-cross-due": {
+      "jobId": "wake-job-bb79d34b82a0bbdd",
+      "dueAt": "2026-11-12T10:11:44.005Z",
+      "state": "done",
+      "attempts": 1,
+      "wakes": [
+        {
+          "at": "2026-11-12T10:11:44.499Z",
+          "event": "wake",
+          "action": "woken",
+          "jobId": "wake-job-bb79d34b82a0bbdd",
+          "detail": "catch_up",
+          "proposals": 0,
+          "notifications": 0
+        }
+      ]
+    },
+    "cancel-stale-unknown": {
+      "cancelledJob": "wake-job-16d1079abddef511",
+      "oldJob": "wake-job-0f9f4e2b4061c89c",
+      "unknownJob": "wake-job-ae0877f468e428a2",
+      "serviceEvents": [
+        {
+          "at": "2026-11-12T10:11:49.412Z",
+          "event": "service.start",
+          "pid": 54588
+        },
+        {
+          "at": "2026-11-12T10:11:49.443Z",
+          "event": "service.recover",
+          "restored": 1,
+          "needsReconciliation": 1
+        },
+        {
+          "at": "2026-11-12T10:11:49.448Z",
+          "event": "wake",
+          "action": "stale",
+          "jobId": "wake-job-0f9f4e2b4061c89c",
+          "detail": "task_or_revision_changed",
+          "proposals": 0,
+          "notifications": 0
+        },
+        {
+          "at": "2026-11-12T10:11:50.119Z",
+          "event": "service.stop",
+          "reason": "max_iterations",
+          "iterations": 5,
+          "wakes": 0
+        }
+      ]
+    }
+  },
+  "commands": [
+    {
+      "cmd": "delegate",
+      "exit": 0
+    },
+    {
+      "cmd": "seed",
+      "exit": 0
+    },
+    {
+      "cmd": "observe",
+      "exit": 0
+    },
+    {
+      "cmd": "answer",
+      "exit": 0
+    },
+    {
+      "cmd": "answer",
+      "exit": 0
+    },
+    {
+      "cmd": "delegate",
+      "exit": 0
+    },
+    {
+      "cmd": "delegate",
+      "exit": 0
+    },
+    {
+      "cmd": "delegate",
+      "exit": 0
+    },
+    {
+      "cmd": "delegate",
+      "exit": 0
+    },
+    {
+      "cmd": "delegate",
+      "exit": 0
+    },
+    {
+      "cmd": "cancel",
+      "exit": 0
+    },
+    {
+      "cmd": "change",
+      "exit": 0
+    },
+    {
+      "cmd": "seed",
+      "exit": 0
+    },
+    {
+      "cmd": "observe",
+      "exit": 0
+    },
+    {
+      "cmd": "answer",
+      "exit": 42
+    }
+  ]
+}

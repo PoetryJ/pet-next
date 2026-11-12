@@ -1,0 +1,8 @@
+Original immutable server delivery: /data3/DATA/project/project_meishijiang/pet-followup-r5-delivery/
+Original worktree: /data3/DATA/project/project_meishijiang/petmem-followup-r5
+Full bundle: code/task-followup-r5.bundle
+Size:157610350 bytes
+SHA256:6166d86d07fe5ae690b47998c6aca5bfa4626ffed3b76b73b8e38d0556baf8e9
+Original SHA256SUMS.txt covers86 payloads, all independently verified before/after. MANIFEST and checksum file bring the delivery file count to88.
+evidence/original-delivery.tar.gz retains all original delivery files except this full bundle. Its checksum manifest is intentionally unmodified, so a blind check of that projected archive reports this one omitted bundle as missing. The actual Git history on the archive branch replaces the need to commit a >100MB bundle blob. No source or evidence was rewritten to hide a failure.
+Offline incremental bundle retained locally/server-side: r5-unpublished.bundle, prerequisite f8fad37b3dfc95b12fda32d365250db6d0e7fae2, source ff7e1b82c70fae098dc93abc8a1c9bac46fac592, SHA256627c762592a89751a4f932c47295dec93924254773b9ecd7952c658766808914. Obtain the prerequisite from the repository before importing this offline bundle.

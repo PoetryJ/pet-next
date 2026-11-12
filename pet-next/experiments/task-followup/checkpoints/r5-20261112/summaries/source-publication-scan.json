@@ -1,0 +1,10 @@
+{
+  "scope": "new objects relative to remote refs; high-confidence patterns, no guarantee of all secret forms",
+  "ref": "HEAD",
+  "head": "ff7e1b82c70fae098dc93abc8a1c9bac46fac592",
+  "blobs": 2798,
+  "bytes": 67932447,
+  "largeObjects": [],
+  "sensitiveNames": [],
+  "patternFindings": []
+}

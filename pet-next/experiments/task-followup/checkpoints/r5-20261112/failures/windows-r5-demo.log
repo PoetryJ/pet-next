@@ -1,0 +1,45 @@
+workspace C:\Users\Administrator\Documents\ChatGPT\工作学习\dsh-pet-research\followup-r5-review-20261112\中文 path\source\pet-next\experiments\task-followup\out\win-r5-demo
+
+1) 服务停止时：创建委托、结果不足、问题提出
+PASS delegate persisted
+PASS result seeded
+PASS question open
+
+2) 暂缺输入：回答被输入门拒绝，进入 continuation_pending（不执行工具）
+PASS answer accepted
+PASS continuation recorded
+PASS no new attempt before authorization
+
+3) 启动服务（真实时钟）：无浏览器、无 CLI tick，自己到期重判
+PASS service re-evaluated and opened the continuation question
+PASS question is bound to current continuation
+PASS question was delivered by the service (no CLI tick)
+PASS jobs readable
+PASS no busy loop in jobs
+PASS still no attempt before new authorization
+PASS service records real clock/timezone/configSha
+
+4) 停止并重启服务：到期项不重复送达
+PASS service reached running state
+FAIL service stopped cleanly
+{
+  "code": null,
+  "signal": "SIGTERM"
+}
+PASS second service exit 0
+PASS restart did not duplicate notifications
+
+5) 用户重新打开并授权：工具只执行一次，任务完成
+PASS authorized answer accepted
+PASS completed after authorization
+PASS exactly one new attempt
+PASS exactly one receipt
+
+6) 到期前取消：不再提醒
+PASS delegate scheduled a wake
+PASS cancel accepted
+PASS cancel removed scheduled wake
+PASS third service exit 0
+PASS no notification after cancel
+
+R5 demo FAIL failures=1

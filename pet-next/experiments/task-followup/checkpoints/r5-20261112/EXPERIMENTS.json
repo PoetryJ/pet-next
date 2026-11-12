@@ -1,0 +1,212 @@
+{
+  "schema": "pet-followup-checkpoint/v1",
+  "reviewedAt": "2026-11-12",
+  "source": "ff7e1b82c70fae098dc93abc8a1c9bac46fac592",
+  "tree": "f5296d1cd65639a6310852899b7b5d967c959c52",
+  "base": "5e3dc881bb1c02f40cc9cda3680324614c291b6f",
+  "verdict": "limited_rework",
+  "workflowState": "saved_and_paused_by_owner",
+  "followupTasksDispatched": false,
+  "g0": {
+    "linux": {
+      "original": 7,
+      "invalid": 14,
+      "failed": 0
+    },
+    "windows": {
+      "original": 7,
+      "invalid": 14,
+      "failed": 0
+    }
+  },
+  "linux": {
+    "tests": 93,
+    "acceptance": 27,
+    "r4Demo": 35,
+    "r5Demo": 26,
+    "upstream": 144,
+    "r31": 192,
+    "r31Gates": [
+      "G1",
+      "P1",
+      "P2"
+    ],
+    "r4Runs": 72,
+    "r5Runs": 24,
+    "r4Negative": 10,
+    "r5Negative": 6,
+    "deliveryChecksumItems": 86,
+    "sourcePackageFilesMatched": 139
+  },
+  "windows": {
+    "tests": 93,
+    "acceptance": 27,
+    "acceptanceFailed": 0,
+    "r4Demo": 35,
+    "r5Demo": {
+      "pass": 25,
+      "fail": 1,
+      "exit": 1,
+      "reason": "SIGTERM stop: code=null, signal=SIGTERM; substantive scenario assertions passed"
+    },
+    "r4Runs": 72,
+    "r5Runs": 24,
+    "typecheckExit": 0,
+    "r4Negative": 10,
+    "r5Negative": {
+      "exit": 1,
+      "executedCases": 0,
+      "reason": "ERR_UNSUPPORTED_ESM_URL_SCHEME before case execution"
+    }
+  },
+  "independentRealtime": {
+    "linux": {
+      "total": 27,
+      "passed": 26,
+      "failed": [
+        {
+          "scope": "natural-continuation",
+          "name": "one logical min-gap wait has at most one persisted job",
+          "ok": false,
+          "detail": {
+            "count": 6,
+            "jobs": [
+              {
+                "id": "wake-job-bcd650b0ae1dcc9c",
+                "due": "2026-11-12T10:10:06.844Z",
+                "status": "done",
+                "attempts": 1
+              },
+              {
+                "id": "wake-job-8f981749afa0dc86",
+                "due": "2026-11-12T10:10:06.995Z",
+                "status": "done",
+                "attempts": 1
+              },
+              {
+                "id": "wake-job-928fb187e91ccb10",
+                "due": "2026-11-12T10:10:07.147Z",
+                "status": "done",
+                "attempts": 1
+              },
+              {
+                "id": "wake-job-b42dcc8e931bece0",
+                "due": "2026-11-12T10:10:07.299Z",
+                "status": "done",
+                "attempts": 1
+              },
+              {
+                "id": "wake-job-ec06bd5dd1f82dca",
+                "due": "2026-11-12T10:10:07.450Z",
+                "status": "done",
+                "attempts": 1
+              },
+              {
+                "id": "wake-job-ba74ed9891f6ea52",
+                "due": "2026-11-12T10:10:07.602Z",
+                "status": "done",
+                "attempts": 1
+              }
+            ]
+          }
+        }
+      ],
+      "exit": 1
+    },
+    "windows": {
+      "total": 27,
+      "passed": 26,
+      "failed": [
+        {
+          "scope": "natural-continuation",
+          "name": "one logical min-gap wait has at most one persisted job",
+          "ok": false,
+          "detail": {
+            "count": 4,
+            "jobs": [
+              {
+                "id": "wake-job-f2451dac468b6182",
+                "due": "2026-11-12T10:11:31.052Z",
+                "status": "done",
+                "attempts": 1
+              },
+              {
+                "id": "wake-job-d27ce533ebb85ac5",
+                "due": "2026-11-12T10:11:31.218Z",
+                "status": "done",
+                "attempts": 1
+              },
+              {
+                "id": "wake-job-f33fd6e6d69ea339",
+                "due": "2026-11-12T10:11:31.384Z",
+                "status": "done",
+                "attempts": 1
+              },
+              {
+                "id": "wake-job-8f9983a5a5146896",
+                "due": "2026-11-12T10:11:31.551Z",
+                "status": "done",
+                "attempts": 1
+              }
+            ]
+          }
+        }
+      ],
+      "exit": 1
+    },
+    "noManualTickOrWake": true,
+    "noFakeClock": true,
+    "noBrowser": true,
+    "scope": "Natural input-restoration continuation plus controlled public scheduling-API future/downtime-due controls"
+  },
+  "scoring": {
+    "r4ChecksPerDataset": 1430,
+    "r5ChecksPerDataset": 482,
+    "datasets": [
+      "original delivery/source",
+      "fresh Linux",
+      "actual Windows execution, scored on Linux"
+    ],
+    "failed": 0,
+    "r5": {
+      "P3": {
+        "requiredComplete": 10,
+        "completed": 10,
+        "requiredDecisions": 9,
+        "produced": 9,
+        "visible": 9,
+        "answered": 9,
+        "notifications": 12
+      },
+      "N1": {
+        "requiredComplete": 10,
+        "completed": 10,
+        "requiredDecisions": 9,
+        "produced": 9,
+        "visible": 9,
+        "answered": 9,
+        "notifications": 12
+      }
+    },
+    "strategyAdvantageProved": false
+  },
+  "clocks": {
+    "r5Evaluation": "FakeClock; 14 explicit ticks per arm, simulated scheduler handling",
+    "independentService": "RealClock; actual separate processes, real elapsed due time",
+    "originalBoundedSeconds": 30.02,
+    "freshBoundedSeconds": 30.077
+  },
+  "notProved": [
+    "12-hour or all-day stability",
+    "unbounded CPU busy-loop claim",
+    "real-model capability",
+    "real-user interruption benefit",
+    "browser UI acceptance in this review",
+    "power loss or disk corruption",
+    "multiwriter or cross-machine recovery",
+    "crash between scheduler claim and completion"
+  ],
+  "modelCalls": 0,
+  "productActivation": false,
+  "mergeToMain": false
+}

@@ -1,0 +1,33 @@
+Restore and independently reproduce the frozen checkpoint
+
+Use a fresh checkout of ff7e1b82c70fae098dc93abc8a1c9bac46fac592 (or git archive it into a new directory). Archive branch: codex/pet-followup-r5-archive-20261112. The review commit adds only checkpoints/r5-20261112. Do not run destructive cleanup against original evidence directories.
+Source directory: pet-next/experiments/task-followup. Node24 is required for the reviewed node:sqlite/transform-types path; recorded versions are Linux24.14.0 and Windows24.22.1. Runtime tests use builtins. Typecheck dependencies are pinned in tooling/package.json; install them in a disposable clone. Upstream test dependencies are in upstream/package.json and its lockfile.
+
+From the source directory:
+node run.mjs test
+node run.mjs eval
+node run.mjs verify-eval
+node run.mjs crosscheck
+node run.mjs negative
+node run.mjs r5-eval
+node --experimental-transform-types eval/r5/crosscheck.mjs
+node --experimental-transform-types eval/r5/negative/all.mjs
+node run.mjs demo --workspace <fresh-path-containing-out>
+node run.mjs r5-demo --workspace <another-fresh-path-containing-out>
+node tools/r41-acceptance.mjs . <fresh-acceptance-output>
+node run.mjs typecheck
+Linux exits0 for these in this review. Windows original r5-demo and R5 negative entry remain red for the reasons in REVIEW; do not mask these exits or count import failure as a detected case.
+
+Independent real service, from any directory:
+node <checkpoint>/scripts/realtime-service.mjs <absolute-source-dir> <NEW-output-dir>
+Expected current result on both platforms:27 checks,26 pass,one logical quiet-job deduplication failure,exit1. It performs natural input restoration plus controlled future/downtime scheduling-API fixtures. It does not use FakeClock, manual tick or direct wake. All command argv, timestamps and SQLite snapshots are preserved. Service processes are bounded and stopped before the script returns.
+
+G0:
+node --experimental-transform-types <checkpoint>/scripts/identity-probes.mjs <source-dir> <NEW-g0-output> <source-dir>/out/eval/raw/P3/T01-a.json
+The7 identity checks pass on both platforms. The14 additional invalid-field checks and independent Python byte/SQLite scoring programs are preserved in evidence/policy.tar.gz; see its REPRO.txt and recorded command ledger. Windows data execution and Linux scoring are separate recorded steps.
+
+Evidence extraction:
+Create separate NEW directories for each archive, inspect tar listings, and extract with tar -xzf <archive> -C <new-dir>. linux.tar.gz, runtime.tar.gz and windows.tar.gz have relative content roots; policy.tar.gz has codex-r5-policy-20261112/; original-delivery.tar.gz has pet-followup-r5-delivery/. Archives retain original absolute workspace references for provenance. Portable reruns create new workspaces; for offline rescoring follow the policy package's relocation/mapping records, do not assume old /tmp or C: paths still exist.
+Verify SHA256SUMS.txt with sha256sum -c (Linux) or recompute each relative path using Get-FileHash -Algorithm SHA256 (Windows). The original delivery manifest still lists code/task-followup-r5.bundle, omitted from its compressed public evidence projection; use ORIGINAL-DELIVERY.txt for its SHA and server location. Other payloads remain byte-identical.
+
+There is no pending automated run or new task queue. Reproduction commands document the saved state; they are not instructions to start tonight's next experiment.

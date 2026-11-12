@@ -1,0 +1,43 @@
+R5 independent real-clock scheduler/service review
+Source HEAD: ff7e1b82c70fae098dc93abc8a1c9bac46fac592
+Original: /data3/DATA/project/project_meishijiang/petmem-followup-r5 (read-only)
+Independent execution source: /tmp/codex-r5-runtime-20261112/source (git archive)
+Runtime: Linux / Node v24.14.0.
+
+Decision for this bounded slice: automatic service behavior works; the scheduler's one-logical-wait/one-job contract fails. Do not describe the full scheduler as accepted. This report records the issue; it does not dispatch any next-round work.
+
+Frozen independent probe
+realtime-service.mjs -> real-final/summary.json: 27 checks, 26 pass, 1 fails; exit1.
+First diagnostic real-run1: the original 26 functional checks passed; later the explicit logical-job deduplication assertion was added after inspecting those same raw records. Source code never changed. Both runs independently contain six redundant quiet jobs for the same one continuation question.
+
+Real-time evidence (no FakeClock, no CLI tick, no manual wakeJob/wakeDue)
+1. Actual app flow: CLI delegates and observes a partial result using the real default clock, a missing result file causes pre-execution rejection, a separate scheduler service starts while the input remains absent, then the original bytes are restored while the service is running. With no browser or active UI, the service opens and delivers the current continuation question. Before new authorization: attempt1, zero receipts, no executed retry. After the service stops, explicit retry_analysis with --panel completes once at attempt2 with one actual receipt. Repeated service cycles do not repeat the notification.
+2. Controlled scheduling-API positive control: public WakeScheduler.schedule inserts a future catch_up job with an exact future UTC dueAt. No direct SQLite writes and no manual execution of the job. The independent service actually claims and completes it once after due. real-final due=2026-11-12T10:10:13.338Z; actual wake=10:10:13.343Z; attempts=1. Another service process does not reprocess it.
+3. Downtime-cross-due control: service is absent while a persisted future job becomes overdue; before restart the job still has attempts0. New real-clock service processes it once: due=10:10:18.952Z; actual wake=10:10:19.356Z; attempts1. A further restart produces no duplicate handling.
+4. Cancellation/task-revision change/unknown execution: cancelled and obsolete-task-revision jobs cannot create notifications; the obsolete job is recorded stale and cancelled. A genuine effect_running process exit42 is recovered to needs_reconciliation; service restart/time progression do not create another tool attempt, receipt or reminder.
+
+Scope distinction
+The natural continuation story is an actual user-facing application path with filesystem restoration by an external producer. The future/offline-due cases deliberately schedule a controlled public-API job, proving the durable scheduler boundary; they are not presented as naturally generated production user stories. Their jobs re-evaluate current state and create no tools or reminders because those tasks have no result yet.
+The script uses explicit demo settings minGapMs=1500, intervalMs=150, wakeAfterMs=1500, reminderQuota=100, quiet hours disabled and timezone UTC; this is not a performance/policy-quality test. All child argv are recorded and none contains --clock, tick, wake or a manual clock advance. Service metadata records clock=real. Each service is bounded and exited before a writer CLI command resumes. Read-only SQLite inspection runs concurrently; no competing database writers or external endpoints are used.
+
+Confirmed remaining issue: one min-gap waiting question becomes six persisted jobs and six useless re-evaluations.
+Evidence: real-final/natural-continuation/after-service.json and state/service.log.
+For one (ticket_id, reason=quiet, decision_id), six distinct job IDs have dueAt:
+10:10:06.844, 06.995, 07.147, 07.299, 07.450, 07.602 UTC.
+All six end done with attempts=1. Each wake log has proposals=0 and notifications=0. The one actual question has only one notification. The extra work is redundant scheduler wake/re-evaluation, not repeated user reminders or duplicate tool execution.
+Root in code:
+- runtime/engine.ts:905-919 computes a fresh dueAt=now+minGap on every sync for the same undelivered open attention.
+- runtime/scheduler.ts:31-34 includes dueAt in stable job ID; schedule (40-65) always saves a new row for a changed dueAt.
+- runtime/db.ts:789-815 only upserts by job_id and never coalesces the logical (ticket,reason,decision) wait.
+- service/scheduler-service.ts:127-128 calls reevaluate before handleDue each loop, so the same pending question is repeatedly scheduled before its delivery becomes legal.
+This contradicts scheduler.ts's documented one-logical-wait contract. The existing demo's 'no busy loop' check only compares dueAt against now-60 seconds; it does not test logical job cardinality or useless wake count. We did not extrapolate the observed 150ms redundant wakes into a claim of unbounded CPU use or measured long-run failure.
+
+Service/feature boundary
+serve --scheduler explicitly selects RealClock and is independent of HTTP/browser UI. Default serve still starts only the HTTP panel; it does not enable this experimental scheduler. The service calls recover at startup, then reevaluate and wakeDue in a bounded timer loop. The current user-facing automatic continuation can arise from reevaluate; the independent due controls separately prove actual durable-job claiming, rather than treating any polling-driven reminder as proof of a scheduled wake.
+
+Not proved
+No 12-hour/all-day stability, crash between claim and finish, power-loss/multiwriter/cross-machine guarantee, real-model reasoning, remote task execution, or live user-interruption benefit. Windows/browser outcomes are owned by the parent review. This real-time script does not validate the FakeClock R5 eval or its scoring; those are a separate review.
+
+Reproduction
+node realtime-service.mjs <task-followup-source> <NEW-output-directory>
+Requires Node with node:sqlite and transform-types. Uses only Node builtins and actual CLI/service child processes. Runtime is approximately 20 seconds plus process startup. It never deletes the requested output directory; use a new one. The --schedule internal mode is called by the script itself and is a real-clock fixture setup, not a manual wake.

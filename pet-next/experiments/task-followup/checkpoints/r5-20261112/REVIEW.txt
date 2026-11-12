@@ -1,0 +1,29 @@
+G0 / R5 independent acceptance — 2026-11-12
+Frozen source ff7e1b82c70fae098dc93abc8a1c9bac46fac592; tree f5296d1cd65639a6310852899b7b5d967c959c52; base 5e3dc881bb1c02f40cc9cda3680324614c291b6f.
+Verdict: LIMITED REWORK. Archive current state and pause. No next-round tasks are issued.
+
+Verified evidence
+The server source is clean; delivery checks 86/86 before and after; 139 source-package files match Git. All 46 R5 changes are within pet-next/experiments/task-followup. Upstream, R3.1, previous gold and product defaults were not changed by the delivery. The archive commit adds only this checkpoint.
+Linux: 93 unit tests, 27 process acceptance assertions, 35 R4 demo assertions and 26 R5 demo assertions pass. R4 72 runs and R5 24 runs, crosschecks, 10/6 negative controls, typecheck, audit, upstream 144 and R3.1 192 plus three gates pass. Bundle clone independently reproduces the bounded source checks.
+Windows (Node24.22.1, PowerShell7.6.9, Chinese/space path): 93 tests, 27 acceptance assertions, 35 R4 demo assertions, G0 7 original +14 invalid-field probes, R4/R5 evaluation and typecheck pass. Windows data are independently rescored on Linux, preserving the actual Windows SQLite/files.
+Independent scoring: original/source, fresh Linux and Windows datasets each give R4 1430/0 and R5 482/0 checks. P3 and N1 each complete 10/10 required tasks, expose/answer 9/9 required decisions and send12 notifications. No measured N1 advantage.
+
+Real automatic service versus simulated evaluation
+The 24-story policy evaluation explicitly uses FakeClock and scripted ticks (14 per arm). It is a separate deterministic mechanism test, not an unattended-runtime test.
+The independent service script uses actual separate processes and RealClock, with no --clock, CLI tick, direct wake invocation or browser. Natural continuation starts with a missing file, leaves the service running, restores the original bytes and observes an automatic visible reauthorization question. No tool retry occurs before new authorization; afterwards exactly one successful receipt occurs.
+Controlled public scheduling-API jobs prove future due handling, downtime crossing due, one claim after restart and no extra handling after another restart. These API fixtures are identified as such; they are not presented as naturally generated production stories. Cancelled jobs, stale task revisions and unknown effects produce no extra reminder or tool receipt in the tested sequences.
+Both Linux and Windows give 26 passing functional assertions. One additional invariant fails on both platforms (see below).
+
+Remaining defects, not silently repaired
+1. Repeated logical wake jobs. engine syncWake computes now+minGap each iteration. scheduler ID includes dueAt, and the DB upsert merges only job_id. The same quiet decision thus creates6 jobs in the independent Linux probe and4 in Windows (10 in each original Linux demo rerun). All redundant jobs are eventually claimed and perform useless reevaluation. There is still only one reminder and one authorized receipt. This violates the one-logical-wait contract. The existing demo's no-busy-loop test misses it. We do not extrapolate to an infinite loop or quantified CPU cost.
+2. Windows original r5-demo: 25 pass,1 fail; SIGTERM termination returns code=null/signal=SIGTERM instead of expected0. This is a real red platform gate, even though the substantive scenario assertions pass. A separate bounded service exits normally in the independent probe.
+3. Windows eval/r5/negative/all.mjs imports an absolute C: path without pathToFileURL. It raises ERR_UNSUPPORTED_ESM_URL_SCHEME before executing any negative case. Exit1 here is a harness failure, not six detected negative controls.
+4. Evidence wording: original DELIVERY claims a10-minute bounded record; its timestamps show30.020 seconds. Fresh bounded Linux probe is30.077 seconds in an already-delivered, unanswered state, with0wake. Neither demonstrates12-hour operation nor refutes the undelivered-window job duplication.
+
+Interpretation boundaries
+Visible decisions can be presented by opening the panel; in R5-04a the answer driver explicitly presents the question. Visibility is valid, but not all9 visible decisions were pushed through autonomous reminders. This is scripted offline evidence, not a real-user benefit study.
+No real model, remote task, production browser UI acceptance, power-loss, multiwriter, cross-machine or claim/finish-crash guarantee is established. Existing simulation and controlled real-time demonstrations are kept distinct.
+
+Saved state
+The GitHub archive branch retains source/history and this audit's raw evidence, scripts, environment metadata, hashes and reproduction commands. The 157610350-byte original full-history bundle remains in the original server delivery; it is not committed as a GitHub blob. Source history is represented by actual Git commits instead. The original delivery archive here omits only that full bundle, preserving its original checksum manifest and omission note.
+No review code changes, product activation, merge, model call, automatic continuation to Grok or subsequent assignment are included. Resume only after the owner gives a new instruction.

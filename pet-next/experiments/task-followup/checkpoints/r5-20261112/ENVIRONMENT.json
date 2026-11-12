@@ -1,0 +1,41 @@
+{
+  "linux": {
+    "platform": "linux",
+    "os": "Linux-5.4.119-19.0009.28-x86_64-with-glibc2.35",
+    "python": "3.11.15",
+    "node": "v24.14.0",
+    "git": "git version 2.34.1",
+    "timezone": "UTC for tests; IANA timezone explicit in fixture config",
+    "PYTHONTZPATH": "/usr/share/zoneinfo",
+    "source": "ff7e1b82c70fae098dc93abc8a1c9bac46fac592",
+    "tree": "f5296d1cd65639a6310852899b7b5d967c959c52",
+    "g0": "4a9981863ce5a4f200c02bc3965e22ed50f1ef5d",
+    "clean": true,
+    "upstreamVitest": "4.1.8",
+    "typescript": "5.9.3",
+    "typesNode": "22.15.3",
+    "dependencies": "upstream/tooling only in isolated clones; no node_modules included",
+    "clockModes": {
+      "eval": "FakeClock explicit scripted tick",
+      "service": "RealClock actual timer/process"
+    }
+  },
+  "windows": {
+    "platform": "win32",
+    "os": "Microsoft Windows NT 10.0.26200.0",
+    "architecture": "X64",
+    "powershell": "7.6.9",
+    "node": "v24.22.1",
+    "git": "git version 2.54.0.windows.1",
+    "pnpm": "11.25.0",
+    "source": "ff7e1b82c70fae098dc93abc8a1c9bac46fac592",
+    "typescript": "5.9.3",
+    "typesNode": "22.15.3",
+    "sourcePathProperty": "Chinese characters and spaces",
+    "testTimezone": "UTC explicit service config",
+    "hostTimezone": "China Standard Time",
+    "pythonScoringPlatform": "Linux, after preserving Windows raw/SQLite/files",
+    "modelCalls": 0
+  },
+  "scope": "Selected reproducibility metadata only. No credentials, whole environment dump, node_modules, GPU state, or machine image."
+}

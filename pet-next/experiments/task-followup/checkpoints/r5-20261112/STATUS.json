@@ -1,0 +1,18 @@
+{
+  "schema": "pet-followup-status/v1",
+  "date": "2026-11-12",
+  "source": "ff7e1b82c70fae098dc93abc8a1c9bac46fac592",
+  "archiveBranch": "codex/pet-followup-r5-archive-20261112",
+  "verdict": "limited_rework",
+  "state": "paused_pending_owner",
+  "reason": "Owner requested save/push only and no subsequent tasks tonight",
+  "knownIssues": [
+    "One logical quiet wait creates redundant durable wake jobs",
+    "Windows R5 demo SIGTERM termination assertion is not portable",
+    "Windows R5 negative harness imports a drive-letter path instead of a file URL",
+    "Original delivery calls a 30.020-second run a 10-minute record"
+  ],
+  "nextAction": "Wait for owner instruction; do not dispatch Grok or start another experiment",
+  "modelAuthorization": "No real model calls authorized or performed",
+  "mergeAuthorization": "Archive branch push only; main not merged or changed"
+}

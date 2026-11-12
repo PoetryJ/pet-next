@@ -1,0 +1,33 @@
+G0/R5 policy独立验收存档（2026-11-12）
+冻结代码 ff7e1b82c70fae098dc93abc8a1c9bac46fac592；G0提交4a99818；R4.2基线5e3dc88。
+该文件记录已验证结果与恢复方法，不安排后续任务。
+
+1. G0：原评分完整性缺口已修复
+原同一identity-probes.mjs从正式scoreAll(rawDir,goldDir)入口复跑，7/7，exit0；上一轮双方同时缺ticketId/taskRevision/assignmentId的3反例均拒绝。
+另14项有限非法字段负控：decision/ticket/assignment的空串、空白串、数值；revision为0、负数、小数、字符串、null，全部不计可见/回答。原始JSON和机器输出均保留。
+
+2. R4固定72run主表无回退
+原树out/eval/raw与独立Linux fresh raw分别运行上一轮同一Python字节链/SQLite/时轴独立程序，1430检查0失败，核心计数与R4.2完全一致。
+P0/P1/P2/P3有效完成0/3/7/8（18机会、14必完成）；必要决策17；产生0/16/10/15，可见0/9/9/12，回答0/6/8/11；通知0/25/13/16。
+交付未把72原始raw再放进r4-regression（那里为summary/compare/crosscheck），本复核明确读取本轮源树out/eval/raw，并额外保留独立克隆fresh raw及其workspace。
+原有R4 gold/fixtures、P0-P3 decision/rules.ts、eval/runner.ts、runtime/clock.ts零变更。新R5故事、gold、NeedRule独立目录。
+
+3. R5原数据独立复算
+与产品score独立，标准库Python读取raw列表、SQLite与文件字节。不使用raw.metrics/completionCheck.ok作为完成真值。完成时核对当前result/目标要求与completion InputRef、文件SHA；需要analysis的路径进一步查effect/receipt/analysis身份与输出SHA。
+交付24raw及独立Linux fresh24raw分别482检查，0失败。P3与N1均12故事、10必完成、实际有效完成10；9个必要决策全部在冻结窗口内产生、可见、回答并匹配gold行动；各12条通知、0重复、0逾期、0取消后通知。两策略同样的步骤时轴和quiet；configSha各自独立重算通过。
+独立脚本初次要求任何deliveredAt必须有notification，R5-04a两臂触发两项检查；核对发现runtime.present把当前问题标为presented并兼设delivered，driverLog有同attention同时间的attention.presented证据。这是用户面板主动打开的独立可见路径。审计随后允许notification回执或明确presentation记录，初次失败与修正理由原样保留，未改产品代码/数据。
+因此R5-04a新版问题的可见性成立，但不能说它由主动通知送达；answer步骤主动present后才回答。
+两臂结果持平，不支持N1减少打扰或提高完成率；不能从机械重复故事推断模型能力或泛化收益。
+
+4. 严格分开模拟时域与真实运行
+24故事使用FakeClock，显式at/tick并在每步处理到期scheduler。每臂共有14个tick；P3 raw记录8次wake，N1记录10次wake。这不是无tick真实驻留服务证据。
+no CLI tick仅适用于另一个真实RealClock服务演示，由runtime/Linux复跑分支核验。秒级受控配置说明唤醒链路机制，不能代表生产默认分钟/小时尺度或12小时运行。
+交付DELIVERY写“10分钟有界运行记录”，实际bounded-run/service-status.json为09:43:55.362至09:44:25.382，共30.020秒，iterations30、wakes6、wakeAfterMs5000；service.log同为max_run。存档与最终汇报应采用30秒实测，不使用10分钟已测的说法。
+
+5. 未证明与证据范围
+没有模型、真实用户、真实远程任务、浏览器交互、断电/磁盘损坏/多写者/跨机恢复或12小时稳定性证明。9/9可见包含固定模拟面板操作；不等于真实主动提醒成功率。pending/censored在正常24run中均0，不能从0推断所有长等待都最终完成。
+所有评分都是对提交及这些具体原始轨迹的机制验收。原树/交付只读；未调用模型、端点、GPU或push。
+
+6. Windows
+Windows中文空格路径实际执行产物已保全，全部临时workspace复制后迁移Linux评分：R4 1430检查0失败、R5 482检查0失败，主表与Linux逐项相同。Windows Node24.22.1直接执行G0原7项及非法字段14项均exit0。执行平台Windows、Python评分平台Linux，两者分开记录。
+父验收报告的Windows r5-negative入口ESM C:错误及r5-demo SIGTERM停止断言失败属于其他门，本报告不把评分通过扩写为整套Windows通过。

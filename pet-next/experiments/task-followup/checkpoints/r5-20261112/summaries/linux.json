@@ -1,0 +1,257 @@
+{
+  "scope": "Independent Linux fixed-commit verification only; no source changes; no subsequent task dispatch",
+  "head": "ff7e1b82c70fae098dc93abc8a1c9bac46fac592",
+  "tree": "f5296d1cd65639a6310852899b7b5d967c959c52",
+  "base": "5e3dc881bb1c02f40cc9cda3680324614c291b6f",
+  "node": "v24.14.0",
+  "TZ": "UTC",
+  "PYTHONTZPATH": "/usr/share/zoneinfo",
+  "integrity": {
+    "manifestHead": "ff7e1b82c70fae098dc93abc8a1c9bac46fac592",
+    "manifestBase": "5e3dc881bb1c02f40cc9cda3680324614c291b6f",
+    "manifestDeclared": 86,
+    "manifestActual": 86,
+    "manifestBad": [],
+    "checksumExit": 0,
+    "checksumOK": 86,
+    "deliveryFileCount": 88,
+    "unlisted": [
+      "MANIFEST.json",
+      "SHA256SUMS.txt"
+    ],
+    "sourcePackageCount": 139,
+    "sourcePackageMatched": 139,
+    "sourceMismatch": [],
+    "sourceExtras": [],
+    "changedFileCount": 46,
+    "outside": [],
+    "bundleSha": "6166d86d07fe5ae690b47998c6aca5bfa4626ffed3b76b73b8e38d0556baf8e9"
+  },
+  "finalOriginal": {
+    "head": "ff7e1b82c70fae098dc93abc8a1c9bac46fac592",
+    "status": "",
+    "checksumExit": 0,
+    "checksumOK": 86,
+    "r31UpstreamExistingGoldDiff": [],
+    "newR5GoldFiles": 12
+  },
+  "results": {
+    "tests": 93,
+    "acceptance": {
+      "assertions": 27,
+      "failed": 0
+    },
+    "negativeDetected": 10,
+    "r4DemoAssertions": 35,
+    "r5DemoAssertions": 26,
+    "r4EvalVerify": {
+      "ok": true,
+      "files": 72,
+      "mismatches": []
+    },
+    "r4Crosscheck": {
+      "ok": true,
+      "runs": 72,
+      "diffs": [],
+      "recomputed": {
+        "P0": {
+          "required": 17,
+          "produced": 0,
+          "visible": 0,
+          "answered": 0,
+          "notProposed": 17,
+          "notVisible": 17,
+          "notAnswered": 17
+        },
+        "P1": {
+          "required": 17,
+          "produced": 16,
+          "visible": 9,
+          "answered": 6,
+          "notProposed": 1,
+          "notVisible": 8,
+          "notAnswered": 11
+        },
+        "P2": {
+          "required": 17,
+          "produced": 10,
+          "visible": 9,
+          "answered": 8,
+          "notProposed": 7,
+          "notVisible": 8,
+          "notAnswered": 9
+        },
+        "P3": {
+          "required": 17,
+          "produced": 15,
+          "visible": 12,
+          "answered": 11,
+          "notProposed": 2,
+          "notVisible": 5,
+          "notAnswered": 6
+        }
+      }
+    },
+    "r5Crosscheck": {
+      "ok": true,
+      "runs": 24,
+      "diffs": []
+    },
+    "r5NegativeDetected": 6,
+    "typecheckExit": 0,
+    "upstream": {
+      "passed": 144,
+      "failed": 0
+    },
+    "upstreamSourceFiles": 15,
+    "licenseIdentical": true,
+    "r31": {
+      "suites": 13,
+      "passed": 192,
+      "failed": 0,
+      "source": "ff7e1b82c70fae098dc93abc8a1c9bac46fac592",
+      "dirty": 0,
+      "gates": [
+        {
+          "id": "G1",
+          "status": "pass",
+          "exitCode": 0
+        },
+        {
+          "id": "P1",
+          "status": "pass",
+          "exitCode": 0
+        },
+        {
+          "id": "P2",
+          "status": "pass",
+          "exitCode": 0
+        }
+      ],
+      "fixtureExits": [
+        1,
+        1,
+        1,
+        1
+      ]
+    },
+    "bundle": {
+      "headAndTreeMatch": true,
+      "testPass": 93,
+      "r5DemoAssertions": 26,
+      "auditExit": 0
+    },
+    "independentDemoSqliteBytesAndServiceTime": {
+      "checks": 50,
+      "failed": 0
+    },
+    "boundedOpenAttention": {
+      "pid": 2126889,
+      "clock": "real",
+      "timezone": "UTC",
+      "configSha": "f67a904c6ecff019a916831bb336bf10ddd8a56308c245285f39c5321ce449af",
+      "intervalMs": 1000,
+      "wakeAfterMs": 5000,
+      "startedAt": "2026-11-12T10:08:57.500Z",
+      "updatedAt": "2026-11-12T10:09:27.577Z",
+      "state": "stopped",
+      "iterations": 30,
+      "wakes": 0,
+      "reason": "max_run",
+      "stoppedAt": "2026-11-12T10:09:27.577Z"
+    }
+  },
+  "observations": [
+    {
+      "workspace": "r5-demo-workspace",
+      "serviceStops": [
+        {
+          "at": "2026-11-12T10:07:30.480Z",
+          "event": "service.stop",
+          "reason": "signal:SIGTERM",
+          "iterations": 12,
+          "wakes": 4
+        },
+        {
+          "at": "2026-11-12T10:07:31.698Z",
+          "event": "service.stop",
+          "reason": "max_iterations",
+          "iterations": 5,
+          "wakes": 7
+        },
+        {
+          "at": "2026-11-12T10:07:34.332Z",
+          "event": "service.stop",
+          "reason": "max_iterations",
+          "iterations": 5,
+          "wakes": 0
+        }
+      ],
+      "duplicateLogicalQuietJobs": [
+        {
+          "ticket_id": "6fec51c927c4093a086eb5ef9440546a",
+          "task_revision": 1,
+          "reason": "quiet",
+          "decision_id": "dec-06b0493030fc466acc974992",
+          "jobs": 10
+        }
+      ],
+      "classification": "extra wake jobs for same logical waiting decision; demo passes despite these duplicates"
+    },
+    {
+      "workspace": "clone-r5-demo-workspace",
+      "serviceStops": [
+        {
+          "at": "2026-11-12T10:07:41.992Z",
+          "event": "service.stop",
+          "reason": "signal:SIGTERM",
+          "iterations": 12,
+          "wakes": 4
+        },
+        {
+          "at": "2026-11-12T10:07:43.207Z",
+          "event": "service.stop",
+          "reason": "max_iterations",
+          "iterations": 5,
+          "wakes": 7
+        },
+        {
+          "at": "2026-11-12T10:07:45.826Z",
+          "event": "service.stop",
+          "reason": "max_iterations",
+          "iterations": 5,
+          "wakes": 0
+        }
+      ],
+      "duplicateLogicalQuietJobs": [
+        {
+          "ticket_id": "a9e65b44f51cc2db43d538c49b537223",
+          "task_revision": 1,
+          "reason": "quiet",
+          "decision_id": "dec-f9e831f38cb98029db2595b1",
+          "jobs": 10
+        }
+      ],
+      "classification": "extra wake jobs for same logical waiting decision; demo passes despite these duplicates"
+    }
+  ],
+  "verdict": "Delivered regression gates pass; repeated wake jobs for one logical quiet wait observed in both real-clock demos. Overall verdict deferred to parent independent review.",
+  "environmentNotes": [
+    "Existing installed tooling/upstream node_modules reused; no dependency installation or network fetch.",
+    "Fresh output paths throughout; no bulk-delete workaround required.",
+    "R5 story evaluation is a deterministic controlled-clock suite, distinct from real-clock service demos.",
+    "Fresh R5 temporary SQLite workspaces are packaged using r5-workspace-map.json; raw records remain unmodified.",
+    "No manual tick or FakeClock arguments were used in r5-demo or bounded-service commands."
+  ],
+  "unproven": [
+    "12-hour continuous stability",
+    "External side effects before death",
+    "Power loss/disk corruption",
+    "Multiple writer/cross-machine recovery",
+    "True model or real-user benefit",
+    "Windows/browser verified separately by parent"
+  ],
+  "typescript": "5.9.3",
+  "nodeTypes": "22.15.3",
+  "vitest": "4.1.8"
+}

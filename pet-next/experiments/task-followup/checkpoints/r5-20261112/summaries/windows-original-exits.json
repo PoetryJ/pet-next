@@ -1,0 +1,46 @@
+[
+  {
+    "command": "test",
+    "exit": 0
+  },
+  {
+    "command": "demo",
+    "exit": 0
+  },
+  {
+    "command": "r5-demo",
+    "exit": 1
+  },
+  {
+    "command": "eval",
+    "exit": 0
+  },
+  {
+    "command": "verify-eval",
+    "exit": 0
+  },
+  {
+    "command": "crosscheck",
+    "exit": 0
+  },
+  {
+    "command": "negative",
+    "exit": 0
+  },
+  {
+    "command": "r5-eval",
+    "exit": 0
+  },
+  {
+    "command": "eval/r5/crosscheck.mjs",
+    "exit": 0
+  },
+  {
+    "command": "eval/r5/negative/all.mjs",
+    "exit": 1
+  },
+  {
+    "command": "acceptance",
+    "exit": 0
+  }
+]
