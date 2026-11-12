@@ -260,6 +260,7 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
     add('notifications', 'state', "state TEXT NOT NULL DEFAULT 'queued'")
     add('notifications', 'delivered_at', 'delivered_at TEXT')
     add('notifications', 'presented_at', 'presented_at TEXT')
+    add('tasks', 'continuation_json', 'continuation_json TEXT')
   }
 
   get file(): string {
@@ -421,15 +422,16 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
     this.handle
       .prepare(
         `INSERT INTO tasks(ticket_id, task_revision, assignment_id, title, goal, goal_json, stage, status, created_at, updated_at,
-           event_cursor, memory_cursor, evidence_json, last_proposal_json, last_answer_json, attempt, result_json, analysis_json,
-           completion_json, close_reason, diagnostics_json)
-         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           event_cursor, memory_cursor, evidence_json, last_proposal_json, last_answer_json, continuation_json, attempt,
+           result_json, analysis_json, completion_json, close_reason, diagnostics_json)
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(ticket_id) DO UPDATE SET
            task_revision = excluded.task_revision, assignment_id = excluded.assignment_id, title = excluded.title,
            goal = excluded.goal, goal_json = excluded.goal_json, stage = excluded.stage, status = excluded.status,
            updated_at = excluded.updated_at, event_cursor = excluded.event_cursor, memory_cursor = excluded.memory_cursor,
            evidence_json = excluded.evidence_json, last_proposal_json = excluded.last_proposal_json,
-           last_answer_json = excluded.last_answer_json, attempt = excluded.attempt, result_json = excluded.result_json,
+           last_answer_json = excluded.last_answer_json, continuation_json = excluded.continuation_json,
+           attempt = excluded.attempt, result_json = excluded.result_json,
            analysis_json = excluded.analysis_json, completion_json = excluded.completion_json,
            close_reason = excluded.close_reason, diagnostics_json = excluded.diagnostics_json`,
       )
@@ -449,6 +451,7 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
         row.evidence_json,
         row.last_proposal_json,
         row.last_answer_json,
+        row.continuation_json,
         row.attempt,
         row.result_json,
         row.analysis_json,
@@ -829,6 +832,7 @@ export interface TaskRow {
   evidence_json: string
   last_proposal_json: string | null
   last_answer_json: string | null
+  continuation_json: string | null
   attempt: number
   result_json: string | null
   analysis_json: string | null

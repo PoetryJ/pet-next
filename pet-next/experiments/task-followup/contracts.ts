@@ -450,6 +450,8 @@ export interface DecisionContext {
   readonly goalSatisfied: boolean
   readonly lastAnswer?: { readonly optionId: string; readonly at: string }
   readonly attempt: number
+  /** 当前版本的输入是否已可核验（决定恢复入口能否现在就提问）。 */
+  readonly inputReady: boolean
 }
 
 export interface ProposalSummary {
@@ -474,6 +476,7 @@ export type TaskStage =
   | 'awaiting_result'
   | 'result_received'
   | 'awaiting_decision'
+  | 'continuation_pending'
   | 'analyzing'
   | 'completed'
   | 'cancelled'
@@ -493,6 +496,22 @@ export interface GoalCondition {
   readonly insufficientStatuses: readonly ('succeeded' | 'failed' | 'partial')[]
 }
 
+/**
+ * 已知的“执行前拒绝”留下的续办状态：用户授权已消耗但工具未执行。
+ * 只允许在输入恢复且用户再次明确授权后创建新 attempt；不得自动重试。
+ */
+export interface ContinuationState {
+  readonly kind: 'input_rejected'
+  readonly detail: string
+  readonly effectId: string
+  /** 被拒绝时所在的 attempt；新授权会在此基础上 +1。 */
+  readonly attempt: number
+  /** 被消耗的授权（证据）：decisionId 与 optionId。 */
+  readonly decisionId: string | null
+  readonly optionId: string | null
+  readonly at: string
+}
+
 export interface TaskSnapshot {
   readonly ticketId: string
   readonly title: string
@@ -510,6 +529,7 @@ export interface TaskSnapshot {
   readonly openAttention?: AttentionView
   readonly lastProposal?: ProposalSummary
   readonly lastAnswer?: { readonly optionId: string; readonly at: string }
+  readonly continuation?: ContinuationState
   readonly attempt: number
   readonly result?: {
     readonly runId: string

@@ -1,42 +1,45 @@
-# R4.1 任务状态（有限返工，按任务包逐项）
+# R4.2 任务状态（有限返工，按任务包逐项）
 
-基线：`c7bd9052dbc33c47bc285411314f75a4a4057797`；分支 `codex/pet-followup-r4-1`；工作树 `/data3/DATA/project/project_meishijiang/petmem-followup-r4-1`。
+基线：`0a46616bfcbde42b72d70ce99d8007ded0f8ed3f`；分支 `codex/pet-followup-r4-2`；
+工作树 `/data3/DATA/project/project_meishijiang/petmem-followup-r4-2`。
 上游：`8c32a9dc5d72c033816c6a8110b37f40cf94fba4`（MIT，15 文件字节不改）。
 
-本轮只关闭 REVIEW 的三个阻断（F1 来源/完成证据、F2 重复恢复、F3 可见性/时间），
-不调阈值、不改 gold、不新增功能、不调用模型。
+本轮只关闭 R4.1 REVIEW 的三个阻断，不扩功能、不调阈值、不改 gold、不调用模型。
 
-| 修复包 | 状态 | 关键改动 | 证据 |
+| 修复项 | 状态 | 关键改动 | 证据 |
 | --- | --- | --- | --- |
-| 包 1 输入/执行/回执/分析同一来源 | 完成 | `InputRef` 持久化到 effect/receipt/analysis；派发前核对当前权威结果与磁盘字节，工具只读内容寻址快照；新来源修订使旧分析、未执行 effect、旧问题与旧授权失效；`completionCheck` 逐项比较并 fail closed | `tests/r41.test.ts`、`tools/r41-acceptance.mjs` c5/c6、负控 `stale-input` |
-| 包 2 未知执行结果持久阻断 | 完成 | `running` 跨进程恢复转 `needs_reconciliation`；recover 任意次数不重建 assignment、不新建 attempt/receipt；`reconcile accept_receipt / abandon_attempt` 最小显式入口 | 验收 c4（真实 exit 42 + recover1/2/3）、负控 `repeat-recover` |
-| 包 3 可见性与统一时间 | 完成 | 通知 `queued→delivered→presented` 与时间；回答只认已送达/已呈现；显式面板动作产生呈现回执；IANA 时区进入 quiet/configSha/raw；可控时钟单调且每步只用 at 或 advance 之一 | 验收 c7/c8、`tests/r41.test.ts`、负控 `hidden-answer`/`quiet-config`/`quiet-timezone-shanghai`/`clock-regression` |
+| F1 失败回执解除阻断 | 完成 | `reconcile accept_receipt` 逐项核对 effect/attempt/任务/assignment/来源/`ok`/`inputsVerified`/未解决状态/输出文件与 SHA；任一失败返回明确拒绝码，effect 与阻断不动 | `supplemental-runtime.mjs` 63/63；`tests/r42.test.ts`；`demo` 步骤 7 |
+| F2 输入恢复无继续入口 | 完成 | 输入门拒绝 → 持久化 `continuation`、清空已消耗授权、`continuation_pending`；输入未恢复只 defer；恢复后只提一个绑定版本/attempt 的重新授权问题；新授权前不执行、不建 attempt/receipt | 同上；`tests/r42.test.ts` 含跨进程重启 |
+| F3 评分跨版本误配与漏报混用 | 完成 | raw 导出完整身份；评分按 `decisionId` 精确连接 + ticket/版本/派工校验，缺失/歧义 fail closed；输出 produced/visible/answered 与 notProposed/notVisible/notAnswered | `eval/score.ts`、`tools/score-crosscheck.mjs`、`tests/r42-score.test.ts` |
 
 ## 检查数字（本轮现算，Linux Node 22.20.0）
 
-- 单测：47/47（原 35 项全部保留，其中 2 项按新语义收紧；新增 12 项）。
-- 独立验收（真实子进程、真实 exit 42）：27/27 断言通过。
-- 评估：72 次运行（4 策略 × 18 机会，16 轨迹 dev/heldout 8/8）。
-- 独立重评：72 份 raw，0 失配。
-- 负控：10/10 detected（各自子进程 exit 1，无 MASKED）。
-- 演示：19 项断言 PASS，每步独立进程；显式 `--timezone UTC`，回答前有呈现回执。
-- 上游原测试：144/144。
-- R3.1 只读回归：13 套件 192/192 + G1/P1/P2；R3.1 目录零 diff。
-- typecheck：exit 0。
-- 离线静态审计：32 个代码文件，0 禁用端点/网络客户端；上游 15 文件指纹 0 失败。
+- 单测：66/66（原 47 项保留；新增 11 项运行时 + 8 项评分）。
+- 独立运行时正控：98/98（`runtime-independent/independent-runtime.mjs`，52 个真实 CLI 子进程）。
+- 补充反例：63/63（基线 4 失败 → 0；36 个真实 CLI 子进程）。
+- 独立评分交叉核对：72 runs，0 差异；review 的 `independent_score.py` 在新 raw 上 1430 检查 0 失败，
+  与产品评分逐项一致（P0/P1/P2/P3 可见 0/9/9/12，回答 0/6/8/11，未触达 17/8/8/5）。
+- 评估：72 次运行（4 策略 × 18 机会，16 轨迹 dev/heldout 8/8）；`verify-eval` 0 失配。
+- 负控：10/10 detected。
+- 演示：35 项断言 PASS（19 项原有 + 16 项恢复入口），每步独立进程，显式受控时钟。
+- 独立验收（R4.1 脚本）：27/27，未回退。
+- 上游原测试：144/144；R3.1 192/192 + G1/P1/P2；四 fixture exit 1；R3.1 目录零 diff。
+- typecheck exit 0；离线静态审计 0 禁用项；上游 15 文件指纹 0 失败。
+- 行为对照：新 raw 与 R4.1 基线 72 份逐字段比较，只有 6 个 run 的 stage/proposal/driverLog 变化
+  （T04 a/b、T10 P2/P3 的输入拒绝被记录为 continuation），完成/通知/回执/effect 全部相同。
 
-## 有效完成与覆盖（新口径，P3）
+## 有效完成与覆盖（P3）
 
-- 状态完成 8/18；**有效完成 8/18（44.4%）**——两者相等，本轮没有出现“状态完成但输入不一致”的样本。
-- 必需问题 17 项：已产生 15、已可见 13、已回答 11；漏报 2（T10 `tool_failed`、T16 `insufficient_result`），产生但不可见 2（T15、T16）。
-- 通知 16 条：送达 16、呈现 0；未回答 5、被替换 4；“实际无用提醒”1（定义见 `eval/score.ts`）。
-- 隐藏问题被拦截的回答尝试 4 次；已回答但无可见回执的 attention 0 个。
-- 运行时硬额度违规 0；gold 参考上限超标 1 个 run（两者分开字段）。
+- 有效完成 8/18；必需问题 17：产生 15、可见 12、回答 11；漏提案 2、未触达 5、未回答 6。
+- 通知 16（送达 16、呈现 0）；运行时硬额度违规 0；gold 参考上限超标 1 run。
+- P3 vs P2：有效完成 +1、漏提案 −5、未触达 −3、未回答 −3、通知 +3。
+  仍不支持“更少打扰”；只报计数。
 
 ## 未完成 / pending
 
-- Windows 入口本轮未运行（无环境）；负控已改成显式时区，但未在 Windows 复验，不能声称跨平台通过。
-- 真实浏览器 UI 验收未做；本轮只有 CLI/HTTP 证据，面板 `POST /api/present` 未被真实浏览器触发。
+- Windows 本轮未运行（无环境）；两支独立探针、test/acceptance/demo/eval/negative/typecheck 的
+  pwsh 命令见交付 `WINDOWS-PENDING.txt`，不能拿 R4.1 的 Windows 结果盖章。
+- 真实浏览器 UI 本轮未复验；demo 用 CLI/HTTP 与真实进程，面板 `POST /api/present` 未被浏览器触发。
 - 模型适配器未启用（预算 0）。
-- 断电/磁盘损坏/多写者恢复未测。
-- P3 相对 P2 的完成率差（8 vs 7）与漏报差（2 vs 7）只作原始计数；不支持“更少打扰”的结论（通知 16 vs 13）。
+- 断电/磁盘损坏/多写者/跨机恢复未测。
+- `effect_running` 注入点在工具 execute 之前：只证明阻断不被绕过，不证明产生过两次外部副作用。

@@ -1,10 +1,11 @@
-# R4.1 持续跟进桌宠（离线原型，有限返工）
+# R4.2 持续跟进桌宠（离线原型，有限返工）
 
 本目录验证桌宠能否把记忆用于**真实任务状态变化**：持续跟进一件事、重启后继续、
 在该让用户选择时提出问题，并在拿到可核验产物后才算完成。
 
-R4.1 只关闭 REVIEW 的三个阻断：旧来源冒充新完成、重复恢复绕过阻断、评估用户回答
-自己看不到的问题。不改产品默认、不调阈值、不换 gold、不调用模型。
+R4.2 只关闭 R4.1 REVIEW 的三个阻断：失败回执被当作成功、已知输入失败后没有继续入口、
+评分按非唯一键匹配且把“漏提案”当成“未触达”。不改产品默认、不调阈值、不换 gold、
+不调用模型、不扩功能。
 
 ## 边界（本目录内不变）
 
@@ -14,7 +15,7 @@ R4.1 只关闭 REVIEW 的三个阻断：旧来源冒充新完成、重复恢复�
 - 决策实现标注 `scripted-rule`，不声称“模型学会何时打扰”。
 - 工具只有 `inspect_artifact` / `compare_metrics` / `write_analysis`，没有任意 shell。
 
-## R4.1 的四个硬约束
+## R4.2 的六个硬约束
 
 1. **同一来源**：effect、回执、分析都持久化 `InputRef`（taskId/taskRevision、assignmentId、
    sourceId/sourceRevision、runId/revision、resultFileSha、artifactSha）。派发前核对
@@ -22,12 +23,28 @@ R4.1 只关闭 REVIEW 的三个阻断：旧来源冒充新完成、重复恢复�
    `completionCheck` 逐项比较当前输入→执行输入→回执→分析。老回执没有身份就 fail closed。
 2. **未知结果持久阻断**：`running` 跨进程恢复后转 `needs_reconciliation`；`recover` 任意次数
    都不重建 assignment、不新建 attempt/receipt。只有 `reconcile` 显式处理：
-   `accept_receipt`（需合法当前来源回执）或 `abandon_attempt`（放弃后必须重新授权）。
+   `accept_receipt` 或 `abandon_attempt`（放弃后必须重新授权）。
+   `accept_receipt` 要求回执 `ok=true`、`inputsVerified=true`、无未解决状态、
+   effect/attempt/任务/assignment/来源身份全等、`write_analysis` 输出文件存在且 SHA 相符；
+   否则返回明确拒绝码（`receipt_not_ok` / `receipt_inputs_unverified` /
+   `receipt_output_missing` / `receipt_output_sha_mismatch` 等），effect 与阻断原样保留。
 3. **可见性**：通知有 `queued → delivered → presented` 与时间。回答只认已送达/已呈现的
    问题；主“用户离开电脑”模式靠送达，模拟用户主动看面板必须显式 `present`/`--panel`
    并留下呈现回执。写库不等于用户看过。
 4. **统一时间**：quiet 配置含显式 IANA `timezone`，计入 configSha 与每份 raw；不读宿主 TZ。
    可控时钟单调，每个评估步骤只用绝对 `at` 或相对 `minutes` 之一。
+5. **已知输入拒绝的继续入口**：工具在执行前被输入门拒绝时，任务持久化
+   `continuation`（kind/detail/effectId/attempt/被消耗的 decisionId 与 optionId），
+   清空已消耗的 `lastAnswer`，阶段为 `continuation_pending`。输入未恢复时只 defer，
+   不制造必然被拒绝的问题；输入恢复后只提一个绑定当前版本与 attempt 的
+   “重新授权”问题。**新授权前不执行、不新建 attempt/receipt**；回答
+   `retry_analysis`（或 `analyze_failing`）才建立新 attempt。`running` /
+   `needs_reconciliation` 不走这条快捷路径。
+6. **评分身份**：raw 导出 proposal/attention 的
+   `decisionId/ticketId/taskRevision/assignmentId`。评分按 `decisionId` 精确连接并校验
+   ticket/版本/派工；`decisionKey` 只作语义分组。缺失、0 条或 >1 条候选一律 fail closed。
+   输出 `requiredTotal/Produced/Visible/Answered` 与
+   `notProposed/notVisible/notAnswered`（同一分母），不再用单个 `missed` 混淆。
 
 ## 目录
 
@@ -88,7 +105,8 @@ PET_FOLLOWUP_CRASH_AT=receipt_persisted node run.mjs answer --ticket <id> --opti
 node run.mjs eval            # 4 策略 × 18 个机会，写 out/eval/raw 与 scores
 node run.mjs verify-eval     # 独立重评 72 份 raw，逐项比对
 node run.mjs negative        # 10 个负控，每个独立子进程；detected → exit 1
-node run.mjs test            # 47 个单测
+node run.mjs test            # 66 个单测
+node run.mjs crosscheck      # 独立重算评分身份链，与 summary 逐项比对
 node run.mjs typecheck       # 需要 tooling/node_modules（见下）
 node tools/r41-acceptance.mjs . out/r41-acceptance   # 真实子进程 27 项断言
 node tools/audit.mjs         # 边界静态审计 + R3.1 diff + 上游指纹

@@ -115,6 +115,18 @@ function necessaryDecision(context: DecisionContext): NecessaryDecision | null {
       deadline: deadlineAt(context.now, context.quiet.deadlineHour, context.quiet.timezone),
     }
   }
+  // 已知的“执行前拒绝”：只有当前输入恢复后才提出重新授权问题。
+  const continuation = task.continuation
+  if (continuation && context.inputReady) {
+    return {
+      decisionKey: `continuation:${result.runId}:r${result.revision}:a${continuation.attempt}`,
+      question: `上次的本地分析在执行前被输入校验拒绝（${continuation.detail}）。当前输入已恢复，要现在重新授权执行吗？`,
+      options: [RETRY_OPTION, ACCEPT_NO_ANALYSIS],
+      reasonCode: 'input_rejected_retry',
+      reasonText: '已知的输入拒绝需要一次新的明确授权',
+      deadline: deadlineAt(context.now, context.quiet.deadlineHour, context.quiet.timezone),
+    }
+  }
   const last = task.diagnostics.at(-1) ?? ''
   if (last.startsWith('tool_failed:')) {
     return {
@@ -233,6 +245,18 @@ function answeredAction(policy: PolicyId, context: DecisionContext): ProposedDec
   return analysisProposal(policy, context, context.task.lastAnswer?.optionId === 'retry_analysis' ? 'retry_requested' : 'analysis_requested')
 }
 
+/** 输入尚未恢复时先不提问：避免制造一个必然被拒绝的问题。 */
+function continuationWait(policy: PolicyId, context: DecisionContext): ProposedDecision | null {
+  if (!context.task.continuation || context.inputReady) return null
+  return defer(
+    policy,
+    context,
+    'continuation_wait_input',
+    '上次执行被输入校验拒绝，当前输入尚未恢复，先等待可核验的当前版本',
+    new Date(Date.parse(context.now) + 10 * 60_000).toISOString(),
+  )
+}
+
 function proposeP0(context: DecisionContext): ProposedDecision[] {
   return [recordOnly('P0', context, 'record_only', 'P0 只记录当前事实，不主动打扰')]
 }
@@ -240,6 +264,8 @@ function proposeP0(context: DecisionContext): ProposedDecision[] {
 function proposeP1(context: DecisionContext): ProposedDecision[] {
   const action = answeredAction('P1', context)
   if (action) return [action]
+  const waitingForInput = continuationWait('P1', context)
+  if (waitingForInput) return [waitingForInput]
   const necessary = necessaryDecision(context)
   if (necessary) return [askFromNecessary('P1', context, necessary, `P1:${necessary.decisionKey}`)]
   return [
@@ -254,6 +280,8 @@ function proposeP1(context: DecisionContext): ProposedDecision[] {
 function proposeP2(context: DecisionContext, config: PolicyConfig): ProposedDecision[] {
   const action = answeredAction('P2', context)
   if (action) return [action]
+  const waitingForInput = continuationWait('P2', context)
+  if (waitingForInput) return [waitingForInput]
   const task = context.task
   if (!task.result) {
     return [defer('P2', context, 'awaiting_result', '还没有结果，继续等待', new Date(Date.parse(context.now) + 10 * 60_000).toISOString())]
@@ -290,6 +318,8 @@ function proposeP3(context: DecisionContext, config: PolicyConfig): ProposedDeci
   const task = context.task
   const action = answeredAction('P3', context)
   if (action) return [action]
+  const waitingForInput = continuationWait('P3', context)
+  if (waitingForInput) return [waitingForInput]
   if (context.goalSatisfied) {
     return [buildProposal('P3', context, 'notify_result', 'goal_satisfied', '目标条件已满足', { decisionKey: 'goal_satisfied' })]
   }

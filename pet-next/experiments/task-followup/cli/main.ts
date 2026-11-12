@@ -99,9 +99,14 @@ function taskSummary(runtime: BuiltRuntime, ticketId: string): Record<string, un
     status: task.status,
     taskRevision: task.taskRevision,
     assignmentId: task.assignmentId,
+    attempt: task.attempt,
+    continuation: task.continuation ?? null,
+    lastAnswer: task.lastAnswer ?? null,
     openAttention: task.openAttention
       ? {
           attentionId: task.openAttention.attentionId,
+          decisionId: task.openAttention.decisionId,
+          decisionKey: task.openAttention.decisionKey,
           question: task.openAttention.question,
           options: task.openAttention.options,
           notifiedAt: task.openAttention.notifiedAt ?? null,
@@ -191,6 +196,21 @@ export async function runCommand(argv: readonly string[]): Promise<number> {
     const raw = JSON.parse(readFileSync(resolve(path), 'utf8'))
     print(reveal(raw))
     return 0
+  }
+  if (command === 'crosscheck') {
+    const child = spawnSync(
+      process.execPath,
+      [
+        join(EXPERIMENT_ROOT, 'tools', 'score-crosscheck.mjs'),
+        resolve(args.get('raw-dir') ?? join(EXPERIMENT_ROOT, 'out', 'eval', 'raw')),
+        join(EXPERIMENT_ROOT, 'gold'),
+        resolve(args.get('summary') ?? join(EXPERIMENT_ROOT, 'out', 'eval', 'scores', 'summary.json')),
+        resolve(args.get('out') ?? join(EXPERIMENT_ROOT, 'out', 'eval', 'scores', 'crosscheck.json')),
+        ...(args.get('external') ? ['--external', resolve(String(args.get('external')))] : []),
+      ],
+      { stdio: 'inherit', env: process.env },
+    )
+    return child.status ?? 1
   }
   if (command === 'verify-eval') {
     const { verifyRawDir } = await import('../eval/reveal.ts')
@@ -587,6 +607,8 @@ function helpText(): string {
   node run.mjs negative
   node run.mjs reveal --raw <raw.json>
   node run.mjs verify-eval
+  node run.mjs crosscheck           # 独立重算 required/produced/visible/answered，与 summary 逐项比对
+  node run.mjs crosscheck --external /path/independent-score-result.json   # 再与外部独立脚本对照
   node run.mjs test
 
   --workspace <dir>  默认 ${DEFAULT_WORKSPACE}

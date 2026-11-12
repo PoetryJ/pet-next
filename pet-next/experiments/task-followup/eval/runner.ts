@@ -64,7 +64,7 @@ interface StepRecord {
 }
 
 export interface RawRun {
-  readonly schema: 'pet-followup-raw/v1'
+  readonly schema: 'pet-followup-raw/v2'
   readonly policy: PolicyId
   readonly policyConfigSha: string
   /** 运行配置指纹：规则 + quiet（含 timezone）。 */
@@ -96,15 +96,20 @@ export interface RawRun {
     readonly kind: string
     readonly decisionKey: string
     readonly reasonCode: string
+    readonly ticketId: string
     readonly taskRevision: number
+    readonly assignmentId: string
     readonly outcome: string
   }[]
   readonly attentions: readonly {
     readonly attentionId: string
+    readonly ticketId: string
+    readonly decisionId: string
     readonly decisionKey: string
     readonly reasonCode: string | null
     readonly question: string
     readonly taskRevision: number
+    readonly assignmentId: string
     readonly createdAt: string
     readonly deadline: string | null
     readonly state: string
@@ -141,8 +146,12 @@ export interface RawRun {
   }[]
   readonly driverLog: readonly { readonly at: string; readonly phase: string; readonly detail: string }[]
   readonly asks: readonly {
+    readonly decisionId: string
     readonly decisionKey: string
     readonly reasonCode: string
+    readonly ticketId: string
+    readonly taskRevision: number
+    readonly assignmentId: string
     readonly at: string
     readonly outcome: string
   }[]
@@ -532,7 +541,7 @@ export function runPolicyOverTrajectory(
       attentions.some((row) => Boolean(row.deadline) && Date.parse(String(row.deadline)) < Date.parse(clock.now()))
 
     return {
-      schema: 'pet-followup-raw/v1',
+      schema: 'pet-followup-raw/v2',
       policy,
       policyConfigSha: built.decision.configSha,
       configSha: built.configSha,
@@ -555,15 +564,20 @@ export function runPolicyOverTrajectory(
         kind: row.kind,
         decisionKey: row.decision_key,
         reasonCode: row.reason_code,
+        ticketId: row.ticket_id,
         taskRevision: row.task_revision,
+        assignmentId: row.assignment_id ?? '',
         outcome: row.outcome,
       })),
       attentions: attentions.map((row) => ({
         attentionId: row.attentionId,
+        ticketId: row.ticketId,
+        decisionId: row.decisionId,
         decisionKey: row.decisionKey,
         reasonCode: reasonByKey.get(row.decisionKey) ?? null,
         question: row.question,
         taskRevision: row.taskRevision,
+        assignmentId: row.assignmentId,
         createdAt: row.createdAt,
         deadline: row.deadline ?? null,
         state: row.state,
@@ -599,8 +613,12 @@ export function runPolicyOverTrajectory(
         taskRevision: effect.task_revision,
       })),
       asks: asks.map((row) => ({
+        decisionId: row.decision_id,
         decisionKey: row.decision_key,
         reasonCode: row.reason_code,
+        ticketId: row.ticket_id,
+        taskRevision: row.task_revision,
+        assignmentId: row.assignment_id ?? '',
         at: row.created_at,
         outcome: row.outcome,
       })),

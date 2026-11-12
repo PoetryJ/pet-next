@@ -45,6 +45,7 @@ import type {
   AttentionView,
   ClockPort,
   CompletionCheck,
+  ContinuationState,
   DecisionContext,
   DecisionPort,
   EvidenceRef,
@@ -169,6 +170,16 @@ export interface ReconcileResult {
     | 'no_receipt'
     | 'receipt_identity_missing'
     | 'receipt_identity_mismatch'
+    | 'receipt_effect_mismatch'
+    | 'receipt_attempt_mismatch'
+    | 'receipt_tool_mismatch'
+    | 'receipt_task_revision_mismatch'
+    | 'receipt_assignment_mismatch'
+    | 'receipt_not_ok'
+    | 'receipt_inputs_unverified'
+    | 'receipt_unresolved'
+    | 'receipt_output_missing'
+    | 'receipt_output_sha_mismatch'
     | 'unknown_option'
     | 'task_closed'
   readonly detail: string
@@ -192,6 +203,7 @@ interface TaskRecord {
   evidence: EvidenceRef[]
   lastProposal?: ProposalSummary
   lastAnswer?: { optionId: string; at: string }
+  continuation?: ContinuationState
   attempt: number
   result?: TaskSnapshot['result']
   analysis?: TaskSnapshot['analysis']
@@ -435,10 +447,11 @@ export class FollowupRuntime {
           fresh.analysis = undefined
           fresh.completion = undefined
         }
-        if (hadAuthorization) {
+        if (hadAuthorization || fresh.continuation) {
           // 旧授权只对旧来源有效：新来源必须重新授权，旧 attempt 不复用。
           fresh.attempt += 1
           fresh.lastAnswer = undefined
+          fresh.continuation = undefined
           fresh.diagnostics = [...fresh.diagnostics.slice(-40), `authorization_invalidated:new_source:${sourceRevision}`]
         }
         if (!this.skipInvalidation) {
@@ -583,6 +596,15 @@ export class FollowupRuntime {
         fresh.attempt += 1
         fresh.diagnostics = fresh.diagnostics.filter((item) => !item.startsWith('tool_failed:'))
       }
+      if (fresh.continuation) {
+        // 新授权：在已知拒绝之后建立新的 attempt，旧的失败留在 effect/diagnostics 里。
+        if (option.id === 'analyze_failing') fresh.attempt += 1
+        fresh.diagnostics = [
+          ...fresh.diagnostics.slice(-40),
+          `continuation_authorized:${option.id}:attempt${fresh.attempt}`,
+        ]
+        fresh.continuation = undefined
+      }
       fresh.stage = option.id === 'analyze_failing' ? 'analyzing' : 'result_received'
       this.saveTask(fresh)
       const trigger = this.humanTrigger({
@@ -622,6 +644,7 @@ export class FollowupRuntime {
       fresh.goal = input.goal
       fresh.goalCondition = goalCondition
       fresh.attempt += 1
+      fresh.continuation = undefined
       fresh.updatedAt = now
       fresh.stage = fresh.result ? 'result_received' : 'awaiting_result'
       const superseded = this.skipInvalidation ? [] : this.attention.supersede(fresh.ticketId, fresh.taskRevision, 'goal changed', now)
@@ -943,25 +966,26 @@ export class FollowupRuntime {
       const blocked: string[] = []
       const current = this.inputRefFromTask(task)
       const accepted: { effect: EffectRow; receipt: ToolReceipt }[] = []
+      let firstCode: ReconcileResult['code'] = 'receipt_not_ok'
       for (const effect of unresolved) {
         const receipt = this.db.getReceiptByEffect(effect.effect_id)
         if (!receipt) {
           blocked.push(`no_receipt:${effect.effect_id}`)
+          firstCode = 'no_receipt'
           continue
         }
-        if (!receipt.inputRef) {
-          blocked.push(`receipt_identity_missing:${effect.effect_id}`)
-          continue
-        }
-        if (!current.ref || canonicalJson(receipt.inputRef) !== canonicalJson(current.ref)) {
-          blocked.push(`receipt_identity_mismatch:${effect.effect_id}`)
+        // 只有“成功、已核验输入、无未解决状态、输出字节正确、身份完全匹配”的回执才能解除阻断。
+        const rejection = this.receiptRejection(effect, receipt, task, current)
+        if (rejection) {
+          blocked.push(`${rejection.code}:${effect.effect_id}:${rejection.detail}`)
+          if (blocked.length === 1) firstCode = rejection.code
           continue
         }
         accepted.push({ effect, receipt })
       }
       if (blocked.length) {
         this.db.driverLog(now, input.ticketId, 'reconcile.blocked', { option: input.option, blocked })
-        return { ok: false, code: blocked[0]!.startsWith('no_receipt') ? 'no_receipt' : 'receipt_identity_mismatch', detail: blocked.join(';'), effectIds, blocked }
+        return { ok: false, code: firstCode, detail: blocked.join(';'), effectIds, blocked }
       }
       this.db.atomic(() => {
         const fresh = this.requireTask(input.ticketId)
@@ -996,9 +1020,10 @@ export class FollowupRuntime {
             detail: `abandoned_by_reconciliation:${input.note ?? 'explicit'}`,
           })
         }
-        // 放弃不等于允许盲重试：清空上一次回答并要求重新授权。
+        // 放弃不等于允许盲重试：清空上一次回答与续办状态，并要求重新授权。
         fresh.attempt += 1
         fresh.lastAnswer = undefined
+        fresh.continuation = undefined
         fresh.stage = fresh.result ? 'result_received' : 'awaiting_result'
         fresh.updatedAt = now
         fresh.diagnostics = [...fresh.diagnostics.slice(-40), `reconciliation_abandoned:${effectIds.join(',')}`, 'reauthorization_required']
@@ -1009,6 +1034,53 @@ export class FollowupRuntime {
       return { ok: true, code: 'reconciled', detail: `abandoned ${effectIds.length} effect(s); new authorization required`, effectIds, blocked: [] }
     }
     return { ok: false, code: 'unknown_option', detail: `unknown reconcile option ${String(input.option)}`, effectIds, blocked: [] }
+  }
+
+  /**
+   * 回执合法性：接受前逐项核对 effect/attempt/任务/assignment/来源/成功/输入核验/输出字节。
+   * 任何一项不成立都返回明确拒绝码；不修改 effect，也不解除原阻断。
+   */
+  private receiptRejection(
+    effect: EffectRow,
+    receipt: ToolReceipt,
+    task: TaskRecord,
+    current: { readonly ref: InputRef | null; readonly reasons: readonly string[] },
+  ): { code: ReconcileResult['code']; detail: string } | null {
+    const fail = (code: ReconcileResult['code'], detail: string): { code: ReconcileResult['code']; detail: string } => ({
+      code,
+      detail,
+    })
+    if (receipt.effectId !== effect.effect_id) return fail('receipt_effect_mismatch', `${receipt.effectId} != ${effect.effect_id}`)
+    if (receipt.attemptId !== effect.attempt_id) return fail('receipt_attempt_mismatch', `${receipt.attemptId} != ${effect.attempt_id}`)
+    if ((receipt.tool as string) !== (effect.tool as string)) return fail('receipt_tool_mismatch', `${receipt.tool} != ${effect.tool}`)
+    if (effect.task_revision !== task.taskRevision) {
+      return fail('receipt_task_revision_mismatch', `effect r${effect.task_revision} current r${task.taskRevision}`)
+    }
+    if (receipt.taskRevision !== task.taskRevision) {
+      return fail('receipt_task_revision_mismatch', `receipt r${receipt.taskRevision} current r${task.taskRevision}`)
+    }
+    if ((effect.assignment_id ?? '') !== (task.assignmentId ?? '')) {
+      return fail('receipt_assignment_mismatch', `effect ${effect.assignment_id ?? 'none'} current ${task.assignmentId ?? 'none'}`)
+    }
+    if (receipt.assignmentId !== (effect.assignment_id ?? '')) {
+      return fail('receipt_assignment_mismatch', `receipt ${receipt.assignmentId} effect ${effect.assignment_id ?? 'none'}`)
+    }
+    if (!receipt.ok) return fail('receipt_not_ok', receipt.detail)
+    if (!receipt.inputsVerified) return fail('receipt_inputs_unverified', receipt.detail)
+    if (receipt.needsReconciliation) return fail('receipt_unresolved', receipt.detail)
+    if (!receipt.inputRef) return fail('receipt_identity_missing', receipt.receiptId)
+    if (!current.ref) return fail('receipt_identity_mismatch', `current_identity:${current.reasons.join('+')}`)
+    if (canonicalJson(receipt.inputRef) !== canonicalJson(current.ref)) {
+      return fail('receipt_identity_mismatch', 'receipt inputRef differs from current input')
+    }
+    if (effect.tool === 'write_analysis') {
+      if (!receipt.outputPath || !receipt.outputSha256) return fail('receipt_output_missing', receipt.receiptId)
+      const abs = this.absoluteToRoot(receipt.outputPath)
+      if (!existsSync(abs)) return fail('receipt_output_missing', this.relativeToRoot(abs))
+      const verify = this.verifyArtifactFile(abs, receipt.outputSha256)
+      if (!verify.ok) return fail('receipt_output_sha_mismatch', verify.detail)
+    }
+    return null
   }
 
   /**
@@ -1525,14 +1597,28 @@ export class FollowupRuntime {
       const gate = this.verifyEffectInputs(effect)
       if (!gate.ok) {
         this.db.atomic(() => {
-          this.db.saveEffect({ ...effect, state: 'invalidated', finished_at: this.clock.now(), detail: `input_gate:${gate.detail}` })
+          const at = this.clock.now()
+          this.db.saveEffect({ ...effect, state: 'invalidated', finished_at: at, detail: `input_gate:${gate.detail}` })
           const task = this.requireTask(effect.ticket_id)
           task.diagnostics = [...task.diagnostics.slice(-40), `tool_input_rejected:${gate.detail}`]
-          if (task.stage !== 'needs_reconciliation') task.stage = 'awaiting_decision'
+          // 已知的“执行前拒绝”：授权已被消耗，工具没有执行。
+          // 保留证据但不得继续驱动同一个动作；必须由用户对当前版本重新授权后才能新建 attempt。
+          task.continuation = {
+            kind: 'input_rejected',
+            detail: gate.detail,
+            effectId: effect.effect_id,
+            attempt: task.attempt,
+            decisionId: task.lastProposal?.decisionId ?? null,
+            optionId: task.lastAnswer?.optionId ?? null,
+            at,
+          }
+          task.lastAnswer = undefined
+          if (task.stage !== 'needs_reconciliation') task.stage = 'continuation_pending'
           this.saveTask(task)
-          this.db.driverLog(this.clock.now(), effect.ticket_id, 'effect.input_rejected', {
+          this.db.driverLog(at, effect.ticket_id, 'effect.input_rejected', {
             effectId: effect.effect_id,
             detail: gate.detail,
+            continuation: 'required',
           })
         })
         return
@@ -1966,7 +2052,19 @@ export class FollowupRuntime {
       goalSatisfied,
       lastAnswer: task.lastAnswer,
       attempt: task.attempt,
+      inputReady: this.currentInputReady(task),
     }
+  }
+
+  /** 当前版本的输入是否已可核验：身份齐全且磁盘字节与记录一致。 */
+  private currentInputReady(task: TaskRecord): boolean {
+    const current = this.inputRefFromTask(task)
+    const ref = current.ref
+    const resultPath = ref?.resultPath
+    if (!ref || !resultPath) return false
+    if (!this.verifyArtifactFile(this.absoluteToRoot(resultPath), ref.resultFileSha).ok) return false
+    if (ref.artifactPath && !this.verifyArtifactFile(this.absoluteToRoot(ref.artifactPath), ref.artifactSha).ok) return false
+    return true
   }
 
   private validateAt(task: TaskRecord, proposal: ProposedDecision, stage: ValidationRecord['stage']): ValidationRecord {
@@ -2153,6 +2251,7 @@ export class FollowupRuntime {
       evidence: JSON.parse(row.evidence_json) as EvidenceRef[],
       ...(row.last_proposal_json ? { lastProposal: JSON.parse(row.last_proposal_json) as ProposalSummary } : {}),
       ...(row.last_answer_json ? { lastAnswer: JSON.parse(row.last_answer_json) as { optionId: string; at: string } } : {}),
+      ...(row.continuation_json ? { continuation: JSON.parse(row.continuation_json) as ContinuationState } : {}),
       attempt: row.attempt,
       ...(row.result_json ? { result: JSON.parse(row.result_json) as NonNullable<TaskRecord['result']> } : {}),
       ...(row.analysis_json ? { analysis: JSON.parse(row.analysis_json) as NonNullable<TaskRecord['analysis']> } : {}),
@@ -2180,6 +2279,7 @@ export class FollowupRuntime {
       evidence_json: canonicalJson(task.evidence),
       last_proposal_json: task.lastProposal ? canonicalJson(task.lastProposal) : null,
       last_answer_json: task.lastAnswer ? canonicalJson(task.lastAnswer) : null,
+      continuation_json: task.continuation ? canonicalJson(task.continuation) : null,
       attempt: task.attempt,
       result_json: task.result ? canonicalJson(task.result) : null,
       analysis_json: task.analysis ? canonicalJson(task.analysis) : null,

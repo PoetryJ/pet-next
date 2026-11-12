@@ -1,11 +1,13 @@
 /**
  * 评分器：只读 raw 运行记录与 gold 期望，不 import runner，也不 import 策略。
  *
- * R4.1 口径（与 REVIEW 第五节对应）：
+ * R4.2 口径（与 R4.1 REVIEW F3 / policy-independent REPORT 对应）：
  * - 状态完成（completed）与“输入/回执当前一致的有效完成”（validCompletion）分开报；
  *   只有有效完成进入完成率。
- * - 必需问题分三段：已产生（askedKinds）、已可见（送达或呈现）、已回答。
- *   隐藏问题不算已触达。
+ * - 必需问题分三段：已产生（produced）、已可见（visible）、已回答（answered）。
+ *   三段都绑定“当前问题身份”：ask 的 decisionId 必须与 attention 的 decisionId 精确相连，
+ *   且 taskRevision/ticketId/assignmentId 全部相等；缺失或歧义 fail closed（不算已见）。
+ * - 漏提案（notProposed）、未触达（notVisible）、未回答（notAnswered）分开报，共用 requiredTotal 分母。
  * - 运行时硬提醒额度（reminderQuotaPerHour）与 gold 参考上限（maxNotifications）分开字段。
  * - 未回答 / 被替换通知单列为代理指标；“实际无用提醒”另有显式定义（见 uselessNotifications）。
  *
@@ -30,8 +32,12 @@ export interface GoldFile {
 
 interface RawAttention {
   readonly attentionId: string
+  readonly ticketId?: string
+  readonly decisionId?: string
   readonly decisionKey: string
   readonly reasonCode: string | null
+  readonly taskRevision?: number
+  readonly assignmentId?: string
   readonly state: string
   readonly createdAt: string
   readonly deliveredAt: string | null
@@ -45,7 +51,16 @@ interface RawLike {
   readonly group: string
   readonly timezone?: string
   readonly attentions: readonly RawAttention[]
-  readonly asks: readonly { readonly decisionKey: string; readonly reasonCode: string; readonly outcome: string }[]
+  readonly asks: readonly {
+    readonly decisionId?: string
+    readonly decisionKey: string
+    readonly reasonCode: string
+    readonly ticketId?: string
+    readonly taskRevision?: number
+    readonly assignmentId?: string
+    readonly at: string
+    readonly outcome: string
+  }[]
   readonly notifications: readonly {
     readonly attentionId: string | null
     readonly state: string
@@ -98,9 +113,15 @@ export interface PolicyScore {
   readonly requiredProduced: number
   readonly requiredVisible: number
   readonly requiredAnswered: number
-  readonly missed: number
-  readonly missedDetail: readonly { readonly run: string; readonly kind: string }[]
-  readonly hiddenRequired: readonly { readonly run: string; readonly kind: string }[]
+  /** 漏提案：没有任何未被撤销的 ask 实例。 */
+  readonly notProposed: number
+  /** 未触达：已提案但当前实例没有可核验的送达/呈现回执（含身份缺失/歧义）。 */
+  readonly notVisible: number
+  /** 未回答：已触达但当前实例未被回答。 */
+  readonly notAnswered: number
+  readonly notProposedDetail: readonly { readonly run: string; readonly kind: string }[]
+  readonly notVisibleDetail: readonly { readonly run: string; readonly kind: string; readonly reason: string }[]
+  readonly notAnsweredDetail: readonly { readonly run: string; readonly kind: string }[]
   readonly notifications: number
   readonly notificationsDelivered: number
   readonly notificationsPresented: number
@@ -128,7 +149,7 @@ export interface PolicyScore {
 }
 
 export interface ScoreSummary {
-  readonly schema: 'pet-followup-scores/v2'
+  readonly schema: 'pet-followup-scores/v3'
   readonly generatedAt: string
   readonly metricDefinitions: Readonly<Record<string, string>>
   readonly policies: Readonly<Record<string, PolicyScore>>
@@ -136,9 +157,10 @@ export interface ScoreSummary {
   readonly comparison: {
     readonly p3VsP2: {
       readonly validCompletionDelta: number
-      readonly missedDelta: number
+      readonly notProposedDelta: number
+      readonly notVisibleDelta: number
+      readonly notAnsweredDelta: number
       readonly notificationsDelta: number
-      readonly p3MeetsP2ValidCompletionAndMiss: boolean
       readonly note: string
     }
   }
@@ -148,9 +170,13 @@ const METRIC_DEFINITIONS = {
   completions: 'final.status === completed 的次数；仅作状态计数。',
   validCompletions: 'completed 且 completionCheck.ok（当前输入与 receipt/analysis 的 inputRef 逐项相等）的次数。',
   completedRate: 'validCompletions / opportunities；只有有效完成进入完成率。',
-  requiredProduced: 'gold.requiredDecisions 中，存在未被撤销的 ask_user 提案的项数。',
-  requiredVisible: 'requiredProduced 中，对应 attention 有 deliveredAt 或 presentedAt 的项数；隐藏问题不算触达。',
-  requiredAnswered: 'requiredVisible 中，对应 attention 状态为 answered 的项数。',
+  requiredProduced: 'gold.requiredDecisions 中，存在未被撤销的 ask 实例的项数（按当前有效实例判定）。',
+  requiredVisible:
+    'requiredProduced 中，当前有效实例的 attention 有 deliveredAt 或 presentedAt 的项数；decisionId/taskRevision/ticketId/assignmentId 任一不匹配或歧义即算未触达。',
+  requiredAnswered: 'requiredVisible 中，当前有效实例的 attention 状态为 answered 的项数（Answered⊆Visible）。',
+  notProposed: 'requiredTotal - requiredProduced；只表示没有提案，不等于未触达。',
+  notVisible: 'requiredTotal - requiredVisible；已提案但当前问题身份没有可见回执。',
+  notAnswered: 'requiredTotal - requiredAnswered；包含未触达与已触达未回答。',
   answeredWithoutVisibility: '已回答但无送达/呈现回执的 attention 数；正式运行必须为 0。',
   unfinishedBeforeDeadline: '最终未完成、且至少一个问题的 deadline 已过的 run 数。',
   notificationChannel: '评估中的 delivered 由本地 fake channel 在每步末尾自动送达，属模拟通道，不代表真实系统通知。',
@@ -187,7 +213,7 @@ export function scoreAll(rawDir: string, goldDir: string): ScoreSummary {
   const p2 = policies.P2!
   const p3 = policies.P3!
   const summary: ScoreSummary = {
-    schema: 'pet-followup-scores/v2',
+    schema: 'pet-followup-scores/v3',
     generatedAt: new Date().toISOString(),
     metricDefinitions: METRIC_DEFINITIONS,
     policies,
@@ -195,19 +221,58 @@ export function scoreAll(rawDir: string, goldDir: string): ScoreSummary {
     comparison: {
       p3VsP2: {
         validCompletionDelta: p3.validCompletions - p2.validCompletions,
-        missedDelta: p3.missed - p2.missed,
+        notProposedDelta: p3.notProposed - p2.notProposed,
+        notVisibleDelta: p3.notVisible - p2.notVisible,
+        notAnsweredDelta: p3.notAnswered - p2.notAnswered,
         notificationsDelta: p3.notifications - p2.notifications,
-        p3MeetsP2ValidCompletionAndMiss: p3.validCompletions >= p2.validCompletions && p3.missed <= p2.missed,
-        note: '只报原始差值；是否支持 H2 由报告按这些计数判断，不在这里改口径。',
+        note: '只报原始差值；漏提案/未触达/未回答共用 requiredTotal 分母，是否支持“更少打扰”由报告判断。',
       },
     },
   }
   return summary
 }
 
+/**
+ * 当前有效问题实例：按 (taskRevision, at, decisionId) 取最新一条未被撤销的 ask；
+ * 再用 decisionId 精确连接 attention，并校验 ticket/版本/派工身份。
+ * decisionKey 只用于语义分组，不能当身份；缺失或歧义一律 fail closed。
+ */
+function effectiveInstance(
+  raw: RawLike,
+  kind: string,
+):
+  | { readonly status: 'not_proposed' }
+  | { readonly status: 'unmatched'; readonly reason: string }
+  | { readonly status: 'matched'; readonly answered: boolean } {
+  const asks = raw.asks.filter((item) => item.reasonCode === kind && item.outcome !== 'invalidated')
+  if (!asks.length) return { status: 'not_proposed' }
+  const ask = [...asks]
+    .sort(
+      (a, b) =>
+        (a.taskRevision ?? 0) - (b.taskRevision ?? 0) ||
+        a.at.localeCompare(b.at) ||
+        String(a.decisionId ?? '').localeCompare(String(b.decisionId ?? '')),
+    )
+    .at(-1)!
+  if (!ask.decisionId) return { status: 'unmatched', reason: 'ask_identity_missing' }
+  const candidates = raw.attentions.filter((item) => item.decisionId === ask.decisionId)
+  if (candidates.length === 0) return { status: 'unmatched', reason: 'attention_missing' }
+  if (candidates.length > 1) return { status: 'unmatched', reason: 'attention_ambiguous' }
+  const attention = candidates[0]!
+  if (attention.taskRevision !== ask.taskRevision) return { status: 'unmatched', reason: 'revision_mismatch' }
+  if ((attention.ticketId ?? '') !== (ask.ticketId ?? '')) return { status: 'unmatched', reason: 'ticket_mismatch' }
+  if ((attention.assignmentId ?? '') !== (ask.assignmentId ?? '')) {
+    return { status: 'unmatched', reason: 'assignment_mismatch' }
+  }
+  const visible = Boolean(attention.deliveredAt || attention.presentedAt)
+  if (!visible) return { status: 'unmatched', reason: `not_visible:${attention.state}` }
+  return { status: 'matched', answered: attention.state === 'answered' }
+}
+
 function scorePolicy(policy: PolicyId, runs: readonly { raw: RawLike; gold?: GoldVariant }[]): PolicyScore {
-  const missedDetail: { run: string; kind: string }[] = []
-  const hiddenRequired: { run: string; kind: string }[] = []
+  const notProposedDetail: { run: string; kind: string }[] = []
+  const notVisibleDetail: { run: string; kind: string; reason: string }[] = []
+  const notAnsweredDetail: { run: string; kind: string }[] = []
   let completions = 0
   let validCompletions = 0
   let mustComplete = 0
@@ -273,21 +338,22 @@ function scorePolicy(policy: PolicyId, runs: readonly { raw: RawLike; gold?: Gol
     for (const kind of run.gold.requiredDecisions) {
       requiredTotal += 1
       const runLabel = `${raw.trajectoryId}-${raw.variantId}`
-      const ask = raw.asks.find((item) => item.reasonCode === kind && item.outcome !== 'invalidated')
-      const attention = ask ? raw.attentions.find((item) => item.decisionKey === ask.decisionKey) : undefined
-      const visible = Boolean(attention?.deliveredAt || attention?.presentedAt)
-      const answered = attention?.state === 'answered'
-      if (!ask) {
-        missedDetail.push({ run: runLabel, kind })
+      const instance = effectiveInstance(raw, kind)
+      if (instance.status === 'not_proposed') {
+        notProposedDetail.push({ run: runLabel, kind })
         continue
       }
       requiredProduced += 1
-      if (!visible) {
-        hiddenRequired.push({ run: runLabel, kind })
+      if (instance.status !== 'matched') {
+        notVisibleDetail.push({ run: runLabel, kind, reason: instance.reason })
         continue
       }
       requiredVisible += 1
-      if (answered) requiredAnswered += 1
+      if (instance.answered) {
+        requiredAnswered += 1
+      } else {
+        notAnsweredDetail.push({ run: runLabel, kind })
+      }
     }
   }
   return {
@@ -303,9 +369,12 @@ function scorePolicy(policy: PolicyId, runs: readonly { raw: RawLike; gold?: Gol
     requiredProduced,
     requiredVisible,
     requiredAnswered,
-    missed: requiredTotal - requiredProduced,
-    missedDetail,
-    hiddenRequired,
+    notProposed: requiredTotal - requiredProduced,
+    notVisible: requiredTotal - requiredVisible,
+    notAnswered: requiredTotal - requiredAnswered,
+    notProposedDetail,
+    notVisibleDetail,
+    notAnsweredDetail,
     notifications,
     notificationsDelivered,
     notificationsPresented,

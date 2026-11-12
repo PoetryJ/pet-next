@@ -45,6 +45,7 @@ function context(overrides: Partial<DecisionContext> = {}): DecisionContext {
     quiet: DEFAULT_QUIET,
     history: [],
     goalSatisfied: false,
+    inputReady: true,
     attempt: 1,
     ...overrides,
   }

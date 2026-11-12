@@ -27,6 +27,12 @@
 - `InputRef`（R4.1）：把 taskRevision/assignmentId/sourceRevision/resultFileSha/artifactSha 绑定到 effect、回执与分析；派发前核对当前权威结果与磁盘字节。
 - 完成检查：读真实产物与 SHA + 成功回执 + 当前目标事件 + 当前输入与 receipt/analysis 的输入身份逐项相等，缺一不可。
 - 可见性回执（R4.1）：通知 `queued → delivered → presented`，回答只认已送达/已呈现；写库不等于用户看过。
+- 回执合法性（R4.2）：`accept_receipt` 只接受成功、已核验、身份全等、输出字节正确的当前回执；
+  失败/未核验/输出缺失均为明确拒绝码，不解除 `needs_reconciliation`。
+- 续办状态（R4.2）：执行前输入拒绝 → `continuation` + `continuation_pending`；
+  输入恢复后只提一个绑定版本/attempt 的重新授权问题，新授权前不执行。
+- 评分身份（R4.2）：ask→attention 用 `decisionId` 精确连接并校验 ticket/版本/派工；
+  `decisionKey` 不再当身份。
 - 显式时区（R4.1）：`quiet.timezone` 是 IANA 名称，计入 configSha 与 raw；不读宿主 TZ。
 
 ## 明确的边界

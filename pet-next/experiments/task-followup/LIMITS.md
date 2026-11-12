@@ -1,4 +1,4 @@
-# 未证明项与已知代价（R4.1）
+# 未证明项与已知代价（R4.2）
 
 本文件只列仍然没有证据的东西，避免把机制演示说成研究结论。
 
@@ -23,6 +23,9 @@
   替换会被下一次派发/完成检查发现）。
 - 老库里的 `completed` 状态保留，但 `completionCheck` 对新旧记录一视同仁：
   老回执没有 `inputRef` 就返回 `receipt_input_identity_missing`，不计为有效完成。
+- `accept_receipt` 的输出校验只覆盖 `write_analysis` 的文件产物；只读工具没有输出字节可核。
+- 继续入口只处理“执行前已知输入拒绝”；工具已执行后的失败（如 `tool_failed`）仍走原有路径，
+  本轮没有扩展。
 - 没有做“同一 SHA 但语义不同”的对抗样本（SHA 碰撞不在威胁模型内）。
 
 ## 恢复与副作用
@@ -37,6 +40,11 @@
 ## 评估口径
 
 - 只有 `validCompletions` 进入完成率；旧口径的 14/14、17/17 与收益结论已撤回，不覆盖历史文件。
+- 评分身份规则：当前有效实例 = 未被撤销的 ask 中 `(taskRevision, at, decisionId)` 最大者。
+  同一 kind 若存在多条仍有效的提案，只取最新一条；这条规则本身是约定，不是自然事实。
+  缺失/歧义一律 fail closed（老 raw 因此不可评分，见交付 `legacy-raw-fail-closed.json`）。
+- `notVisible` 含“已提案但身份缺失/歧义”的项；它不等于“用户没看到”，只表示当前证据不足。
+- 本轮的 63 项补充反例由 4 失败变 0，只证明这些具体序列；不证明任意恢复序列都不会卡住。
 - 必需问题分“已产生/已可见/已回答”三段；`requiredVisible` 只认 delivered/presented 回执。
 - `unansweredNotifications` / `supersededNotifications` 是代理指标，
   不能直接称为“无用打扰”；`uselessNotifications` 的定义见 `eval/score.ts` 的
