@@ -430,6 +430,9 @@ export function resolveQuiet(quiet: QuietInput | undefined, fallback: QuietConfi
 export const DECISION_RULE_VERSION = 'followup-rules/v1'
 export const POLICY_IDS = ['P0', 'P1', 'P2', 'P3'] as const
 export type PolicyId = (typeof POLICY_IDS)[number]
+/** R5 对照用的策略集合：P3（原基线）与 N1（强简单规则）。 */
+export const R5_POLICY_IDS = ['P3', 'N1'] as const
+export type R5PolicyId = PolicyId | 'N1'
 
 export function configSha(config: unknown): string {
   return sha256Hex(canonicalJson(config))
@@ -466,7 +469,7 @@ export interface ProposalSummary {
 
 /** DecisionPort：透明确定性规则；未来 LLM 可实现同接口，本轮不启用。 */
 export interface DecisionPort {
-  readonly id: PolicyId
+  readonly id: R5PolicyId
   readonly implementation: 'scripted-rule'
   readonly configSha: string
   propose(context: DecisionContext): readonly ProposedDecision[]
@@ -850,4 +853,52 @@ export function millisBetween(from: string, to: string): number {
   const a = Date.parse(from)
   const b = Date.parse(to)
   return Number.isFinite(a) && Number.isFinite(b) ? b - a : 0
+}
+
+// ---------------------------------------------------------------- R5 持久唤醒
+
+/** 唤醒原因：只影响可读日志与去重键，不改变策略判断。 */
+export type WakeReason = 'defer' | 'quiet' | 'cooldown' | 'continuation' | 'deadline' | 'catch_up'
+
+export type WakeStatus = 'scheduled' | 'claimed' | 'done' | 'cancelled'
+
+/**
+ * 持久唤醒记录。jobId 稳定；同一 task/revision/reason/decision 只保留一条有效记录。
+ * 任何身份字段缺失的 job 都不得执行（见 Scheduler.claim）。
+ */
+export interface WakeJob {
+  readonly jobId: string
+  readonly ticketId: string
+  readonly taskRevision: number
+  readonly assignmentId: string | null
+  readonly reason: WakeReason
+  readonly decisionId: string | null
+  readonly sourceId: string | null
+  readonly sourceRevision: string | null
+  readonly dueAt: string
+  readonly status: WakeStatus
+  readonly attempts: number
+  readonly createdAt: string
+  readonly updatedAt: string
+  readonly detail: string | null
+}
+
+export interface WakeScheduleInput {
+  readonly ticketId: string
+  readonly taskRevision: number
+  readonly assignmentId: string | null
+  readonly reason: WakeReason
+  readonly decisionId?: string | null
+  readonly sourceId?: string | null
+  readonly sourceRevision?: string | null
+  readonly dueAt: string
+  readonly detail?: string | null
+}
+
+export interface WakeHandleResult {
+  readonly action: 'woken' | 'stale' | 'cancelled' | 'none' | 'blocked'
+  readonly jobId: string
+  readonly detail: string
+  readonly proposals: number
+  readonly notifications: number
 }

@@ -1,0 +1,16 @@
+{
+  "trajectoryId": "R5-05a",
+  "family": "preference",
+  "split": "heldout",
+  "mustComplete": false,
+  "expectedStatus": "active",
+  "maxNotifications": 2,
+  "required": [
+    {
+      "kind": "insufficient_result",
+      "earliest": "2026-11-12T08:06:00.000Z",
+      "latest": "2026-11-12T08:27:00.000Z",
+      "action": "wait_more"
+    }
+  ]
+}

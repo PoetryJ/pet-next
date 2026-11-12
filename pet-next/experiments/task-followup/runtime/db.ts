@@ -22,6 +22,8 @@ import type {
   NotificationReceipt,
   NotificationState,
   ToolReceipt,
+  WakeJob,
+  WakeStatus,
 } from '../contracts.ts'
 import { EVENT_SCHEMA, canonicalJson } from '../contracts.ts'
 
@@ -168,6 +170,25 @@ CREATE TABLE IF NOT EXISTS notifications (
   presented_at TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_notifications_ticket ON notifications(ticket_id, created_at);
+
+CREATE TABLE IF NOT EXISTS wake_jobs (
+  job_id TEXT PRIMARY KEY,
+  ticket_id TEXT NOT NULL,
+  task_revision INTEGER NOT NULL,
+  assignment_id TEXT,
+  reason TEXT NOT NULL,
+  decision_id TEXT,
+  source_id TEXT,
+  source_revision TEXT,
+  due_at TEXT NOT NULL,
+  status TEXT NOT NULL,
+  attempts INTEGER NOT NULL DEFAULT 0,
+  created_at TEXT NOT NULL,
+  updated_at TEXT NOT NULL,
+  detail TEXT
+);
+CREATE INDEX IF NOT EXISTS ix_wake_due ON wake_jobs(status, due_at);
+CREATE INDEX IF NOT EXISTS ix_wake_ticket ON wake_jobs(ticket_id, status);
 
 CREATE TABLE IF NOT EXISTS memory_events (
   memory_event_id TEXT PRIMARY KEY,
@@ -720,6 +741,101 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
     return rows.map(rowToNotification)
   }
 
+  // ------------------------------------------------------------ R5 持久唤醒
+
+  getWakeJob(jobId: string): WakeJob | null {
+    const row = this.handle.prepare('SELECT * FROM wake_jobs WHERE job_id = ?').get(jobId) as unknown as RawWakeRow | undefined
+    return row ? rowToWakeJob(row) : null
+  }
+
+  listWakeJobs(filter?: { readonly ticketId?: string; readonly status?: WakeStatus }): WakeJob[] {
+    const clauses: string[] = []
+    const values: string[] = []
+    if (filter?.ticketId !== undefined) {
+      clauses.push('ticket_id = ?')
+      values.push(filter.ticketId)
+    }
+    if (filter?.status !== undefined) {
+      clauses.push('status = ?')
+      values.push(filter.status)
+    }
+    const where = clauses.length ? ` WHERE ${clauses.join(' AND ')}` : ''
+    const rows = this.handle
+      .prepare(`SELECT * FROM wake_jobs${where} ORDER BY due_at, job_id`)
+      .all(...values) as unknown as RawWakeRow[]
+    return rows.map(rowToWakeJob)
+  }
+
+  /** 同一逻辑等待只保留一条：ticket + reason + decision_id（空串归一）。 */
+  findWakeJob(ticketId: string, reason: string, decisionId: string | null): WakeJob | null {
+    const row = this.handle
+      .prepare(
+        "SELECT * FROM wake_jobs WHERE ticket_id = ? AND reason = ? AND COALESCE(decision_id, '') = ? AND status IN ('scheduled','claimed') ORDER BY due_at LIMIT 1",
+      )
+      .get(ticketId, reason, decisionId ?? '') as unknown as RawWakeRow | undefined
+    return row ? rowToWakeJob(row) : null
+  }
+
+  /** 最近一条任意状态的 job（用于判断上次何时触发过）。 */
+  latestWakeJob(ticketId: string, reason: string, decisionId: string | null): WakeJob | null {
+    const row = this.handle
+      .prepare(
+        "SELECT * FROM wake_jobs WHERE ticket_id = ? AND reason = ? AND COALESCE(decision_id, '') = ? ORDER BY updated_at DESC, job_id DESC LIMIT 1",
+      )
+      .get(ticketId, reason, decisionId ?? '') as unknown as RawWakeRow | undefined
+    return row ? rowToWakeJob(row) : null
+  }
+
+  saveWakeJob(job: WakeJob): void {
+    this.handle
+      .prepare(
+        `INSERT INTO wake_jobs (job_id, ticket_id, task_revision, assignment_id, reason, decision_id, source_id, source_revision, due_at, status, attempts, created_at, updated_at, detail)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(job_id) DO UPDATE SET
+           ticket_id = excluded.ticket_id, task_revision = excluded.task_revision, assignment_id = excluded.assignment_id,
+           reason = excluded.reason, decision_id = excluded.decision_id, source_id = excluded.source_id,
+           source_revision = excluded.source_revision, due_at = excluded.due_at, status = excluded.status,
+           attempts = excluded.attempts, updated_at = excluded.updated_at, detail = excluded.detail`,
+      )
+      .run(
+        job.jobId,
+        job.ticketId,
+        job.taskRevision,
+        job.assignmentId,
+        job.reason,
+        job.decisionId,
+        job.sourceId,
+        job.sourceRevision,
+        job.dueAt,
+        job.status,
+        job.attempts,
+        job.createdAt,
+        job.updatedAt,
+        job.detail,
+      )
+  }
+
+  deleteWakeJob(jobId: string): void {
+    this.handle.prepare('DELETE FROM wake_jobs WHERE job_id = ?').run(jobId)
+  }
+
+  /** 原子领取：只有 scheduled 且已到期才能变成 claimed；重复领取返回 false。 */
+  claimWakeJob(jobId: string, now: string): boolean {
+    const result = this.handle
+      .prepare("UPDATE wake_jobs SET status = 'claimed', attempts = attempts + 1, updated_at = ? WHERE job_id = ? AND status = 'scheduled' AND due_at <= ?")
+      .run(now, jobId, now)
+    return Number(result.changes) === 1
+  }
+
+  updateWakeStatus(jobId: string, status: WakeStatus, now: string, detail: string | null): void {
+    this.handle.prepare('UPDATE wake_jobs SET status = ?, updated_at = ?, detail = ? WHERE job_id = ?').run(status, now, detail, jobId)
+  }
+
+  nextWakeAt(): string | null {
+    const row = this.handle.prepare("SELECT MIN(due_at) AS due FROM wake_jobs WHERE status = 'scheduled'").get() as unknown as { due: string | null } | undefined
+    return row?.due ?? null
+  }
+
   /** 兼容旧调用方：只读文本视图。可见性状态请用 listNotificationReceipts。 */
   listNotifications(ticketId?: string): NotificationReceipt[] {
     return this.listNotificationReceipts(ticketId)
@@ -970,6 +1086,42 @@ function rowToReceipt(row: RawReceiptRow): ToolReceipt {
     needsReconciliation: row.needs_reconciliation === 1,
     inputRef: row.input_ref_json ? (JSON.parse(row.input_ref_json) as ToolReceipt['inputRef']) : null,
     inputsVerified: row.inputs_verified === 1,
+  }
+}
+
+interface RawWakeRow {
+  job_id: string
+  ticket_id: string
+  task_revision: number
+  assignment_id: string | null
+  reason: string
+  decision_id: string | null
+  source_id: string | null
+  source_revision: string | null
+  due_at: string
+  status: string
+  attempts: number
+  created_at: string
+  updated_at: string
+  detail: string | null
+}
+
+function rowToWakeJob(row: RawWakeRow): WakeJob {
+  return {
+    jobId: row.job_id,
+    ticketId: row.ticket_id,
+    taskRevision: row.task_revision,
+    assignmentId: row.assignment_id,
+    reason: row.reason as WakeJob['reason'],
+    decisionId: row.decision_id,
+    sourceId: row.source_id,
+    sourceRevision: row.source_revision,
+    dueAt: row.due_at,
+    status: row.status as WakeStatus,
+    attempts: row.attempts,
+    createdAt: row.created_at,
+    updatedAt: row.updated_at,
+    detail: row.detail,
   }
 }
 

@@ -1,0 +1,9 @@
+{
+  "trajectoryId": "R5-02a",
+  "family": "digest",
+  "split": "dev",
+  "mustComplete": true,
+  "expectedStatus": "completed",
+  "maxNotifications": 1,
+  "required": []
+}

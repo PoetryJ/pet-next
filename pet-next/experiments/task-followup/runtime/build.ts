@@ -27,6 +27,10 @@ export interface BuildRuntimeOptions {
   readonly skipInvalidation?: boolean
   /** 记录规则提议调用次数；用于评估成本，不影响决策。 */
   readonly onPropose?: () => void
+  /** R5：持久唤醒的等待间隔（毫秒）；演示用短值，评估用默认值。 */
+  readonly wakeAfterMs?: number
+  /** R5 对照用：直接注入策略（例如 NeedRule），不再按 policy id 构造。 */
+  readonly decision?: DecisionPort
 }
 
 export interface BuiltRuntime {
@@ -56,7 +60,7 @@ export function buildRuntime(options: BuildRuntimeOptions): BuiltRuntime {
   const attention = new AttentionQueue(db)
   const tools = new LocalTools({ root: options.workspaceRoot })
   // 同一份 quiet（含 timezone）必须传给每条策略路径，P2 不再用内部默认。
-  const baseDecision = createPolicy(options.policy, { quiet })
+  const baseDecision = options.decision ?? createPolicy(options.policy, { quiet })
   const decision: DecisionPort = {
     ...baseDecision,
     propose: (context) => {
@@ -76,6 +80,7 @@ export function buildRuntime(options: BuildRuntimeOptions): BuiltRuntime {
     ...(options.validationMode ? { validationMode: options.validationMode } : {}),
     ...(options.deferProposals ? { deferProposals: options.deferProposals } : {}),
     ...(options.skipInvalidation ? { skipInvalidation: options.skipInvalidation } : {}),
+    ...(options.wakeAfterMs === undefined ? {} : { wakeAfterMs: options.wakeAfterMs }),
   })
   return { runtime, db, clock, tools, attention, decision, quiet, configSha: decision.configSha }
 }

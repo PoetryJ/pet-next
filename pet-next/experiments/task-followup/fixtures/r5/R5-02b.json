@@ -1,0 +1,48 @@
+{
+  "id": "R5-02b",
+  "family": "digest",
+  "pair": "b",
+  "split": "dev",
+  "name": "结果不足：必须选择",
+  "clockStart": "2026-11-12T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "at": "2026-11-12T09:00:00.000Z",
+      "title": "E41 必须选择",
+      "goal": {
+        "requireAnalysis": true
+      }
+    },
+    {
+      "kind": "artifact",
+      "at": "2026-11-12T09:05:00.000Z",
+      "experiment": "E41",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 28,
+      "failed": 12
+    },
+    {
+      "kind": "observe",
+      "at": "2026-11-12T09:06:00.000Z",
+      "experiment": "E41"
+    },
+    {
+      "kind": "answer",
+      "at": "2026-11-12T09:20:00.000Z",
+      "option": "analyze_failing",
+      "present": true
+    },
+    {
+      "kind": "tick",
+      "at": "2026-11-12T09:21:00.000Z",
+      "minutes": 1
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

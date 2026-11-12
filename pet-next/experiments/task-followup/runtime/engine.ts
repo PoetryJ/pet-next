@@ -35,7 +35,9 @@ import {
   EVENT_SCHEMA,
   canonicalJson,
   eventContentDigest,
+  isQuietAt,
   millisBetween,
+  quietEndsAt,
   sha256Bytes,
   stableId,
 } from '../contracts.ts'
@@ -69,8 +71,9 @@ import type {
   ToolRequest,
   VisibilityReceipt,
 } from '../contracts.ts'
-import type { AttentionPort } from '../contracts.ts'
+import type { AttentionPort, WakeHandleResult, WakeJob } from '../contracts.ts'
 import { SqliteRepositories } from './repo.ts'
+import { WakeScheduler } from './scheduler.ts'
 import type { EffectRow, FollowupDb, ProposalRow, TaskRow } from './db.ts'
 
 export const POLICY_VERSION = 'pet-followup-r4/v1'
@@ -97,6 +100,8 @@ export interface RuntimeOptions {
   readonly deferProposals?: boolean
   /** 仅用于离线消融：观察取消/更正时不主动撤销旧提案。 */
   readonly skipInvalidation?: boolean
+  /** R5：等待重新判断的压缩间隔（毫秒）。演示用短值；评估用默认值。 */
+  readonly wakeAfterMs?: number
 }
 
 export interface DelegateInput {
@@ -245,6 +250,9 @@ export class FollowupRuntime {
   private readonly skipInvalidation: boolean
   /** 本进程正在执行的 effect；用于区分“活着的 running”和“崩溃留下的 running”。 */
   private readonly inFlight = new Set<string>()
+  /** R5 持久唤醒调度。 */
+  readonly scheduler: WakeScheduler
+  private readonly wakeAfterMs: number
 
   constructor(options: RuntimeOptions) {
     this.db = options.db
@@ -259,6 +267,8 @@ export class FollowupRuntime {
     this.validationMode = options.validationMode ?? 'full'
     this.deferProposals = options.deferProposals ?? false
     this.skipInvalidation = options.skipInvalidation ?? false
+    this.wakeAfterMs = options.wakeAfterMs ?? 10 * 60_000
+    this.scheduler = new WakeScheduler({ db: this.db, now: () => this.clock.now() })
     this.repo = new SqliteRepositories(this.db)
     this.engine = new Engine({
       repo: this.repo as Repositories,
@@ -832,6 +842,12 @@ export class FollowupRuntime {
         continue
       }
       const running = runningAssignment(ticket)
+      // 正在等用户（问题/续办）的任务没有在飞的工作，重启 assignment 只会无授权地改 attempt。
+      if (running && (fresh.stage === 'awaiting_decision' || fresh.stage === 'continuation_pending')) {
+        details.push(`task ${fresh.ticketId}: waiting for user (${fresh.stage}), assignment kept`)
+        this.syncWake(fresh)
+        continue
+      }
       if (running) {
         // 已完成核验的工作不需要重启 assignment：直接把已核验的 ready 报告补齐并完成。
         const check = this.completionCheck(fresh)
@@ -866,6 +882,161 @@ export class FollowupRuntime {
     }
     this.drain()
     return { tasks: tasks.length, restored, needsReconciliation, memoryRebuilt, details }
+  }
+
+  // ------------------------------------------------------------------
+  // R5 持久唤醒
+  // ------------------------------------------------------------------
+
+  /** 当前应排的下一次唤醒；由持久状态推导，进程重启后可重建同一个 job。 */
+  private syncWake(task: TaskSnapshot): WakeJob | null {
+    const now = this.clock.now()
+    const cancelAll = (detail: string): null => {
+      this.scheduler.cancelFor(task.ticketId, detail)
+      return null
+    }
+    if (task.status !== 'active') return cancelAll('task_not_active')
+    if (task.stage === 'needs_reconciliation') return cancelAll('needs_reconciliation')
+    const base = {
+      ticketId: task.ticketId,
+      taskRevision: task.taskRevision,
+      assignmentId: task.assignmentId,
+    }
+    const open = task.openAttention
+    if (open) {
+      if (!open.deliveredAt && !open.presentedAt) {
+        // 写库不等于送达：静默期内等静默结束，否则等最小间隔。
+        const quiet = isQuietAt(now, this.quiet)
+        const dueAt = quiet
+          ? quietEndsAt(now, this.quiet)
+          : new Date(Date.parse(now) + Math.max(1_000, this.quiet.minGapMs)).toISOString()
+        return this.scheduler.schedule({
+          ...base,
+          reason: 'quiet',
+          decisionId: open.decisionId,
+          dueAt,
+          detail: quiet ? 'quiet_hours' : 'min_gap',
+        })
+      }
+      if (!open.answeredAt && open.deadline) {
+        return this.scheduler.schedule({
+          ...base,
+          reason: 'deadline',
+          decisionId: open.decisionId,
+          dueAt: open.deadline,
+          detail: 'unanswered_before_deadline',
+        })
+      }
+      return cancelAll('attention_settled')
+    }
+    if (task.continuation) {
+      const current = this.inputRefFromTask(task)
+      if (current.ref && this.inputBytesMatch(task, current.ref)) {
+        return this.scheduler.schedule({
+          ...base,
+          reason: 'continuation',
+          decisionId: task.continuation.decisionId,
+          dueAt: now,
+          detail: 'input_restored',
+        })
+      }
+      return cancelAll('continuation_waiting_input')
+    }
+    const last = this.db.listProposals(task.ticketId).at(-1)
+    if (last && last.outcome === 'recorded' && last.kind === 'defer' && last.not_before) {
+      // 重复的 defer 会被提案层去重（不新增行）。如果这条决定刚刚触发过，
+      // 到期时间必须前移，否则会立刻再次到期形成忙循环；否则沿用提案给出的 notBefore。
+      const previous = this.db.latestWakeJob(task.ticketId, 'defer', last.decision_id ?? null)
+      const floor =
+        previous && previous.status !== 'scheduled'
+          ? new Date(Date.parse(previous.updatedAt) + this.wakeAfterMs).toISOString()
+          : null
+      const dueAt = floor && floor > last.not_before ? floor : last.not_before
+      return this.scheduler.schedule({
+        ...base,
+        reason: 'defer',
+        decisionId: last.decision_id,
+        dueAt,
+        detail: `defer:${last.reason_code}`,
+      })
+    }
+    return cancelAll('no_pending_wait')
+  }
+
+  /** 续办唤醒前必须确认磁盘字节仍与当前结果一致（不只看事件身份）。 */
+  private inputBytesMatch(task: TaskSnapshot, ref: InputRef): boolean {
+    try {
+      if (!ref.resultPath) return false
+      const abs = this.absoluteToRoot(ref.resultPath)
+      if (!existsSync(abs)) return false
+      return sha256Bytes(readFileSync(abs)) === ref.resultFileSha
+    } catch {
+      return false
+    }
+  }
+
+  private syncWakes(): void {
+    for (const snapshot of this.listTasks()) this.syncWake(snapshot)
+  }
+
+  /** 不写 tick 事件，只按当前状态重判一次（服务循环用）。 */
+  reevaluate(): { proposals: number; notifications: number } {
+    const beforeProposals = this.db.listAllProposals().length
+    const beforeNotifications = this.db.listNotificationReceipts().length
+    this.drain()
+    return {
+      proposals: this.db.listAllProposals().length - beforeProposals,
+      notifications: this.db.listNotificationReceipts().length - beforeNotifications,
+    }
+  }
+
+  listWakeJobs(): WakeJob[] {
+    return this.scheduler.list()
+  }
+
+  nextWakeAt(): string | null {
+    return this.scheduler.nextDueAt()
+  }
+
+  /**
+   * 处理一个到期 job：只重新判断当前状态，绝不执行 job 里保存的工具调用。
+   * 原子领取失败（已处理/未到期）返回 none；任务/版本/派工不一致返回 stale。
+   */
+  wakeJob(jobId: string, at: string = this.clock.now()): WakeHandleResult {
+    const claimed = this.scheduler.claim(jobId, at)
+    if (!claimed) return { action: 'none', jobId, detail: 'not_claimable', proposals: 0, notifications: 0 }
+    const task = this.listTasks().find((item) => item.ticketId === claimed.ticketId) ?? null
+    if (!this.scheduler.isCurrent(claimed, task)) {
+      this.scheduler.finish(claimed.jobId, 'cancelled', 'stale_task_or_revision')
+      return { action: 'stale', jobId, detail: 'task_or_revision_changed', proposals: 0, notifications: 0 }
+    }
+    if (task!.status !== 'active') {
+      this.scheduler.finish(claimed.jobId, 'cancelled', 'task_not_active')
+      return { action: 'cancelled', jobId, detail: 'task_not_active', proposals: 0, notifications: 0 }
+    }
+    if (task!.stage === 'needs_reconciliation') {
+      this.scheduler.finish(claimed.jobId, 'cancelled', 'needs_reconciliation')
+      return { action: 'blocked', jobId, detail: 'needs_reconciliation', proposals: 0, notifications: 0 }
+    }
+    const beforeProposals = this.db.listProposals(task!.ticketId).length
+    const beforeNotifications = this.db.listNotificationReceipts(task!.ticketId).length
+    // 先记完成再重评：重评会按新状态排下一次 job，不能被这次 finish 覆盖。
+    this.scheduler.finish(claimed.jobId, 'done', `wake:${claimed.reason}`)
+    this.db.driverLog(at, task!.ticketId, 'wake.fired', { jobId: claimed.jobId, reason: claimed.reason })
+    this.proposeAll()
+    this.drain()
+    return {
+      action: 'woken',
+      jobId,
+      detail: claimed.reason,
+      proposals: this.db.listProposals(task!.ticketId).length - beforeProposals,
+      notifications: this.db.listNotificationReceipts(task!.ticketId).length - beforeNotifications,
+    }
+  }
+
+  /** 处理所有已到期 job；返回逐条结果（供服务循环与测试）。 */
+  wakeDue(at: string = this.clock.now()): WakeHandleResult[] {
+    return this.scheduler.listDue(at).map((job) => this.wakeJob(job.jobId, at))
   }
 
   /**
@@ -1506,6 +1677,7 @@ export class FollowupRuntime {
       }
     } finally {
       this.deliverPending()
+      this.syncWakes()
     }
   }
 

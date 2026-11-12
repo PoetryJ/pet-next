@@ -1,0 +1,57 @@
+{
+  "id": "R5-06b",
+  "family": "lifecycle",
+  "pair": "b",
+  "split": "heldout",
+  "name": "重启前后同一待办：仍只问一次",
+  "clockStart": "2026-11-12T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "at": "2026-11-12T08:00:00.000Z",
+      "title": "E41 重启",
+      "goal": {
+        "requireAnalysis": true
+      }
+    },
+    {
+      "kind": "artifact",
+      "at": "2026-11-12T08:01:00.000Z",
+      "experiment": "E41",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 28,
+      "failed": 12
+    },
+    {
+      "kind": "observe",
+      "at": "2026-11-12T08:02:00.000Z",
+      "experiment": "E41"
+    },
+    {
+      "kind": "restart",
+      "at": "2026-11-12T08:03:00.000Z"
+    },
+    {
+      "kind": "tick",
+      "at": "2026-11-12T08:10:00.000Z",
+      "minutes": 7
+    },
+    {
+      "kind": "answer",
+      "at": "2026-11-12T08:20:00.000Z",
+      "option": "analyze_failing",
+      "present": true
+    },
+    {
+      "kind": "tick",
+      "at": "2026-11-12T08:21:00.000Z",
+      "minutes": 1
+    }
+  ],
+  "goal": {
+    "requireAnalysis": true
+  }
+}

@@ -1,0 +1,9 @@
+{
+  "trajectoryId": "R5-06a",
+  "family": "lifecycle",
+  "split": "heldout",
+  "mustComplete": false,
+  "expectedStatus": "cancelled",
+  "maxNotifications": 1,
+  "required": []
+}

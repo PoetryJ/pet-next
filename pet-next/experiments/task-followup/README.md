@@ -1,11 +1,11 @@
-# R4.2 持续跟进桌宠（离线原型，有限返工）
+# R5 持续唤醒与强简单基线（离线原型）
 
 本目录验证桌宠能否把记忆用于**真实任务状态变化**：持续跟进一件事、重启后继续、
 在该让用户选择时提出问题，并在拿到可核验产物后才算完成。
 
-R4.2 只关闭 R4.1 REVIEW 的三个阻断：失败回执被当作成功、已知输入失败后没有继续入口、
-评分按非唯一键匹配且把“漏提案”当成“未触达”。不改产品默认、不调阈值、不换 gold、
-不调用模型、不扩功能。
+R5 在 G0（评分入口身份完整性小修）之后补齐持续运行闭环：持久 wake job、真实时钟服务、
+重启补处理、取消/更正使旧 job 失效；并新增强简单基线 NeedRule(N1) 与 12 条配对故事的
+可证伪比较。不改 R4 gold/参数/主时域，不调用模型、不扩无关审计。
 
 ## 边界（本目录内不变）
 
@@ -40,7 +40,10 @@ R4.2 只关闭 R4.1 REVIEW 的三个阻断：失败回执被当作成功、已�
    “重新授权”问题。**新授权前不执行、不新建 attempt/receipt**；回答
    `retry_analysis`（或 `analyze_failing`）才建立新 attempt。`running` /
    `needs_reconciliation` 不走这条快捷路径。
-6. **评分身份**：raw 导出 proposal/attention 的
+6. **持久唤醒**：defer/静默/冷却等待写成 `wake_jobs`（jobId/task/version/decisionId/dueAt/状态）。
+   服务按 RealClock 睡到最近的 dueAt；到期只重判当前状态，不执行 job 里保存的旧调用。
+   重启扫描未完成项；取消/完成/更正/旧版本使 job 失效；同一逻辑等待合并为一条。
+7. **评分身份**：raw 导出 proposal/attention 的
    `decisionId/ticketId/taskRevision/assignmentId`。评分按 `decisionId` 精确连接并校验
    ticket/版本/派工；`decisionKey` 只作语义分组。缺失、0 条或 >1 条候选一律 fail closed。
    输出 `requiredTotal/Produced/Visible/Answered` 与
@@ -106,7 +109,10 @@ node run.mjs eval            # 4 策略 × 18 个机会，写 out/eval/raw 与 s
 node run.mjs verify-eval     # 独立重评 72 份 raw，逐项比对
 node run.mjs negative        # 10 个负控，每个独立子进程；detected → exit 1
 node run.mjs test            # 66 个单测
-node run.mjs crosscheck      # 独立重算评分身份链，与 summary 逐项比对
+node run.mjs crosscheck      # 独立重算 R4 评分身份链，与 summary 逐项比对
+node run.mjs r5-eval         # R5 12 故事 × {P3,N1}，写 out/r5/raw、scores、REPORT.md
+node run.mjs r5-demo         # 真实时钟服务演示：到期唤醒、重启补处理、取消不提醒
+node run.mjs serve --scheduler --workspace <dir> --timezone UTC --min-gap-ms 2000 --wake-after-ms 2000
 node run.mjs typecheck       # 需要 tooling/node_modules（见下）
 node tools/r41-acceptance.mjs . out/r41-acceptance   # 真实子进程 27 项断言
 node tools/audit.mjs         # 边界静态审计 + R3.1 diff + 上游指纹

@@ -1,0 +1,16 @@
+{
+  "trajectoryId": "R5-02b",
+  "family": "digest",
+  "split": "dev",
+  "mustComplete": true,
+  "expectedStatus": "completed",
+  "maxNotifications": 1,
+  "required": [
+    {
+      "kind": "insufficient_result",
+      "earliest": "2026-11-12T09:06:00.000Z",
+      "latest": "2026-11-12T09:21:00.000Z",
+      "action": "analyze_failing"
+    }
+  ]
+}

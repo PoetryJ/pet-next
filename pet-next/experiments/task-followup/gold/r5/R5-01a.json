@@ -1,0 +1,9 @@
+{
+  "trajectoryId": "R5-01a",
+  "family": "transient",
+  "split": "dev",
+  "mustComplete": true,
+  "expectedStatus": "completed",
+  "maxNotifications": 1,
+  "required": []
+}

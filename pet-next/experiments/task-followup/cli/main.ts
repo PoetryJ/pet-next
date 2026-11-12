@@ -6,7 +6,7 @@
  *
  * @module pet-next/experiments/task-followup/cli
  */
-import { existsSync, readFileSync, readdirSync } from 'node:fs'
+import { existsSync, mkdirSync, readFileSync, readdirSync, writeFileSync } from 'node:fs'
 import { createServer } from 'node:http'
 import { spawnSync } from 'node:child_process'
 import type { IncomingMessage, ServerResponse } from 'node:http'
@@ -66,6 +66,8 @@ export function optionsFrom(args: Map<string, string>, flags: Set<string>): CliO
     ...(args.has('quiet-from') ? { fromHour: Number(args.get('quiet-from')) } : {}),
     ...(args.has('quiet-to') ? { toHour: Number(args.get('quiet-to')) } : {}),
     ...(flags.has('allow-urgent') ? { allowUrgent: true } : {}),
+    ...(args.has('min-gap-ms') ? { minGapMs: Number(args.get('min-gap-ms')) } : {}),
+    ...(args.has('reminder-quota') ? { reminderQuotaPerHour: Number(args.get('reminder-quota')) } : {}),
   }
   const start = args.get('clock')
   return { workspace, policy, quiet, ...(start ? { fakeClock: new FakeClock(start) } : {}) }
@@ -160,6 +162,23 @@ export async function runCommand(argv: readonly string[]): Promise<number> {
     // @ts-expect-error demo 是纯 ESM 脚本，不参与 TS 检查
     const { runDemo } = await import('../demo/three-minute.mjs')
     return runDemo(options.workspace)
+  }
+  if (command === 'r5-demo') {
+    // @ts-expect-error R5 demo 是纯 ESM 脚本，不参与 TS 检查
+    const { runR5Demo } = await import('../demo/r5-demo.mjs')
+    return runR5Demo(options.workspace)
+  }
+  if (command === 'r5-eval') {
+    const { runR5All } = await import('../eval/r5/runner.ts')
+    const { scoreR5 } = await import('../eval/r5/score.ts')
+    const { runs, rawDir } = runR5All()
+    const summary = scoreR5(rawDir, join(EXPERIMENT_ROOT, 'gold', 'r5'))
+    const { renderR5Report, r5ReportPath } = await import('../eval/r5/report.ts')
+    mkdirSync(join(EXPERIMENT_ROOT, 'out', 'r5', 'scores'), { recursive: true })
+    renderR5Report(summary, r5ReportPath(EXPERIMENT_ROOT))
+    writeFileSync(join(EXPERIMENT_ROOT, 'out', 'r5', 'scores', 'summary.json'), `${JSON.stringify(summary, null, 2)}\n`)
+    process.stdout.write(`r5 runs=${runs}\n${JSON.stringify(summary.table, null, 2)}\n`)
+    return 0
   }
   if (command === 'eval') {
     const { runEvaluation } = await import('../eval/runner.ts')
@@ -360,6 +379,10 @@ export async function runCommand(argv: readonly string[]): Promise<number> {
         print({ ok: true, ...built.runtime.repairMemory() })
         return 0
       }
+      case 'jobs': {
+        print({ ok: true, nextWakeAt: built.runtime.nextWakeAt(), jobs: built.runtime.listWakeJobs() })
+        return 0
+      }
       case 'notifications': {
         print({
           ok: true,
@@ -411,6 +434,22 @@ function watchCommand(options: CliOptions, args: Map<string, string>): Promise<n
 // ---------------------------------------------------------------------------
 
 async function serve(options: CliOptions, args: Map<string, string>): Promise<number> {
+  if (args.has('scheduler') || args.has('scheduler-once')) {
+    // 显式实验入口：真实时钟 + 持久唤醒；默认 serve 不启用。
+    const { runSchedulerService } = await import('../service/scheduler-service.ts')
+    const report = await runSchedulerService({
+      workspaceRoot: options.workspace,
+      policy: options.policy,
+      quiet: options.quiet,
+      intervalMs: Number(args.get('interval-ms') ?? 1_000),
+      ...(args.has('wake-after-ms') ? { wakeAfterMs: Number(args.get('wake-after-ms')) } : {}),
+      ...(args.has('max-minutes') ? { maxRunMs: Number(args.get('max-minutes')) * 60_000 } : {}),
+      ...(args.has('max-iterations') ? { maxIterations: Number(args.get('max-iterations')) } : {}),
+      onLog: (line) => process.stdout.write(`${line}\n`),
+    })
+    print({ ok: true, ...report })
+    return 0
+  }
   const built = openRuntime(options)
   const port = Number(args.get('port') ?? 0)
   const panelPath = join(EXPERIMENT_ROOT, 'demo', 'panel.html')

@@ -1,0 +1,58 @@
+{
+  "id": "R5-03b",
+  "family": "quiet",
+  "pair": "b",
+  "split": "dev",
+  "name": "临近截止：必须在静默前触达",
+  "clockStart": "2026-11-12T08:00:00.000Z",
+  "steps": [
+    {
+      "kind": "delegate",
+      "at": "2026-11-12T22:40:00.000Z",
+      "title": "E41 截止",
+      "goal": {
+        "requireAnalysis": true
+      }
+    },
+    {
+      "kind": "artifact",
+      "at": "2026-11-12T22:45:00.000Z",
+      "experiment": "E41",
+      "runId": "run-01",
+      "revision": 1,
+      "status": "partial",
+      "total": 40,
+      "passed": 28,
+      "failed": 12
+    },
+    {
+      "kind": "observe",
+      "at": "2026-11-12T22:46:00.000Z",
+      "experiment": "E41"
+    },
+    {
+      "kind": "answer",
+      "at": "2026-11-12T22:50:00.000Z",
+      "option": "analyze_failing",
+      "present": true
+    },
+    {
+      "kind": "tick",
+      "at": "2026-11-12T22:51:00.000Z",
+      "minutes": 1
+    }
+  ],
+  "quiet": {
+    "timezone": "UTC",
+    "fromHour": 23,
+    "toHour": 7,
+    "allowUrgent": false,
+    "reminderQuotaPerHour": 3,
+    "minGapMs": 900000,
+    "cooldownMs": 1800000,
+    "deadlineHour": 23
+  },
+  "goal": {
+    "requireAnalysis": true
+  }
+}
