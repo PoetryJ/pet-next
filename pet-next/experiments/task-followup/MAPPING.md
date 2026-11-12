@@ -24,7 +24,10 @@
 - `ProposedDecision`：`record_only / continue_local / defer / ask_user / notify_result`，每条都写理由、证据、选择与时间窗。
 - `AttentionPort`：同 `decisionKey` 合并；旧问题回答记 `stale_answer`；显式静默/额度/最小间隔。
 - SQLite 权威事件与 effect/receipt 表：上游仓库端口用 JSON 聚合文档落盘，单写者事务。
-- 完成检查：读真实产物与 SHA + 成功回执 + 当前目标事件，缺一不可。
+- `InputRef`（R4.1）：把 taskRevision/assignmentId/sourceRevision/resultFileSha/artifactSha 绑定到 effect、回执与分析；派发前核对当前权威结果与磁盘字节。
+- 完成检查：读真实产物与 SHA + 成功回执 + 当前目标事件 + 当前输入与 receipt/analysis 的输入身份逐项相等，缺一不可。
+- 可见性回执（R4.1）：通知 `queued → delivered → presented`，回答只认已送达/已呈现；写库不等于用户看过。
+- 显式时区（R4.1）：`quiet.timezone` 是 IANA 名称，计入 configSha 与 raw；不读宿主 TZ。
 
 ## 明确的边界
 

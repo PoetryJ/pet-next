@@ -12,7 +12,7 @@ import { buildRuntime } from '../runtime/build.ts'
 import type { BuiltRuntime } from '../runtime/build.ts'
 import { FakeClock } from '../runtime/clock.ts'
 import { seedResult } from '../tools/seed.ts'
-import type { SeedInput } from '../tools/seed.ts'
+import type { SeedInput, SeedOutput } from '../tools/seed.ts'
 import { readResultFile } from '../tools/watch.ts'
 
 export const ANALYSIS_GOAL: GoalCondition = {
@@ -30,7 +30,7 @@ export interface Harness {
   readonly quiet: QuietConfig
   readonly policy: PolicyId
   reopen(): BuiltRuntime
-  seed(input?: Partial<SeedInput>): SeedInput & { resultPath: string }
+  seed(input?: Partial<SeedInput>): SeedOutput
   observe(ticketId: string, path: string): ReturnType<BuiltRuntime['runtime']['observe']>
   dispose(): void
 }
@@ -77,8 +77,7 @@ export function harness(options: {
         ...input,
       }
       lastSeed = seed
-      const out = seedResult(seed)
-      return { ...seed, resultPath: out.resultPath }
+      return seedResult(seed)
     },
     observe(ticketId, path) {
       const finding = readResultFile({ root, path, observedAt: clock.now() })
@@ -101,12 +100,28 @@ export function openAttention(h: Harness, ticketId: string) {
   return h.built.attention.listOpen(ticketId)[0]
 }
 
+/**
+ * 模拟“用户打开面板并回答”：先产生呈现回执，再回答。
+ * 大多数单测关心的是回答后的业务语义，不是可见性本身；可见性反例见 r41.test.ts。
+ */
 export function answerOpen(h: Harness, ticketId: string, optionId?: string): boolean {
   const open = openAttention(h, ticketId)
   if (!open) return false
+  h.built.runtime.present(ticketId)
   const option = optionId ?? open.options[0]!.id
   const result = h.built.runtime.answer({ attentionId: open.attentionId, taskRevision: open.taskRevision, optionId: option })
   return result.ok
+}
+
+/** 不声明面板已打开：用于验证“隐藏问题不能回答”。 */
+export function answerHidden(h: Harness, ticketId: string, optionId?: string): ReturnType<BuiltRuntime['runtime']['answer']> | null {
+  const open = openAttention(h, ticketId)
+  if (!open) return null
+  return h.built.runtime.answer({
+    attentionId: open.attentionId,
+    taskRevision: open.taskRevision,
+    optionId: optionId ?? open.options[0]!.id,
+  })
 }
 
 export function fileSha(path: string): string {

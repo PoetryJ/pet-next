@@ -12,8 +12,8 @@
  * @module pet-next/experiments/task-followup/runtime/engine
  */
 import { randomUUID } from 'node:crypto'
-import { existsSync, readFileSync, statSync } from 'node:fs'
-import { isAbsolute, relative, resolve } from 'node:path'
+import { existsSync, mkdirSync, readFileSync, statSync, writeFileSync } from 'node:fs'
+import { isAbsolute, join, relative, resolve } from 'node:path'
 import {
   Engine,
   UserError,
@@ -51,6 +51,7 @@ import type {
   FollowupEvent,
   GoalCondition,
   IngestOutcome,
+  InputRef,
   MemoryPort,
   MemoryReading,
   ObservedArtifact,
@@ -65,6 +66,7 @@ import type {
   ToolPort,
   ToolReceipt,
   ToolRequest,
+  VisibilityReceipt,
 } from '../contracts.ts'
 import type { AttentionPort } from '../contracts.ts'
 import { SqliteRepositories } from './repo.ts'
@@ -149,6 +151,31 @@ export interface RecoveryReport {
   readonly details: readonly string[]
 }
 
+/** 显式对账入口：只处理“结果未知”的 effect，不提供通用自动重试。 */
+export type ReconcileOption = 'accept_receipt' | 'abandon_attempt'
+
+export interface ReconcileInput {
+  readonly ticketId: string
+  readonly option: ReconcileOption
+  readonly note?: string
+  readonly at?: string
+}
+
+export interface ReconcileResult {
+  readonly ok: boolean
+  readonly code:
+    | 'reconciled'
+    | 'nothing_to_reconcile'
+    | 'no_receipt'
+    | 'receipt_identity_missing'
+    | 'receipt_identity_mismatch'
+    | 'unknown_option'
+    | 'task_closed'
+  readonly detail: string
+  readonly effectIds: readonly string[]
+  readonly blocked: readonly string[]
+}
+
 interface TaskRecord {
   ticketId: string
   title: string
@@ -181,6 +208,14 @@ interface ValidationRecord {
   readonly detail: string
 }
 
+/** 构造输入身份只需要这四项；TaskRecord 与 TaskSnapshot 都满足。 */
+interface InputIdentityTask {
+  readonly ticketId: string
+  readonly taskRevision: number
+  readonly assignmentId: string | null
+  readonly result?: TaskSnapshot['result']
+}
+
 export class FollowupRuntime {
   readonly db: FollowupDb
   readonly clock: ClockPort
@@ -196,6 +231,8 @@ export class FollowupRuntime {
   private readonly validationMode: 'full' | 'proposal-only'
   private readonly deferProposals: boolean
   private readonly skipInvalidation: boolean
+  /** 本进程正在执行的 effect；用于区分“活着的 running”和“崩溃留下的 running”。 */
+  private readonly inFlight = new Set<string>()
 
   constructor(options: RuntimeOptions) {
     this.db = options.db
@@ -391,6 +428,23 @@ export class FollowupRuntime {
       }
       fresh.evidence = [...fresh.evidence, ref].slice(-8)
       if (disposition === 'appended' || conflict) {
+        const hadAuthorization = Boolean(fresh.lastAnswer) || Boolean(fresh.analysis)
+        if (fresh.analysis) {
+          // 新来源修订让旧分析的“当前有效性”失效；历史证据留在事件/回执里。
+          fresh.diagnostics = [...fresh.diagnostics.slice(-40), `analysis_invalidated:new_source:${sourceRevision}`]
+          fresh.analysis = undefined
+          fresh.completion = undefined
+        }
+        if (hadAuthorization) {
+          // 旧授权只对旧来源有效：新来源必须重新授权，旧 attempt 不复用。
+          fresh.attempt += 1
+          fresh.lastAnswer = undefined
+          fresh.diagnostics = [...fresh.diagnostics.slice(-40), `authorization_invalidated:new_source:${sourceRevision}`]
+        }
+        if (!this.skipInvalidation) {
+          this.invalidatePendingEffects(fresh.ticketId, 'source revision changed')
+          this.invalidateOpenProposals(fresh.ticketId, 'source revision changed')
+        }
         if (!conflict) {
           fresh.result = {
             runId: observed.payload.runId,
@@ -445,6 +499,24 @@ export class FollowupRuntime {
     const task = this.requireTask(attention.ticketId)
     const option = attention.options.find((item) => item.id === input.optionId)
     if (!option) return { ok: false, code: 'invalid_option', detail: `option ${input.optionId} not offered` }
+    if (this.blockingEffects(task.ticketId).length) {
+      return {
+        ok: false,
+        code: 'needs_reconciliation',
+        detail: `unresolved effect(s) must be reconciled first: ${this.blockingEffects(task.ticketId)
+          .map((effect) => effect.effect_id)
+          .join(',')}`,
+      }
+    }
+    // 主“用户离开电脑”模式：只有已送达/已呈现的问题才能被回应。
+    const visibility = this.attention.visibility(attention.attentionId)
+    if (!visibility.visible) {
+      return {
+        ok: false,
+        code: 'not_visible',
+        detail: `question was never delivered or presented (queuedAt=${visibility.queuedAt ?? 'none'})`,
+      }
+    }
     if (task.status !== 'active' || task.taskRevision !== input.taskRevision || attention.taskRevision !== task.taskRevision) {
       this.recordStaleAnswer(attention, input, task, now)
       return {
@@ -696,20 +768,34 @@ export class FollowupRuntime {
         const cursor = this.rebuildMemoryForTask(fresh)
         details.push(`task ${fresh.ticketId} memory caught up to ${cursor}`)
       }
-      const runningEffects = this.db.listEffects('running').filter((effect) => effect.ticket_id === fresh.ticketId)
-      if (runningEffects.length) {
-        for (const effect of runningEffects) {
+      // running 与已经转入 needs_reconciliation 的 effect 一样，都是未解决的执行结果。
+      // 跨进程恢复不得只挡一次：这里必须保留阻断，且不重建 assignment/不重新派发。
+      const unresolved = this.db
+        .listEffects()
+        .filter(
+          (effect) =>
+            effect.ticket_id === fresh.ticketId &&
+            effect.kind === 'tool' &&
+            (effect.state === 'running' || effect.state === 'needs_reconciliation'),
+        )
+      if (unresolved.length) {
+        for (const effect of unresolved) {
+          if (effect.state !== 'running') continue
           this.db.atomic(() => {
             this.db.saveEffect({ ...effect, state: 'needs_reconciliation', detail: 'process ended while effect was running' })
             this.db.driverLog(this.clock.now(), fresh.ticketId, 'effect.needs_reconciliation', { effectId: effect.effect_id })
           })
         }
         const current = this.requireTask(fresh.ticketId)
+        const ids = unresolved.map((effect) => effect.effect_id)
+        const marker = `needs_reconciliation:${ids.join(',')}`
         current.stage = 'needs_reconciliation'
-        current.diagnostics = [...current.diagnostics.slice(-40), `needs_reconciliation:${runningEffects.map((e) => e.effect_id).join(',')}`]
+        if (!current.diagnostics.includes(marker)) {
+          current.diagnostics = [...current.diagnostics.slice(-40), marker]
+        }
         this.saveTask(current)
-        needsReconciliation.push(fresh.ticketId)
-        details.push(`task ${fresh.ticketId}: ${runningEffects.length} running effect(s) need reconciliation, no blind retry`)
+        if (!needsReconciliation.includes(fresh.ticketId)) needsReconciliation.push(fresh.ticketId)
+        details.push(`task ${fresh.ticketId}: ${ids.length} unresolved effect(s) held, no blind retry, no assignment restart`)
         continue
       }
       const ticket = this.repo.tickets.get(fresh.ticketId)
@@ -724,6 +810,20 @@ export class FollowupRuntime {
       }
       const running = runningAssignment(ticket)
       if (running) {
+        // 已完成核验的工作不需要重启 assignment：直接把已核验的 ready 报告补齐并完成。
+        const check = this.completionCheck(fresh)
+        if (check.ok) {
+          const reported = this.reportSafe(fresh.ticketId, running.id, {
+            state: 'ready',
+            summary: `恢复时确认目标条件已由核验产物满足：${check.artifactPath}`,
+          })
+          if (reported) {
+            this.completeTask(this.requireTask(fresh.ticketId), check)
+            restored.push(fresh.ticketId)
+            details.push(`task ${fresh.ticketId}: resumed to verified completion without restarting assignment`)
+            continue
+          }
+        }
         this.db.atomic(() => {
           this.engine.assignmentInterrupted(fresh.ticketId, running.id)
         })
@@ -785,6 +885,266 @@ export class FollowupRuntime {
     return { cursor, tasks }
   }
 
+  /**
+   * 通道送达：把 queued 通知标记为 delivered，并记录 attention 的送达时间。
+   * 只做通道动作，不改任务状态。
+   */
+  deliverPending(at?: string): { delivered: number } {
+    const now = at ?? this.clock.now()
+    const ids = this.attention.deliverPending(now)
+    for (const id of ids) {
+      const receipt = this.db.getNotification(id)
+      if (!receipt) continue
+      this.db.driverLog(now, receipt.ticketId, 'notification.delivered', { notificationId: id, attentionId: receipt.attentionId })
+    }
+    return { delivered: ids.length }
+  }
+
+  /**
+   * 用户明确打开面板：把当前仍有效的问题标记为已呈现。
+   * 这是唯一的“面板可见”入口，不因为写入数据库就自动算作用户看过。
+   */
+  present(ticketId: string, at?: string): { presented: readonly string[] } {
+    const now = at ?? this.clock.now()
+    const ids = this.attention.present(ticketId, now)
+    for (const id of ids) {
+      this.db.driverLog(now, ticketId, 'attention.presented', { attentionId: id })
+    }
+    return { presented: ids }
+  }
+
+  /** 单个问题的可核验可见性（queued/delivered/presented 与时间）。 */
+  attentionVisibility(attentionId: string): VisibilityReceipt {
+    return this.attention.visibility(attentionId)
+  }
+
+  /**
+   * 显式对账：只处理未解决的 tool effect。
+   * - accept_receipt：有合法当前来源回执时把 effect 记为成功，随后走正常完成核验；
+   * - abandon_attempt：放弃该次尝试，必须重新授权（attempt+1、清空 lastAnswer）才会新建 effect。
+   * 两条路径都不自动重试；条件不满足时保持阻断并返回原文。
+   */
+  reconcile(input: ReconcileInput): ReconcileResult {
+    const now = input.at ?? this.clock.now()
+    const task = this.requireTask(input.ticketId)
+    if (task.status !== 'active') {
+      return { ok: false, code: 'task_closed', detail: `task ${task.status}`, effectIds: [], blocked: [] }
+    }
+    const unresolved = this.blockingEffects(input.ticketId)
+    if (!unresolved.length) {
+      return { ok: false, code: 'nothing_to_reconcile', detail: 'no unresolved effect', effectIds: [], blocked: [] }
+    }
+    const effectIds = unresolved.map((effect) => effect.effect_id)
+    if (input.option === 'accept_receipt') {
+      const blocked: string[] = []
+      const current = this.inputRefFromTask(task)
+      const accepted: { effect: EffectRow; receipt: ToolReceipt }[] = []
+      for (const effect of unresolved) {
+        const receipt = this.db.getReceiptByEffect(effect.effect_id)
+        if (!receipt) {
+          blocked.push(`no_receipt:${effect.effect_id}`)
+          continue
+        }
+        if (!receipt.inputRef) {
+          blocked.push(`receipt_identity_missing:${effect.effect_id}`)
+          continue
+        }
+        if (!current.ref || canonicalJson(receipt.inputRef) !== canonicalJson(current.ref)) {
+          blocked.push(`receipt_identity_mismatch:${effect.effect_id}`)
+          continue
+        }
+        accepted.push({ effect, receipt })
+      }
+      if (blocked.length) {
+        this.db.driverLog(now, input.ticketId, 'reconcile.blocked', { option: input.option, blocked })
+        return { ok: false, code: blocked[0]!.startsWith('no_receipt') ? 'no_receipt' : 'receipt_identity_mismatch', detail: blocked.join(';'), effectIds, blocked }
+      }
+      this.db.atomic(() => {
+        const fresh = this.requireTask(input.ticketId)
+        for (const { effect, receipt } of accepted) {
+          this.db.saveEffect({ ...effect, state: 'succeeded', finished_at: now, detail: `reconciled:${receipt.receiptId}` })
+          if (receipt.tool === 'write_analysis' && receipt.ok && receipt.outputPath && receipt.outputSha256 && !fresh.analysis) {
+            fresh.analysis = {
+              artifactPath: this.relativeToRoot(this.absoluteToRoot(receipt.outputPath)),
+              artifactSha: receipt.outputSha256,
+              receiptId: receipt.receiptId,
+              inputRef: receipt.inputRef,
+            }
+          }
+        }
+        fresh.stage = fresh.analysis ? 'analyzing' : fresh.result ? 'result_received' : 'awaiting_result'
+        fresh.updatedAt = now
+        fresh.diagnostics = [...fresh.diagnostics.slice(-40), `reconciled:accept_receipt:${effectIds.join(',')}`]
+        this.saveTask(fresh)
+        this.db.driverLog(now, input.ticketId, 'reconcile.accept_receipt', { effectIds, note: input.note ?? null })
+      })
+      this.drain()
+      return { ok: true, code: 'reconciled', detail: `accepted receipt for ${effectIds.length} effect(s)`, effectIds, blocked: [] }
+    }
+    if (input.option === 'abandon_attempt') {
+      this.db.atomic(() => {
+        const fresh = this.requireTask(input.ticketId)
+        for (const effect of unresolved) {
+          this.db.saveEffect({
+            ...effect,
+            state: 'invalidated',
+            finished_at: now,
+            detail: `abandoned_by_reconciliation:${input.note ?? 'explicit'}`,
+          })
+        }
+        // 放弃不等于允许盲重试：清空上一次回答并要求重新授权。
+        fresh.attempt += 1
+        fresh.lastAnswer = undefined
+        fresh.stage = fresh.result ? 'result_received' : 'awaiting_result'
+        fresh.updatedAt = now
+        fresh.diagnostics = [...fresh.diagnostics.slice(-40), `reconciliation_abandoned:${effectIds.join(',')}`, 'reauthorization_required']
+        this.saveTask(fresh)
+        this.db.driverLog(now, input.ticketId, 'reconcile.abandon_attempt', { effectIds, note: input.note ?? null })
+      })
+      this.drain()
+      return { ok: true, code: 'reconciled', detail: `abandoned ${effectIds.length} effect(s); new authorization required`, effectIds, blocked: [] }
+    }
+    return { ok: false, code: 'unknown_option', detail: `unknown reconcile option ${String(input.option)}`, effectIds, blocked: [] }
+  }
+
+  /**
+   * 未解决执行结果：跨进程遗留的 running 与已经转入 needs_reconciliation 的 effect。
+   * 本进程正在执行的 running 不算阻断。
+   */
+  private blockingEffects(ticketId?: string): EffectRow[] {
+    return this.db
+      .listEffects()
+      .filter(
+        (effect) =>
+          (ticketId === undefined || effect.ticket_id === ticketId) &&
+          // 只有工具执行会产生不可确认的外部副作用；start/deliver 是幂等簿记。
+          effect.kind === 'tool' &&
+          (effect.state === 'needs_reconciliation' ||
+            (effect.state === 'running' && !this.inFlight.has(effect.effect_id))),
+      )
+  }
+
+  private isTicketBlocked(ticketId: string): boolean {
+    return this.blockingEffects(ticketId).length > 0
+  }
+
+  /** 从权威事件与任务结果构造当前输入身份；任何缺项都返回 null + 原因。 */
+  private inputRefFromTask(task: InputIdentityTask): { ref: InputRef | null; reasons: string[] } {
+    const result = task.result
+    if (!result) return { ref: null, reasons: ['result_missing'] }
+    const reasons: string[] = []
+    if (!result.resultPath) reasons.push('result_path_missing')
+    if (!result.resultFileSha) reasons.push('result_file_sha_missing')
+    if (!result.artifactSha) reasons.push('artifact_sha_missing')
+    if (!result.artifactPath) reasons.push('artifact_path_missing')
+    if (!task.assignmentId) reasons.push('assignment_missing')
+    const event = this.db
+      .listEvents(task.ticketId)
+      .filter((item) => item.kind === 'artifact.observed')
+      .at(-1)
+    if (!event) {
+      reasons.push('artifact_event_missing')
+    } else {
+      const payload = event.payload as unknown as ArtifactPayload
+      if (payload.runId !== result.runId) reasons.push('event_run_mismatch')
+      if (payload.revision !== result.revision) reasons.push('event_revision_mismatch')
+      if (payload.resultFileSha !== result.resultFileSha) reasons.push('event_result_sha_mismatch')
+      if (payload.artifactSha !== result.artifactSha) reasons.push('event_artifact_sha_mismatch')
+    }
+    if (reasons.length) return { ref: null, reasons }
+    return {
+      ref: {
+        taskId: task.ticketId,
+        taskRevision: task.taskRevision,
+        assignmentId: task.assignmentId!,
+        sourceId: event!.sourceId,
+        sourceRevision: event!.sourceRevision ?? '',
+        runId: result.runId,
+        revision: result.revision,
+        resultFileSha: result.resultFileSha,
+        artifactSha: result.artifactSha,
+        resultPath: result.resultPath,
+        artifactPath: result.artifactPath,
+      },
+      reasons: [],
+    }
+  }
+
+  /**
+   * 派发前核对：effect 预期的输入身份 == 当前权威身份，且磁盘字节 SHA 相等。
+   * 通过后把已核验字节写入内容寻址快照，工具只读这份快照。
+   */
+  private verifyEffectInputs(effect: EffectRow): {
+    ok: boolean
+    detail: string
+    inputRef: InputRef
+    snapshotPath: string | null
+  } {
+    const empty: InputRef = {
+      taskId: effect.ticket_id,
+      taskRevision: effect.task_revision,
+      assignmentId: effect.assignment_id ?? '',
+      sourceId: '',
+      sourceRevision: '',
+      runId: '',
+      revision: 0,
+      resultFileSha: '',
+      artifactSha: '',
+      resultPath: null,
+      artifactPath: null,
+    }
+    if (!effect.input_ref_json) {
+      return { ok: false, detail: 'effect_input_identity_missing', inputRef: empty, snapshotPath: null }
+    }
+    const expected = JSON.parse(effect.input_ref_json) as InputRef
+    const task = this.requireTask(effect.ticket_id)
+    const current = this.inputRefFromTask(task)
+    if (!current.ref) {
+      return { ok: false, detail: `current_input_identity_incomplete:${current.reasons.join('+')}`, inputRef: expected, snapshotPath: null }
+    }
+    if (canonicalJson(current.ref) !== canonicalJson(expected)) {
+      return { ok: false, detail: 'input_identity_changed_since_queued', inputRef: expected, snapshotPath: null }
+    }
+    if (!expected.resultPath) {
+      return { ok: false, detail: 'expected_result_path_missing', inputRef: expected, snapshotPath: null }
+    }
+    const resultAbs = this.absoluteToRoot(expected.resultPath)
+    const resultVerify = this.verifyArtifactFile(resultAbs, expected.resultFileSha)
+    if (!resultVerify.ok) {
+      return { ok: false, detail: `result_bytes:${resultVerify.detail}`, inputRef: expected, snapshotPath: null }
+    }
+    if (expected.artifactPath) {
+      const artifactVerify = this.verifyArtifactFile(this.absoluteToRoot(expected.artifactPath), expected.artifactSha)
+      if (!artifactVerify.ok) {
+        return { ok: false, detail: `artifact_bytes:${artifactVerify.detail}`, inputRef: expected, snapshotPath: null }
+      }
+    }
+    const snapshot = this.writeInputSnapshot(resultAbs, expected.resultFileSha)
+    if (!snapshot.ok) {
+      return { ok: false, detail: `snapshot:${snapshot.detail}`, inputRef: expected, snapshotPath: null }
+    }
+    return { ok: true, detail: 'inputs verified', inputRef: expected, snapshotPath: snapshot.path }
+  }
+
+  /** 内容寻址的不可变输入快照；同一 SHA 只写一次，已存在则重新校验。 */
+  private writeInputSnapshot(resultAbs: string, expectedSha: string): { ok: boolean; detail: string; path: string | null } {
+    const dir = join(this.workspace.root, 'state', 'inputs')
+    const target = join(dir, `${expectedSha}.json`)
+    mkdirSync(dir, { recursive: true })
+    if (existsSync(target)) {
+      const existing = sha256Bytes(readFileSync(target))
+      if (existing === expectedSha) return { ok: true, detail: 'reused', path: this.relativeToRoot(target) }
+      return { ok: false, detail: `snapshot sha ${existing.slice(0, 12)} != ${expectedSha.slice(0, 12)}`, path: null }
+    }
+    const bytes = readFileSync(resultAbs)
+    const actual = sha256Bytes(bytes)
+    if (actual !== expectedSha) return { ok: false, detail: `source sha ${actual.slice(0, 12)} != ${expectedSha.slice(0, 12)}`, path: null }
+    writeFileSync(target, bytes)
+    const written = sha256Bytes(readFileSync(target))
+    if (written !== expectedSha) return { ok: false, detail: 'snapshot verify failed', path: null }
+    return { ok: true, detail: 'created', path: this.relativeToRoot(target) }
+  }
+
   // ------------------------------------------------------------------
   // 查询
   // ------------------------------------------------------------------
@@ -822,12 +1182,16 @@ export class FollowupRuntime {
       },
       decisions: this.db.listProposals(ticketId).map((row) => this.toSummary(row)),
       receipts: this.db.listReceipts(ticketId),
+      completionCheck: this.completionCheck(task),
     }
   }
 
   completionCheck(task: TaskSnapshot): CompletionCheck {
     const reasons: string[] = []
+    const identityReasons: string[] = []
     const checked: string[] = []
+    const unresolved = this.blockingEffects(task.ticketId)
+    if (unresolved.length) reasons.push(`unresolved_effect:${unresolved.map((effect) => effect.effect_id).join(',')}`)
     // 当前目标请求必须仍在权威事件里，且与当前 taskRevision 对齐。
     const goalEvent = this.db
       .listEvents(task.ticketId)
@@ -838,6 +1202,12 @@ export class FollowupRuntime {
       )
       .at(-1)
     if (!goalEvent) reasons.push('current_goal_event_missing')
+
+    // 当前权威输入：结果事件 + 任务里记录的来源身份，两者必须同时成立。
+    const current = this.inputRefFromTask(task)
+    if (task.result && !current.ref) {
+      identityReasons.push(`current_input_identity_incomplete:${current.reasons.join('+')}`)
+    }
     if (task.goalCondition.requireResultArtifact) {
       if (!task.result?.artifactPath) {
         reasons.push('result_artifact_missing')
@@ -846,6 +1216,16 @@ export class FollowupRuntime {
         checked.push(abs)
         const verify = this.verifyArtifactFile(abs, task.result.artifactSha)
         if (!verify.ok) reasons.push(`result_artifact:${verify.detail}`)
+      }
+    }
+    if (task.result) {
+      if (!task.result.resultPath) {
+        reasons.push('result_file_path_missing')
+      } else {
+        const abs = this.absoluteToRoot(task.result.resultPath)
+        checked.push(abs)
+        const verify = this.verifyArtifactFile(abs, task.result.resultFileSha)
+        if (!verify.ok) identityReasons.push(`result_file:${verify.detail}`)
       }
     }
     if (task.result && task.goalCondition.insufficientStatuses.includes(task.result.status as 'succeeded' | 'failed' | 'partial')) {
@@ -874,8 +1254,27 @@ export class FollowupRuntime {
         const verify = this.verifyArtifactFile(abs, analysis.artifactSha)
         if (!verify.ok) reasons.push(`analysis_artifact:${verify.detail}`)
         if (receipt?.outputSha256 && receipt.outputSha256 !== analysis.artifactSha) reasons.push('receipt_sha_mismatch')
+
+        // 当前输入 → 执行输入 → 回执 → 分析，逐项相等；缺身份即拒绝。
+        if (!receipt?.inputRef) identityReasons.push('receipt_input_identity_missing')
+        if (!receipt?.inputsVerified) identityReasons.push('receipt_inputs_unverified')
+        if (!analysis.inputRef) identityReasons.push('analysis_input_identity_missing')
+        if (!current.ref) {
+          identityReasons.push('current_input_identity_unavailable')
+        } else {
+          if (receipt?.inputRef && canonicalJson(receipt.inputRef) !== canonicalJson(current.ref)) {
+            identityReasons.push('receipt_input_mismatch')
+          }
+          if (analysis.inputRef && canonicalJson(analysis.inputRef) !== canonicalJson(current.ref)) {
+            identityReasons.push('analysis_input_mismatch')
+          }
+          if (receipt?.inputRef && receipt.inputRef.resultFileSha !== analysis.inputRef?.resultFileSha) {
+            identityReasons.push('receipt_analysis_input_mismatch')
+          }
+        }
       }
     }
+    reasons.push(...identityReasons)
     return {
       ok: reasons.length === 0,
       reasons,
@@ -883,6 +1282,9 @@ export class FollowupRuntime {
       artifactPath: task.analysis?.artifactPath ?? task.result?.artifactPath ?? null,
       artifactSha: task.analysis?.artifactSha ?? task.result?.artifactSha ?? null,
       checkedPaths: checked,
+      inputRef: current.ref,
+      inputConsistent: identityReasons.length === 0 && Boolean(current.ref),
+      unresolvedEffects: unresolved.map((effect) => effect.effect_id),
     }
   }
 
@@ -949,6 +1351,7 @@ export class FollowupRuntime {
           decisionId: null,
           text: message.text,
           createdAt: this.clock.now(),
+          state: 'queued',
         })
       },
       status: (id) => {
@@ -973,6 +1376,7 @@ export class FollowupRuntime {
     dedupeKey: string
     tool?: ToolName
     args?: Record<string, unknown>
+    inputRef?: InputRef | null
   }): void {
     const effectId = stableId('fx', input.ticketId, input.taskRevision, input.kind, input.dedupeKey)
     const existing = this.db.getEffect(effectId)
@@ -986,6 +1390,7 @@ export class FollowupRuntime {
       kind: input.kind,
       tool: input.tool ?? null,
       args_json: input.args ? canonicalJson(input.args) : null,
+      input_ref_json: input.inputRef ? canonicalJson(input.inputRef) : null,
       state: 'pending',
       created_at: this.clock.now(),
       started_at: null,
@@ -996,15 +1401,20 @@ export class FollowupRuntime {
   }
 
   private drain(): void {
-    for (let step = 0; step < MAX_DRAIN_STEPS; step += 1) {
-      const pending = this.db.listEffects('pending')
-      if (pending.length) {
-        this.db.maybeCrash('pre_dispatch')
-        this.dispatchEffect(pending[0]!)
-        continue
+    try {
+      for (let step = 0; step < MAX_DRAIN_STEPS; step += 1) {
+        // 未对账的执行结果必须先人工/显式处理，不能靠后续 drain 绕过。
+        const pending = this.db.listEffects('pending').filter((effect) => !this.isTicketBlocked(effect.ticket_id))
+        if (pending.length) {
+          this.db.maybeCrash('pre_dispatch')
+          this.dispatchEffect(pending[0]!)
+          continue
+        }
+        if (this.proposeAll()) continue
+        break
       }
-      if (this.proposeAll()) continue
-      break
+    } finally {
+      this.deliverPending()
     }
   }
 
@@ -1084,90 +1494,126 @@ export class FollowupRuntime {
   private dispatchTool(effect: EffectRow, tool: ToolName): void {
     const now = this.clock.now()
     const args = effect.args_json ? (JSON.parse(effect.args_json) as Record<string, string | number | boolean>) : {}
-    const request: ToolRequest = { tool, args }
     this.db.atomic(() => {
       this.db.saveEffect({ ...effect, state: 'running', started_at: now })
     })
-    // 真实进程在“工具已开始、结果未确认”时退出：重启后必须进入 needs_reconciliation。
-    this.db.maybeCrash('effect_running')
-    const execution = this.tools.execute(request, {
-      effectId: effect.effect_id,
-      attemptId: effect.attempt_id,
-      ticketId: effect.ticket_id,
-      taskRevision: effect.task_revision,
-      assignmentId: effect.assignment_id ?? '',
-      now,
-    })
-    this.db.atomic(() => {
-      const task = this.requireTask(effect.ticket_id)
-      const receipt: ToolReceipt = execution.receipt
-      this.db.saveEffect({
-        ...effect,
-        state: receipt.needsReconciliation ? 'needs_reconciliation' : receipt.ok ? 'succeeded' : 'failed',
-        finished_at: this.clock.now(),
-        detail: receipt.detail,
+    this.inFlight.add(effect.effect_id)
+    try {
+      // 真实进程在“工具已开始、结果未确认”时退出：重启后必须进入 needs_reconciliation。
+      this.db.maybeCrash('effect_running')
+
+      // 派发前核对：当前权威结果 → effect 预期输入 → 磁盘实际字节。任何一项不成立都 fail closed。
+      const gate = this.verifyEffectInputs(effect)
+      if (!gate.ok) {
+        this.db.atomic(() => {
+          this.db.saveEffect({ ...effect, state: 'invalidated', finished_at: this.clock.now(), detail: `input_gate:${gate.detail}` })
+          const task = this.requireTask(effect.ticket_id)
+          task.diagnostics = [...task.diagnostics.slice(-40), `tool_input_rejected:${gate.detail}`]
+          if (task.stage !== 'needs_reconciliation') task.stage = 'awaiting_decision'
+          this.saveTask(task)
+          this.db.driverLog(this.clock.now(), effect.ticket_id, 'effect.input_rejected', {
+            effectId: effect.effect_id,
+            detail: gate.detail,
+          })
+        })
+        return
+      }
+
+      const request: ToolRequest = {
+        tool,
+        args: { ...args, ...(gate.snapshotPath ? { resultSnapshotPath: gate.snapshotPath } : {}) },
+      }
+      const execution = this.tools.execute(request, {
+        effectId: effect.effect_id,
+        attemptId: effect.attempt_id,
+        ticketId: effect.ticket_id,
+        taskRevision: effect.task_revision,
+        assignmentId: effect.assignment_id ?? '',
+        now,
+        inputRef: gate.inputRef,
+        resultSnapshotPath: gate.snapshotPath ?? '',
       })
-      this.db.saveReceipt(receipt)
-      const receiptEvent = this.makeEvent({
-        kind: 'tool.receipt',
-        sourceId: `receipt:${receipt.receiptId}`,
-        sourceRevision: '1',
-        at: receipt.finishedAt,
-        ticketId: task.ticketId,
-        taskRevision: task.taskRevision,
-        payload: {
-          tool: receipt.tool,
-          effectId: receipt.effectId,
-          receiptId: receipt.receiptId,
-          ok: receipt.ok,
-          outputPath: receipt.outputPath,
-          outputSha256: receipt.outputSha256,
-          bytesWritten: receipt.bytesWritten,
+      this.db.atomic(() => {
+        const task = this.requireTask(effect.ticket_id)
+        const receipt: ToolReceipt = execution.receipt
+        this.db.saveEffect({
+          ...effect,
+          state: receipt.needsReconciliation ? 'needs_reconciliation' : receipt.ok ? 'succeeded' : 'failed',
+          finished_at: this.clock.now(),
           detail: receipt.detail,
-          needsReconciliation: receipt.needsReconciliation,
-        },
-      })
-      const inserted = this.db.insertEvent(receiptEvent, this.clock.now())
-      const memory = this.memory.ingest({
-        event: receiptEvent,
-        eventCursor: inserted.seq,
-        ticketId: task.ticketId,
-        taskRevision: task.taskRevision,
-        label: `工具 ${receipt.tool} ${receipt.ok ? '成功' : '失败'}`,
-      })
-      task.eventCursor = inserted.seq
-      task.memoryCursor = memory.cursor
-      task.updatedAt = receipt.finishedAt
-      if (receipt.ok && receipt.outputPath && receipt.outputSha256) {
-        const ref: EvidenceRef = {
+        })
+        this.db.saveReceipt(receipt)
+        const receiptEvent = this.makeEvent({
+          kind: 'tool.receipt',
           sourceId: `receipt:${receipt.receiptId}`,
           sourceRevision: '1',
-          sha256: receipt.outputSha256,
-          memoryEventIds: [memory.memoryEventId],
-          noteIds: memory.noteIds,
-          noteVersions: memory.noteVersions,
+          at: receipt.finishedAt,
+          ticketId: task.ticketId,
+          taskRevision: task.taskRevision,
+          payload: {
+            tool: receipt.tool,
+            effectId: receipt.effectId,
+            receiptId: receipt.receiptId,
+            ok: receipt.ok,
+            outputPath: receipt.outputPath,
+            outputSha256: receipt.outputSha256,
+            bytesWritten: receipt.bytesWritten,
+            detail: receipt.detail,
+            needsReconciliation: receipt.needsReconciliation,
+            inputRef: receipt.inputRef,
+            inputsVerified: receipt.inputsVerified,
+          },
+        })
+        const inserted = this.db.insertEvent(receiptEvent, this.clock.now())
+        const memory = this.memory.ingest({
+          event: receiptEvent,
+          eventCursor: inserted.seq,
+          ticketId: task.ticketId,
+          taskRevision: task.taskRevision,
+          label: `工具 ${receipt.tool} ${receipt.ok ? '成功' : '失败'}`,
+        })
+        task.eventCursor = inserted.seq
+        task.memoryCursor = memory.cursor
+        task.updatedAt = receipt.finishedAt
+        if (receipt.ok && receipt.outputPath && receipt.outputSha256) {
+          const ref: EvidenceRef = {
+            sourceId: `receipt:${receipt.receiptId}`,
+            sourceRevision: '1',
+            sha256: receipt.outputSha256,
+            memoryEventIds: [memory.memoryEventId],
+            noteIds: memory.noteIds,
+            noteVersions: memory.noteVersions,
+          }
+          task.evidence = [...task.evidence, ref].slice(-8)
         }
-        task.evidence = [...task.evidence, ref].slice(-8)
-      }
-      if (receipt.tool === 'write_analysis' && receipt.ok && receipt.outputPath && receipt.outputSha256) {
-        task.analysis = { artifactPath: this.relativeToRoot(this.absoluteToRoot(receipt.outputPath)), artifactSha: receipt.outputSha256, receiptId: receipt.receiptId }
-        task.stage = 'analyzing'
-      } else if (receipt.needsReconciliation) {
-        task.stage = 'needs_reconciliation'
-        task.diagnostics = [...task.diagnostics.slice(-40), `needs_reconciliation:${receipt.effectId}`]
-      } else if (!receipt.ok) {
-        task.stage = 'awaiting_decision'
-        task.diagnostics = [...task.diagnostics.slice(-40), `tool_failed:${receipt.tool}:${receipt.detail}`]
-      }
-      this.saveTask(task)
-      this.db.driverLog(receipt.finishedAt, task.ticketId, 'effect.tool', {
-        effect: effect.effect_id,
-        receipt: receipt.receiptId,
-        ok: receipt.ok,
-        bytesWritten: receipt.bytesWritten,
+        if (receipt.tool === 'write_analysis' && receipt.ok && receipt.outputPath && receipt.outputSha256) {
+          task.analysis = {
+            artifactPath: this.relativeToRoot(this.absoluteToRoot(receipt.outputPath)),
+            artifactSha: receipt.outputSha256,
+            receiptId: receipt.receiptId,
+            inputRef: receipt.inputRef,
+          }
+          task.stage = 'analyzing'
+        } else if (receipt.needsReconciliation) {
+          task.stage = 'needs_reconciliation'
+          task.diagnostics = [...task.diagnostics.slice(-40), `needs_reconciliation:${receipt.effectId}`]
+        } else if (!receipt.ok) {
+          task.stage = 'awaiting_decision'
+          task.diagnostics = [...task.diagnostics.slice(-40), `tool_failed:${receipt.tool}:${receipt.detail}`]
+        }
+        this.saveTask(task)
+        this.db.driverLog(receipt.finishedAt, task.ticketId, 'effect.tool', {
+          effect: effect.effect_id,
+          receipt: receipt.receiptId,
+          ok: receipt.ok,
+          bytesWritten: receipt.bytesWritten,
+          inputsVerified: receipt.inputsVerified,
+        })
       })
-    })
-    this.db.maybeCrash('receipt_persisted')
+      this.db.maybeCrash('receipt_persisted')
+    } finally {
+      this.inFlight.delete(effect.effect_id)
+    }
   }
 
   // ------------------------------------------------------------------
@@ -1354,7 +1800,25 @@ export class FollowupRuntime {
       this.db.driverLog(now, task.ticketId, 'proposal.rejected_before_execute', { code: executeValidation.code, detail: executeValidation.detail })
       return false
     }
-    const effectId = stableId('fx', task.ticketId, task.taskRevision, 'tool', request.tool, task.attempt)
+    const input = this.inputRefFromTask(task)
+    if (!input.ref) {
+      // 没有可核验的当前输入身份：不创建“盲执行”的工具 attempt。
+      this.db.atomic(() => {
+        const fresh = this.requireTask(task.ticketId)
+        fresh.diagnostics = [
+          ...fresh.diagnostics.slice(-40),
+          `tool_input_unavailable:${input.reasons.join('+')}`,
+        ]
+        this.saveTask(fresh)
+        this.db.saveProposal({ ...row, outcome: 'invalidated', validation_json: canonicalJson([executeValidation]) })
+        this.recordLastProposal(fresh, row, 'invalidated')
+      })
+      this.db.driverLog(now, task.ticketId, 'proposal.input_unavailable', { reasons: input.reasons })
+      return false
+    }
+    // 与 queueEffect 使用同一个 dedupeKey，否则“同一次尝试不重试”的判断永远不成立。
+    const dedupeKey = `${request.tool}:${task.attempt}`
+    const effectId = stableId('fx', task.ticketId, task.taskRevision, 'tool', dedupeKey)
     const existing = this.db.getEffect(effectId)
     if (existing) {
       // 已记录成功/失败/invalidated 的同一次尝试不自动重试；失败留给明确的下一步。
@@ -1371,9 +1835,10 @@ export class FollowupRuntime {
         ticketId: task.ticketId,
         assignmentId: task.assignmentId,
         taskRevision: task.taskRevision,
-        dedupeKey: `${request.tool}:${task.attempt}`,
+        dedupeKey,
         tool: request.tool,
         args: request.args,
+        inputRef: input.ref,
       })
       this.db.saveProposal({ ...row, outcome: 'executed', validation_json: canonicalJson([executeValidation]) })
       const fresh = this.requireTask(task.ticketId)
@@ -1402,6 +1867,7 @@ export class FollowupRuntime {
         decisionId: proposal.decisionId,
         text: proposal.question ?? proposal.reasonText,
         createdAt: now,
+        state: 'queued',
       })
       this.db.saveProposal({ ...row, outcome: 'executed', validation_json: canonicalJson([validation]) })
       this.recordLastProposal(task, row, 'executed')
@@ -1433,6 +1899,7 @@ export class FollowupRuntime {
         receiptId: check.receiptId,
         artifactSha: check.artifactSha,
         checkedPaths: check.checkedPaths,
+        inputRef: check.inputRef,
       }
       const event = this.makeEvent({
         kind: 'tool.receipt',
@@ -1619,6 +2086,7 @@ export class FollowupRuntime {
           receiptId: check.receiptId,
           artifactSha: check.artifactSha,
           checkedPaths: check.checkedPaths,
+          inputRef: check.inputRef,
         }
       } else {
         fresh.diagnostics = [...fresh.diagnostics.slice(-40), `ticket_completed_without_verified_artifact:${check.reasons.join(',')}`]
@@ -1647,6 +2115,9 @@ export class FollowupRuntime {
 
   private toTask(row: TaskRow): TaskRecord {
     const open = this.attention.listOpen(row.ticket_id)
+    // 未对账的执行结果在读取时就保持阻断；tick/新事件/普通 scan 不能把它改回普通阶段。
+    const blocked = this.blockingEffects(row.ticket_id).length > 0
+    const stage = blocked && row.status === 'active' ? 'needs_reconciliation' : (row.stage as TaskStage)
     return {
       ticketId: row.ticket_id,
       title: row.title,
@@ -1654,7 +2125,7 @@ export class FollowupRuntime {
       goalCondition: JSON.parse(row.goal_json) as GoalCondition,
       taskRevision: row.task_revision,
       assignmentId: row.assignment_id,
-      stage: row.stage as TaskStage,
+      stage,
       status: row.status as TaskStatus,
       createdAt: row.created_at,
       updatedAt: row.updated_at,

@@ -60,7 +60,7 @@ test('answer 后本地工具生成真实产物，SHA 与回执一致，任务完
     const receipt = h.built.db.getReceipt(task.analysis!.receiptId)!
     assert.equal(receipt.ok, true)
     assert.equal(receipt.outputSha256, task.analysis!.artifactSha)
-    assert.equal(task.completion!.checkedPaths.length, 2)
+    assert.ok(task.completion!.checkedPaths.length >= 2, 'completion re-read result and analysis paths')
     assert.equal(h.built.runtime.getTicket(d.ticketId)!.ended?.outcome, 'completed')
     assert.ok(readFileSync(abs, 'utf8').includes('失败样本'))
   } finally {
@@ -200,7 +200,7 @@ test('伪造完成事件没有回执，任务不得完成', () => {
   }
 })
 
-test('工具失败只记录一次，不自动重试', () => {
+test('输入字节在派发前消失：拒绝执行、只记录一次、不自动重试', () => {
   const h = harness()
   try {
     const d = h.built.runtime.delegate({ title: '跟进 E17', goal: '失败', goalCondition: ANALYSIS_GOAL, at: h.clock.now() })
@@ -208,14 +208,18 @@ test('工具失败只记录一次，不自动重试', () => {
     h.observe(d.ticketId, seed.resultPath)
     rmSync(seed.resultPath, { force: true })
     answerOpen(h, d.ticketId, 'analyze_failing')
-    const failed = h.built.db.listEffects().filter((effect) => effect.kind === 'tool')
-    assert.equal(failed.length, 1)
-    assert.equal(failed[0]!.state, 'failed')
+    const effects = h.built.db.listEffects().filter((effect) => effect.kind === 'tool')
+    assert.equal(effects.length, 1)
+    // 派发前核对磁盘字节失败：不产生回执，effect 记 invalidated 而不是执行后再失败。
+    assert.equal(effects[0]!.state, 'invalidated')
+    assert.match(String(effects[0]!.detail), /^input_gate:/)
+    assert.equal(h.built.db.listReceipts(d.ticketId).length, 0)
     h.clock.set('2026-11-11T08:40:00.000Z')
     h.built.runtime.tick(10 * 60_000)
     assert.equal(h.built.db.listEffects().filter((effect) => effect.kind === 'tool').length, 1)
-    const open = openAttention(h, d.ticketId)!
-    assert.ok(open.decisionKey.startsWith('tool_failed'))
+    const task = h.built.runtime.getTask(d.ticketId)
+    assert.ok(task.diagnostics.some((item) => item.startsWith('tool_input_rejected:')))
+    assert.notEqual(task.status, 'completed')
   } finally {
     h.dispose()
   }

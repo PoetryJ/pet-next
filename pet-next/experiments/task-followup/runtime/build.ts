@@ -9,7 +9,7 @@ import { createPolicy } from '../decision/rules.ts'
 import { R31MemoryBridge } from '../memory-bridge/port.ts'
 import { LocalTools } from '../tools/workspace.ts'
 import type { ClockPort, DecisionPort, PolicyId, QuietConfig } from '../contracts.ts'
-import { DEFAULT_QUIET } from '../contracts.ts'
+import { DEFAULT_QUIET, normalizeTimeZone } from '../contracts.ts'
 import { RealClock } from './clock.ts'
 import { FollowupDb } from './db.ts'
 import { FollowupRuntime } from './engine.ts'
@@ -37,13 +37,17 @@ export interface BuiltRuntime {
   readonly attention: AttentionQueue
   readonly decision: DecisionPort
   readonly quiet: QuietConfig
+  /** 运行配置指纹：规则 + quiet（含 timezone），写入 raw 便于重算。 */
+  readonly configSha: string
 }
 
 export function buildRuntime(options: BuildRuntimeOptions): BuiltRuntime {
   const dbPath = options.dbPath ?? join(options.workspaceRoot, 'state', 'followup.sqlite')
   const db = new FollowupDb(dbPath)
   const clock = options.clock ?? new RealClock()
-  const quiet = options.quiet ?? DEFAULT_QUIET
+  // 时区必须显式给出：非法值直接失败，不静默回退到宿主 TZ。
+  const baseQuiet = options.quiet ?? DEFAULT_QUIET
+  const quiet: QuietConfig = { ...baseQuiet, timezone: normalizeTimeZone(baseQuiet.timezone) }
   const memory = new R31MemoryBridge({
     store: db,
     listEventRows: () => db.listEventRowEntries(),
@@ -51,7 +55,8 @@ export function buildRuntime(options: BuildRuntimeOptions): BuiltRuntime {
   })
   const attention = new AttentionQueue(db)
   const tools = new LocalTools({ root: options.workspaceRoot })
-  const baseDecision = createPolicy(options.policy)
+  // 同一份 quiet（含 timezone）必须传给每条策略路径，P2 不再用内部默认。
+  const baseDecision = createPolicy(options.policy, { quiet })
   const decision: DecisionPort = {
     ...baseDecision,
     propose: (context) => {
@@ -72,5 +77,5 @@ export function buildRuntime(options: BuildRuntimeOptions): BuiltRuntime {
     ...(options.deferProposals ? { deferProposals: options.deferProposals } : {}),
     ...(options.skipInvalidation ? { skipInvalidation: options.skipInvalidation } : {}),
   })
-  return { runtime, db, clock, tools, attention, decision, quiet }
+  return { runtime, db, clock, tools, attention, decision, quiet, configSha: decision.configSha }
 }

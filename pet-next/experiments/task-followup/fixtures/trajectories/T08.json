@@ -10,7 +10,8 @@
     "reminderQuotaPerHour": 3,
     "minGapMs": 900000,
     "cooldownMs": 1800000,
-    "deadlineHour": 9
+    "deadlineHour": 9,
+    "timezone": "UTC"
   },
   "steps": [
     {

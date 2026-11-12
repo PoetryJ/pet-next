@@ -13,7 +13,7 @@ import type { IncomingMessage, ServerResponse } from 'node:http'
 import { join, resolve } from 'node:path'
 import { sha256Bytes, sha256Hex } from '../contracts.ts'
 import type { GoalCondition, PolicyId, QuietConfig } from '../contracts.ts'
-import { DEFAULT_QUIET } from '../contracts.ts'
+import { DEFAULT_QUIET, normalizeTimeZone } from '../contracts.ts'
 import { buildRuntime } from '../runtime/build.ts'
 import type { BuiltRuntime } from '../runtime/build.ts'
 import { FakeClock } from '../runtime/clock.ts'
@@ -59,8 +59,10 @@ export function parseOptions(argv: readonly string[]): { command: string; args: 
 export function optionsFrom(args: Map<string, string>, flags: Set<string>): CliOptions {
   const workspace = resolve(args.get('workspace') ?? DEFAULT_WORKSPACE)
   const policy = (args.get('policy') ?? 'P3') as PolicyId
+  // 时区必须显式给出（UTC / Asia/Shanghai ...），不看宿主 TZ。
   const quiet: QuietConfig = {
     ...DEFAULT_QUIET,
+    timezone: normalizeTimeZone(args.get('timezone') ?? DEFAULT_QUIET.timezone),
     ...(args.has('quiet-from') ? { fromHour: Number(args.get('quiet-from')) } : {}),
     ...(args.has('quiet-to') ? { toHour: Number(args.get('quiet-to')) } : {}),
     ...(flags.has('allow-urgent') ? { allowUrgent: true } : {}),
@@ -98,11 +100,19 @@ function taskSummary(runtime: BuiltRuntime, ticketId: string): Record<string, un
     taskRevision: task.taskRevision,
     assignmentId: task.assignmentId,
     openAttention: task.openAttention
-      ? { attentionId: task.openAttention.attentionId, question: task.openAttention.question, options: task.openAttention.options }
+      ? {
+          attentionId: task.openAttention.attentionId,
+          question: task.openAttention.question,
+          options: task.openAttention.options,
+          notifiedAt: task.openAttention.notifiedAt ?? null,
+          deliveredAt: task.openAttention.deliveredAt ?? null,
+          presentedAt: task.openAttention.presentedAt ?? null,
+        }
       : null,
     result: task.result ?? null,
     analysis: task.analysis ?? null,
     completion: task.completion ?? null,
+    completionCheckOk: runtime.runtime.completionCheck(task).ok,
     lastProposal: task.lastProposal ?? null,
     evidenceCount: task.evidence.length,
     diagnostics: task.diagnostics.slice(-5),
@@ -253,14 +263,44 @@ export async function runCommand(argv: readonly string[]): Promise<number> {
         const open = built.attention.listOpen(ticket)[0]
         const attentionId = args.get('attention') ?? open?.attentionId
         if (!attentionId) throw new Error('no open attention')
+        // --panel / --presented 明确表示“用户打开了面板并看到该问题”，产生呈现回执。
+        if (flags.has('panel') || flags.has('presented')) built.runtime.present(ticket)
         const result = built.runtime.answer({
           attentionId,
           taskRevision: Number(args.get('revision') ?? task.taskRevision),
           optionId: requireArg(args, 'option'),
           ...(args.has('id') ? { sourceId: args.get('id')! } : {}),
         })
-        print({ ok: result.ok, result, task: taskSummary(built, ticket) })
+        print({
+          ok: result.ok,
+          result,
+          visibility: built.runtime.attentionVisibility(attentionId),
+          task: taskSummary(built, ticket),
+        })
         return result.ok ? 0 : 3
+      }
+      case 'present': {
+        const ticket = requireArg(args, 'ticket')
+        print({ ok: true, ...built.runtime.present(ticket) })
+        return 0
+      }
+      case 'deliver': {
+        print({ ok: true, ...built.runtime.deliverPending() })
+        return 0
+      }
+      case 'reconcile': {
+        const ticket = requireArg(args, 'ticket')
+        const option = requireArg(args, 'option')
+        if (option !== 'accept_receipt' && option !== 'abandon_attempt') {
+          throw new Error(`unknown reconcile option: ${option} (accept_receipt|abandon_attempt)`)
+        }
+        const result = built.runtime.reconcile({
+          ticketId: ticket,
+          option,
+          ...(args.has('note') ? { note: args.get('note')! } : {}),
+        })
+        print({ ...result, task: taskSummary(built, ticket) })
+        return result.ok ? 0 : 4
       }
       case 'change': {
         const ticket = requireArg(args, 'ticket')
@@ -276,9 +316,19 @@ export async function runCommand(argv: readonly string[]): Promise<number> {
         return 0
       }
       case 'tick': {
+        if (!options.fakeClock) {
+          process.stderr.write('tick 需要显式 --clock：真实时钟不能逻辑前进（不读宿主 TZ/不假装未来）\n')
+          return 6
+        }
         const minutes = Number(args.get('minutes') ?? 10)
         const result = built.runtime.tick(minutes * 60_000)
-        print({ ok: true, ...result, tasks: built.runtime.listTasks().map((task) => taskSummary(built, task.ticketId)) })
+        print({
+          ok: true,
+          ...result,
+          clock: built.clock.kind,
+          timezone: built.quiet.timezone,
+          tasks: built.runtime.listTasks().map((task) => taskSummary(built, task.ticketId)),
+        })
         return 0
       }
       case 'recover': {
@@ -291,7 +341,11 @@ export async function runCommand(argv: readonly string[]): Promise<number> {
         return 0
       }
       case 'notifications': {
-        print({ ok: true, notifications: built.runtime.notifications(requireArg(args, 'ticket')) })
+        print({
+          ok: true,
+          timezone: built.quiet.timezone,
+          notifications: built.runtime.notifications(requireArg(args, 'ticket')),
+        })
         return 0
       }
       default:
@@ -463,6 +517,33 @@ async function handleRequest(
       sendJson(response, 200, { ok: true, ...built.runtime.recover() })
       return
     }
+    if (action === 'present') {
+      const ticket = String(body.ticketId ?? '')
+      if (!ticket) {
+        sendJson(response, 400, { ok: false, error: 'ticketId required' })
+        return
+      }
+      sendJson(response, 200, { ok: true, ...built.runtime.present(ticket) })
+      return
+    }
+    if (action === 'deliver') {
+      sendJson(response, 200, { ok: true, ...built.runtime.deliverPending() })
+      return
+    }
+    if (action === 'reconcile') {
+      const option = String(body.option ?? '')
+      if (option !== 'accept_receipt' && option !== 'abandon_attempt') {
+        sendJson(response, 400, { ok: false, error: 'option must be accept_receipt|abandon_attempt' })
+        return
+      }
+      const result = built.runtime.reconcile({
+        ticketId: String(body.ticketId ?? ''),
+        option,
+        ...(body.note ? { note: String(body.note) } : {}),
+      })
+      sendJson(response, result.ok ? 200 : 409, { ok: result.ok, result })
+      return
+    }
     sendJson(response, 404, { ok: false, error: `unknown action ${action}` })
     return
   }
@@ -489,11 +570,14 @@ function helpText(): string {
   node run.mjs seed --experiment E17 --status partial --revision 1
   node run.mjs observe --ticket <id> --experiment E17
   node run.mjs watch --ticket <id> --experiment E17
-  node run.mjs answer --ticket <id> --option analyze_failing
+  node run.mjs present --ticket <id>            # 明确打开面板，产生呈现回执
+  node run.mjs deliver                          # 通道把 queued 通知标记为 delivered
+  node run.mjs answer --ticket <id> --option analyze_failing [--panel]
   node run.mjs change --ticket <id> --goal <g>
   node run.mjs cancel --ticket <id>
-  node run.mjs tick --minutes 30
+  node run.mjs tick --minutes 30 --clock <iso>  # 真实时钟拒绝逻辑前进
   node run.mjs recover
+  node run.mjs reconcile --ticket <id> --option accept_receipt|abandon_attempt
   node run.mjs repair-memory
   node run.mjs serve [--port 0]
   node run.mjs demo
@@ -507,7 +591,9 @@ function helpText(): string {
 
   --workspace <dir>  默认 ${DEFAULT_WORKSPACE}
   --policy P0|P1|P2|P3  默认 P3
-  崩溃注入：PET_FOLLOWUP_CRASH_AT=ingest_persisted|pre_dispatch|receipt_persisted
+  --timezone UTC|Asia/Shanghai  显式应用时区，默认 UTC（不读宿主 TZ）
+  --clock <iso>  受控时钟起点；tick 必须用它
+  崩溃注入：PET_FOLLOWUP_CRASH_AT=ingest_persisted|pre_dispatch|effect_running|receipt_persisted
 `
 }
 

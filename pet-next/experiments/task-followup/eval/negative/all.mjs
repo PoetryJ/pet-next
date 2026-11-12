@@ -8,7 +8,18 @@ import { dirname, join } from 'node:path'
 import { fileURLToPath } from 'node:url'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
-const controls = ['drop-goal', 'forge-completion', 'stale-revision', 'duplicate-effect', 'quiet-config']
+const controls = [
+  'drop-goal',
+  'forge-completion',
+  'stale-revision',
+  'duplicate-effect',
+  'quiet-config',
+  'quiet-timezone-shanghai',
+  'hidden-answer',
+  'stale-input',
+  'repeat-recover',
+  'clock-regression',
+]
 let failures = 0
 const rows = []
 for (const name of controls) {

@@ -12,13 +12,11 @@
     },
     {
       "kind": "tick",
-      "minutes": 60,
-      "at": "2026-11-11T09:00:00.000Z"
+      "minutes": 60
     },
     {
       "kind": "tick",
-      "minutes": 240,
-      "at": "2026-11-11T13:00:00.000Z"
+      "minutes": 240
     }
   ],
   "goal": {

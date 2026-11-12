@@ -19,6 +19,8 @@ import type {
   FollowupEvent,
   FollowupEventKind,
   MemoryStorePort,
+  NotificationReceipt,
+  NotificationState,
   ToolReceipt,
 } from '../contracts.ts'
 import { EVENT_SCHEMA, canonicalJson } from '../contracts.ts'
@@ -100,6 +102,7 @@ CREATE TABLE IF NOT EXISTS effects (
   kind TEXT NOT NULL,
   tool TEXT,
   args_json TEXT,
+  input_ref_json TEXT,
   state TEXT NOT NULL,
   created_at TEXT NOT NULL,
   started_at TEXT,
@@ -124,7 +127,9 @@ CREATE TABLE IF NOT EXISTS receipts (
   started_at TEXT NOT NULL,
   finished_at TEXT NOT NULL,
   detail TEXT NOT NULL,
-  needs_reconciliation INTEGER NOT NULL
+  needs_reconciliation INTEGER NOT NULL,
+  input_ref_json TEXT,
+  inputs_verified INTEGER NOT NULL DEFAULT 0
 );
 
 CREATE TABLE IF NOT EXISTS attentions (
@@ -144,7 +149,10 @@ CREATE TABLE IF NOT EXISTS attentions (
   answer_label TEXT,
   not_before TEXT,
   deadline TEXT,
-  reason TEXT NOT NULL
+  reason TEXT NOT NULL,
+  notified_at TEXT,
+  delivered_at TEXT,
+  presented_at TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_attentions_open ON attentions(ticket_id, state);
 
@@ -154,7 +162,10 @@ CREATE TABLE IF NOT EXISTS notifications (
   attention_id TEXT,
   decision_id TEXT,
   text TEXT NOT NULL,
-  created_at TEXT NOT NULL
+  created_at TEXT NOT NULL,
+  state TEXT NOT NULL DEFAULT 'queued',
+  delivered_at TEXT,
+  presented_at TEXT
 );
 CREATE INDEX IF NOT EXISTS ix_notifications_ticket ON notifications(ticket_id, created_at);
 
@@ -226,6 +237,29 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
     this.handle.exec('PRAGMA busy_timeout = 5000')
     this.handle.exec('PRAGMA foreign_keys = ON')
     this.handle.exec(SCHEMA)
+    this.migrate()
+  }
+
+  /**
+   * 老库增量迁移：只加列，不改写历史行。
+   * 老 effect/receipt 的 input_ref_json 保持 NULL —— 完成检查对它 fail closed，
+   * 不补写假身份。
+   */
+  private migrate(): void {
+    const add = (table: string, column: string, ddl: string): void => {
+      const columns = this.handle.prepare(`PRAGMA table_info(${table})`).all() as unknown as { name: string }[]
+      if (columns.some((row) => row.name === column)) return
+      this.handle.exec(`ALTER TABLE ${table} ADD COLUMN ${ddl}`)
+    }
+    add('effects', 'input_ref_json', 'input_ref_json TEXT')
+    add('receipts', 'input_ref_json', 'input_ref_json TEXT')
+    add('receipts', 'inputs_verified', 'inputs_verified INTEGER NOT NULL DEFAULT 0')
+    add('attentions', 'notified_at', 'notified_at TEXT')
+    add('attentions', 'delivered_at', 'delivered_at TEXT')
+    add('attentions', 'presented_at', 'presented_at TEXT')
+    add('notifications', 'state', "state TEXT NOT NULL DEFAULT 'queued'")
+    add('notifications', 'delivered_at', 'delivered_at TEXT')
+    add('notifications', 'presented_at', 'presented_at TEXT')
   }
 
   get file(): string {
@@ -476,11 +510,12 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
   saveEffect(row: EffectRow): void {
     this.handle
       .prepare(
-        `INSERT INTO effects(effect_id, ticket_id, task_revision, assignment_id, attempt_id, kind, tool, args_json, state, created_at,
-           started_at, finished_at, detail)
-         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+        `INSERT INTO effects(effect_id, ticket_id, task_revision, assignment_id, attempt_id, kind, tool, args_json, input_ref_json,
+           state, created_at, started_at, finished_at, detail)
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(effect_id) DO UPDATE SET state = excluded.state, started_at = excluded.started_at,
-           finished_at = excluded.finished_at, detail = excluded.detail`,
+           finished_at = excluded.finished_at, detail = excluded.detail,
+           input_ref_json = COALESCE(effects.input_ref_json, excluded.input_ref_json)`,
       )
       .run(
         row.effect_id,
@@ -491,6 +526,7 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
         row.kind,
         row.tool,
         row.args_json,
+        row.input_ref_json,
         row.state,
         row.created_at,
         row.started_at,
@@ -520,8 +556,9 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
     this.handle
       .prepare(
         `INSERT INTO receipts(receipt_id, effect_id, attempt_id, ticket_id, task_revision, assignment_id, tool, ok, output_path,
-           output_sha256, bytes_written, bytes_read, started_at, finished_at, detail, needs_reconciliation)
-         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           output_sha256, bytes_written, bytes_read, started_at, finished_at, detail, needs_reconciliation,
+           input_ref_json, inputs_verified)
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         receipt.receiptId,
@@ -540,6 +577,8 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
         receipt.finishedAt,
         receipt.detail,
         receipt.needsReconciliation ? 1 : 0,
+        receipt.inputRef ? canonicalJson(receipt.inputRef) : null,
+        receipt.inputsVerified ? 1 : 0,
       )
   }
 
@@ -564,8 +603,8 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
     this.handle
       .prepare(
         `INSERT INTO attentions(attention_id, ticket_id, task_revision, assignment_id, decision_id, decision_key, question,
-           options_json, evidence_json, state, created_at, not_before, deadline, reason)
-         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           options_json, evidence_json, state, created_at, not_before, deadline, reason, notified_at, delivered_at, presented_at)
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         view.attentionId,
@@ -582,22 +621,39 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
         view.notBefore ?? null,
         view.deadline ?? null,
         reason,
+        view.notifiedAt ?? null,
+        view.deliveredAt ?? null,
+        view.presentedAt ?? null,
       )
   }
 
   updateAttention(
     attentionId: string,
-    patch: { state?: AttentionState; answeredAt?: string; answerOptionId?: string; answerLabel?: string },
+    patch: {
+      state?: AttentionState
+      answeredAt?: string
+      answerOptionId?: string
+      answerLabel?: string
+      notifiedAt?: string
+      deliveredAt?: string
+      presentedAt?: string
+    },
   ): void {
     const row = this.handle.prepare('SELECT * FROM attentions WHERE attention_id = ?').get(attentionId) as RawAttentionRow | undefined
     if (!row) return
     this.handle
-      .prepare('UPDATE attentions SET state = ?, answered_at = ?, answer_option_id = ?, answer_label = ? WHERE attention_id = ?')
+      .prepare(
+        `UPDATE attentions SET state = ?, answered_at = ?, answer_option_id = ?, answer_label = ?,
+           notified_at = ?, delivered_at = ?, presented_at = ? WHERE attention_id = ?`,
+      )
       .run(
         patch.state ?? row.state,
         patch.answeredAt ?? row.answered_at,
         patch.answerOptionId ?? row.answer_option_id,
         patch.answerLabel ?? row.answer_label,
+        patch.notifiedAt ?? row.notified_at,
+        patch.deliveredAt ?? row.delivered_at,
+        patch.presentedAt ?? row.presented_at,
         attentionId,
       )
   }
@@ -623,40 +679,47 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
     decisionId: string | null
     text: string
     createdAt: string
+    state: NotificationState
   }): void {
     this.handle
-      .prepare('INSERT INTO notifications(notification_id, ticket_id, attention_id, decision_id, text, created_at) VALUES(?, ?, ?, ?, ?, ?)')
-      .run(row.notificationId, row.ticketId, row.attentionId, row.decisionId, row.text, row.createdAt)
+      .prepare(
+        'INSERT INTO notifications(notification_id, ticket_id, attention_id, decision_id, text, created_at, state) VALUES(?, ?, ?, ?, ?, ?, ?)',
+      )
+      .run(row.notificationId, row.ticketId, row.attentionId, row.decisionId, row.text, row.createdAt, row.state)
   }
 
-  listNotifications(ticketId?: string): {
-    notificationId: string
-    ticketId: string
-    attentionId: string | null
-    decisionId: string | null
-    text: string
-    createdAt: string
-  }[] {
+  markNotification(notificationId: string, patch: { state: NotificationState; at: string }): void {
+    const row = this.handle.prepare('SELECT * FROM notifications WHERE notification_id = ?').get(notificationId) as
+      | RawNotificationRow
+      | undefined
+    if (!row) return
+    const deliveredAt =
+      patch.state === 'delivered' || patch.state === 'presented' ? (row.delivered_at ?? patch.at) : row.delivered_at
+    const presentedAt = patch.state === 'presented' ? (row.presented_at ?? patch.at) : row.presented_at
+    this.handle
+      .prepare('UPDATE notifications SET state = ?, delivered_at = ?, presented_at = ? WHERE notification_id = ?')
+      .run(patch.state, deliveredAt, presentedAt, notificationId)
+  }
+
+  getNotification(notificationId: string): NotificationReceipt | undefined {
+    const row = this.handle.prepare('SELECT * FROM notifications WHERE notification_id = ?').get(notificationId) as
+      | RawNotificationRow
+      | undefined
+    return row ? rowToNotification(row) : undefined
+  }
+
+  listNotificationReceipts(ticketId?: string): NotificationReceipt[] {
     const rows = (
       ticketId === undefined
         ? this.handle.prepare('SELECT * FROM notifications ORDER BY created_at, notification_id').all()
         : this.handle.prepare('SELECT * FROM notifications WHERE ticket_id = ? ORDER BY created_at, notification_id').all(ticketId)
-    ) as unknown as {
-      notification_id: string
-      ticket_id: string
-      attention_id: string | null
-      decision_id: string | null
-      text: string
-      created_at: string
-    }[]
-    return rows.map((row) => ({
-      notificationId: row.notification_id,
-      ticketId: row.ticket_id,
-      attentionId: row.attention_id,
-      decisionId: row.decision_id,
-      text: row.text,
-      createdAt: row.created_at,
-    }))
+    ) as unknown as RawNotificationRow[]
+    return rows.map(rowToNotification)
+  }
+
+  /** 兼容旧调用方：只读文本视图。可见性状态请用 listNotificationReceipts。 */
+  listNotifications(ticketId?: string): NotificationReceipt[] {
+    return this.listNotificationReceipts(ticketId)
   }
 
   countNotificationsSince(ticketId: string, sinceIso: string): number {
@@ -671,6 +734,20 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
       | { present: number }
       | undefined
     return Boolean(row)
+  }
+
+  hasDeliveredNotificationForAttention(attentionId: string): boolean {
+    const row = this.handle
+      .prepare("SELECT 1 AS present FROM notifications WHERE attention_id = ? AND state IN ('delivered','presented') LIMIT 1")
+      .get(attentionId) as { present: number } | undefined
+    return Boolean(row)
+  }
+
+  queuedNotifications(): NotificationReceipt[] {
+    const rows = this.handle
+      .prepare("SELECT * FROM notifications WHERE state = 'queued' ORDER BY created_at, notification_id")
+      .all() as unknown as RawNotificationRow[]
+    return rows.map(rowToNotification)
   }
 
   lastNotificationAt(ticketId: string): string | null {
@@ -790,6 +867,7 @@ export interface EffectRow {
   kind: string
   tool: string | null
   args_json: string | null
+  input_ref_json: string | null
   state: string
   created_at: string
   started_at: string | null
@@ -814,6 +892,8 @@ interface RawReceiptRow {
   finished_at: string
   detail: string
   needs_reconciliation: number
+  input_ref_json: string | null
+  inputs_verified: number
 }
 
 interface RawAttentionRow {
@@ -834,6 +914,21 @@ interface RawAttentionRow {
   not_before: string | null
   deadline: string | null
   reason: string
+  notified_at: string | null
+  delivered_at: string | null
+  presented_at: string | null
+}
+
+interface RawNotificationRow {
+  notification_id: string
+  ticket_id: string
+  attention_id: string | null
+  decision_id: string | null
+  text: string
+  created_at: string
+  state: string
+  delivered_at: string | null
+  presented_at: string | null
 }
 
 function rowToEvent(row: RawEventRow): FollowupEvent {
@@ -869,6 +964,23 @@ function rowToReceipt(row: RawReceiptRow): ToolReceipt {
     finishedAt: row.finished_at,
     detail: row.detail,
     needsReconciliation: row.needs_reconciliation === 1,
+    inputRef: row.input_ref_json ? (JSON.parse(row.input_ref_json) as ToolReceipt['inputRef']) : null,
+    inputsVerified: row.inputs_verified === 1,
+  }
+}
+
+function rowToNotification(row: RawNotificationRow): NotificationReceipt {
+  const state = (row.state ?? 'queued') as NotificationState
+  return {
+    notificationId: row.notification_id,
+    ticketId: row.ticket_id,
+    attentionId: row.attention_id,
+    decisionId: row.decision_id,
+    text: row.text,
+    state,
+    createdAt: row.created_at,
+    deliveredAt: row.delivered_at,
+    presentedAt: row.presented_at,
   }
 }
 
@@ -891,5 +1003,8 @@ function rowToAttention(row: RawAttentionRow): AttentionView {
       : {}),
     ...(row.not_before ? { notBefore: row.not_before } : {}),
     ...(row.deadline ? { deadline: row.deadline } : {}),
+    ...(row.notified_at ? { notifiedAt: row.notified_at } : {}),
+    ...(row.delivered_at ? { deliveredAt: row.delivered_at } : {}),
+    ...(row.presented_at ? { presentedAt: row.presented_at } : {}),
   }
 }

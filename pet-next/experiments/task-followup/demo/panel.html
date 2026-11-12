@@ -101,7 +101,7 @@
     </form>
     <div style="margin-top:8px"><button id="cancel">取消任务</button></div>
     <div class="hint" style="margin-top:14px">
-      本页只读 <code>/api/state</code>；回答与创建都经 runtime 持久化。
+      本页读取 <code>/api/state</code>，渲染出开放问题时调用 <code>/api/present</code> 产生呈现回执；回答与创建都经 runtime 持久化。
       静默时段与提醒额度来自显式配置，不从行为推断偏好。
     </div>
   </section>
@@ -129,6 +129,15 @@ async function refresh() {
   state.data = data;
   if (!state.selected && data.tasks.length) state.selected = data.tasks[0].ticketId;
   render();
+  // 真实呈现回执：只有页面实际渲染出开放问题，才向 runtime 声明“用户看到了”。
+  const selected = data.tasks.find((t) => t.ticketId === state.selected);
+  if (selected?.openAttention) {
+    await fetch('/api/present', {
+      method: 'POST',
+      headers: { 'content-type': 'application/json' },
+      body: JSON.stringify({ ticketId: state.selected }),
+    }).catch(() => undefined);
+  }
 }
 function render() {
   const data = state.data;

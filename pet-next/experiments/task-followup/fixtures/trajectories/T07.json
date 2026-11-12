@@ -10,7 +10,8 @@
     "reminderQuotaPerHour": 3,
     "minGapMs": 900000,
     "cooldownMs": 1800000,
-    "deadlineHour": 9
+    "deadlineHour": 9,
+    "timezone": "UTC"
   },
   "steps": [
     {
@@ -32,8 +33,7 @@
     },
     {
       "kind": "tick",
-      "minutes": 300,
-      "at": "2026-11-11T07:05:00.000Z"
+      "minutes": 300
     },
     {
       "kind": "answer",

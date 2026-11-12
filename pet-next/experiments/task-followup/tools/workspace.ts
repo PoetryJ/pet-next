@@ -5,11 +5,14 @@
  * 所有路径必须落在受控工作区内；写入用临时文件 + rename，产物带 SHA。
  * 结果由回执证明，不靠 worker 口头说“完成”。
  *
+ * R4.1：write_analysis 只读 runtime 核验过的不可变快照（内容 SHA = inputRef.resultFileSha），
+ * 并在回执里记录同一组输入身份；不再“验完再按可变路径重读”。
+ *
  * @module pet-next/experiments/task-followup/tools
  */
 import { existsSync, mkdirSync, readFileSync, renameSync, rmSync, statSync, writeFileSync } from 'node:fs'
 import { dirname, isAbsolute, join, relative, resolve } from 'node:path'
-import { sha256Bytes, stableId } from '../contracts.ts'
+import { canonicalJson, sha256Bytes, stableId } from '../contracts.ts'
 import type { ToolContext, ToolExecution, ToolName, ToolPort, ToolRequest, ToolReceipt } from '../contracts.ts'
 
 const MAX_READ_BYTES = 8 * 1024 * 1024
@@ -68,13 +71,23 @@ export class LocalTools implements ToolPort {
     } catch {
       jsonValid = false
     }
-    return this.success('inspect_artifact', context, startedAt, {
-      path: this.rel(path),
-      bytes: bytes.length,
-      sha256: sha,
-      jsonValid,
-      metrics: metricSummary,
-    }, null, null, bytes.length, `inspected ${this.rel(path)}`)
+    return this.success(
+      'inspect_artifact',
+      context,
+      startedAt,
+      {
+        path: this.rel(path),
+        bytes: bytes.length,
+        sha256: sha,
+        jsonValid,
+        metrics: metricSummary,
+      },
+      null,
+      null,
+      bytes.length,
+      `inspected ${this.rel(path)}`,
+      { inputsVerified: sha === context.inputRef.resultFileSha },
+    )
   }
 
   private compare(request: ToolRequest, context: ToolContext, startedAt: string): ToolExecution {
@@ -94,20 +107,45 @@ export class LocalTools implements ToolPort {
       const before = baselineMetrics[key] ?? 0
       delta[key] = Number(currentMetrics[key]) - Number(before)
     }
-    return this.success('compare_metrics', context, startedAt, {
-      currentPath: this.rel(currentPath),
-      baselinePath: this.rel(baselinePath),
-      delta,
-    }, null, null, currentBytes.length + baselineBytes.length, 'metrics compared')
+    return this.success(
+      'compare_metrics',
+      context,
+      startedAt,
+      {
+        currentPath: this.rel(currentPath),
+        baselinePath: this.rel(baselinePath),
+        delta,
+      },
+      null,
+      null,
+      currentBytes.length + baselineBytes.length,
+      'metrics compared',
+      { inputsVerified: sha256Bytes(currentBytes) === context.inputRef.resultFileSha },
+    )
   }
 
   private writeAnalysis(request: ToolRequest, context: ToolContext, startedAt: string): ToolExecution {
-    const resultPath = this.resolveSafe(String(request.args.resultPath ?? ''))
-    if (!existsSync(resultPath)) {
-      return this.failure('write_analysis', context, startedAt, `result file missing: ${this.rel(resultPath)}`, false, 0)
+    // 快照路径以 context 为准（runtime 派发时核验过）；args 里的同名字段仅作兼容。
+    const snapshotArg = String(request.args.resultSnapshotPath ?? context.resultSnapshotPath ?? '')
+    if (!snapshotArg) {
+      return this.failure('write_analysis', context, startedAt, 'missing verified input snapshot', false, 0)
     }
-    const bytes = this.readLimited(resultPath)
+    const snapshotPath = this.resolveSafe(snapshotArg)
+    if (!existsSync(snapshotPath)) {
+      return this.failure('write_analysis', context, startedAt, `input snapshot missing: ${this.rel(snapshotPath)}`, false, 0)
+    }
+    const bytes = this.readLimited(snapshotPath)
     const resultSha = sha256Bytes(bytes)
+    if (resultSha !== context.inputRef.resultFileSha) {
+      return this.failure(
+        'write_analysis',
+        context,
+        startedAt,
+        `input snapshot sha ${resultSha.slice(0, 12)} != expected ${context.inputRef.resultFileSha.slice(0, 12)}`,
+        false,
+        bytes.length,
+      )
+    }
     let parsed: {
       runId?: string
       revision?: number
@@ -122,6 +160,19 @@ export class LocalTools implements ToolPort {
     } catch (error) {
       return this.failure('write_analysis', context, startedAt, `result JSON invalid: ${(error as Error).message}`, false, bytes.length)
     }
+    if (parsed.runId !== undefined && parsed.runId !== context.inputRef.runId) {
+      return this.failure('write_analysis', context, startedAt, `runId ${String(parsed.runId)} != ${context.inputRef.runId}`, false, bytes.length)
+    }
+    if (parsed.revision !== undefined && Number(parsed.revision) !== context.inputRef.revision) {
+      return this.failure(
+        'write_analysis',
+        context,
+        startedAt,
+        `revision ${String(parsed.revision)} != ${context.inputRef.revision}`,
+        false,
+        bytes.length,
+      )
+    }
     const samples = Array.isArray(parsed.samples) ? parsed.samples : []
     const failed = samples.filter((sample) => sample && sample.pass === false)
     const clusters = new Map<string, number>()
@@ -129,12 +180,17 @@ export class LocalTools implements ToolPort {
       const key = (sample.note ?? 'unlabelled').split(':')[0]!.trim() || 'unlabelled'
       clusters.set(key, (clusters.get(key) ?? 0) + 1)
     }
+    const displayPath = context.inputRef.resultPath ?? this.rel(snapshotPath)
     const lines: string[] = []
-    lines.push(`# 失败样本分析（${parsed.runId ?? request.args.runId} r${parsed.revision ?? request.args.revision}）`)
+    lines.push(`# 失败样本分析（${parsed.runId ?? context.inputRef.runId} r${parsed.revision ?? context.inputRef.revision}）`)
     lines.push('')
     lines.push(`- 任务: ${context.ticketId}`)
-    lines.push(`- 结果文件: ${this.rel(resultPath)}`)
+    lines.push(`- 任务版本: r${context.inputRef.taskRevision}`)
+    lines.push(`- 结果文件: ${displayPath}`)
     lines.push(`- 结果文件 SHA256: ${resultSha}`)
+    lines.push(`- 结果 artifact: ${context.inputRef.artifactPath ?? 'none'}`)
+    lines.push(`- 结果 artifact SHA256: ${context.inputRef.artifactSha}`)
+    lines.push(`- 输入快照: ${this.rel(snapshotPath)}`)
     lines.push(`- 状态: ${parsed.status ?? 'unknown'}`)
     lines.push(`- 指标: total=${parsed.metrics?.total ?? '?'} passed=${parsed.metrics?.passed ?? '?'} failed=${parsed.metrics?.failed ?? '?'}`)
     lines.push(`- 样本数: ${samples.length}，失败样本: ${failed.length}`)
@@ -175,12 +231,20 @@ export class LocalTools implements ToolPort {
       'write_analysis',
       context,
       startedAt,
-      { outputPath: this.rel(outputPath), outputSha256: outSha, failedSamples: failed.length, clusters: Object.fromEntries(clusters) },
+      {
+        outputPath: this.rel(outputPath),
+        outputSha256: outSha,
+        failedSamples: failed.length,
+        clusters: Object.fromEntries(clusters),
+        inputRef: context.inputRef,
+        inputSnapshotPath: this.rel(snapshotPath),
+        resultFileSha: resultSha,
+      },
       this.rel(outputPath),
       outSha,
       bytes.length,
       `analysis written for ${failed.length} failing samples`,
-      outBytes,
+      { inputsVerified: true, bytesWritten: outBytes },
     )
   }
 
@@ -193,7 +257,7 @@ export class LocalTools implements ToolPort {
     outputSha256: string | null,
     bytesRead: number,
     detail: string,
-    bytesWritten = 0,
+    options: { readonly inputsVerified: boolean; readonly bytesWritten?: number },
   ): ToolExecution {
     const receipt: ToolReceipt = {
       receiptId: stableId('rcpt', context.effectId, tool, outputSha256 ?? 'none'),
@@ -206,12 +270,14 @@ export class LocalTools implements ToolPort {
       ok: true,
       outputPath,
       outputSha256,
-      bytesWritten,
+      bytesWritten: options.bytesWritten ?? 0,
       bytesRead,
       startedAt,
       finishedAt: context.now,
       detail,
       needsReconciliation: false,
+      inputRef: context.inputRef,
+      inputsVerified: options.inputsVerified,
     }
     return { receipt, payload }
   }
@@ -225,7 +291,7 @@ export class LocalTools implements ToolPort {
     bytesRead: number,
   ): ToolExecution {
     const receipt: ToolReceipt = {
-      receiptId: stableId('rcpt', context.effectId, tool, 'failed'),
+      receiptId: stableId('rcpt', context.effectId, tool, 'failed', detail),
       effectId: context.effectId,
       attemptId: context.attemptId,
       ticketId: context.ticketId,
@@ -241,6 +307,8 @@ export class LocalTools implements ToolPort {
       finishedAt: context.now,
       detail,
       needsReconciliation: unknownOutcome,
+      inputRef: context.inputRef,
+      inputsVerified: false,
     }
     return { receipt, payload: { error: detail, needsReconciliation: unknownOutcome } }
   }
@@ -294,5 +362,15 @@ export class LocalTools implements ToolPort {
   /** 保证父目录存在；seed/watch 共用。 */
   ensureParent(path: string): void {
     mkdirSync(dirname(path), { recursive: true })
+  }
+
+  /** 输入快照目录：runtime 写入，工具只读。 */
+  snapshotDir(): string {
+    return join(this.root, 'state', 'inputs')
+  }
+
+  /** 计算输入身份指纹，供日志与交付核对。 */
+  static inputFingerprint(input: unknown): string {
+    return sha256Bytes(Buffer.from(canonicalJson(input), 'utf8'))
   }
 }

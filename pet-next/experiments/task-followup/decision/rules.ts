@@ -15,9 +15,11 @@
  */
 import {
   DECISION_RULE_VERSION,
+  DEFAULT_TIMEZONE,
   configSha,
   isQuietAt,
   millisBetween,
+  nextZonedHour,
   quietEndsAt,
   stableId,
 } from '../contracts.ts'
@@ -43,6 +45,7 @@ export const FROZEN_CONFIG: PolicyConfig = {
   failureThreshold: 0.15,
   cooldownMs: 30 * 60_000,
   quiet: {
+    timezone: DEFAULT_TIMEZONE,
     fromHour: 23,
     toHour: 7,
     allowUrgent: false,
@@ -84,12 +87,9 @@ function writeAnalysisRequest(context: DecisionContext): ToolRequest {
   }
 }
 
-function deadlineAt(now: string, hour: number): string {
-  const date = new Date(now)
-  const deadline = new Date(date)
-  deadline.setHours(hour, 0, 0, 0)
-  if (deadline.getTime() <= date.getTime()) deadline.setDate(deadline.getDate() + 1)
-  return deadline.toISOString()
+/** 截止时刻按显式时区计算，不用宿主 getHours/setHours。 */
+function deadlineAt(now: string, hour: number, timeZone: string): string {
+  return nextZonedHour(now, hour, timeZone)
 }
 
 function sha8(sha: string | undefined): string {
@@ -112,7 +112,7 @@ function necessaryDecision(context: DecisionContext): NecessaryDecision | null {
       ],
       reasonCode: 'evidence_conflict',
       reasonText: '同一 revision 的证据内容冲突，需要具体选择',
-      deadline: deadlineAt(context.now, context.quiet.deadlineHour),
+      deadline: deadlineAt(context.now, context.quiet.deadlineHour, context.quiet.timezone),
     }
   }
   const last = task.diagnostics.at(-1) ?? ''
@@ -123,7 +123,7 @@ function necessaryDecision(context: DecisionContext): NecessaryDecision | null {
       options: [RETRY_OPTION, ACCEPT_NO_ANALYSIS],
       reasonCode: 'tool_failed',
       reasonText: '工具失败已记录，等待明确的下一步',
-      deadline: deadlineAt(context.now, context.quiet.deadlineHour),
+      deadline: deadlineAt(context.now, context.quiet.deadlineHour, context.quiet.timezone),
     }
   }
   const insufficient = task.goalCondition.insufficientStatuses.includes(result.status as 'succeeded' | 'failed' | 'partial')
@@ -134,7 +134,7 @@ function necessaryDecision(context: DecisionContext): NecessaryDecision | null {
       options: [ANALYZE_OPTION, ACCEPT_OPTION, WAIT_OPTION],
       reasonCode: 'insufficient_result',
       reasonText: '结果不足以完成目标，存在真实的下一步选择',
-      deadline: deadlineAt(context.now, context.quiet.deadlineHour),
+      deadline: deadlineAt(context.now, context.quiet.deadlineHour, context.quiet.timezone),
     }
   }
   return null

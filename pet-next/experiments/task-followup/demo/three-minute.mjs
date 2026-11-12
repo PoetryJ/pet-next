@@ -14,7 +14,9 @@ const HERE = dirname(fileURLToPath(import.meta.url))
 const RUN = resolve(HERE, '..', 'run.mjs')
 
 function runCli(args, env = {}) {
-  const result = spawnSync(process.execPath, [RUN, ...args], {
+  // 显式 UTC：演示不依赖宿主 TZ，也不靠改宿主 TZ 让断言变绿。
+  const full = [...args, '--timezone', 'UTC']
+  const result = spawnSync(process.execPath, [RUN, ...full], {
     encoding: 'utf8',
     env: { ...process.env, ...env },
     maxBuffer: 16 * 1024 * 1024,
@@ -78,9 +80,19 @@ export async function runDemo(workspaceArg) {
   assert(status.json.stage === 'awaiting_decision', 'stage=awaiting_decision persisted', status.json)
   assert(status.json.openAttention?.attentionId === attention.attentionId, 'same attention survives restart', status.json)
 
-  console.log('\n5) 新进程：用户选择“分析失败样本”，本地工具生成产物')
-  const answered = runCli(['answer', '--workspace', workspace, '--ticket', ticketId, '--option', 'analyze_failing'])
-  assert(answered.status === 0 && answered.json?.ok, 'answer accepted', answered)
+  console.log('\n5) 新进程：用户打开面板看到问题并选择“分析失败样本”，本地工具生成产物')
+  const answered = runCli([
+    'answer',
+    '--workspace',
+    workspace,
+    '--ticket',
+    ticketId,
+    '--option',
+    'analyze_failing',
+    '--panel',
+  ])
+  assert(answered.status === 0 && answered.json?.ok, 'answer accepted after panel presentation', answered)
+  assert(answered.json.visibility?.visible === true, 'answer cites a real presentation receipt', answered.json.visibility)
   assert(answered.json.task.status === 'completed', 'task completed only after receipt + goal check', answered.json.task)
   const analysis = answered.json.task.analysis
   assert(Boolean(analysis?.receiptId), 'analysis has a receipt', analysis)

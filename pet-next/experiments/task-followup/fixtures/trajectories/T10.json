@@ -32,8 +32,7 @@
     },
     {
       "kind": "tick",
-      "minutes": 5,
-      "at": "2026-11-11T08:18:00.000Z"
+      "minutes": 5
     },
     {
       "kind": "restoreResult",

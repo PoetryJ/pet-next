@@ -11,7 +11,7 @@
  */
 import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync } from 'node:fs'
 import { join, resolve } from 'node:path'
-import { sha256Hex, stableId } from '../contracts.ts'
+import { normalizeTimeZone, sha256Hex, stableId } from '../contracts.ts'
 import type {
   AttentionView,
   GoalCondition,
@@ -48,6 +48,8 @@ export interface Trajectory {
   readonly group: 'dev' | 'heldout'
   readonly name: string
   readonly clockStart: string
+  /** 显式 IANA 时区；缺省 UTC，绝不读宿主 TZ。 */
+  readonly timezone?: string
   readonly quiet?: QuietConfig
   readonly goal?: { readonly requireAnalysis?: boolean }
   readonly steps?: readonly TrajectoryStep[]
@@ -65,6 +67,10 @@ export interface RawRun {
   readonly schema: 'pet-followup-raw/v1'
   readonly policy: PolicyId
   readonly policyConfigSha: string
+  /** 运行配置指纹：规则 + quiet（含 timezone）。 */
+  readonly configSha: string
+  readonly quiet: QuietConfig
+  readonly timezone: string
   readonly trajectoryId: string
   readonly variantId: string
   readonly group: string
@@ -72,6 +78,8 @@ export interface RawRun {
   readonly workspace: string
   readonly clockStart: string
   readonly finalClock: string
+  /** 每步实际使用的时间机制（at / advance / none），用于旧/新时轴核对。 */
+  readonly timeTrace: readonly { readonly index: number; readonly kind: string; readonly mode: string; readonly at: string }[]
   readonly steps: readonly StepRecord[]
   readonly observations: readonly {
     readonly afterStep: number
@@ -94,14 +102,26 @@ export interface RawRun {
   readonly attentions: readonly {
     readonly attentionId: string
     readonly decisionKey: string
+    readonly reasonCode: string | null
     readonly question: string
     readonly taskRevision: number
     readonly createdAt: string
+    readonly deadline: string | null
     readonly state: string
     readonly answeredAt: string | null
     readonly answerOption: string | null
+    readonly notifiedAt: string | null
+    readonly deliveredAt: string | null
+    readonly presentedAt: string | null
   }[]
-  readonly notifications: readonly { readonly at: string; readonly attentionId: string | null; readonly text: string }[]
+  readonly notifications: readonly {
+    readonly at: string
+    readonly attentionId: string | null
+    readonly text: string
+    readonly state: string
+    readonly deliveredAt: string | null
+    readonly presentedAt: string | null
+  }[]
   readonly receipts: readonly {
     readonly receiptId: string
     readonly tool: string
@@ -120,12 +140,20 @@ export interface RawRun {
     readonly taskRevision: number
   }[]
   readonly driverLog: readonly { readonly at: string; readonly phase: string; readonly detail: string }[]
+  readonly asks: readonly {
+    readonly decisionKey: string
+    readonly reasonCode: string
+    readonly at: string
+    readonly outcome: string
+  }[]
   readonly final: {
     readonly status: TaskStatus
     readonly stage: TaskStage
     readonly taskRevision: number
     readonly completed: boolean
+    readonly validCompletion: boolean
     readonly completion: unknown
+    readonly completionCheck: unknown
     readonly diagnostics: readonly string[]
     readonly eventCursor: number
     readonly memoryCursor: number
@@ -133,11 +161,21 @@ export interface RawRun {
   }
   readonly metrics: {
     readonly completed: boolean
+    readonly validCompletion: boolean
     readonly notifications: number
+    readonly notificationsDelivered: number
+    readonly notificationsPresented: number
     readonly asks: number
     readonly askedKinds: readonly string[]
     readonly answeredAttentions: number
-    readonly wastedNotifications: number
+    /** 已回答但没有任何送达/呈现回执的 attention 数；正式运行必须为 0。 */
+    readonly answeredWithoutVisibility: number
+    readonly hiddenAnswersBlocked: number
+    readonly unansweredNotifications: number
+    readonly supersededNotifications: number
+    readonly uselessNotifications: number
+    readonly quotaBlocks: number
+    readonly hardQuotaViolations: number
     readonly staleAnswers: number
     readonly staleBlocks: number
     readonly staleProposals: number
@@ -183,7 +221,10 @@ export function runPolicyOverTrajectory(
   rmSync(workspace, { recursive: true, force: true })
   mkdirSync(workspace, { recursive: true })
   const dbPath = join(workspace, 'state', 'followup.sqlite')
-  const quiet = trajectory.quiet ?? FROZEN_CONFIG.quiet
+  const quiet: QuietConfig = {
+    ...(trajectory.quiet ?? FROZEN_CONFIG.quiet),
+    timezone: normalizeTimeZone(trajectory.quiet?.timezone ?? trajectory.timezone ?? FROZEN_CONFIG.quiet.timezone),
+  }
   const clock = new FakeClock(trajectory.clockStart)
   let proposeCalls = 0
   const onPropose = (): void => {
@@ -232,11 +273,26 @@ export function runPolicyOverTrajectory(
     ingestLog.push(label)
   }
 
+  let hiddenAnswersBlocked = 0
+  const timeTrace: { readonly index: number; readonly kind: string; readonly mode: string; readonly at: string }[] = []
   try {
     for (let index = 0; index < variant.steps.length; index += 1) {
       const step = variant.steps[index]!
-      if (step.at) clock.set(String(step.at))
+      // 每步只允许绝对 at 或相对 advance 之一；同时给两者直接失败并保留原始步骤。
+      const absolute = typeof step.at === 'string' && step.at.length > 0
+      const relative = step.kind === 'tick' && typeof step.minutes === 'number'
+      if (absolute && relative) {
+        throw new Error(
+          `time_conflict: step ${index} (${step.kind}) has both at=${String(step.at)} and minutes=${String(step.minutes)}`,
+        )
+      }
+      if (step.kind === 'tick' && !relative && !absolute) {
+        throw new Error(`time_missing: tick step ${index} needs at or minutes`)
+      }
+      if (relative) clock.advance(Number(step.minutes) * 60_000)
+      if (absolute) clock.set(String(step.at))
       const at = clock.now()
+      timeTrace.push({ index, kind: step.kind, mode: relative ? 'advance' : absolute ? 'at' : 'none', at })
       let detail = 'noop'
       switch (step.kind) {
         case 'delegate': {
@@ -304,6 +360,13 @@ export function runPolicyOverTrajectory(
           }
           break
         }
+        case 'panel': {
+          if (!ticketId) throw new Error('panel before delegate')
+          const presented = built.runtime.present(ticketId, at)
+          detail = `panel presented ${presented.presented.length} question(s)`
+          note(detail)
+          break
+        }
         case 'answer': {
           if (!ticketId) throw new Error('answer before delegate')
           const open = built.attention.listOpen(ticketId)[0]
@@ -311,6 +374,14 @@ export function runPolicyOverTrajectory(
           const attention = requested === 'stale' ? firstAttentionId : open?.attentionId
           if (!attention) {
             detail = 'no open attention to answer'
+            note(detail)
+            break
+          }
+          // 固定用户行为规则（四策略共享）：没送达/没呈现的问题，用户看不到，也就不回答。
+          const visibility = built.runtime.attentionVisibility(attention)
+          if (!visibility.visible) {
+            hiddenAnswersBlocked += 1
+            detail = `user_did_not_see_question (${visibility.queuedAt ? 'queued_only' : 'never_notified'})`
             note(detail)
             break
           }
@@ -334,8 +405,9 @@ export function runPolicyOverTrajectory(
           break
         }
         case 'tick': {
-          built.runtime.tick(Number(step.minutes ?? 10) * 60_000)
-          detail = `tick ${String(step.minutes ?? 10)}m`
+          // 时间推进已在上方完成；这里只处理到期工作并写 clock.advanced，避免双推进。
+          built.runtime.tick(0)
+          detail = relative ? `tick +${String(step.minutes)}m` : `tick to ${at}`
           break
         }
         case 'restart': {
@@ -375,6 +447,8 @@ export function runPolicyOverTrajectory(
         default:
           throw new Error(`unknown step kind ${step.kind}`)
       }
+      // 通道在每一步末尾把 queued 通知送达；四策略共用同一规则。
+      built.runtime.deliverPending(clock.now())
       steps.push({ index, kind: step.kind, at, detail })
       const task = ticketId ? built.runtime.getTask(ticketId) : null
       const open = ticketId ? built.attention.listOpen(ticketId)[0] : undefined
@@ -403,13 +477,39 @@ export function runPolicyOverTrajectory(
       : []
     const asks = proposals.filter((row) => row.kind === 'ask_user' && row.outcome !== 'invalidated')
     const askedKinds = [...new Set(asks.map((row) => row.reason_code))].sort()
+    const reasonByKey = new Map(asks.map((row) => [row.decision_key, row.reason_code]))
     const answered = attentions.filter((row) => row.state === 'answered')
     const attentionState = new Map(attentions.map((row) => [row.attentionId, row.state]))
-    const wasted = notifications.filter((row) => row.attentionId && attentionState.get(row.attentionId) !== 'answered')
+    const delivered = notifications.filter((row) => row.state === 'delivered' || row.state === 'presented')
+    const presentedNotifications = notifications.filter((row) => row.state === 'presented')
+    const unanswered = delivered.filter((row) => row.attentionId && attentionState.get(row.attentionId) !== 'answered')
+    const superseded = delivered.filter((row) => row.attentionId && attentionState.get(row.attentionId) === 'superseded')
+    // “实际无用提醒”的显式定义：已送达、未获回答、且同 decisionKey 在之后又被重新提问
+    // （即这条提醒在用户行动前就被替换）。这是代理指标，不等同于“未回答”。
+    const useless = superseded.filter((row) => {
+      if (!row.attentionId) return false
+      const view = attentions.find((item) => item.attentionId === row.attentionId)
+      if (!view) return false
+      return attentions.some(
+        (other) =>
+          other.attentionId !== view.attentionId &&
+          other.decisionKey === view.decisionKey &&
+          Date.parse(other.createdAt) >= Date.parse(view.createdAt),
+      )
+    })
     const firstNotification = notifications
       .filter((row) => row.attentionId)
       .map((row) => row.createdAt)
       .sort()[0]
+    const quotaBuckets = new Map<string, number>()
+    for (const row of delivered) {
+      const bucket = `${row.ticketId}:${Math.floor(Date.parse(row.createdAt) / 3_600_000)}`
+      quotaBuckets.set(bucket, (quotaBuckets.get(bucket) ?? 0) + 1)
+    }
+    const hardQuotaViolations = [...quotaBuckets.values()].filter((count) => count > quiet.reminderQuotaPerHour).length
+    const quotaBlocks = driverLog.filter(
+      (row) => row.phase === 'proposal.ask_user' && String(row.detail_json).includes('quota_exceeded'),
+    ).length
     const staleAnswers = driverLog.filter((row) => row.phase === 'attention.stale_answer').length
     const staleBlocks = driverLog.filter((row) => row.phase === 'report.blocked' && String(row.detail_json).includes('stale_assignment')).length
     const staleProposals = driverLog.filter(
@@ -422,11 +522,16 @@ export function runPolicyOverTrajectory(
     const duplicateEffects = toolEffects.length - new Set(toolEffects.map((effect) => `${effect.tool}:${effect.task_revision}`)).size
     const ioRead = receipts.reduce((sum, receipt) => sum + receipt.bytesRead, 0)
     const ioWritten = receipts.reduce((sum, receipt) => sum + receipt.bytesWritten, 0)
+    const check = task ? built.runtime.completionCheck(task) : null
+    const validCompletion = Boolean(task?.status === 'completed' && check?.ok)
 
     return {
       schema: 'pet-followup-raw/v1',
       policy,
       policyConfigSha: built.decision.configSha,
+      configSha: built.configSha,
+      quiet,
+      timezone: quiet.timezone,
       trajectoryId: trajectory.id,
       variantId: variant.id,
       group: trajectory.group,
@@ -434,6 +539,7 @@ export function runPolicyOverTrajectory(
       workspace,
       clockStart: trajectory.clockStart,
       finalClock: clock.now(),
+      timeTrace,
       steps,
       observations,
       proposals: proposals.map((row) => ({
@@ -449,14 +555,26 @@ export function runPolicyOverTrajectory(
       attentions: attentions.map((row) => ({
         attentionId: row.attentionId,
         decisionKey: row.decisionKey,
+        reasonCode: reasonByKey.get(row.decisionKey) ?? null,
         question: row.question,
         taskRevision: row.taskRevision,
         createdAt: row.createdAt,
+        deadline: row.deadline ?? null,
         state: row.state,
         answeredAt: row.answeredAt ?? null,
         answerOption: row.answer?.optionId ?? null,
+        notifiedAt: row.notifiedAt ?? null,
+        deliveredAt: row.deliveredAt ?? null,
+        presentedAt: row.presentedAt ?? null,
       })),
-      notifications: notifications.map((row) => ({ at: row.createdAt, attentionId: row.attentionId ?? null, text: row.text })),
+      notifications: notifications.map((row) => ({
+        at: row.createdAt,
+        attentionId: row.attentionId ?? null,
+        text: row.text,
+        state: row.state,
+        deliveredAt: row.deliveredAt ?? null,
+        presentedAt: row.presentedAt ?? null,
+      })),
       receipts: receipts.map((receipt) => ({
         receiptId: receipt.receiptId,
         tool: receipt.tool,
@@ -474,13 +592,21 @@ export function runPolicyOverTrajectory(
         state: effect.state,
         taskRevision: effect.task_revision,
       })),
+      asks: asks.map((row) => ({
+        decisionKey: row.decision_key,
+        reasonCode: row.reason_code,
+        at: row.created_at,
+        outcome: row.outcome,
+      })),
       driverLog: driverLog.map((row) => ({ at: row.at, phase: row.phase, detail: row.detail_json })),
       final: {
         status: task?.status ?? 'active',
         stage: task?.stage ?? 'awaiting_result',
         taskRevision: task?.taskRevision ?? 0,
         completed: task?.status === 'completed',
+        validCompletion,
         completion: task?.completion ?? null,
+        completionCheck: check,
         diagnostics: task?.diagnostics ?? [],
         eventCursor: task?.eventCursor ?? 0,
         memoryCursor: task?.memoryCursor ?? 0,
@@ -488,11 +614,20 @@ export function runPolicyOverTrajectory(
       },
       metrics: {
         completed: task?.status === 'completed',
+        validCompletion,
         notifications: notifications.length,
+        notificationsDelivered: delivered.length,
+        notificationsPresented: presentedNotifications.length,
         asks: asks.length,
         askedKinds,
         answeredAttentions: answered.length,
-        wastedNotifications: wasted.length,
+        answeredWithoutVisibility: answered.filter((row) => !row.deliveredAt && !row.presentedAt).length,
+        hiddenAnswersBlocked,
+        unansweredNotifications: unanswered.length,
+        supersededNotifications: superseded.length,
+        uselessNotifications: useless.length,
+        quotaBlocks,
+        hardQuotaViolations,
         staleAnswers,
         staleBlocks,
         staleProposals,
