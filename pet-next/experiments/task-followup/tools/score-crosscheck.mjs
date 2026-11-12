@@ -162,6 +162,7 @@ const report = {
   summaryPath,
   external: externalPath ? { path: externalPath, checks: external?.checks ?? null, failed: external?.failed ?? null } : null,
   runs: runs.length,
+  chains: runs,
   recomputed,
   diffs,
   ok: diffs.length === 0,
