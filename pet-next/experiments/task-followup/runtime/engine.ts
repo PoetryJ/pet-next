@@ -944,14 +944,12 @@ export class FollowupRuntime {
     }
     const last = this.db.listProposals(task.ticketId).at(-1)
     if (last && last.outcome === 'recorded' && last.kind === 'defer' && last.not_before) {
-      // 重复的 defer 会被提案层去重（不新增行）。如果这条决定刚刚触发过，
-      // 到期时间必须前移，否则会立刻再次到期形成忙循环；否则沿用提案给出的 notBefore。
-      const previous = this.db.latestWakeJob(task.ticketId, 'defer', last.decision_id ?? null)
-      const floor =
-        previous && previous.status !== 'scheduled'
-          ? new Date(Date.parse(previous.updatedAt) + this.wakeAfterMs).toISOString()
-          : null
-      const dueAt = floor && floor > last.not_before ? floor : last.not_before
+      // 已有且仍在未来的 scheduled job 就沿用（重启不改变原到期时间）。
+      const pending = this.db.findWakeJob(task.ticketId, 'defer', last.decision_id ?? null)
+      if (pending && pending.status === 'scheduled' && pending.dueAt > now) return pending
+      // 重复的 defer 会被提案层去重（不新增行）；到期时间必须前移，否则会忙循环。
+      const floor = new Date(Date.parse(now) + this.wakeAfterMs).toISOString()
+      const dueAt = last.not_before > floor ? last.not_before : floor
       return this.scheduler.schedule({
         ...base,
         reason: 'defer',
