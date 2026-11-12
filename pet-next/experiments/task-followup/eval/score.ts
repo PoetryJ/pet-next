@@ -68,6 +68,7 @@ interface RawLike {
     readonly uselessNotifications?: number
     readonly quotaBlocks?: number
     readonly hardQuotaViolations?: number
+    readonly deadlineMissed?: boolean
     readonly staleAnswers: number
     readonly staleBlocks: number
     readonly staleProposals: number
@@ -112,6 +113,8 @@ export interface PolicyScore {
   readonly goldReferenceOverBudgetRuns: number
   readonly answeredWithoutVisibility: number
   readonly hiddenAnswersBlocked: number
+  /** 未完成且必要问题 deadline 已过的 run 数。 */
+  readonly unfinishedBeforeDeadline: number
   readonly staleAnswers: number
   readonly staleProposals: number
   readonly staleBlocks: number
@@ -149,6 +152,8 @@ const METRIC_DEFINITIONS = {
   requiredVisible: 'requiredProduced 中，对应 attention 有 deliveredAt 或 presentedAt 的项数；隐藏问题不算触达。',
   requiredAnswered: 'requiredVisible 中，对应 attention 状态为 answered 的项数。',
   answeredWithoutVisibility: '已回答但无送达/呈现回执的 attention 数；正式运行必须为 0。',
+  unfinishedBeforeDeadline: '最终未完成、且至少一个问题的 deadline 已过的 run 数。',
+  notificationChannel: '评估中的 delivered 由本地 fake channel 在每步末尾自动送达，属模拟通道，不代表真实系统通知。',
   unansweredNotifications: '已送达但对应 attention 未被回答的通知数（代理指标，不等于无用打扰）。',
   supersededNotifications: '已送达但对应 attention 被替换的通知数（代理指标）。',
   uselessNotifications:
@@ -223,6 +228,7 @@ function scorePolicy(policy: PolicyId, runs: readonly { raw: RawLike; gold?: Gol
   let overBudget = 0
   let answeredWithoutVisibility = 0
   let hiddenAnswersBlocked = 0
+  let unfinishedBeforeDeadline = 0
   let staleAnswers = 0
   let staleProposals = 0
   let staleBlocks = 0
@@ -248,6 +254,7 @@ function scorePolicy(policy: PolicyId, runs: readonly { raw: RawLike; gold?: Gol
     hardQuotaViolations += raw.metrics.hardQuotaViolations ?? 0
     answeredWithoutVisibility += raw.metrics.answeredWithoutVisibility ?? 0
     hiddenAnswersBlocked += raw.metrics.hiddenAnswersBlocked ?? 0
+    if (raw.metrics.deadlineMissed) unfinishedBeforeDeadline += 1
     staleAnswers += raw.metrics.staleAnswers
     staleProposals += raw.metrics.staleProposals
     staleBlocks += raw.metrics.staleBlocks
@@ -310,6 +317,7 @@ function scorePolicy(policy: PolicyId, runs: readonly { raw: RawLike; gold?: Gol
     goldReferenceOverBudgetRuns: overBudget,
     answeredWithoutVisibility,
     hiddenAnswersBlocked,
+    unfinishedBeforeDeadline,
     staleAnswers,
     staleProposals,
     staleBlocks,

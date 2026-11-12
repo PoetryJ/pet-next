@@ -23,6 +23,7 @@ interface Raw {
     readonly decisionKey: string
     readonly state: string
     readonly createdAt: string
+    readonly deadline?: string | null
     readonly deliveredAt: string | null
     readonly presentedAt: string | null
   }[]
@@ -35,6 +36,7 @@ interface Raw {
   readonly receipts: readonly { readonly tool: string; readonly ok: boolean; readonly bytesRead: number; readonly bytesWritten: number }[]
   readonly effects: readonly { readonly kind: string; readonly tool: string | null; readonly taskRevision: number }[]
   readonly driverLog: readonly { readonly phase: string; readonly detail?: string }[]
+  readonly finalClock?: string
   readonly final: {
     readonly status: string
     readonly upstreamOutcome: string | null
@@ -86,6 +88,11 @@ export function reveal(raw: Raw): Revealed {
     firstArtifact && firstNotification ? Math.max(0, Date.parse(firstNotification) - Date.parse(firstArtifact.at)) : null
   const checkOk = raw.final.completionCheck?.ok === true
   const validCompletion = raw.final.status === 'completed' && checkOk
+  const deadlineMissed =
+    raw.final.status !== 'completed' &&
+    raw.attentions.some(
+      (attention) => Boolean(attention.deadline) && Date.parse(String(attention.deadline)) < Date.parse(String(raw.finalClock)),
+    )
   const hiddenAnswersBlocked = raw.steps.filter(
     (step) => step.kind === 'answer' && String(step.detail ?? '').startsWith('user_did_not_see_question'),
   ).length
@@ -104,6 +111,7 @@ export function reveal(raw: Raw): Revealed {
     supersededNotifications: superseded.length,
     uselessNotifications: useless.length,
     hardQuotaViolations,
+    deadlineMissed,
     staleAnswers: raw.driverLog.filter((entry) => entry.phase === 'attention.stale_answer').length,
     staleProposals: raw.driverLog.filter((entry) => entry.phase.startsWith('proposal.rejected') || entry.phase === 'proposal.notify_blocked').length,
     ioBytesRead: raw.receipts.reduce((sum, receipt) => sum + receipt.bytesRead, 0),
@@ -126,6 +134,7 @@ export function reveal(raw: Raw): Revealed {
     check('supersededNotifications', computed.supersededNotifications, raw.metrics.supersededNotifications),
     check('uselessNotifications', computed.uselessNotifications, raw.metrics.uselessNotifications),
     check('hardQuotaViolations', computed.hardQuotaViolations, raw.metrics.hardQuotaViolations),
+    check('deadlineMissed', computed.deadlineMissed, raw.metrics.deadlineMissed),
     check('staleAnswers', computed.staleAnswers, raw.metrics.staleAnswers),
     check('ioBytesRead', computed.ioBytesRead, raw.metrics.ioBytesRead),
     check('ioBytesWritten', computed.ioBytesWritten, raw.metrics.ioBytesWritten),

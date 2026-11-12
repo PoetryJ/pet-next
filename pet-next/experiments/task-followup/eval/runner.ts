@@ -176,6 +176,8 @@ export interface RawRun {
     readonly uselessNotifications: number
     readonly quotaBlocks: number
     readonly hardQuotaViolations: number
+    /** 未完成且至少一个必要问题的 deadline 已在最终时钟前过期。 */
+    readonly deadlineMissed: boolean
     readonly staleAnswers: number
     readonly staleBlocks: number
     readonly staleProposals: number
@@ -524,6 +526,10 @@ export function runPolicyOverTrajectory(
     const ioWritten = receipts.reduce((sum, receipt) => sum + receipt.bytesWritten, 0)
     const check = task ? built.runtime.completionCheck(task) : null
     const validCompletion = Boolean(task?.status === 'completed' && check?.ok)
+    // “截止前未完成”：最终未完成，且至少一个问题的 deadline 已过。
+    const deadlineMissed =
+      task?.status !== 'completed' &&
+      attentions.some((row) => Boolean(row.deadline) && Date.parse(String(row.deadline)) < Date.parse(clock.now()))
 
     return {
       schema: 'pet-followup-raw/v1',
@@ -628,6 +634,7 @@ export function runPolicyOverTrajectory(
         uselessNotifications: useless.length,
         quotaBlocks,
         hardQuotaViolations,
+        deadlineMissed,
         staleAnswers,
         staleBlocks,
         staleProposals,
