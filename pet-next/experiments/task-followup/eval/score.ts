@@ -232,6 +232,9 @@ export function scoreAll(rawDir: string, goldDir: string): ScoreSummary {
   return summary
 }
 
+const isId = (value: unknown): value is string => typeof value === 'string' && value.trim().length > 0
+const isRevision = (value: unknown): value is number => typeof value === 'number' && Number.isInteger(value) && value > 0
+
 /**
  * 当前有效问题实例：按 (taskRevision, at, decisionId) 取最新一条未被撤销的 ask；
  * 再用 decisionId 精确连接 attention，并校验 ticket/版本/派工身份。
@@ -254,14 +257,23 @@ function effectiveInstance(
         String(a.decisionId ?? '').localeCompare(String(b.decisionId ?? '')),
     )
     .at(-1)!
-  if (!ask.decisionId) return { status: 'unmatched', reason: 'ask_identity_missing' }
+  // 两侧身份必须先各自“存在且类型合法”，再比较值。
+  // 双方都缺字段时，空字符串/undefined 的相等不算匹配（G0）。
+  if (!isId(ask.decisionId)) return { status: 'unmatched', reason: 'ask_decisionId_missing' }
+  if (!isId(ask.ticketId)) return { status: 'unmatched', reason: 'ask_ticketId_missing' }
+  if (!isRevision(ask.taskRevision)) return { status: 'unmatched', reason: 'ask_taskRevision_invalid' }
+  if (!isId(ask.assignmentId)) return { status: 'unmatched', reason: 'ask_assignmentId_missing' }
   const candidates = raw.attentions.filter((item) => item.decisionId === ask.decisionId)
   if (candidates.length === 0) return { status: 'unmatched', reason: 'attention_missing' }
   if (candidates.length > 1) return { status: 'unmatched', reason: 'attention_ambiguous' }
   const attention = candidates[0]!
+  if (!isId(attention.decisionId)) return { status: 'unmatched', reason: 'attention_decisionId_missing' }
+  if (!isId(attention.ticketId)) return { status: 'unmatched', reason: 'attention_ticketId_missing' }
+  if (!isRevision(attention.taskRevision)) return { status: 'unmatched', reason: 'attention_taskRevision_invalid' }
+  if (!isId(attention.assignmentId)) return { status: 'unmatched', reason: 'attention_assignmentId_missing' }
   if (attention.taskRevision !== ask.taskRevision) return { status: 'unmatched', reason: 'revision_mismatch' }
-  if ((attention.ticketId ?? '') !== (ask.ticketId ?? '')) return { status: 'unmatched', reason: 'ticket_mismatch' }
-  if ((attention.assignmentId ?? '') !== (ask.assignmentId ?? '')) {
+  if (attention.ticketId !== ask.ticketId) return { status: 'unmatched', reason: 'ticket_mismatch' }
+  if (attention.assignmentId !== ask.assignmentId) {
     return { status: 'unmatched', reason: 'assignment_mismatch' }
   }
   const visible = Boolean(attention.deliveredAt || attention.presentedAt)

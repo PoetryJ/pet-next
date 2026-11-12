@@ -307,3 +307,89 @@ test('三个缺失量共用 requiredTotal 分母', () => {
   assert.equal(result.notVisible + result.requiredVisible, result.requiredDecisions)
   assert.equal(result.notAnswered + result.requiredAnswered, result.requiredDecisions)
 })
+
+// ---------------------------------------------------------------- G0 身份存在性/类型
+
+function withRaw(mutate: (raw: ReturnType<typeof buildRaw>) => void) {
+  const raw = buildRaw('P3', [ask({ decisionId: 'd1', taskRevision: 1 })], [
+    attention({
+      attentionId: 'a1',
+      decisionId: 'd1',
+      taskRevision: 1,
+      state: 'answered',
+      answeredAt: '2026-11-11T08:30:00.000Z',
+      answerOption: 'analyze_failing',
+      deliveredAt: '2026-11-11T08:10:00.000Z',
+    }),
+  ])
+  mutate(raw)
+  return score(raw)
+}
+
+function removeBoth(raw: ReturnType<typeof buildRaw>, field: string) {
+  delete (raw.asks[0] as unknown as Record<string, unknown>)[field]
+  delete (raw.attentions[0] as unknown as Record<string, unknown>)[field]
+}
+
+test('G0 对照：身份齐全时仍计可见/回答', () => {
+  const result = withRaw(() => {})
+  assert.equal(result.requiredVisible, 1)
+  assert.equal(result.requiredAnswered, 1)
+})
+
+test('G0 双方同时缺 ticketId 不算匹配', () => {
+  const result = withRaw((raw) => removeBoth(raw, 'ticketId'))
+  assert.equal(result.requiredVisible, 0)
+  assert.equal(result.requiredAnswered, 0)
+  assert.equal(result.notVisibleDetail[0]!.reason, 'ask_ticketId_missing')
+})
+
+test('G0 双方同时缺 taskRevision 不算匹配', () => {
+  const result = withRaw((raw) => removeBoth(raw, 'taskRevision'))
+  assert.equal(result.requiredVisible, 0)
+  assert.equal(result.notVisibleDetail[0]!.reason, 'ask_taskRevision_invalid')
+})
+
+test('G0 双方同时缺 assignmentId 不算匹配', () => {
+  const result = withRaw((raw) => removeBoth(raw, 'assignmentId'))
+  assert.equal(result.requiredVisible, 0)
+  assert.equal(result.notVisibleDetail[0]!.reason, 'ask_assignmentId_missing')
+})
+
+test('G0 空字符串与空白不算合法身份', () => {
+  for (const value of ['', '   ']) {
+    const result = withRaw((raw) => {
+      raw.asks[0]!.ticketId = value
+      raw.attentions[0]!.ticketId = value
+    })
+    assert.equal(result.requiredVisible, 0, `ticketId=${JSON.stringify(value)}`)
+    assert.equal(result.notVisibleDetail[0]!.reason, 'ask_ticketId_missing')
+  }
+  for (const value of ['', '   ']) {
+    const result = withRaw((raw) => {
+      raw.asks[0]!.assignmentId = value
+      raw.attentions[0]!.assignmentId = value
+    })
+    assert.equal(result.requiredVisible, 0)
+    assert.equal(result.notVisibleDetail[0]!.reason, 'ask_assignmentId_missing')
+  }
+})
+
+test('G0 非法 revision（0/负数/小数/字符串）不算合法身份', () => {
+  for (const value of [0, -1, 1.5, '1']) {
+    const result = withRaw((raw) => {
+      ;(raw.asks[0] as unknown as Record<string, unknown>).taskRevision = value
+      ;(raw.attentions[0] as unknown as Record<string, unknown>).taskRevision = value
+    })
+    assert.equal(result.requiredVisible, 0, `revision=${String(value)}`)
+    assert.equal(result.notVisibleDetail[0]!.reason, 'ask_taskRevision_invalid')
+  }
+})
+
+test('G0 只有一侧缺失也算不可证实', () => {
+  const result = withRaw((raw) => {
+    delete (raw.attentions[0] as unknown as Record<string, unknown>).ticketId
+  })
+  assert.equal(result.requiredVisible, 0)
+  assert.equal(result.notVisibleDetail[0]!.reason, 'attention_ticketId_missing')
+})
