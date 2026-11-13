@@ -10,6 +10,7 @@ import type { CapabilityMemoryStore } from '../memory/store.ts'
 import type { MemoryPacket } from '../memory/types.ts'
 import { makeRequest, parseModelJson } from '../model/protocol.ts'
 import type { ModelClient, ModelMeta, ModelRequest } from '../model/protocol.ts'
+import { decisionFrame } from './decision-frame.ts'
 
 export const REASON_CODES = [
   'waiting_external_info', 'needs_user_choice', 'ready_to_execute', 'no_current_action',
@@ -89,7 +90,8 @@ export interface AssessmentRecord {
   readonly failure: { readonly code: string; readonly detail: string } | null
 }
 
-export const ASSESS_SYSTEM = `你是桌宠的跟进介入判断器。根据任务快照与记忆包，决定此刻对用户做什么，只输出一个 JSON 对象。
+export const ASSESS_SYSTEM = `你是桌宠的跟进介入判断器。根据任务快照与记忆包，决定此刻对用户做什么，只输出紧凑 JSON，不要缩进。
+先读 decisionFrame：宿主已计算时间先后，past 的预计时间已经过去，不能把它再当未来更新排期。再结合当前结果摘要和最新用户要求判断原等待条件是否仍未满足。当前结果已补录完成、没有新修订排期且仍需用户选择时，提出具体选择。
 可选 kind：
 - ask：现在就问用户（必须给出具体问题，引用证据）。
 - wait：现在不打扰，等待某个预计到来的证据；必须给 waitFor（等什么）和 wakeAt（最晚重新判断时间，ISO8601 带时区）。
@@ -103,7 +105,7 @@ memory.context.slotResolution 说明决定所需属性：satisfied 表示已有�
 若记忆中有 active 的 waitPolicy / notificationPolicy / availability（例如“等某版本/更正出来再问”“共享屏幕期间只记进度”），而当前 latestResult 还不满足其条件，应 wait（wakeAt 取预计更正时间）而不是 ask；条件满足且确有需要用户在 options 中选择时才 ask。
 等待约定是有条件的，不是永久暂停：每次把约定中的等待对象与 snapshot.latestResult 对照。所等修订已经到达、用户已恢复可用，且没有新的预计结果时，旧的等待条件已经满足；不要再次等待同一个已到达结果，也不要为了等待而假设未来还会自动修订。recentTurns 中较新的更正/取消/可用状态必须与旧记忆一并核对。
 只有需要用户在 options 之间做选择、或用户明确要求确认时才 ask；正常进度、等待中的结果用 wait/digest/none，不要为了“确认一下”打扰用户。
-输出格式：{"kind":"...","reasonCode":"...","question":"或null","optionIds":[],"wakeAt":"或null","waitFor":"或null","deadlineAt":"或null","deliverAt":"或null","batchable":true或false,"evidenceTurnIds":["原话id"],"evidenceItemIds":["条目itemId"],"answerFacts":[{"key":"字段","value":标量,"sourceTurnIds":["原话id"]}]}
+必填字段：kind、reasonCode、evidenceTurnIds、evidenceItemIds。只输出实际使用的其他字段：ask需要question和optionIds；wait需要waitFor和wakeAt；digest需要deliverAt；有事实问题时输出answerFacts（[{key,value,sourceTurnIds}]）。null、空的可选数组和默认false可省略。
 所有时间（wakeAt/deadlineAt/deliverAt）必须是带时区的绝对 ISO8601，且晚于 snapshot.now。
 等待契约：kind=wait 时必须在 evidenceTurnIds/evidenceItemIds 引用说明“在等什么”的证据；wakeAt 只能取 (1) 被引用证据里写明的预计到达时间/截止时间，或 (2) snapshot.waitContract.boundedRecheckAt（不知道何时到时用它）；不要自己编时间（如“24 小时后”）。等待期间不要改成反复问用户。
 snapshot.latestResult 的 assignment 与 snapshot.assignmentId 不一致时，它是旧执行的结果，不能据此行动或提问。
@@ -136,7 +138,7 @@ export function modelView(packet: MemoryPacket) {
 }
 
 export function buildAssessRequest(snapshot: AssessSnapshot, packet: MemoryPacket, question?: AssessQuestion): ModelRequest {
-  const user = JSON.stringify({ snapshot, memory: modelView(packet), ...(question ? { question } : {}) })
+  const user = JSON.stringify({ decisionFrame: decisionFrame(snapshot, packet), snapshot, memory: modelView(packet), ...(question ? { question } : {}) })
   return makeRequest('assess', [
     { role: 'system', content: ASSESS_SYSTEM },
     { role: 'user', content: user },
