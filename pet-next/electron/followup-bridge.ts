@@ -13,6 +13,7 @@ import { spawn, type ChildProcess } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, readFileSync, type WriteStream } from 'node:fs';
 import path from 'node:path';
 import {
+  FOLLOWUP_RECORDING_ON_TOP_ENV,
   FOLLOWUP_OPEN_PANEL_CHANNEL,
   FOLLOWUP_OPEN_REPORT_CHANNEL,
   FOLLOWUP_PICK_DIR_CHANNEL,
@@ -222,6 +223,8 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
     });
   };
 
+  /** 录制辅助（仅 PET_FOLLOWUP_RECORDING_ON_TOP=1，默认关闭）：面板/报告窗置顶，避免录屏时被其他桌面窗口遮挡；不改变任何跟进语义。 */
+  const recordingOnTop = process.env[FOLLOWUP_RECORDING_ON_TOP_ENV] === '1';
   const openPanel = (ticketId?: string): void => {
     if (!connection) return;
     const query = new URLSearchParams({ token: connection.token, ...(ticketId ? { ticket: ticketId } : {}) });
@@ -236,7 +239,10 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
     panel = new BrowserWindow({
       width: 1180,
       height: 800,
+      x: 420,
+      y: 60,
       title: '跟进任务',
+      alwaysOnTop: recordingOnTop,
       autoHideMenuBar: true,
       backgroundColor: '#0f1217',
       webPreferences: { preload: options.preloadPath, contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
@@ -303,6 +309,9 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
     const viewer = new BrowserWindow({
       width: 860,
       height: 760,
+      x: 1000,
+      y: 140,
+      alwaysOnTop: recordingOnTop,
       title: `分析报告 · ${report.path ?? ''}`,
       autoHideMenuBar: true,
       backgroundColor: '#ffffff',

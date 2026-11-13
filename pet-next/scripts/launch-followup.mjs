@@ -73,6 +73,7 @@ export async function runLaunchFollowup({ env = process.env, log = console.log, 
   log(`${tag} Node ${process.versions.node}（${process.execPath}）`);
   log(`${tag} 工作区 ${workspace}`);
   log(`${tag} ${demoShortWait ? '演示短等待配置（RealClock）已开启' : '标准等待配置'}；判断为本地规则原型，不调用模型`);
+  if (env.PET_FOLLOWUP_RECORDING_ON_TOP === '1') log(`${tag} 录制辅助已开启：面板/报告窗置顶（仅录屏用，不改变跟进语义）`);
   log(`${tag} 启动桌宠（跟进预览）。关闭本窗口不会影响桌宠；从桌宠面板“完全退出”或在桌宠上按 Esc 退出。`);
   const child = spawn(electron, args, { stdio: 'inherit', env: childEnv });
   return await new Promise((resolve) => {
