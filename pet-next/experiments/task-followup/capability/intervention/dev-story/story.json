@@ -1,0 +1,20 @@
+{
+  "note": "公开开发故事（CAPABILITY-TASKS-GROK.txt 描述，措辞为本文件自拟，非评测集）。实现不得识别本文件 id 或固定句式。",
+  "entities": [
+    {"id": "task:A", "type": "task", "label": "任务A 实验"},
+    {"id": "task:B", "type": "task", "label": "任务B 实验"}
+  ],
+  "turns": [
+    {"id": "turn-001", "sessionId": "session-1", "seq": 1, "at": "2026-11-13T09:00:00+08:00", "role": "user", "text": "通常只在需要我决定的时候提醒我。", "taskIds": []},
+    {"id": "turn-002", "sessionId": "session-1", "seq": 2, "at": "2026-11-13T09:01:00+08:00", "role": "user", "text": "任务A先用基线v1跑实验。", "taskIds": ["task:A"]},
+    {"id": "turn-003", "sessionId": "session-1", "seq": 3, "at": "2026-11-13T09:02:00+08:00", "role": "user", "text": "任务B用基线v1。", "taskIds": ["task:B"]},
+    {"id": "turn-004", "sessionId": "session-2", "seq": 4, "at": "2026-11-13T10:30:00+08:00", "role": "user", "text": "A改用v2，旧v1别再用了。今天下午我开会，非紧急的事一起告诉我。", "taskIds": ["task:A"]},
+    {"id": "turn-005", "sessionId": "session-2", "seq": 5, "at": "2026-11-13T11:00:00+08:00", "role": "tool", "text": "A的v1结果：准确率0.71（旧配置运行）。", "taskIds": ["task:A"]},
+    {"id": "turn-006", "sessionId": "session-2", "seq": 6, "at": "2026-11-13T11:05:00+08:00", "role": "tool", "text": "B进度：已完成60%，无错误。", "taskIds": ["task:B"]},
+    {"id": "turn-007", "sessionId": "session-2", "seq": 7, "at": "2026-11-13T13:20:00+08:00", "role": "tool", "text": "A的v2结果：准确率0.64，低于v1，有3个样本失败。", "taskIds": ["task:A"]}
+  ],
+  "queries": [
+    {"text": "任务A现在该用哪个基线？v2结果出来了，要不要找我？", "taskId": "task:A", "asOfSeq": 7, "asOfAt": "2026-11-13T13:25:00+08:00", "intent": "current", "requestedFactKeys": ["baselineVersion"]},
+    {"text": "任务B现在用哪个基线？进度需要告诉我吗？", "taskId": "task:B", "asOfSeq": 7, "asOfAt": "2026-11-13T13:25:00+08:00", "intent": "current", "requestedFactKeys": ["baselineVersion"]}
+  ]
+}
