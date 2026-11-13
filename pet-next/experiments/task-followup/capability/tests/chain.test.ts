@@ -30,7 +30,7 @@ function extractionFixture(req: any): string {
   if (ids.has('turn-002')) items.push({ kind: 'commitment', key: 'baselineVersion', value: 'v1', statement: 'A 用基线 v1', scope: { level: 'task', id: 'task:A' }, validFrom: '2026-11-13T09:01:00+08:00', validUntil: null, supersedes: [], confidence: 0.9, status: 'active', quotes: [q('turn-002', '先用基线v1')] })
   if (ids.has('turn-003')) items.push({ kind: 'commitment', key: 'baselineVersion', value: 'v1', statement: 'B 用基线 v1', scope: { level: 'task', id: 'task:B' }, validFrom: '2026-11-13T09:02:00+08:00', validUntil: null, supersedes: [], confidence: 0.9, status: 'active', quotes: [q('turn-003', '任务B用基线v1')] })
   if (ids.has('turn-004')) {
-    const oldA = user.existingItems.find((i: any) => i.key === 'baselineVersion' && i.scope.id === 'task:A')
+    const oldA = user.existingItems.find((i: any) => i.key === 'runTarget' && i.scope.id === 'task:A')
     items.push({ kind: 'commitment', key: 'baselineVersion', value: 'v2', statement: 'A 改用 v2', scope: { level: 'task', id: 'task:A' }, validFrom: '2026-11-13T10:30:00+08:00', validUntil: null, supersedes: oldA ? [oldA.itemId] : [], confidence: 0.9, status: 'active', quotes: [q('turn-004', 'A改用v2，旧v1别再用了')] })
     items.push({ kind: 'preference', key: 'nonUrgentDelivery', value: 'batch', statement: '今天下午开会，非紧急合并告知', scope: { level: 'global', id: null }, validFrom: '2026-11-13T10:30:00+08:00', validUntil: '2026-11-13T18:00:00+08:00', supersedes: [], confidence: 0.8, status: 'active', quotes: [q('turn-004', '今天下午我开会，非紧急的事一起告诉我')] })
   }
@@ -81,7 +81,7 @@ test('原话持久化 → 抽取 → 读取：A 改口只影响 A，B 仍为 v1�
     assert.ok(!hist.evidenceRefs.some((r) => r.seq >= 4))
     // 临时偏好过期
     const evening = read(again, 'task:A', '2026-11-13T19:00:00+08:00')
-    assert.ok(!evening.preferences.some((p) => p.key === 'nonUrgentDelivery'))
+    assert.ok(!evening.preferences.some((p) => p.key === 'other.nonUrgentDelivery'))
     again.close()
   } finally {
     rmSync(dir, { recursive: true, force: true })
@@ -102,40 +102,50 @@ test('抽取 guard：非逐字引用拒绝；助手复述不能成为用户偏�
       { kind: 'fact', key: 'ownerId', value: '丙', statement: '', scope: { level: 'task', id: 'task:X' }, validFrom: null, validUntil: null, supersedes: [], confidence: 1, status: 'active', quotes: [{ turnId: 'u1', start: 0, end: 3, text: '交给丙' }] },
       { kind: 'preference', key: 'reportFrequency', value: 'hourly', statement: '', scope: { level: 'task', id: 'task:X' }, validFrom: null, validUntil: null, supersedes: [], confidence: 1, status: 'active', quotes: [{ turnId: 'a1', start: 1, end: 9, text: '喜欢每小时汇报' }] },
     ] })
-    const old = user.existingItems.find((i: any) => i.key === 'ownerId')
+    const old = store.items().find((i) => i.key === 'other.ownerId')! // existingItems 只给本批作用域；跨任务 id 由夹具直接给出，检验 guard
     return JSON.stringify({ items: [
-      { kind: 'fact', key: 'ownerId', value: '乙', statement: '', scope: { level: 'task', id: 'task:Y' }, validFrom: null, validUntil: null, supersedes: [old.itemId], confidence: 0.5, status: 'active', quotes: [{ turnId: 'u2', start: 0, end: 7, text: 'Y任务交给乙' }] },
-      { kind: 'fact', key: 'ownerId', value: '乙', statement: '', scope: { level: 'task', id: 'task:Y' }, validFrom: null, validUntil: null, supersedes: [], confidence: 0.5, status: 'hypothetical', quotes: [{ turnId: 'u2', start: 2, end: 9, text: 'Y任务交给乙' }] },
+      { kind: 'fact', key: 'ownerId', value: '乙', statement: '', scope: { level: 'task', id: 'task:Y' }, validFrom: null, validUntil: null, supersedes: [old.itemId], confidence: 0.5, status: 'active', quotes: [{ turnId: 'u3', start: 0, end: 7, text: 'Y任务交给乙' }] },
+      { kind: 'fact', key: 'ownerId', value: '乙', statement: '', scope: { level: 'task', id: 'task:Y' }, validFrom: null, validUntil: null, supersedes: [], confidence: 0.5, status: 'hypothetical', quotes: [{ turnId: 'u3', start: 2, end: 9, text: 'Y任务交给乙' }] },
     ] })
   })
   const r1 = await extractPending(store, client, { entities: [], now: '2026-11-13T09:01:30+08:00' })
   // u1/a1 第一轮，u2 也在第一轮里（未抽取的原话都会发送）；为制造两轮，先撤回再测：这里直接检查第一轮
   assert.equal(r1.status, 'applied')
   assert.deepEqual(r1.report!.rejected.map((x) => x.reason), ['quote_not_verbatim:u1'])
-  const pref = r1.report!.accepted.find((i) => i.key === 'reportFrequency')!
+  const pref = r1.report!.accepted.find((i) => i.key === 'other.reportFrequency')!
   assert.equal(pref.authority, 'assistant')
   assert.equal(pref.status, 'inferred')
-  const owner = r1.report!.accepted.find((i) => i.key === 'ownerId')!
+  const owner = r1.report!.accepted.find((i) => i.key === 'other.ownerId')!
   assert.ok(owner.checks.some((c) => c.startsWith('quote_relocated')), 'start/end 错但文本唯一时重定位并记录')
   // 第二轮：新增原话
   store.appendTurn({ turnId: 'u3', sessionId: 's', seq: 4, at: '2026-11-13T09:03:00+08:00', role: 'user', text: '假如Y任务交给乙会怎样？再问一次。', taskIds: ['task:Y'] })
   const r2 = await extractPending(store, client, { entities: [], now: '2026-11-13T09:03:30+08:00' })
   assert.equal(r2.status, 'applied')
-  // r2 引用 u2（已在上一批）→ 记录 quote_outside_batch；跨任务 supersede → conflict
+  // 跨任务 supersede → conflict
   const cross = r2.report!.accepted[0]!
   assert.equal(cross.status, 'conflict')
   assert.ok(cross.checks.some((c) => c.startsWith('supersede_cross_scope')))
+  // 只引用旧批次原话的条目（重复抽取）被拒绝
+  const reClient = new FixtureClient(() => JSON.stringify({ items: [{ kind: 'fact', key: 'ownerId', value: '甲', statement: '', scope: { level: 'task', id: 'task:X' }, validFrom: null, validUntil: null, supersedes: [], confidence: 1, status: 'active', quotes: [{ turnId: 'u1', start: 1, end: 4, text: '任务交' }] }] }))
+  store.appendTurn({ turnId: 'u4', sessionId: 's', seq: 5, at: '2026-11-13T09:04:00+08:00', role: 'user', text: '好的。', taskIds: ['task:X'] })
+  const r3 = await extractPending(store, reClient, { entities: [], now: '2026-11-13T09:04:30+08:00' })
+  assert.deepEqual(r3.report!.rejected.map((x) => x.reason), ['all_quotes_outside_batch'])
   const packetX = readForDecision(store, { taskId: 'task:X', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '负责人', requiredSlots: ['ownerId'], budget })
   assert.deepEqual(packetX.currentFacts.map((f) => f.value), ['甲'], 'X 不被 Y 的假设/冲突改写')
   const packetY = readForDecision(store, { taskId: 'task:Y', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '负责人', requiredSlots: ['ownerId'], budget })
-  assert.deepEqual(packetY.missing, ['ownerId'])
+  // u2 没有被任何接受条目引用、模型也没声明 no_relevant_fact → 未覆盖，原话保留在 recentTurns；槽位是 unresolved（抽取待定）而不是“用户没给”
+  assert.deepEqual(packetY.missing, [])
+  assert.equal(packetY.context.slotResolution[0]!.status, 'unresolved')
+  assert.ok(packetY.context.slotResolution[0]!.via.includes('unextracted_turns'))
+  assert.ok(packetY.currentFacts.every((f) => f.value !== '乙'), '假设/冲突的乙不作为当前事实')
   assert.ok(packetY.conflicts.length >= 1)
   assert.ok(packetY.context.diagnostics.some((d) => d.startsWith('hypothetical_not_actionable')))
   // 撤回原话：依赖它的条目不再出现
   store.retractTurn('u1', '2026-11-13T09:30:00+08:00', 'user_deleted')
   const afterRetract = readForDecision(store, { taskId: 'task:X', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '负责人', requiredSlots: ['ownerId'], budget })
   assert.deepEqual(afterRetract.currentFacts, [])
-  assert.deepEqual(afterRetract.missing, ['ownerId'])
+  assert.notEqual(afterRetract.context.slotResolution[0]!.status, 'satisfied', '撤回后不再满足')
+  assert.ok(afterRetract.context.recentTurns.every((r) => r.turnId !== 'u1'), '撤回的原话不再作为未覆盖原话出现')
   store.close()
 })
 
@@ -248,4 +258,23 @@ test('介入：wait 持久化且重判不能后推；A/B 合并通知各自保�
   } finally {
     rmSync(dir, { recursive: true, force: true })
   }
+})
+
+test('槽位映射：别名 key 落到共享属性；把任务名写进 key 的条目不当缺失，而是 unresolved 交给 assessment', async () => {
+  const store = new CapabilityMemoryStore(':memory:')
+  store.appendTurn({ turnId: 'p1', sessionId: 's', seq: 1, at: '2026-11-13T09:00:00+08:00', role: 'user', text: '任务P用基线v3。', taskIds: ['task:P'] })
+  store.appendTurn({ turnId: 'q1', sessionId: 's', seq: 2, at: '2026-11-13T09:01:00+08:00', role: 'user', text: '任务Q的样本数是64。', taskIds: ['task:Q'] })
+  const client = new FixtureClient(() => JSON.stringify({ items: [
+    { kind: 'commitment', key: 'taskP', value: 'v3', statement: 'P 用基线 v3', scope: { level: 'task', id: 'task:P' }, validFrom: null, validUntil: null, supersedes: [], confidence: 0.9, status: 'active', quotes: [{ turnId: 'p1', start: 0, end: 0, text: '用基线v3' }] },
+    { kind: 'commitment', key: 'sampleCount', value: 64, statement: 'Q 样本数 64', scope: { level: 'task', id: 'task:Q' }, validFrom: null, validUntil: null, supersedes: [], confidence: 0.9, status: 'active', quotes: [{ turnId: 'q1', start: 0, end: 0, text: '样本数是64' }] },
+  ] }))
+  const r = await extractPending(store, client, { entities: [], now: '2026-11-13T09:02:00+08:00' })
+  assert.deepEqual(r.report!.accepted.map((i) => i.key), ['other.taskP', 'runTarget'])
+  const q = readForDecision(store, { taskId: 'task:Q', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '样本数', requiredSlots: ['baselineVersion'], budget })
+  assert.deepEqual(q.context.slotResolution.map((x) => [x.slot, x.key, x.status, x.via]), [['baselineVersion', 'runTarget', 'satisfied', ['attribute']]])
+  const p = readForDecision(store, { taskId: 'task:P', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '基线', requiredSlots: ['baselineVersion'], budget })
+  assert.deepEqual(p.missing, [], '记住了但 key 不同名：不是 missing')
+  assert.equal(p.context.slotResolution[0]!.status, 'unresolved')
+  assert.ok(p.currentFacts.concat(p.commitments).some((i) => i.key === 'other.taskP'), '候选条目随包给出')
+  store.close()
 })
