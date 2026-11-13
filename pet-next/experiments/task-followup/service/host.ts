@@ -558,6 +558,7 @@ export async function runHost(options: HostOptions): Promise<number> {
           memoryCursor: row.memory_cursor,
           round: row.round,
           errorCode: row.error_code,
+          errorDetail: row.error_detail,
           preGuard: row.pre_guard_json ? JSON.parse(row.pre_guard_json) : null,
           postGuard: row.post_guard_json ? JSON.parse(row.post_guard_json) : null,
           raw: row.raw_json ? JSON.parse(row.raw_json) : null,
