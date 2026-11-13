@@ -64,7 +64,7 @@
 <body>
 <header>
   <h1>跟进任务</h1>
-  <span class="chip" title="判断由本地固定规则完成，不是模型理解，也不理解任意自然语言目标">本地规则原型 · 不调用模型</span>
+  <span class="chip" id="judgment-chip" title="判断由本地固定规则完成，不是模型理解，也不理解任意自然语言目标">本地规则原型 · 不调用模型</span>
   <span class="chip warn" id="demo-chip" hidden></span>
   <span class="chip bad" id="conn-chip" hidden>宿主未连接</span>
   <span class="spacer"></span>
@@ -104,6 +104,11 @@
   <section class="col" id="detail">
     <div class="empty" id="detail-empty">还没有选中任务。建立委托后，宿主会自动观察所选目录；结果出现时桌宠提醒你，关闭本面板也不影响。</div>
     <div id="detail-body" hidden></div>
+    <div class="card" id="say-card" hidden>
+      <h3>补充说明 / 改口（写入记忆，由模型重新判断）</h3>
+      <textarea id="say-text" rows="2" style="width:100%" placeholder="例如：先别分析，等第二版结果出来再问我"></textarea>
+      <div class="row"><button id="say-btn" type="button">告诉桌宠</button><span class="muted" id="say-msg"></span></div>
+    </div>
     <details class="dev" id="dev">
       <summary>开发区：hash / assignment / 通知 / 唤醒 job / 回执 JSON 诊断（普通使用不需要）</summary>
       <pre id="dev-json">（选中任务后显示）</pre>
@@ -172,6 +177,11 @@ function render() {
   if (!ov) return;
   $('ws').textContent = `工作区 ${ov.workspace} · ${ov.timezone} · 静默 ${ov.quietHours || ''}`;
   if (ov.demoConfig) { $('demo-chip').hidden = false; $('demo-chip').textContent = ov.demoConfig; }
+  if (ov.judgment) {
+    $('judgment-chip').textContent = ov.assessor && ov.assessor.capability ? `模型判断 · ${ov.assessor.id}` : (ov.modelUnavailable ? '本地规则原型 · 模型未启用' : '本地规则原型 · 不调用模型');
+    $('judgment-chip').title = ov.judgment;
+  }
+  { const st = selectedTask(); $('say-card').hidden = !(ov.canSay && st && st.status === 'active'); }
   const buckets = { needs_decision: [], waiting: [], done: [], cancelled: [], blocked: [] };
   for (const t of ov.tasks) (buckets[t.bucket] || buckets.waiting).push(t);
   for (const [key, list] of Object.entries(buckets)) {
@@ -259,6 +269,16 @@ document.addEventListener('click', async (ev) => {
       if (status === 200 && json.ok) toast(json.task?.report ? '已完成：分析报告已生成并核验' : `已记录你的选择：${opt.textContent}`);
       else toast(json.error || json.result?.detail || '这个选择没有被接受', 6000);
     } finally { state.busy = false; await refresh(); }
+    return;
+  }
+  if (ev.target.id === 'say-btn') {
+    const t = selectedTask();
+    const text = $('say-text').value.trim();
+    if (!t || !text) return;
+    const { status, json } = await api('/api/say', { ticketId: t.ticketId, text });
+    $('say-msg').textContent = status === 200 && json.ok ? '已记下，正在重新判断…' : (json.error || '没有被接受');
+    if (status === 200 && json.ok) $('say-text').value = '';
+    await refresh();
     return;
   }
   if (ev.target.id === 'cancel-btn') {

@@ -189,8 +189,25 @@ export async function runHost(options: HostOptions): Promise<number> {
   const clock = new RealClock()
   // 能力接入点：assessor 失败加载直接报错退出（不静默回退到规则）。
   let loaded: Awaited<ReturnType<typeof loadAssessor>>
+  // capability：宿主内置的记忆+介入+模型适配；模型未配置时显式回退到规则路径并在面板标注，不假装成功。
+  let capability: import('./capability-assessor.ts').CapabilityHandle | null = null
+  let capabilityUnavailable: string | null = null
   try {
-    loaded = await loadAssessor(options.assessor, { workspaceRoot: root, stateDir })
+    if (options.assessor === 'capability') {
+      const mod = await import('./capability-assessor.ts')
+      try {
+        capability = mod.createCapabilityHandle(process.env)
+        loaded = { assessor: capability.assessor, spec: 'capability' }
+      } catch (error) {
+        if (!(error instanceof mod.CapabilityNotConfigured)) throw error
+        capabilityUnavailable = error.message
+        loaded = null
+        record({ event: 'host.assessor_unavailable', spec: 'capability', error: error.message, fallback: 'scripted-rule P3' })
+        process.stderr.write(`capability 未启用：${error.message}；回退到本地规则原型\n`)
+      }
+    } else {
+      loaded = await loadAssessor(options.assessor, { workspaceRoot: root, stateDir })
+    }
   } catch (error) {
     record({ event: 'host.assessor_error', spec: options.assessor ?? null, error: (error as Error).message })
     process.stderr.write(`assessor 加载失败：${(error as Error).message}\n`)
@@ -222,7 +239,12 @@ export async function runHost(options: HostOptions): Promise<number> {
         }
       : {}),
   })
-  const judgment = loaded
+  if (capability) capability.attach(built.db.handle)
+  const judgment = capability
+    ? `模型判断（${capability.model.name} @ ${capability.model.baseUrl}，记忆抽取+有效记忆读取+介入评估，事务外异步）；执行仍经版本/证据/通知校验，工具执行须用户授权`
+    : capabilityUnavailable
+      ? `${JUDGMENT_LABEL}；模型判断未启用：${capabilityUnavailable}`
+      : loaded
     ? `异步 assessment：${loaded.assessor.id}（${loaded.assessor.capability ? '外部判断' : '基线包装，非模型'}；记忆包 ${loaded.packets?.id ?? 'legacy-readRelevant'}）；执行仍经既有版本/证据/通知校验`
     : JUDGMENT_LABEL
   const token = randomBytes(18).toString('hex')
@@ -280,6 +302,19 @@ export async function runHost(options: HostOptions): Promise<number> {
         }
         record(entry)
         built.db.driverLog(clock.now(), ticketId, 'host.observe', entry)
+        if (capability && outcome.disposition === 'appended') {
+          const r = built.runtime.getTask(ticketId)?.result
+          if (r) {
+            capability.appendTurn({
+              turnId: `result-${ticketId}-${r.runId}-${r.revision}`,
+              sessionId: 'tools',
+              at: clock.now(),
+              role: 'tool',
+              text: `结果 ${r.runId} 第${r.revision}版：${r.status}，通过 ${r.metrics.passed}/${r.metrics.total}，失败 ${r.metrics.failed}${r.metrics.score === null ? '' : `，得分 ${r.metrics.score}`}${r.note ? `；说明：${r.note}` : ''}`,
+              taskIds: [ticketId],
+            })
+          }
+        }
         log(`observe ${ticketId} ${observed.sourceRevision} ${outcome.disposition} ${outcome.detail}`)
         return outcome
       },
@@ -419,6 +454,8 @@ export async function runHost(options: HostOptions): Promise<number> {
       workspace: root,
       judgment,
       assessor: loaded ? { id: loaded.assessor.id, capability: loaded.assessor.capability, spec: loaded.spec } : null,
+      modelUnavailable: capabilityUnavailable,
+      canSay: Boolean(capability),
       demoConfig,
       timezone,
       quietHours: `${quiet.fromHour}:00-${quiet.toHour}:00 ${timezone}`,
@@ -557,6 +594,26 @@ export async function runHost(options: HostOptions): Promise<number> {
     }
     const body = await readBody(request)
     const action = url.pathname.slice('/api/'.length)
+    if (action === 'say') {
+      const text = String(body.text ?? '').trim()
+      const sayTicket = String(body.ticketId ?? '').trim()
+      if (!text) {
+        send(response, 400, { ok: false, code: 'empty', error: '内容为空' })
+        return
+      }
+      if (!capability) {
+        send(response, 409, { ok: false, code: 'not_configured', error: capabilityUnavailable ?? '未启用模型判断（PET_FOLLOWUP_ASSESSOR=capability）；规则原型不理解自然语言' })
+        return
+      }
+      const targets = sayTicket ? [sayTicket] : built.runtime.listTasks().filter((t) => t.status === 'active').map((t) => t.ticketId)
+      const turnId = `say-${Date.now()}-${randomBytes(3).toString('hex')}`
+      capability.appendTurn({ turnId, sessionId: 'panel', at: clock.now(), role: 'user', text, taskIds: targets })
+      for (const id of targets) built.runtime.requestReassessment(id)
+      record({ event: 'host.say', turnId, ticketIds: targets, chars: text.length })
+      wakeLoop?.()
+      send(response, 200, { ok: true, turnId, ticketIds: targets })
+      return
+    }
     if (action === 'tasks') {
       const title = String(body.title ?? '').trim()
       const rawDir = String(body.dir ?? '').trim()
@@ -605,6 +662,9 @@ export async function runHost(options: HostOptions): Promise<number> {
       const binding: Binding = { dir: relNorm, template, createdAt: clock.now() }
       built.db.metaSet(`${BINDING_PREFIX}${created.ticketId}`, JSON.stringify(binding))
       record({ event: 'host.task_created', ticketId: created.ticketId, title, dir: relNorm })
+      if (capability) {
+        capability.appendTurn({ turnId: `delegate-${created.ticketId}`, sessionId: 'panel', at: clock.now(), role: 'user', text: `新委托「${title}」：${goal}（结果文件放在 ${relNorm}/result.json）`, taskIds: [created.ticketId] })
+      }
       syncWatchers()
       send(response, 200, { ok: true, task: taskView(built.runtime.getTask(created.ticketId)) })
       return

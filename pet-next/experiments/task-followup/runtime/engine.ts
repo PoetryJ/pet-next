@@ -2285,6 +2285,8 @@ export class FollowupRuntime {
     return Boolean(context.lastAnswer) && proposals[0]?.kind === 'continue_local'
   }
 
+  private readonly reassessNext = new Set<string>()
+
   private requestAssessment(task: TaskRecord, context: DecisionContext, menuProposals: readonly ProposedDecision[]): boolean {
     const options = this.assessmentOptions
     const store = this.assessments
@@ -2297,8 +2299,17 @@ export class FollowupRuntime {
       memoryCursor: task.memoryCursor,
       eventCursor: task.eventCursor,
     }
-    const latest = store.latestForIdentity(base)
+    let latest = store.latestForIdentity(base)
     let round = 0
+    if (latest && this.reassessNext.has(task.ticketId)) {
+      // 宿主收到新原话（记忆在 runtime 之外更新）：同一身份强制新一轮，旧的进行中请求中止。
+      this.reassessNext.delete(task.ticketId)
+      this.abortAssessments(task.ticketId, 'superseded by new user turn')
+      round = (store.latestForIdentity(base)?.round ?? latest.round) + 1
+      latest = null
+    } else if (this.reassessNext.has(task.ticketId)) {
+      this.reassessNext.delete(task.ticketId)
+    }
     if (latest) {
       if (latest.status === 'pending') return false
       if (latest.status === 'failed' || latest.status === 'stale') return false
@@ -2447,6 +2458,12 @@ export class FollowupRuntime {
   }
 
   /** 停止前中止所有在途请求（它们的回交会被拒绝；重启后按同身份下一轮重新请求）。 */
+  /** 记忆在 runtime 之外变化（新用户原话）时，请求对该任务做新一轮评估；下一次 reevaluate 生效。 */
+  requestReassessment(ticketId: string): void {
+    if (!this.assessmentOptions) return
+    this.reassessNext.add(ticketId)
+  }
+
   abortAllAssessments(reason: string): void {
     for (const entry of this.assessInFlight.values()) entry.controller.abort(new Error(reason))
   }
