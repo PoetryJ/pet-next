@@ -12,7 +12,12 @@ import { BrowserWindow, dialog, ipcMain, shell } from 'electron';
 import { spawn, type ChildProcess } from 'node:child_process';
 import { createWriteStream, existsSync, mkdirSync, readFileSync, type WriteStream } from 'node:fs';
 import path from 'node:path';
+import { AnswerOutbox, type AnswerPayload } from '../experiments/task-followup/service/answer-outbox.ts';
 import {
+  FOLLOWUP_ANSWER_CHANNEL,
+  FOLLOWUP_ANSWER_LIST_CHANNEL,
+  FOLLOWUP_ANSWER_STATE_CHANNEL,
+  FOLLOWUP_PANEL_REQUEST_CHANNEL,
   FOLLOWUP_RECORDING_ON_TOP_ENV,
   FOLLOWUP_ASSESSOR_ENV,
   FOLLOWUP_ASSESSOR_TIMEOUT_ENV,
@@ -30,6 +35,7 @@ import {
   HOST_TOKEN_HEADER,
   type HostLock,
   type PetFollowupState,
+  type FollowupPanelRequest,
 } from '../contracts/followup.ts';
 
 export interface FollowupBridgeOptions {
@@ -88,6 +94,9 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
   let panel: BrowserWindow | null = null;
   const viewers = new Map<string, BrowserWindow>();
   let lastState = '';
+  const answerOutbox = new AnswerOutbox(path.join(workspace, 'state', 'answer-outbox.json'));
+  let connecting: Promise<boolean> | null = null;
+  let polling = false;
 
   const call = async (method: 'GET' | 'POST', route: string, body?: unknown): Promise<{ status: number; json: Record<string, unknown> }> => {
     if (!connection) throw new Error('宿主未连接');
@@ -107,8 +116,8 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
         signal: AbortSignal.timeout(1500),
       });
       if (!response.ok) return false;
-      const body = (await response.json()) as { pid?: number };
-      return body.pid === lock.pid;
+      const body = (await response.json()) as { pid?: number; workspace?: string };
+      return body.pid === lock.pid && typeof body.workspace === 'string' && path.resolve(body.workspace) === workspace;
     } catch {
       return false;
     }
@@ -189,6 +198,33 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
       });
     });
 
+  const ensureConnection = async (): Promise<boolean> => {
+    if (stopped) return false;
+    const current = readLock(workspace);
+    if (connection && current?.state === 'ready' && current.pid === connection.pid && current.port === connection.port && current.token === connection.token) return true;
+    connection = null;
+    if (connecting) return connecting;
+    connecting = (async () => {
+      if (await reuseExisting()) { lastError = null; return true; }
+      // A live host may be saving state or starting. Do not create a competing owner.
+      const latest = readLock(workspace);
+      if (child?.exitCode === null || (latest && pidAlive(latest.pid))) return false;
+      const ok = await spawnHost();
+      if (ok) lastError = null;
+      return ok;
+    })();
+    try { return await connecting; } finally { connecting = null; }
+  };
+
+  const publishAnswers = (): void => {
+    if (panel && !panel.isDestroyed()) panel.webContents.send(FOLLOWUP_ANSWER_STATE_CHANNEL, answerOutbox.list());
+  };
+  const flushAnswers = async (): Promise<void> => {
+    if (!connection || stopped) return;
+    await answerOutbox.flush((payload) => call('POST', '/api/answer', payload));
+    publishAnswers();
+  };
+
   // 修复（S3 实测）：重开时宿主状态一开始就是最终态，首个推送可能早于桌宠页面订阅而丢失，
   // 之后相同状态被去重永不再发 → 桌宠不提醒。现在：页面每次加载完成后重置去重，并且至少每 3 秒重发一次当前状态。
   let lastPushAt = 0;
@@ -211,13 +247,16 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
   };
 
   const poll = async (): Promise<void> => {
-    if (stopped) return;
-    if (!connection) {
-      pushState({ connected: false, error: lastError ?? '正在连接跟进宿主…', pendingCount: 0, activeCount: 0, top: null });
-      return;
-    }
+    if (stopped || polling) return;
+    polling = true;
     try {
-      const { json } = await call('GET', '/api/overview');
+      if (!await ensureConnection()) {
+        pushState({ connected: false, error: lastError ?? '正在重连跟进宿主；回答已保留在本机…', pendingCount: 0, activeCount: 0, top: null });
+        return;
+      }
+      await flushAnswers();
+      const { status, json } = await call('GET', '/api/overview');
+      if (status !== 200 || json.ok !== true) throw new Error(String(json.error ?? `HTTP ${status}`));
       const pending = (json.pending as { ticketId: string; title: string; decision: { decisionId: string; question: string } }[]) ?? [];
       const tasks = (json.tasks as { status: string }[]) ?? [];
       const top = pending[0];
@@ -229,8 +268,10 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
         top: top ? { ticketId: top.ticketId, title: top.title, decisionId: top.decision.decisionId, question: top.decision.question } : null,
       });
     } catch (error) {
+      connection = null;
+      lastError = (error as Error).message;
       pushState({ connected: false, error: `宿主无响应：${(error as Error).message}`, pendingCount: 0, activeCount: 0, top: null });
-    }
+    } finally { polling = false; }
   };
 
   const hostOrigin = (): string => (connection ? `http://127.0.0.1:${connection.port}` : '');
@@ -308,6 +349,29 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
   ipcMain.removeHandler(FOLLOWUP_PICK_DIR_CHANNEL);
   ipcMain.removeHandler(FOLLOWUP_OPEN_REPORT_CHANNEL);
   ipcMain.removeHandler(FOLLOWUP_REVEAL_REPORT_CHANNEL);
+  ipcMain.removeHandler(FOLLOWUP_PANEL_REQUEST_CHANNEL);
+  ipcMain.removeHandler(FOLLOWUP_ANSWER_CHANNEL);
+  ipcMain.removeHandler(FOLLOWUP_ANSWER_LIST_CHANNEL);
+  ipcMain.handle(FOLLOWUP_ANSWER_CHANNEL, (event, payload: AnswerPayload) => {
+    if (!fromPanel(event)) return { ok: false, error: '仅可见任务面板可以提交回答' };
+    try {
+      const record = answerOutbox.enqueue(payload, new Date().toISOString());
+      log('answer-enqueued', { id: record.id, ...record.payload, state: record.state });
+      publishAnswers();
+      void flushAnswers().catch((error: unknown) => log('answer-pending', { error: String(error) }));
+      return { ok: true, record };
+    } catch (error) { return { ok: false, error: (error as Error).message }; }
+  });
+  ipcMain.handle(FOLLOWUP_ANSWER_LIST_CHANNEL, (event) => fromPanel(event) ? answerOutbox.list() : []);
+  ipcMain.handle(FOLLOWUP_PANEL_REQUEST_CHANNEL, async (event, request: FollowupPanelRequest) => {
+    if (!fromPanel(event)) throw new Error('无效面板来源');
+    const method = request?.method, route = request?.route;
+    const allowedGet = method === 'GET' && (route === '/api/overview' || /^\/api\/task\?ticket=[^&#]+$/.test(route));
+    const allowedPost = method === 'POST' && ['/api/tasks', '/api/present', '/api/cancel', '/api/say'].includes(route);
+    if (!allowedGet && !allowedPost) throw new Error('面板请求不在允许列表中');
+    if (!await ensureConnection()) throw new Error('宿主正在重连；已保存的回答会按原问题重送');
+    return call(method, route, request.body);
+  });
   ipcMain.on(FOLLOWUP_OPEN_PANEL_CHANNEL, (event, ticketId: unknown) => {
     if (!fromPet(event) && !fromPanel(event)) return;
     openPanel(typeof ticketId === 'string' && ticketId ? ticketId : undefined);
@@ -377,7 +441,7 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
   });
 
   void (async () => {
-    const ok = (await reuseExisting()) || (await spawnHost());
+    const ok = await ensureConnection();
     if (!ok) log('host-unavailable', { error: lastError });
     await poll();
     pollTimer = setInterval(() => void poll(), 1000);

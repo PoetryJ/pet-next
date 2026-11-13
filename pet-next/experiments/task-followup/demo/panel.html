@@ -121,7 +121,7 @@
 const params = new URLSearchParams(location.search);
 const TOKEN = params.get('token') || '';
 const bridge = window.petFollowup || null;
-const state = { overview: null, selected: params.get('ticket') || null, presented: new Set(), lastError: null, busy: false };
+const state = { overview: null, selected: params.get('ticket') || null, presented: new Set(), answers: [], lastError: null, busy: false };
 const $ = (id) => document.getElementById(id);
 const BUCKET_LABEL = { needs_decision: '需要我决定', waiting: '等待结果', done: '已完成', cancelled: '已取消', blocked: '异常' };
 
@@ -130,6 +130,7 @@ function fmt(iso) { if (!iso) return '—'; const d = new Date(iso); return isNa
 function toast(text, ms = 3500) { const el = $('toast'); el.textContent = text; el.classList.add('show'); clearTimeout(toast.t); toast.t = setTimeout(() => el.classList.remove('show'), ms); }
 
 async function api(path, body) {
+  if (bridge?.panelRequest) return bridge.panelRequest({ method: body ? 'POST' : 'GET', route: path, ...(body ? { body } : {}) });
   const res = await fetch(path, {
     method: body ? 'POST' : 'GET',
     headers: { 'x-followup-token': TOKEN, 'content-type': 'application/json' },
@@ -178,7 +179,7 @@ function render() {
   $('ws').textContent = `工作区 ${ov.workspace} · ${ov.timezone} · 静默 ${ov.quietHours || ''}`;
   if (ov.demoConfig) { $('demo-chip').hidden = false; $('demo-chip').textContent = ov.demoConfig; }
   if (ov.judgment) {
-    $('judgment-chip').textContent = ov.assessor && ov.assessor.capability ? `模型判断 · ${ov.assessor.id}` : (ov.modelUnavailable ? '本地规则原型 · 模型未启用' : '本地规则原型 · 不调用模型');
+    $('judgment-chip').textContent = ov.assessor?.spec === 'capability-need-rule' ? '模型记忆 · 强规则介入' : (ov.assessor && ov.assessor.capability ? `模型判断 · ${ov.assessor.id}` : (ov.modelUnavailable ? '本地规则原型 · 模型未启用' : '本地规则原型 · 不调用模型'));
     $('judgment-chip').title = ov.judgment;
   }
   { const st = selectedTask(); $('say-card').hidden = !(ov.canSay && st && st.status === 'active'); }
@@ -222,13 +223,22 @@ function renderDetail() {
   }
   if (t.decision && t.bucket === 'needs_decision') {
     const d = t.decision;
+    const saved = state.answers.find((r) => r.payload.attentionId === d.attentionId);
     parts.push(`<div class="card question" id="question"><h3>需要你决定（${d.presentedAt ? '已在面板呈现' : '桌宠已提醒'} · ${fmt(d.deliveredAt)}）</h3>
       <p>${esc(d.question)}</p>
-      <div class="options">${d.options.map((o) => `<button data-option="${esc(o.id)}" data-attention="${esc(d.attentionId)}" data-decision="${esc(d.decisionId)}" data-revision="${d.taskRevision}">${esc(o.label)}</button>`).join('')}</div>
+      <div class="options">${d.options.map((o) => `<button data-ticket="${esc(t.ticketId)}" data-option="${esc(o.id)}" data-attention="${esc(d.attentionId)}" data-decision="${esc(d.decisionId)}" data-revision="${d.taskRevision}" ${saved || state.busy || !bridge?.answer ? 'disabled' : ''}>${esc(o.label)}</button>`).join('')}</div>
+      ${!bridge?.answer ? '<div class="notice">请从桌宠打开任务面板以保存回答；浏览器直连页面不提供断线重送。</div>' : ''}
       <div class="muted" style="margin-top:8px">选择“分析失败样本”后，本地工具读取已核验的结果快照并写出分析报告；只有工具回执与文件 SHA 都核对通过才算完成。</div></div>`);
   } else if (t.decision && t.status === 'active') {
     parts.push(`<div class="notice">已有一个问题在等待送达（例如静默时段 ${esc(state.overview.quietHours || '')}）${t.nextWakeAt ? `，预计 ${fmt(t.nextWakeAt)} 再判断` : ''}。</div>`);
   }
+  const answers = state.answers.filter((r) => r.payload.ticketId === t.ticketId).slice(-5);
+  if (answers.length) parts.push(`<div class="card"><h3>你的回答</h3>${answers.map((r) => {
+    const accepted = r.state === 'resolved' && r.response?.status === 200 && r.response?.json?.ok === true;
+    const text = r.state === 'pending' ? '已保存在本机，等待宿主确认；重连后按原问题重送。' : (accepted ? '宿主已接受这次回答。' : '宿主未接受本次投递；不会转用于新问题，请查看当前任务。');
+    const detail = r.state === 'resolved' && !accepted ? (r.response?.json?.error || r.response?.json?.result?.detail || `HTTP ${r.response?.status}`) : '';
+    return `<div class="notice ${accepted ? 'good' : r.state === 'resolved' ? 'bad' : ''}">${esc(text)}<div class="muted">${fmt(r.createdAt)} · ${esc(r.payload.optionId)}${detail ? ` · ${esc(detail)}` : ''}</div></div>`;
+  }).join('')}</div>`);
   if (t.report) {
     parts.push(`<div class="card"><h3>分析报告（实际生成的产物）</h3><div class="kv">
       <div>文件</div><div class="mono">${esc(t.report.path)}</div>
@@ -252,7 +262,10 @@ async function maybePresent(t) {
   if (document.visibilityState !== 'visible' || !document.getElementById('question')) return;
   if (state.presented.has(d.attentionId)) return;
   state.presented.add(d.attentionId);
-  await api('/api/present', { ticketId: t.ticketId, attentionId: d.attentionId });
+  try {
+    const { status, json } = await api('/api/present', { ticketId: t.ticketId, attentionId: d.attentionId });
+    if (status !== 200 || !json.ok) state.presented.delete(d.attentionId);
+  } catch { state.presented.delete(d.attentionId); }
 }
 document.addEventListener('visibilitychange', () => { const t = selectedTask(); if (t) maybePresent(t); });
 
@@ -261,13 +274,18 @@ document.addEventListener('click', async (ev) => {
   if (taskEl) { state.selected = taskEl.dataset.ticket; $('dev-json').textContent = '（加载中）'; render(); if ($('dev').open) refreshDev(); return; }
   const opt = ev.target.closest('button[data-option]');
   if (opt && !state.busy) {
-    const t = selectedTask();
+    if (!bridge?.answer) { toast('请从桌宠面板保存回答。'); return; }
     state.busy = true;
     opt.disabled = true;
     try {
-      const { status, json } = await api('/api/answer', { ticketId: t.ticketId, attentionId: opt.dataset.attention, decisionId: opt.dataset.decision, taskRevision: Number(opt.dataset.revision), optionId: opt.dataset.option });
-      if (status === 200 && json.ok) toast(json.task?.report ? '已完成：分析报告已生成并核验' : `已记录你的选择：${opt.textContent}`);
-      else toast(json.error || json.result?.detail || '这个选择没有被接受', 6000);
+      // Freeze the identity from the clicked, visible button; never read a replacement question when retrying.
+      const result = await bridge.answer({ ticketId: opt.dataset.ticket, attentionId: opt.dataset.attention, decisionId: opt.dataset.decision, taskRevision: Number(opt.dataset.revision), optionId: opt.dataset.option });
+      if (!result?.ok) toast(result?.error || '未能保存回答，请重试', 6000);
+      else {
+        state.answers = await bridge.listAnswers();
+        toast('回答已保存在本机；收到宿主确认后才算接受。');
+      }
+    } catch (error) { toast(`未能保存回答：${error.message}`, 6000);
     } finally { state.busy = false; await refresh(); }
     return;
   }
@@ -322,6 +340,9 @@ $('quit-btn').onclick = () => {
   if (confirm('完全退出：保存任务、停止后台宿主并关闭桌宠？（退出期间不会继续执行，重开后补处理）')) bridge.quitApp();
 };
 $('dev').addEventListener('toggle', () => { if ($('dev').open && state.selected) refreshDev(); });
+
+if (bridge?.onAnswers) bridge.onAnswers((records) => { state.answers = records; renderDetail(); });
+if (bridge?.listAnswers) bridge.listAnswers().then((records) => { state.answers = records; renderDetail(); }).catch((error) => toast(`读取已保存回答失败：${error.message}`, 6000));
 
 refresh();
 setInterval(refresh, 1000);

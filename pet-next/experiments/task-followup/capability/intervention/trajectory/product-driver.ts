@@ -17,6 +17,7 @@ import { fileURLToPath } from 'node:url'
 import { CapabilityMemoryStore } from '../../memory/store.ts'
 import { extractPending } from '../../memory/extract.ts'
 import { OpenAICompatibleClient, configFromEnv } from '../../model/openai-compatible.ts'
+import { AnswerOutbox } from '../../../service/answer-outbox.ts'
 
 const arg = (name: string) => { const i = process.argv.indexOf(name); return i < 0 ? undefined : process.argv[i + 1] }
 const sha = (bytes: string | Buffer) => createHash('sha256').update(bytes).digest('hex')
@@ -67,6 +68,7 @@ async function main(): Promise<number> {
   const taskMap: Record<string, string> = {}
   const missed: any[] = [], responses: any[] = [], stopRecords: any[] = [], snapshots: any[] = [], failures: string[] = []
   const pendingResponses: Promise<void>[] = []
+  const answers = new AnswerOutbox(join(DRV, 'answer-outbox.json'))
   let producerExit: { code: number | null; signal: NodeJS.Signals | null } | null = null
   const save = (path: string, value: unknown) => writeFileSync(path, JSON.stringify(value, null, 2) + '\n', 'utf8')
   const log = (kind: string, body: Record<string, unknown> = {}) => {
@@ -204,14 +206,36 @@ async function main(): Promise<number> {
         const replyAt = Math.max(Date.parse(visible.presentedAt), from) + spec.reply.delayAfterPresentationMs
         while (!liveEnded && Date.now() < replyAt) await sleep(Math.min(200, replyAt - Date.now()))
         if (liveEnded || (Date.now() >= until && !spec.reply.sendEvenIfSuperseded)) break
-        while (!host && Date.now() < until) await sleep(100)
-        if (!host) break
         // The choice request is the actual authorization. Its source utterance is
         // retained in the driver log; /say follows only after the identity-bound
         // answer, so this explanatory message cannot invalidate its own question.
         const replyTurn = turns.get(spec.reply.turnId)
         log('user.choice_request', { responseId: spec.id, sourceTurnId: spec.reply.turnId, sourceText: replyTurn?.text, presentedAt: visible.presentedAt, client: PRESENTER, body: captured })
-        const result = await api('POST', '/api/answer', captured)
+        const queued = answers.enqueue(captured, iso())
+        log('answer.outbox.queued', { responseId: spec.id, outboxId: queued.id, payload: queued.payload })
+        let delivered = queued
+        let reportedOffline = false
+        while (!liveEnded && delivered.state === 'pending') {
+          await answers.flush(async (payload) => {
+            try { return await api('POST', '/api/answer', payload) }
+            catch (error) {
+              if (!reportedOffline) {
+                log('answer.outbox.transport_pending', { responseId: spec.id, outboxId: queued.id, error: String(error) })
+                reportedOffline = true
+              }
+              throw error
+            }
+          })
+          delivered = answers.list().find((r) => r.id === queued.id)!
+          if (delivered.state === 'pending') await sleep(250)
+        }
+        if (delivered.state !== 'resolved' || !delivered.response) {
+          missed.push({ responseId: spec.id, reason: 'answer_transport_pending_at_collection', outboxId: queued.id })
+          log('answer.outbox.pending_at_collection', missed.at(-1))
+          return
+        }
+        const result = { status: delivered.response.status, json: delivered.response.json as any }
+        log('answer.outbox.resolved', { responseId: spec.id, outboxId: queued.id, status: result.status, payload: delivered.payload })
         const expectedReject = spec.reply.sendEvenIfSuperseded === true
         const accepted = result.status === 200 && result.json.ok === true
         const staleRejected = result.status === 409 && ['stale_decision', 'stale_answer'].includes(result.json.code ?? result.json.result?.code)

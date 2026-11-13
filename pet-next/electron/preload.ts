@@ -114,6 +114,10 @@ const FOLLOWUP_PICK_DIR_CHANNEL = 'followup:pick-dir';
 const FOLLOWUP_OPEN_REPORT_CHANNEL = 'followup:open-report';
 const FOLLOWUP_REVEAL_REPORT_CHANNEL = 'followup:reveal-report';
 const FOLLOWUP_QUIT_CHANNEL = 'followup:quit';
+const FOLLOWUP_PANEL_REQUEST_CHANNEL = 'followup:panel-request';
+const FOLLOWUP_ANSWER_CHANNEL = 'followup:answer';
+const FOLLOWUP_ANSWER_LIST_CHANNEL = 'followup:answer-list';
+const FOLLOWUP_ANSWER_STATE_CHANNEL = 'followup:answer-state';
 
 contextBridge.exposeInMainWorld('petFollowup', {
   onState(listener: (state: unknown) => void): () => void {
@@ -139,6 +143,20 @@ contextBridge.exposeInMainWorld('petFollowup', {
   },
   revealReport(ticketId: string): Promise<unknown> {
     return ipcRenderer.invoke(FOLLOWUP_REVEAL_REPORT_CHANNEL, String(ticketId));
+  },
+  panelRequest(request: unknown): Promise<unknown> {
+    return ipcRenderer.invoke(FOLLOWUP_PANEL_REQUEST_CHANNEL, request);
+  },
+  answer(payload: unknown): Promise<unknown> {
+    return ipcRenderer.invoke(FOLLOWUP_ANSWER_CHANNEL, payload);
+  },
+  listAnswers(): Promise<unknown> {
+    return ipcRenderer.invoke(FOLLOWUP_ANSWER_LIST_CHANNEL);
+  },
+  onAnswers(listener: (records: unknown) => void): () => void {
+    const handler = (_event: unknown, records: unknown): void => listener(records);
+    ipcRenderer.on(FOLLOWUP_ANSWER_STATE_CHANNEL, handler);
+    return () => ipcRenderer.removeListener(FOLLOWUP_ANSWER_STATE_CHANNEL, handler);
   },
   quitApp(): void {
     ipcRenderer.send(FOLLOWUP_QUIT_CHANNEL);

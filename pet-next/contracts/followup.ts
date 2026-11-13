@@ -9,8 +9,8 @@
  * - 任务面板（experiments/task-followup/demo/panel.html，由宿主提供）是客户端，状态全部来自宿主。
  * - 桌宠页面（app/followup-pet.ts）只显示入口/角标/气泡；它不能 present/answer。
  *
- * 不是通用 RPC：只有下面列出的端点与 IPC 通道。判断逻辑是本地规则原型（scripted-rule P3），
- * 不是模型理解。
+ * 不是通用 RPC：只有下面列出的端点与 IPC 通道。记忆与介入模式以宿主概览为准。
+ * 面板的回答先进入 Electron 持久出站队列，重连后仍发送原问题身份，宿主重新核验。
  * @module pet-next/contracts/followup
  */
 
@@ -169,6 +169,35 @@ export const FOLLOWUP_PICK_DIR_CHANNEL = 'followup:pick-dir';
 export const FOLLOWUP_OPEN_REPORT_CHANNEL = 'followup:open-report';
 export const FOLLOWUP_REVEAL_REPORT_CHANNEL = 'followup:reveal-report';
 export const FOLLOWUP_QUIT_CHANNEL = 'followup:quit';
+/** 仅任务面板可用：固定白名单 API 通过当前宿主连接发送，避免重启后继续使用旧端口/token。 */
+export const FOLLOWUP_PANEL_REQUEST_CHANNEL = 'followup:panel-request';
+/** 回答落盘先于发送；记录中的问题身份禁止重绑到新问题。 */
+export const FOLLOWUP_ANSWER_CHANNEL = 'followup:answer';
+export const FOLLOWUP_ANSWER_LIST_CHANNEL = 'followup:answer-list';
+export const FOLLOWUP_ANSWER_STATE_CHANNEL = 'followup:answer-state';
+
+export interface FollowupAnswerPayload {
+  readonly ticketId: string;
+  readonly attentionId: string;
+  readonly decisionId: string;
+  readonly taskRevision: number;
+  readonly optionId: string;
+}
+
+/** pending 只表示已保存在本机，不能显示为宿主已接受授权。 */
+export interface FollowupAnswerRecord {
+  readonly id: string;
+  readonly payload: FollowupAnswerPayload;
+  readonly state: 'pending' | 'resolved';
+  readonly createdAt: string;
+  readonly response?: { readonly status: number; readonly json: unknown };
+}
+
+export interface FollowupPanelRequest {
+  readonly method: 'GET' | 'POST';
+  readonly route: string;
+  readonly body?: unknown;
+}
 
 /** 主进程推给桌宠页面的最小状态。 */
 export interface PetFollowupState {
