@@ -796,6 +796,7 @@ export async function runHost(options: HostOptions): Promise<number> {
     writeLock({ state: 'stopping' })
     // 在途 assessment 先中止（回交会被拒绝），重启后按同身份下一轮重新请求；不在关机期间“继续判断”。
     built.runtime.abortAllAssessments('host stopping')
+    await capability?.close()
     await Promise.race([built.runtime.settleAssessments(), new Promise((done) => setTimeout(done, 2000))])
     for (const state of watchers.values()) state.stop()
     watchers.clear()

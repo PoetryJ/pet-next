@@ -253,6 +253,20 @@ export function applyExtraction(
       }
       supersedes.push(target)
     }
+    // User control states are transitions: "cancel" replaces "active", and
+    // "available again" replaces "busy". They are not timeless divergent facts.
+    // Other attributes still require an explicit model-supplied correction edge.
+    const isStateTransition = finalKey === 'taskStatus' && /^(active|paused|cancelled|canceled|取消|已取消|暂停|继续)$/i.test(String(value))
+      || finalKey === 'availability' && /^(available|busy|busy_progress_only|unavailable|free|空闲|可用|忙碌)$/i.test(String(value))
+    if (isStateTransition && authority === 'user' && status === 'active') {
+      for (const old of existing.values()) {
+        if (old.key !== finalKey || old.authority !== 'user' || old.status !== 'active'
+          || old.scope.level !== level || old.scope.id !== scopeId || old.recordedSeq >= lastTurn.seq
+          || retractedItems.has(old.itemId) || supersedes.includes(old.itemId)) continue
+        supersedes.push(old.itemId)
+        checks.push(`user_state_transition:${old.itemId}`)
+      }
+    }
     const confidence = typeof raw.confidence === 'number' ? Math.min(1, Math.max(0, raw.confidence)) : 0.5
     if (typeof raw.confidence !== 'number') checks.push('confidence_defaulted')
     const itemId = 'mem-' + createHash('sha256').update(request.requestId).update(String(index)).update(finalKey).digest('hex').slice(0, 16)

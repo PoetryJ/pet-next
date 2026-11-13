@@ -32,6 +32,7 @@ import type { ModelClient } from '../capability/model/protocol.ts'
 import type { MemoryPacket as CapPacket, Turn } from '../capability/memory/types.ts'
 import type { AssessmentDraft, AssessmentResponse, AssessmentSnapshot, AsyncAssessor } from '../runtime/assessment.ts'
 import { decideNeedRule, SHARED_READ_SLOTS } from '../capability/baselines/need-rule.ts'
+import { MemoryCompilation } from '../capability/memory/compilation.ts'
 
 export interface CapabilityHandle {
   readonly assessor: AsyncAssessor
@@ -43,6 +44,8 @@ export interface CapabilityHandle {
   readonly ingestResult: (turn: Omit<Turn, 'seq'>, taskId: string, outcome: VerifiedOutcome) => boolean
   readonly hostRecheckMs: number
   readonly validateTaskControl: (control: NonNullable<AssessmentResponse['taskControl']>, snapshot: AssessmentSnapshot, now: string) => boolean
+  /** Stop and settle memory compilation before the host-owned database closes. */
+  readonly close: () => Promise<void>
   readonly model: { readonly baseUrl: string; readonly name: string; readonly provider: string }
 }
 
@@ -117,9 +120,12 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
     return { store, plan }
   }
   let seq = 0
+  const compilation = new MemoryCompilation<Awaited<ReturnType<typeof extractPending>>>()
   const taskControl = (taskId: string, now: string): AssessmentResponse['taskControl'] => {
     const { store: s } = need()
-    const packet = readForDecision(s, { taskId, asOf: now, intent: 'current', question: '用户当前任务状态', requiredSlots: ['taskStatus'], budget: { maxItems: 8, maxChars: 2000 } })
+    // Cancellation is authoritative task control, not a best-effort retrieval hit.
+    // Use the same validity/supersession rules without the model-context budget.
+    const packet = readForDecision(s, { taskId, asOf: now, intent: 'current', question: '用户当前任务状态', requiredSlots: ['taskStatus'], budget: { maxItems: Number.MAX_SAFE_INTEGER, maxChars: Number.MAX_SAFE_INTEGER } })
     const item = [...packet.commitments, ...packet.currentFacts].find((i) => i.key === 'taskStatus' && i.authority === 'user' && i.status === 'active' && i.scope.level === 'task' && i.scope.id === taskId && /^(cancelled|canceled|cancel|取消|已取消|终止|停止)$/i.test(String(i.value)))
     if (!item || packet.conflicts.some((c) => c.itemIds.includes(item.itemId))) return undefined
     const source = s.items().find((i) => i.itemId === item.itemId)!
@@ -133,15 +139,15 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
     async assess(snapshot: AssessmentSnapshot, _packet, signal): Promise<AssessmentResponse> {
       const { store: s, plan: p } = need()
       const task = snapshot.task
-      const extraction = await extractPending(s, client, {
+      const extraction = await compilation.run(task.ticketId, (compilationSignal) => extractPending(s, client, {
         entities: [{ id: task.ticketId, type: 'task', label: task.title }],
         now: new Date().toISOString(),
-        signal,
+        signal: compilationSignal,
         maxTurns: 3,
         roles: ['user', 'assistant'],
         maxTokens: EXTRACT_MAX,
         taskId: task.ticketId,
-      })
+      }))
       if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
       if (signal.aborted) throw signal.reason ?? new Error('aborted')
       const now = new Date().toISOString()
@@ -229,6 +235,7 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
   }
   return {
     assessor,
+    close: () => compilation.close(new Error('host stopping')),
     attach(db: DatabaseSync) {
       store = new CapabilityMemoryStore(db)
       plan = new InterventionStore(db)

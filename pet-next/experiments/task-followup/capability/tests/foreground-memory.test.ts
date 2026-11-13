@@ -48,3 +48,28 @@ test('紧凑模型 delta 补齐来源/类型，前台按任务抽取不消耗其
     assert.equal(read(store).commitments[0]!.value, 64)
   } finally { store.close() }
 })
+
+test('取消/恢复可用是用户状态转移，即使模型漏写supersedes仍替换同作用域旧状态', async () => {
+  const store = new CapabilityMemoryStore(':memory:')
+  try {
+    const compile = async (seq: number, task: string, key: string, value: string, role: 'user' | 'assistant' = 'user') => {
+      const turnId = `state-${seq}`, text = `${task}当前状态为${value}。`
+      store.appendTurn({ turnId, sessionId: 's', seq, at: time(seq), role, taskIds: [task], text })
+      return extractPending(store, new FixtureClient(() => JSON.stringify({ items: [{ key, value, scope: { level: 'task', id: task }, quotes: [{ turnId, text }] }] })), { entities: [], now: time(seq) })
+    }
+    const old = await compile(1, 'task:A', 'taskStatus', 'active')
+    await compile(2, 'task:B', 'taskStatus', 'active')
+    const cancel = await compile(3, 'task:A', 'taskStatus', 'cancelled')
+    assert.deepEqual(cancel.report!.accepted[0]!.supersedes, [old.report!.accepted[0]!.itemId])
+    assert.ok(cancel.report!.accepted[0]!.checks.some((s) => s.startsWith('user_state_transition:')))
+    assert.deepEqual(read(store, 6000).commitments.filter((i) => i.key === 'taskStatus').map((i) => i.value), ['cancelled'])
+    assert.equal(read(store, 6000).conflicts.filter((c) => c.key === 'taskStatus').length, 0)
+    const assistant = await compile(4, 'task:A', 'taskStatus', 'active', 'assistant')
+    assert.deepEqual(assistant.report!.accepted[0]!.supersedes, [], '助手不能恢复用户已取消任务')
+    const busy = await compile(5, 'task:A', 'availability', 'busy')
+    const back = await compile(6, 'task:A', 'availability', 'available')
+    assert.ok(back.report!.accepted[0]!.supersedes.includes(busy.report!.accepted[0]!.itemId))
+    const b = readForDecision(store, { taskId: 'task:B', asOf: time(99), intent: 'current', question: '当前任务状态', requiredSlots: ['taskStatus'], budget: { maxItems: 20, maxChars: 6000 } })
+    assert.deepEqual(b.commitments.map((i) => i.value), ['active'])
+  } finally { store.close() }
+})
