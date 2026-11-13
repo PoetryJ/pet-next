@@ -11,6 +11,8 @@
 import type { ChatMessage, ModelCallResult, ModelClient, ModelRequest } from './protocol.ts'
 // 可选生成参数（负责人确认后再定）：PET_MODEL_MAX_TOKENS、PET_MODEL_TEMPERATURE（默认 0）
 import { randomUUID } from 'node:crypto'
+import { mkdirSync, writeFileSync } from 'node:fs'
+import { join } from 'node:path'
 
 export interface OpenAICompatibleConfig {
   readonly baseUrl: string
@@ -20,6 +22,10 @@ export interface OpenAICompatibleConfig {
   readonly provider: string
   readonly temperature: number
   readonly maxTokens?: number | null
+  /** 关闭思考：同时发送顶层 enable_thinking:false 与 chat_template_kwargs.enable_thinking:false */
+  readonly disableThinking?: boolean
+  /** 每次调用把实际 HTTP 请求体与响应体原样落盘（不含任何鉴权头） */
+  readonly recordDir?: string | null
 }
 
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env):
@@ -40,6 +46,8 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env):
       timeoutMs: Number.isFinite(timeout) && timeout > 0 ? timeout : 60000,
       provider: env.PET_MODEL_PROVIDER ?? 'openai-compatible',
       temperature: Number.isFinite(Number(env.PET_MODEL_TEMPERATURE)) && env.PET_MODEL_TEMPERATURE !== undefined ? Number(env.PET_MODEL_TEMPERATURE) : 0,
+      disableThinking: env.PET_MODEL_DISABLE_THINKING === '1',
+      recordDir: env.PET_MODEL_RECORD_DIR ? env.PET_MODEL_RECORD_DIR : null,
       maxTokens: Number.isInteger(Number(env.PET_MODEL_MAX_TOKENS)) && Number(env.PET_MODEL_MAX_TOKENS) > 0 ? Number(env.PET_MODEL_MAX_TOKENS) : null,
     },
   }
@@ -62,6 +70,7 @@ export class OpenAICompatibleClient implements ModelClient {
   private readonly config: OpenAICompatibleConfig | null
   private readonly missing: string[]
   private readonly fetchImpl: typeof fetch
+  private calls = 0
 
   constructor(config?: OpenAICompatibleConfig, fetchImpl: typeof fetch = fetch) {
     if (config) {
@@ -83,6 +92,23 @@ export class OpenAICompatibleClient implements ModelClient {
     const timeout = AbortSignal.timeout(cfg.timeoutMs)
     const combined = signal ? AbortSignal.any([signal, timeout]) : timeout
     const startedAt = new Date().toISOString()
+    const httpBody = {
+      model: cfg.model,
+      temperature: cfg.temperature,
+      stream: false,
+      messages: request.messages.map((m: ChatMessage) => ({ role: m.role, content: m.content })),
+      ...(cfg.maxTokens ? { max_tokens: cfg.maxTokens } : {}),
+      ...(cfg.disableThinking ? { enable_thinking: false, chat_template_kwargs: { enable_thinking: false } } : {}),
+      ...(process.env.PET_MODEL_NO_RESPONSE_FORMAT === '1' ? {} : { response_format: { type: 'json_object' } }),
+    }
+    const callNo = ++this.calls
+    const stem = `${String(callNo).padStart(3, '0')}-${request.purpose}-${request.requestId}`
+    const record = (suffix: string, value: unknown) => {
+      if (!cfg.recordDir) return
+      mkdirSync(cfg.recordDir, { recursive: true })
+      writeFileSync(join(cfg.recordDir, `${stem}.${suffix}.json`), JSON.stringify(value, null, 2), 'utf8')
+    }
+    record('request', { url: `${cfg.baseUrl}/chat/completions`, sentAt: startedAt, body: httpBody })
     let res: Response
     try {
       res = await this.fetchImpl(`${cfg.baseUrl}/chat/completions`, {
@@ -91,26 +117,24 @@ export class OpenAICompatibleClient implements ModelClient {
           'content-type': 'application/json',
           ...(cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {}),
         },
-        body: JSON.stringify({
-          model: cfg.model,
-          temperature: cfg.temperature,
-          messages: request.messages.map((m: ChatMessage) => ({ role: m.role, content: m.content })),
-          ...(cfg.maxTokens ? { max_tokens: cfg.maxTokens } : {}),
-          ...(process.env.PET_MODEL_NO_RESPONSE_FORMAT === '1' ? {} : { response_format: { type: 'json_object' } }),
-        }),
+        body: JSON.stringify(httpBody),
         signal: combined,
       })
     } catch (error) {
+      record('response', { receivedAt: new Date().toISOString(), error: error instanceof Error ? error.message : String(error), timeout: timeout.aborted })
       if (signal?.aborted) return fail('aborted', 'caller aborted')
       if (timeout.aborted) return fail('timeout', `no response within ${cfg.timeoutMs}ms`)
       return fail('provider_error', error instanceof Error ? error.message : String(error))
     }
     let body: any
+    const rawBody = await res.text().catch(() => '')
     try {
-      body = await res.json()
+      body = JSON.parse(rawBody)
     } catch (error) {
+      record('response', { receivedAt: new Date().toISOString(), status: res.status, rawBody })
       return fail('http_error', `status ${res.status}; body not JSON`)
     }
+    record('response', { receivedAt: new Date().toISOString(), status: res.status, body })
     if (!res.ok) return fail('http_error', `status ${res.status}: ${String(body?.error?.message ?? '').slice(0, 300)}`)
     const choice = body?.choices?.[0]
     const text = choice?.message?.content

@@ -73,13 +73,43 @@ export type ParseResult =
   | { readonly ok: true; readonly value: unknown }
   | { readonly ok: false; readonly code: 'parse_error'; readonly detail: string }
 
-/** 只接受：整段是 JSON，或唯一一个 ```json 代码块。不做“猜测修补”。 */
+/** 从第一个 { 开始取括号平衡的对象（考虑字符串转义）；不修补内容。 */
+function firstBalancedObject(text: string): string | null {
+  const start = text.indexOf('{')
+  if (start < 0) return null
+  let depth = 0
+  let inStr = false
+  let esc = false
+  for (let i = start; i < text.length; i++) {
+    const ch = text[i]!
+    if (inStr) {
+      if (esc) esc = false
+      else if (ch === '\\') esc = true
+      else if (ch === '"') inStr = false
+      continue
+    }
+    if (ch === '"') inStr = true
+    else if (ch === '{') depth++
+    else if (ch === '}') {
+      depth--
+      if (depth === 0) return text.slice(start, i + 1)
+    }
+  }
+  return null
+}
+
+/**
+ * 接受顺序：整段 JSON → 唯一 ```json 代码块 → 去掉空 <think></think> 后的整段 → 唯一的平衡对象（前后有说明文字）。
+ * 不改写对象内容、不补全截断输出；截断/多对象一律 parse_error。
+ */
 export function parseModelJson(raw: string): ParseResult {
-  const text = raw.trim()
+  const text = raw.replace(/^\s*<think>[\s\S]*?<\/think>\s*/, '').trim()
   if (text.length === 0) return { ok: false, code: 'parse_error', detail: 'empty output' }
   const candidates: string[] = [text]
   const fences = [...text.matchAll(/```(?:json)?\s*\n([\s\S]*?)\n?```/g)]
   if (fences.length === 1) candidates.push(fences[0]![1]!.trim())
+  const balanced = firstBalancedObject(text)
+  if (balanced && fences.length <= 1) candidates.push(balanced)
   for (const c of candidates) {
     try {
       const value = JSON.parse(c)

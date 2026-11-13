@@ -34,6 +34,8 @@ export const EXTRACTION_SYSTEM = `你是记忆抽取器。把对话原话拆成�
 - 作用域按原话所指对象判定：只对某任务生效的用 task；明确适用于所有事情的用 global。不要把对一个任务的更正扩散到其他任务。
 - 用户更正旧设定时，新条目 supersedes 填旧条目 itemId（仅限给出的已有条目）。
 - 假设、演练、举例、"如果…会怎样"的内容 status=hypothetical；不确定原话指哪个任务或是否更正时 status=conflict，不要猜。
+- 原话中的相对时间（如"接下来N分钟""今天下班前""明天"）按该原话的 at 换算成带时区的绝对时间，写入 validUntil 或 value。
+- 若给出 keyVocabulary，表达同一属性时优先使用其中的 key。
 - 不要编造原话中没有的信息。没有可抽取内容时输出 {"items":[]}。`
 
 export interface ExtractionContextItem {
@@ -51,10 +53,12 @@ export function buildExtractionRequest(input: {
   readonly existingItems: readonly ExtractionContextItem[]
   readonly entities: readonly { id: string; type: string; label: string }[]
   readonly createdAt: string
+  readonly keyVocabulary?: readonly string[]
 }): ModelRequest {
   const fmt = (t: Turn) => ({ id: t.turnId, sessionId: t.sessionId, seq: t.seq, at: t.at, role: t.role, taskIds: t.taskIds, text: t.text })
   const user = JSON.stringify({
     entities: input.entities,
+    ...(input.keyVocabulary && input.keyVocabulary.length > 0 ? { keyVocabulary: input.keyVocabulary } : {}),
     existingItems: input.existingItems,
     priorTurnsForContext: input.priorTurns.map(fmt),
     turnsToExtract: input.newTurns.map(fmt),
@@ -223,7 +227,7 @@ export function applyExtraction(
 export async function extractPending(
   store: CapabilityMemoryStore,
   client: ModelClient,
-  options: { entities: readonly { id: string; type: string; label: string }[]; now: string; signal?: AbortSignal; contextTurns?: number },
+  options: { entities: readonly { id: string; type: string; label: string }[]; now: string; signal?: AbortSignal; contextTurns?: number; keyVocabulary?: readonly string[] },
 ): Promise<{ status: 'nothing' | 'applied' | 'failed' | 'pending'; request?: ModelRequest; report?: ExtractionApplyReport; detail?: string }> {
   const done = store.extractedTurnIds()
   const retracted = store.retractedTurns()
@@ -232,7 +236,7 @@ export async function extractPending(
   if (fresh.length === 0) return { status: 'nothing' }
   const prior = all.filter((t) => done.has(t.turnId)).slice(-(options.contextTurns ?? 6))
   const existing = store.items().filter((i) => i.status !== 'hypothetical').map((i) => ({ itemId: i.itemId, kind: i.kind, key: i.key, value: i.value, scope: i.scope, statement: i.statement }))
-  const request = buildExtractionRequest({ newTurns: fresh, priorTurns: prior, existingItems: existing, entities: options.entities, createdAt: options.now })
+  const request = buildExtractionRequest({ newTurns: fresh, priorTurns: prior, existingItems: existing, entities: options.entities, createdAt: options.now, keyVocabulary: options.keyVocabulary })
   const result = await client.complete(request, options.signal)
   if (!result.ok) {
     if (result.code !== 'pending') store.recordExtraction({ requestId: request.requestId, status: 'failed', detail: `${result.code}: ${result.detail}`, turnIds: fresh.map((t) => t.turnId) }, options.now)

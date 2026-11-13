@@ -1,0 +1,96 @@
+{
+ "task": "B",
+ "note": "可修改的评测样本",
+ "samples": [
+  {
+   "id": "s01",
+   "text": "样本1",
+   "expected": "猫",
+   "predictions": {
+    "v1": "猫",
+    "v2": "狗"
+   }
+  },
+  {
+   "id": "s02",
+   "text": "样本2",
+   "expected": "狗",
+   "predictions": {
+    "v1": "狗",
+    "v2": "狗"
+   }
+  },
+  {
+   "id": "s03",
+   "text": "样本3",
+   "expected": "鸟",
+   "predictions": {
+    "v1": "鸟",
+    "v2": "鸟"
+   }
+  },
+  {
+   "id": "s04",
+   "text": "样本4",
+   "expected": "猫",
+   "predictions": {
+    "v1": "猫",
+    "v2": "狗"
+   }
+  },
+  {
+   "id": "s05",
+   "text": "样本5",
+   "expected": "狗",
+   "predictions": {
+    "v1": "狗",
+    "v2": "狗"
+   }
+  },
+  {
+   "id": "s06",
+   "text": "样本6",
+   "expected": "鸟",
+   "predictions": {
+    "v1": "鸟",
+    "v2": "鸟"
+   }
+  },
+  {
+   "id": "s07",
+   "text": "样本7",
+   "expected": "猫",
+   "predictions": {
+    "v1": "猫",
+    "v2": "猫"
+   }
+  },
+  {
+   "id": "s08",
+   "text": "样本8",
+   "expected": "狗",
+   "predictions": {
+    "v1": "狗",
+    "v2": "狗"
+   }
+  },
+  {
+   "id": "s09",
+   "text": "样本9",
+   "expected": "鸟",
+   "predictions": {
+    "v1": "鸟",
+    "v2": "鸟"
+   }
+  },
+  {
+   "id": "s10",
+   "text": "样本10",
+   "expected": "猫",
+   "predictions": {
+    "v1": "猫",
+    "v2": "猫"
+   }
+  }
+ ]
+}

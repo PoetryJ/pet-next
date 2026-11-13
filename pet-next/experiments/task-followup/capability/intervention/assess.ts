@@ -29,7 +29,7 @@ export interface AssessSnapshot {
   readonly stage: string
   readonly now: string
   /** 当前可见的最新结果摘要（来自宿主已校验的结果，不是模型猜测） */
-  readonly latestResult?: { readonly sourceId: string; readonly revision: number; readonly status: string; readonly summary: string } | null
+  readonly latestResult?: { readonly sourceId: string; readonly revision: number; readonly status: string; readonly summary: string; readonly assignment?: string; readonly artifact?: string } | null
   /** 宿主可执行的动作选项（act/ask 时模型只能从中选） */
   readonly options?: readonly { readonly optionId: string; readonly label: string }[]
 }
@@ -99,6 +99,8 @@ reasonCode 取值：waiting_external_info, needs_user_choice, ready_to_execute, 
 考虑缺失信息、截止时间、预计下一条结果何时到、用户偏好的通知方式；等待能消除问题且来得及时选 wait；临近截止或可能造成不可逆错误时 ask。
 记忆包有 conflicts 或 missing 影响决定时，不要猜，应 ask 澄清。
 输出格式：{"kind":"...","reasonCode":"...","question":"或null","optionIds":[],"wakeAt":"或null","waitFor":"或null","deadlineAt":"或null","deliverAt":"或null","batchable":true或false,"evidenceTurnIds":["原话id"],"evidenceItemIds":["条目itemId"],"answerFacts":[{"key":"字段","value":标量,"sourceTurnIds":["原话id"]}]}
+所有时间（wakeAt/deadlineAt/deliverAt）必须是带时区的绝对 ISO8601，且晚于 snapshot.now；从原话里的相对时间按原话时间换算。
+snapshot.latestResult 的 assignment 与 snapshot.assignmentId 不一致时，它是旧执行的结果，不能据此行动或提问。
 batchable=true 表示这个问题可以与其他任务的问题合并在一次通知里回答。若输入含 question，answerFacts 必须逐个回答 question.requestedFactKeys 中的字段（key 原样使用；人/任务用实体 id；无有效证据时 value=null），sourceTurnIds 引用支持该值的原话 id。`
 
 export function identityOf(snapshot: AssessSnapshot, packet: MemoryPacket): AssessmentIdentity {
