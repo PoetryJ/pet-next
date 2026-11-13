@@ -231,7 +231,9 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
     const url = `${hostOrigin()}/panel?${query.toString()}`;
     if (panel && !panel.isDestroyed()) {
       void panel.loadURL(url);
+      if (panel.isMinimized()) panel.restore();
       panel.show();
+      if (recordingOnTop) panel.setAlwaysOnTop(true, 'floating');
       panel.focus();
       log('panel-focus', { ticketId: ticketId ?? null });
       return;
@@ -248,6 +250,8 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
       webPreferences: { preload: options.preloadPath, contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
     });
     lockNavigation(panel);
+    // Windows 上构造参数 alwaysOnTop 并不总生效（实测窗口缺 WS_EX_TOPMOST），显式再设一次。
+    if (recordingOnTop) panel.setAlwaysOnTop(true, 'floating');
     panel.on('closed', () => {
       panel = null;
       log('panel-closed', {});
@@ -318,6 +322,7 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
     });
     lockNavigation(viewer);
+    if (recordingOnTop) viewer.setAlwaysOnTop(true, 'floating');
     viewers.set(ticketId, viewer);
     viewer.on('closed', () => viewers.delete(ticketId));
     const query = new URLSearchParams({ token: connection.token, ticket: ticketId });
