@@ -120,8 +120,19 @@ export interface AssessQuestion {
   readonly requestedFactKeys: readonly string[]
 }
 
+/** 模型可见的行动包：有效断言 + 原话；历史旧值只给摘要（无 itemId，避免被复制成依据）；明确 allowedEvidenceIds。 */
+export function modelView(packet: MemoryPacket) {
+  const active = [...packet.currentFacts, ...packet.preferences, ...packet.commitments, ...packet.outcomes].map((i) => i.itemId)
+  const turns = [...new Set([...packet.evidenceRefs.map((r) => r.turnId), ...packet.context.recentTurns.map((r) => r.turnId)])]
+  return {
+    ...packet,
+    context: { ...packet.context, nonActionable: packet.context.nonActionable.map((i) => ({ key: i.key, oldValue: i.value, status: i.status, note: '历史值，仅用于理解变化，不能作为依据或引用' })) },
+    allowedEvidenceIds: { itemIds: active, turnIds: turns },
+  }
+}
+
 export function buildAssessRequest(snapshot: AssessSnapshot, packet: MemoryPacket, question?: AssessQuestion): ModelRequest {
-  const user = JSON.stringify({ snapshot, memory: packet, ...(question ? { question } : {}) })
+  const user = JSON.stringify({ snapshot, memory: modelView(packet), ...(question ? { question } : {}) })
   return makeRequest('assess', [
     { role: 'system', content: ASSESS_SYSTEM },
     { role: 'user', content: user },
@@ -180,6 +191,15 @@ export async function assess(snapshot: AssessSnapshot, packet: MemoryPacket, sig
     rawText: result.response.rawText,
     proposal: parsed.ok ? parsed.proposal : null,
     failure: parsed.ok ? null : { code: 'parse_error', detail: parsed.detail },
+  }
+}
+
+/** guard 拒绝后的一次定向修复：短错误码 + 有效范围；调用方保证最多一次，并保留第一次原始输出。 */
+export const REPAIRABLE: readonly string[] = ['evidence_unknown', 'evidence_not_actionable', 'evidence_missing', 'wait_without_recheck', 'wait_past_deadline', 'option_not_offered', 'model_failed']
+export function repairQuestion(prev: SubmitResult, base?: AssessQuestion): AssessQuestion {
+  return {
+    text: `${base?.text ?? '此刻该做什么？'}\n[修复] 上一次输出被系统拒绝：${prev.code}（${prev.detail.slice(0, 160)}）。请重新判断：kind 只能是 ask/wait/act/digest/none；evidenceItemIds/evidenceTurnIds 只能取自 memory.allowedEvidenceIds；wakeAt/deadlineAt 必须是晚于 snapshot.now 的绝对时间；ask 的 optionIds 只能取自 snapshot.options，question 要写给用户能直接回答的具体选择。只输出一个 JSON 对象。`,
+    requestedFactKeys: base?.requestedFactKeys ?? [],
   }
 }
 

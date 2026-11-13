@@ -30,6 +30,8 @@ export const FOLLOWUP_ATTRIBUTES: readonly AttributeDef[] = [
   { id: 'taskSeparation', kind: 'commitment', scope: 'task', description: '本任务与其他任务必须分开统计/不得混用的约束', valueHint: '如 "separate_from_other_tasks"', aliases: ['isolation', 'doNotMerge'] },
   { id: 'reportRequirements', kind: 'commitment', scope: 'task', description: '分析/报告内容要求（保留样本编号、同一修订统计等）', valueHint: '短字符串', aliases: ['analysisRequirements', 'reportContent'] },
   { id: 'taskStatus', kind: 'commitment', scope: 'task', description: '用户对任务本身的指令：取消/暂停/继续', valueHint: '"cancelled" | "paused" | "active"', aliases: ['cancel', 'cancelled', 'status', 'taskState'] },
+  { id: 'resultObserved', kind: 'outcome', scope: 'task', description: '宿主已验证的最新执行结果（运行/修订/状态/指标/产物SHA），由宿主直接写入', valueHint: '"<runId>-r<rev>:<status>"', aliases: ['latestResult', 'runResult'] },
+  { id: 'analysisArtifact', kind: 'outcome', scope: 'task', description: '已生成并经回执核验的分析产物（路径与SHA），由宿主直接写入', valueHint: '产物相对路径', aliases: ['artifactReceipt'] },
   { id: 'userChoice', kind: 'commitment', scope: 'task', description: '用户对某个具体选择的明确答复', valueHint: '如 "analyze_failing"', aliases: ['choice', 'answer', 'decision'] },
 ]
 

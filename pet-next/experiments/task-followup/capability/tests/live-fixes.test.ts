@@ -10,6 +10,7 @@ import { readForDecision } from '../memory/read.ts'
 import { assess, submitAssessment } from '../intervention/assess.ts'
 import type { AssessSnapshot } from '../intervention/assess.ts'
 import { FixtureClient } from './fixture-model.ts'
+import { ingestVerifiedOutcome } from '../memory/verified.ts'
 
 const budget = { maxItems: 30, maxChars: 6000 }
 const T = (m: number) => new Date(Date.parse('2026-11-13T10:00:00Z') + m * 60_000).toISOString()
@@ -114,5 +115,42 @@ test('引用里混入未知 id / 未提供选项：剔除并记录，仍有有�
   // 只有未知引用 → 仍拒绝
   const rec2 = await assess(snap(now, opts), packet, undefined, new FixtureClient(() => proposal({ kind: 'ask', reasonCode: 'needs_user_choice', question: '?', optionIds: ['analyze_failing'], evidenceTurnIds: ['turn-999'] })))
   assert.equal(submitAssessment(rec2, packet, { taskRevision: 1, assignmentId: 'run-r1', now }, store, snap(now, opts)).code, 'evidence_unknown')
+  store.close()
+})
+
+test('逐 turn 覆盖 + 同值断言只记支持 + 相对时长由系统换算', async () => {
+  const store = seed()
+  await extractPending(store, new FixtureClient(() => JSON.stringify({ items: [item({ key: 'runTarget', value: 48, quotes: quote('u1', '最初跑48个样本') })] })), { entities: [], now: T(1) })
+  const u1Item = store.items()[0]!
+  store.appendTurn({ turnId: 'u2', sessionId: 's2', seq: 2, at: T(5), role: 'user', text: '还是48个样本。接下来4分钟我在开会。', taskIds: ['task:R'] })
+  store.appendTurn({ turnId: 'u3', sessionId: 's2', seq: 3, at: T(6), role: 'user', text: '嗯。', taskIds: ['task:R'] })
+  store.appendTurn({ turnId: 'u4', sessionId: 's2', seq: 4, at: T(7), role: 'user', text: '顺便说下天气不错。', taskIds: ['task:R'] })
+  const r = await extractPending(store, new FixtureClient(() => JSON.stringify({ coverage: [{ turnId: 'u2', status: 'extracted' }, { turnId: 'u3', status: 'no_relevant_fact' }], items: [
+    item({ key: 'runTarget', value: '48', quotes: quote('u2', '还是48个样本') }),
+    item({ kind: 'preference', key: 'availability', value: 'busy', scope: { level: 'global', id: null }, durationMinutes: 4, validUntil: new Date(Date.parse(T(5)) + 4000).toISOString(), quotes: quote('u2', '接下来4分钟我在开会') }),
+  ] })), { entities: [], now: T(8) })
+  assert.deepEqual(r.report!.supports.map((x) => x.itemId), [u1Item.itemId], '同值不新建条目')
+  const busy = r.report!.accepted.find((i) => i.key === 'availability')!
+  assert.equal(busy.validUntil, new Date(Date.parse(T(5)) + 4 * 60_000).toISOString(), '4 分钟按原话时间换算，不信模型自己算的 4 秒')
+  assert.deepEqual(r.report!.coverage.map((c) => `${c.turnId}:${c.status}`), ['u2:extracted', 'u3:no_relevant_fact', 'u4:uncovered'])
+  const p = readForDecision(store, { taskId: 'task:R', asOf: T(9), intent: 'current', question: '样本', requiredSlots: ['runTarget'], budget })
+  assert.ok(p.context.recentTurns.some((x) => x.turnId === 'u4'), '未覆盖原话仍可读')
+  assert.ok(!p.context.recentTurns.some((x) => x.turnId === 'u3'))
+  const again = await extractPending(store, new FixtureClient(() => { throw new Error('不应再次送抽未覆盖原话') }), { entities: [], now: T(10) })
+  assert.equal(again.status, 'nothing')
+  store.close()
+})
+
+test('宿主验真的工具结果直接成为 outcome，新修订取代旧修订（系统构建取代边）', () => {
+  const store = seed()
+  store.appendTurn({ turnId: 'o1', sessionId: 'obs', seq: 2, at: T(1), role: 'tool', text: '[结果] run-64 修订1 partial', taskIds: ['task:R'] })
+  const a = ingestVerifiedOutcome(store, store.turn('o1')!, 'task:R', { runId: 'run-64', revision: 1, status: 'partial', metrics: { total: 64, passed: 56 }, resultFileSha: 'a'.repeat(64) }, T(1))
+  store.appendTurn({ turnId: 'o2', sessionId: 'obs', seq: 3, at: T(2), role: 'tool', text: '[结果] run-64 修订2 partial', taskIds: ['task:R'] })
+  const b = ingestVerifiedOutcome(store, store.turn('o2')!, 'task:R', { runId: 'run-64', revision: 2, status: 'partial', metrics: { total: 64, passed: 61 }, resultFileSha: 'b'.repeat(64) }, T(2))
+  assert.deepEqual(b.supersedes, [a.itemId])
+  assert.equal(ingestVerifiedOutcome(store, store.turn('o2')!, 'task:R', { runId: 'run-64', revision: 2, status: 'partial', metrics: { total: 64, passed: 61 }, resultFileSha: 'b'.repeat(64) }, T(3)).itemId, b.itemId, '重复观察幂等')
+  const p = readForDecision(store, { taskId: 'task:R', asOf: T(4), intent: 'current', question: '结果', requiredSlots: ['resultObserved'], budget })
+  assert.deepEqual(p.outcomes.map((i) => i.value), ['run-64-r2:partial'])
+  assert.ok(store.extractedTurnIds().has('o2'), '工具原话按验真入库后才算覆盖')
   store.close()
 })

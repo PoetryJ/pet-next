@@ -19,7 +19,7 @@ export interface LogRow {
 
 export interface ExtractionLogRow {
   readonly requestId: string
-  readonly status: 'pending' | 'applied' | 'failed'
+  readonly status: 'pending' | 'applied' | 'failed' | 'uncovered'
   readonly detail: string
   readonly turnIds: readonly string[]
 }

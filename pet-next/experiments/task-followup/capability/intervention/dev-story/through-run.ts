@@ -114,6 +114,8 @@ function snapshotOf(t: TaskState): AssessSnapshot {
   let latestResult: AssessSnapshot['latestResult'] = null
   if (t.latestResultFile) {
     const r = JSON.parse(readFileSync(join(WORK, t.latestResultFile), 'utf8'))
+    // 入口隔离：旧派工（assignment 不等于当前）的结果不能作为当前 latestResult，也不能盖上当前任务修订号
+    if (r.assignment !== t.assignmentId) return { taskId: t.id, title: t.title, goal: t.goal, taskRevision: t.revision, assignmentId: t.assignmentId, status: t.cancelled ? 'cancelled' : t.status, stage: t.status, now: iso(), latestResult: null, options: [] }
     latestResult = { sourceId: t.latestResultFile, revision: t.revision, status: r.kind === 'progress' ? 'in_progress' : r.status, summary: r.kind === 'progress' ? `已处理${r.processed}/${r.total}，错误${r.errorsSoFar}` : `正确${r.correct}/${r.total}，准确率${r.accuracy}，失败样本${r.failures.join(',') || '无'}`, assignment: r.assignment, artifact: r.reportFile ?? null }
   }
   return { taskId: t.id, title: t.title, goal: t.goal, taskRevision: t.revision, assignmentId: t.assignmentId, status: t.cancelled ? 'cancelled' : t.status, stage: t.status, now: iso(), latestResult, options: optionsFor(t) }

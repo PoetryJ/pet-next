@@ -102,7 +102,7 @@ test('抽取 guard：非逐字引用拒绝；助手复述不能成为用户偏�
       { kind: 'fact', key: 'ownerId', value: '丙', statement: '', scope: { level: 'task', id: 'task:X' }, validFrom: null, validUntil: null, supersedes: [], confidence: 1, status: 'active', quotes: [{ turnId: 'u1', start: 0, end: 3, text: '交给丙' }] },
       { kind: 'preference', key: 'reportFrequency', value: 'hourly', statement: '', scope: { level: 'task', id: 'task:X' }, validFrom: null, validUntil: null, supersedes: [], confidence: 1, status: 'active', quotes: [{ turnId: 'a1', start: 1, end: 9, text: '喜欢每小时汇报' }] },
     ] })
-    const old = user.existingItems.find((i: any) => i.key === 'other.ownerId')
+    const old = store.items().find((i) => i.key === 'other.ownerId')! // existingItems 只给本批作用域；跨任务 id 由夹具直接给出，检验 guard
     return JSON.stringify({ items: [
       { kind: 'fact', key: 'ownerId', value: '乙', statement: '', scope: { level: 'task', id: 'task:Y' }, validFrom: null, validUntil: null, supersedes: [old.itemId], confidence: 0.5, status: 'active', quotes: [{ turnId: 'u3', start: 0, end: 7, text: 'Y任务交给乙' }] },
       { kind: 'fact', key: 'ownerId', value: '乙', statement: '', scope: { level: 'task', id: 'task:Y' }, validFrom: null, validUntil: null, supersedes: [], confidence: 0.5, status: 'hypothetical', quotes: [{ turnId: 'u3', start: 2, end: 9, text: 'Y任务交给乙' }] },
@@ -133,14 +133,19 @@ test('抽取 guard：非逐字引用拒绝；助手复述不能成为用户偏�
   const packetX = readForDecision(store, { taskId: 'task:X', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '负责人', requiredSlots: ['ownerId'], budget })
   assert.deepEqual(packetX.currentFacts.map((f) => f.value), ['甲'], 'X 不被 Y 的假设/冲突改写')
   const packetY = readForDecision(store, { taskId: 'task:Y', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '负责人', requiredSlots: ['ownerId'], budget })
-  assert.deepEqual(packetY.missing, ['ownerId'])
+  // u2 没有被任何接受条目引用、模型也没声明 no_relevant_fact → 未覆盖，原话保留在 recentTurns；槽位是 unresolved（抽取待定）而不是“用户没给”
+  assert.deepEqual(packetY.missing, [])
+  assert.equal(packetY.context.slotResolution[0]!.status, 'unresolved')
+  assert.ok(packetY.context.slotResolution[0]!.via.includes('unextracted_turns'))
+  assert.ok(packetY.currentFacts.every((f) => f.value !== '乙'), '假设/冲突的乙不作为当前事实')
   assert.ok(packetY.conflicts.length >= 1)
   assert.ok(packetY.context.diagnostics.some((d) => d.startsWith('hypothetical_not_actionable')))
   // 撤回原话：依赖它的条目不再出现
   store.retractTurn('u1', '2026-11-13T09:30:00+08:00', 'user_deleted')
   const afterRetract = readForDecision(store, { taskId: 'task:X', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '负责人', requiredSlots: ['ownerId'], budget })
   assert.deepEqual(afterRetract.currentFacts, [])
-  assert.deepEqual(afterRetract.missing, ['ownerId'])
+  assert.notEqual(afterRetract.context.slotResolution[0]!.status, 'satisfied', '撤回后不再满足')
+  assert.ok(afterRetract.context.recentTurns.every((r) => r.turnId !== 'u1'), '撤回的原话不再作为未覆盖原话出现')
   store.close()
 })
 

@@ -12,7 +12,8 @@ import { join, resolve, relative, isAbsolute } from 'node:path'
 import { CapabilityMemoryStore } from '../../memory/store.ts'
 import { extractPending } from '../../memory/extract.ts'
 import { readForDecision } from '../../memory/read.ts'
-import { assess, submitAssessment } from '../assess.ts'
+import { ingestVerifiedOutcome, ingestToolReceipt } from '../../memory/verified.ts'
+import { assess, submitAssessment, repairQuestion, REPAIRABLE } from '../assess.ts'
 import type { AssessSnapshot } from '../assess.ts'
 import { InterventionStore } from '../planner.ts'
 import { OpenAICompatibleClient } from '../../model/openai-compatible.ts'
@@ -97,7 +98,10 @@ function scanInbox() {
     if (!t.cancelled) t.status = 'result_observed'
     const failed = (r.samples ?? []).filter((s: any) => !s.pass).map((s: any) => `${s.id}(${s.note})`)
     const text = `[观察到结果文件 inbox/${exp}/result.json sha256=${h.slice(0, 16)}] 实验${r.experimentId} 运行${r.runId} 修订${r.revision} 状态${r.status}：总数${r.metrics.total}，通过${r.metrics.passed}，未通过${r.metrics.failed}。未通过样本：${failed.join('、') || '无'}。说明：${r.note}`
-    addTurn(`obs-${h.slice(0, 12)}`, 'tool', text, [t.taskId], iso(), `observer-${INSTANCE}`)
+    const obsId = `obs-${h.slice(0, 12)}`
+    addTurn(obsId, 'tool', text, [t.taskId], iso(), `observer-${INSTANCE}`)
+    const vo = ingestVerifiedOutcome(store, store.turn(obsId)!, t.taskId, { runId: r.runId, revision: r.revision, status: r.status, metrics: r.metrics, resultFileSha: h, artifactPath: r.artifactPath, artifactSha: r.artifactSha }, iso())
+    ev('outcome.verified', { alias: t.alias, itemId: vo.itemId, value: vo.value, supersedes: vo.supersedes })
     plan.evidenceArrived(t.taskId, iso(), `${r.runId}-r${r.revision}`)
     ev('result.observed', { alias: t.alias, runId: r.runId, revision: r.revision, status: r.status, metrics: r.metrics, resultFileSha: h, artifactPath: r.artifactPath, artifactSha: r.artifactSha, taskRevision: t.revision, taskCancelled: t.cancelled })
     if (inflightTask === t.taskId) ev('assess.inflight_will_be_stale', { alias: t.alias, why: 'new result for same task' })
@@ -180,7 +184,9 @@ function runAnalysis(t: TaskState, card: any, member: any) {
     input: { resultFileSha: t.resultFileSha, artifactPath: r.artifactPath, artifactSha: inputSha, runId: r.runId, revision: r.revision }, output: { path: outRel, sha256: sha(md), bytes: Buffer.byteLength(md) }, counts: { total, passed, failed: failed.length, clusters: Object.fromEntries([...clusters].map(([k, v]) => [k, v.length])) } }
   writeFileSync(join(STATE, 'receipts', `${receipt.receiptId}.json`), JSON.stringify(receipt, null, 2))
   t.analysis = receipt.receiptId; t.status = 'analysis_done'; save()
-  addTurn(`tool-${receipt.receiptId}`, 'tool', `[工具回执 ${receipt.receiptId}] 本地失败分析已写入 ${outRel} sha256=${receipt.output.sha256.slice(0, 16)}，输入 ${r.runId} 修订${r.revision}`, [t.taskId], iso(), `tool-${INSTANCE}`)
+  const rid = `tool-${receipt.receiptId}`
+  addTurn(rid, 'tool', `[工具回执 ${receipt.receiptId}] 本地失败分析已写入 ${outRel} sha256=${receipt.output.sha256.slice(0, 16)}，输入 ${r.runId} 修订${r.revision}`, [t.taskId], iso(), `tool-${INSTANCE}`)
+  ingestToolReceipt(store, store.turn(rid)!, t.taskId, 'analysisArtifact', outRel, `分析产物 ${outRel} sha256 ${receipt.output.sha256.slice(0, 16)}（输入 ${r.runId} r${r.revision}）`, iso())
   ev('tool.executed', receipt)
   return receipt
 }
@@ -263,15 +269,32 @@ async function runAssess(alias: string, why: string) {
   const packet = readForDecision(store, { taskId: t.taskId, asOf: snapshot.now, intent: 'current', question: `${t.title} 当前结果、样本数口径、授权范围、通知偏好与等待条件`, requiredSlots: ['runTarget', 'allowedActions', 'notificationPolicy', 'waitPolicy', 'decisionDeadline'], budget: { maxItems: 24, maxChars: 4500 } })
   inflight = new AbortController(); inflightTask = t.taskId
   ev('assess.start', { alias, why, taskRevision: t.revision, assignment: t.assignmentId, memoryCursor: packet.memoryCursor, options: (snapshot.options ?? []).map((o) => o.optionId), slotResolution: packet.context.slotResolution.map((s) => `${s.slot}:${s.status}`), items: [...packet.currentFacts, ...packet.commitments, ...packet.preferences].map((i) => `${i.itemId}:${i.key}=${JSON.stringify(i.value)}`), nonActionable: packet.context.nonActionable.map((i) => `${i.key}=${JSON.stringify(i.value)}/${i.status}`), recentTurns: packet.context.recentTurns.map((r) => r.turnId) })
-  const record = await assess(snapshot, packet, inflight.signal, client, { text: '此刻该做什么：等待、马上问我、合并到摘要、直接执行某个选项，还是什么都不做？', requestedFactKeys: [] }, ASSESS_MAX)
+  const baseQ = { text: '此刻该做什么：等待、马上问我、合并到摘要、直接执行某个选项，还是什么都不做？', requestedFactKeys: [] as string[] }
+  let record = await assess(snapshot, packet, inflight.signal, client, baseQ, ASSESS_MAX)
   inflight = null; inflightTask = null
   if (record.failure?.code === 'aborted') { ev('assess.aborted', { alias, requestId: record.request.requestId }); if (!stopping) enqueue(alias, 'requeue after abort'); return }
   const cur = byAlias(alias)!
-  const submit = submitAssessment(record, packet, { taskRevision: cur.revision, assignmentId: cur.assignmentId, now: iso() }, store, snapshot)
-  const outcome = plan.apply(record, submit, iso())
-  const p = record.proposal
+  let submit = submitAssessment(record, packet, { taskRevision: cur.revision, assignmentId: cur.assignmentId, now: iso() }, store, snapshot)
   if (record.failure) counters.preGuard.push({ alias, failure: record.failure })
   else if (!submit.accepted) counters.guardCaught.push({ alias, code: submit.code, detail: submit.detail })
+  // 至多一次定向修复重评（同一快照/记忆包；第一次原始输出照常落库计数）
+  if (!submit.accepted && REPAIRABLE.includes(submit.code) && !stopping && record.failure?.code !== 'timeout') {
+    plan.logAssessment(record, submit, { type: 'rejected', code: submit.code }, iso())
+    ev('assess.first_rejected', { alias, requestId: record.request.requestId, code: submit.code, detail: submit.detail, raw: record.rawText?.slice(0, 600) ?? null })
+    const snap2 = snapshotOf(byAlias(alias)!)
+    inflight = new AbortController(); inflightTask = t.taskId
+    record = await assess(snap2, packet, inflight.signal, client, repairQuestion(submit, baseQ), ASSESS_MAX)
+    inflight = null; inflightTask = null
+    if (record.failure?.code === 'aborted') { ev('assess.aborted', { alias, requestId: record.request.requestId }); if (!stopping) enqueue(alias, 'requeue after abort'); return }
+    const cur2 = byAlias(alias)!
+    submit = submitAssessment(record, packet, { taskRevision: cur2.revision, assignmentId: cur2.assignmentId, now: iso() }, store, snap2)
+    if (record.failure) counters.preGuard.push({ alias, repair: true, failure: record.failure })
+    else if (!submit.accepted) counters.guardCaught.push({ alias, repair: true, code: submit.code, detail: submit.detail })
+    ev('assess.repair', { alias, requestId: record.request.requestId, accepted: submit.accepted, code: submit.code })
+  }
+  const outcome = plan.apply(record, submit, iso())
+  const p = record.proposal
+  if (!submit.accepted && REPAIRABLE.includes(submit.code)) ev('task.blocked', { alias, code: submit.code, resumeOn: 'new result / user turn / restart', note: '修复一次仍被拒：不自动当授权，等待下一次证据变化' })
   ev('assess.done', { alias, requestId: record.request.requestId, preGuard: p ? { kind: p.kind, reasonCode: p.reasonCode, question: p.question, optionIds: p.optionIds, wakeAt: p.wakeAt, deadlineAt: p.deadlineAt, deliverAt: p.deliverAt, batchable: p.batchable, evidence: [...p.evidenceTurnIds, ...p.evidenceItemIds] } : { failure: record.failure }, guard: { accepted: submit.accepted, code: submit.code, detail: submit.detail, checks: submit.checks }, outcome })
   const userGrounded = (refs: readonly string[]) => refs.some((r) => store.turn(r)?.role === 'user' || store.items().some((i) => i.itemId === r && i.authority === 'user'))
   if (submit.accepted && p?.reasonCode === 'cancelled' && !userGrounded([...submit.proposal!.evidenceTurnIds, ...submit.proposal!.evidenceItemIds])) ev('cancel.not_grounded', { alias, evidence: [...submit.proposal!.evidenceTurnIds, ...submit.proposal!.evidenceItemIds], note: '取消必须引用用户原话或用户来源条目' })
