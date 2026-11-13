@@ -13,7 +13,7 @@ import { readForDecision } from '../memory/read.ts'
 import { timeLike } from '../memory/attributes.ts'
 
 export const NEED_RULE_VERSION = 'strong-need-rule/v1'
-export const SHARED_READ_SLOTS = ['sampleCount', 'baselineVersion', 'experimentId', 'allowedActions', 'notificationPolicy', 'waitPolicy', 'decisionDeadline'] as const
+export const SHARED_READ_SLOTS = ['sampleCount', 'baselineVersion', 'experimentId', 'allowedActions', 'notificationPolicy', 'waitPolicy', 'decisionDeadline', 'expectedUpdateAt', 'availability'] as const
 export interface NeedRuleConfig {
   /** Must equal the candidate host setting in a comparison. */
   readonly recheckMs?: number
@@ -60,7 +60,7 @@ export function decideNeedRule(snapshot: AssessmentSnapshot, packet: MemoryPacke
     if (!ask) return result([{ intent: 'none', reasonCode: 'no_legal_question', reasonText: `${why}; host has no current question menu` }])
     return result([{ intent: 'ask_now', actionId: ask.actionId, question: ask.question, options: ask.options, reasonCode: code, reasonText: why }])
   }
-  const statuses = current('taskStatus')
+  const statuses = current('taskStatus').filter((i) => i.scope.level === 'task' && i.scope.id === packet.taskId)
   const status = statuses[0]
   const ambiguousStatus = statuses.some((i) => String(i.value) !== String(status?.value)) || packet.conflicts.some((c) => c.key === 'taskStatus')
   if (status && !ambiguousStatus && cancel.test(String(status.value))) {
@@ -83,7 +83,7 @@ export function decideNeedRule(snapshot: AssessmentSnapshot, packet: MemoryPacke
     return result([{ intent: 'wait', notBefore: new Date(due).toISOString(), ...(deadline !== null && deadline > now ? { deadline: new Date(deadline).toISOString() } : {}), reasonCode: code, reasonText: why }])
   }
   if (status && !ambiguousStatus && paused.test(String(status.value))) { note('user_paused', 'Pause is a user commitment, not a deadline override', [status]); return none('user_paused', 'Wait for the user to resume; no new question') }
-  if (snapshot.openAttention?.status === 'open' && snapshot.openAttention.taskRevision === snapshot.task.taskRevision) return none('current_question_exists', 'The current question remains open; delivery and cooldown belong to the host')
+  if (snapshot.openAttention?.state === 'open' && snapshot.openAttention.taskRevision === snapshot.task.taskRevision && snapshot.openAttention.assignmentId === snapshot.task.assignmentId) return none('current_question_exists', 'The current question remains open; delivery and cooldown belong to the host')
 
   // Recognized public availability grammar is explicit, logged, and shared across
   // all tasks. Unknown text is not silently interpreted as an availability change.
@@ -104,7 +104,12 @@ export function decideNeedRule(snapshot: AssessmentSnapshot, packet: MemoryPacke
   const waitPolicies = current('waitPolicy')
   if (waitPolicies.length) note('wait_policy', waitPolicies.map((i) => String(i.value)).join('; '), waitPolicies)
   const doNotWait = waitPolicies.some((i) => /^(do_not_wait|never_wait|ask_immediately|不要等)$/i.test(String(i.value)))
-  if (!doNotWait && eta !== null && eta > now && (deadline === null || eta + config.answerLeadMs < deadline)) return wait('useful_update_before_decision', 'Known pending evidence can resolve the decision before its deadline', eta)
+  // An explicitly named result revision is a condition, not an unconditional
+  // time delay. Early arrival can satisfy it before the original ETA.
+  const target = waitPolicies.map((i) => ({ item: i, match: String(i.value).match(/^wait_(?:for|until)_(?:r|revision_?|version_?)(\d+)$/i) })).find((p) => p.match)
+  const targetArrived = !!target && !!snapshot.task.result && snapshot.task.result.revision >= Number(target.match![1])
+  if (targetArrived) note('wait_target_arrived', `Current verified revision ${snapshot.task.result!.revision} satisfies ${String(target!.item.value)}`, [target!.item])
+  if (!doNotWait && !targetArrived && eta !== null && eta > now && (deadline === null || eta + config.answerLeadMs < deadline)) return wait('useful_update_before_decision', 'Known pending evidence can resolve the decision before its deadline', eta)
   if (eta !== null && eta <= now) note('eta_elapsed', 'Past ETA cannot renew a wait; evaluate the current verified result')
   if (eta !== null && deadline !== null && eta + config.answerLeadMs >= deadline && ask) return askNow('update_too_late', 'The expected update does not leave time for the necessary user decision')
   if (ask) return askNow('current_choice_needed', 'Current host menu requires a user choice and no timely pending evidence or availability constraint justifies delaying it')

@@ -42,6 +42,8 @@ async function main(): Promise<number> {
   }
   const TRAJECTORY = resolve(arg('--trajectory')!), PRODUCER = resolve(arg('--producer')!), OUT = resolve(arg('--out')!)
   const DRY = process.argv.includes('--dry-run')
+  const ASSESSOR = arg('--assessor') ?? 'capability'
+  must(['capability', 'capability-need-rule'].includes(ASSESSOR), 'unknown paired intervention arm')
   must(existsSync(TRAJECTORY) && existsSync(PRODUCER) && existsSync(RUN), 'trajectory, producer or product run.mjs missing')
   must(!existsSync(OUT), `refusing existing output directory: ${OUT}`)
   const source = readFileSync(TRAJECTORY)
@@ -102,7 +104,7 @@ async function main(): Promise<number> {
   async function startHost(name: string, seed = false) {
     must(!host || host.exit, 'cannot start another database writer')
     const argv = ['--experimental-transform-types', '--no-warnings', RUN, 'host', '--workspace', WS, '--timezone', timezone,
-      '--demo-short-wait', '--assessor', seed ? 'none' : 'capability', '--assessor-timeout-ms', process.env.PET_FOLLOWUP_ASSESSOR_TIMEOUT_MS ?? '500000']
+      '--demo-short-wait', '--assessor', seed ? 'none' : ASSESSOR, '--assessor-timeout-ms', process.env.PET_FOLLOWUP_ASSESSOR_TIMEOUT_MS ?? '500000']
     const child = spawn(process.execPath, argv, { env, stdio: ['ignore', 'pipe', 'pipe', 'ipc'], windowsHide: true })
     const proc: HostProcess = { child, name, exit: null, messages: [] }
     host = proc
@@ -120,7 +122,7 @@ async function main(): Promise<number> {
         const health = await api('GET', '/api/health')
         must(health.status === 200 && health.json.pid === child.pid && health.json.clock === 'real', 'host health identity/clock mismatch')
         const overview = await api('GET', '/api/overview')
-        if (!seed) must(overview.json.assessor?.spec === 'capability' && overview.json.canSay === true && !overview.json.modelUnavailable, 'product host did not enable the real capability assessor')
+        if (!seed) must(overview.json.assessor?.spec === ASSESSOR && overview.json.canSay === true && !overview.json.modelUnavailable, 'product host did not enable the requested assessor')
         log('host.ready', { name, pid: child.pid, port: state.port, assessor: overview.json.assessor, judgment: overview.json.judgment })
         return
       }

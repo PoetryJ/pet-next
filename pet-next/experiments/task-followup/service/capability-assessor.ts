@@ -31,6 +31,7 @@ import { OpenAICompatibleClient, configFromEnv } from '../capability/model/opena
 import type { ModelClient } from '../capability/model/protocol.ts'
 import type { MemoryPacket as CapPacket, Turn } from '../capability/memory/types.ts'
 import type { AssessmentDraft, AssessmentResponse, AssessmentSnapshot, AsyncAssessor } from '../runtime/assessment.ts'
+import { decideNeedRule, SHARED_READ_SLOTS } from '../capability/baselines/need-rule.ts'
 
 export interface CapabilityHandle {
   readonly assessor: AsyncAssessor
@@ -71,6 +72,7 @@ export class CapabilityNotConfigured extends Error {}
 export interface CapabilityHandleOptions {
   /** 共享等待契约：模型未给出可引用的 ETA/截止时，由宿主在这一有界间隔后复查（不伪造事实时间，也不转成向用户提问）。 */
   readonly hostRecheckMs?: number
+  readonly intervention?: 'model' | 'need-rule'
 }
 
 const ASSESS_MAX = 768
@@ -126,15 +128,14 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
     return { kind: 'cancel', itemId: item.itemId, reason: `用户取消：${item.statement}` }
   }
   const assessor: AsyncAssessor = {
-    id: `capability:${cfg.ok ? cfg.config.model : 'override'}`,
-    capability: true,
+    id: `${handleOptions.intervention === 'need-rule' ? 'strong-need-rule:shared-extraction' : 'capability'}:${cfg.ok ? cfg.config.model : 'override'}`,
+    capability: handleOptions.intervention !== 'need-rule',
     async assess(snapshot: AssessmentSnapshot, _packet, signal): Promise<AssessmentResponse> {
       const { store: s, plan: p } = need()
       const task = snapshot.task
-      const now = new Date().toISOString()
       const extraction = await extractPending(s, client, {
         entities: [{ id: task.ticketId, type: 'task', label: task.title }],
-        now,
+        now: new Date().toISOString(),
         signal,
         maxTurns: 3,
         roles: ['user', 'assistant'],
@@ -142,6 +143,8 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         taskId: task.ticketId,
       })
       if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
+      if (signal.aborted) throw signal.reason ?? new Error('aborted')
+      const now = new Date().toISOString()
       const control = taskControl(task.ticketId, new Date().toISOString())
       if (control) return {
         drafts: [], taskControl: control,
@@ -152,9 +155,18 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         asOf: now,
         intent: 'current',
         question: `${task.title} 当前结果、授权范围、通知偏好与等待条件`,
-        requiredSlots: ['sampleCount', 'baselineVersion', 'experimentId', 'allowedActions', 'notificationPolicy', 'waitPolicy', 'decisionDeadline'],
+        requiredSlots: SHARED_READ_SLOTS,
         budget: { maxItems: 24, maxChars: 4500 },
       })
+      if (!task.result && !snapshot.actionMenu.some((item) => item.kind === 'ask_user' || item.kind === 'continue_local')) return {
+        drafts: [{ intent: 'none', reasonCode: 'await_new_evidence', reasonText: '目录监听持续等待结果；当前无可选行动，不重复占用模型判断。' }],
+        raw: { provider: 'event-driven-host', model: 'no-intervention-model-call', rawOutput: '', meta: { extraction: { status: extraction.status, requestId: extraction.request?.requestId ?? null }, memoryPacket: packet, waitsFor: 'new result or user message' } },
+      }
+      if (handleOptions.intervention === 'need-rule') {
+        const ruleSnapshot = { ...snapshot, now }
+        const rule = decideNeedRule(ruleSnapshot, packet, { recheckMs: hostRecheckMs })
+        return { drafts: rule.drafts, ...(rule.taskControl ? { taskControl: rule.taskControl } : {}), raw: { provider: 'shared-extraction-deterministic-intervention', model: 'none for intervention', rawOutput: JSON.stringify(rule), requestPayload: { snapshot: ruleSnapshot, memory: packet }, meta: { extraction: { status: extraction.status, requestId: extraction.request?.requestId ?? null }, trace: rule.trace, config: rule.config } } }
+      }
       const askTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user')
       const options = (askTemplate?.options ?? []).map((option) => ({ optionId: option.id, label: option.label }))
       const capSnapshot = snapshotFromTask(task, now, options)

@@ -193,13 +193,13 @@ export async function runHost(options: HostOptions): Promise<number> {
   let capability: import('./capability-assessor.ts').CapabilityHandle | null = null
   let capabilityUnavailable: string | null = null
   try {
-    if (options.assessor === 'capability') {
+    if (options.assessor === 'capability' || options.assessor === 'capability-need-rule') {
       const mod = await import('./capability-assessor.ts')
       try {
         const recheckEnv = Number(process.env.PET_FOLLOWUP_RECHECK_MS ?? '')
         const hostRecheckMs = Number.isFinite(recheckEnv) && recheckEnv > 0 ? recheckEnv : options.demoLabel ? 90_000 : 30 * 60_000
-        capability = mod.createCapabilityHandle(process.env, fetch, undefined, { hostRecheckMs })
-        loaded = { assessor: capability.assessor, spec: 'capability' }
+        capability = mod.createCapabilityHandle(process.env, fetch, undefined, { hostRecheckMs, intervention: options.assessor === 'capability-need-rule' ? 'need-rule' : 'model' })
+        loaded = { assessor: capability.assessor, spec: options.assessor }
       } catch (error) {
         if (!(error instanceof mod.CapabilityNotConfigured)) throw error
         capabilityUnavailable = error.message
@@ -244,7 +244,7 @@ export async function runHost(options: HostOptions): Promise<number> {
   })
   if (capability) capability.attach(built.db.handle)
   const judgment = capability
-    ? `模型判断（${capability.model.name} @ ${capability.model.baseUrl}，记忆抽取+有效记忆读取+介入评估，事务外异步；未知ETA由宿主每${Math.round(capability.hostRecheckMs / 1000)}秒有界复查）；执行仍经版本/证据/通知校验，工具执行须用户授权`
+    ? `${options.assessor === 'capability-need-rule' ? '共享模型抽取＋强规则介入' : '模型判断'}（${capability.model.name} @ ${capability.model.baseUrl}，事务外；未知ETA由宿主每${Math.round(capability.hostRecheckMs / 1000)}秒有界复查）；执行仍经版本/证据/通知校验，工具执行须用户授权`
     : capabilityUnavailable
       ? `${JUDGMENT_LABEL}；模型判断未启用：${capabilityUnavailable}`
       : loaded
