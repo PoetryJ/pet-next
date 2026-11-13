@@ -61,3 +61,30 @@ test('未配置证据复验器的任意 assessor 不能直接取消任务', asyn
     assert.ok(built.runtime.listAssessments(d.ticketId).some((r) => r.post_guard_json?.includes('invalid_task_control')))
   } finally { built.runtime.abortAllAssessments('test end'); await built.runtime.settleAssessments(); built.db.close(); rmSync(root, { recursive: true, force: true }) }
 })
+
+test('空结果任务不占推理队列，但新用户取消仍抽取并关闭任务', async () => {
+  const root = mkdtempSync(join(tmpdir(), 'pet-event-driven-'))
+  const clock = new FakeClock(new Date().toISOString())
+  const client = new FixtureClient((req) => {
+    assert.equal(req.purpose, 'memory-extract', '没有结果的任务不调用介入模型')
+    const turn = JSON.parse(req.messages[1]!.content).turnsToExtract[0]
+    return JSON.stringify({ items: [{ key: 'taskStatus', value: 'cancelled', scope: { level: 'task', id: turn.taskIds[0] }, quotes: [{ turnId: turn.id, text: '这件事取消，不再提醒' }] }] })
+  })
+  const handle = createCapabilityHandle({}, fetch, client)
+  const built = buildRuntime({ workspaceRoot: root, policy: 'P3', clock, quiet: DEFAULT_QUIET, assessment: { assessor: handle.assessor, validateTaskControl: handle.validateTaskControl } })
+  handle.attach(built.db.handle)
+  try {
+    const d = built.runtime.delegate({ title: '等待后台结果', goal: '跟进新结果', goalCondition: ANALYSIS_GOAL })
+    await built.runtime.settleAssessments()
+    built.runtime.reevaluate()
+    await built.runtime.settleAssessments()
+    assert.equal(client.seen.length, 0)
+    handle.appendTurn({ turnId: 'cancel-empty', sessionId: 's', at: clock.now(), role: 'user', taskIds: [d.ticketId], text: '这件事取消，不再提醒。' })
+    built.runtime.requestReassessment(d.ticketId)
+    built.runtime.reevaluate()
+    await built.runtime.settleAssessments()
+    assert.equal(client.seen.length, 1)
+    assert.equal(built.runtime.listTasks()[0]!.status, 'cancelled')
+    assert.equal(built.attention.listOpen(d.ticketId).length, 0)
+  } finally { built.runtime.abortAllAssessments('test end'); await built.runtime.settleAssessments(); built.db.close(); rmSync(root, { recursive: true, force: true }) }
+})
