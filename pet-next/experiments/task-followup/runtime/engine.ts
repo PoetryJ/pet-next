@@ -133,6 +133,7 @@ export interface RuntimeAssessmentOptions {
   readonly timeoutMs?: number
   /** 每个请求结束（提交/失败）后回调，供宿主刷新。 */
   readonly onSettled?: (requestId: string, status: string) => void
+  readonly validateTaskControl?: (control: NonNullable<AssessmentResponse['taskControl']>, snapshot: AssessmentSnapshot, now: string) => boolean
 }
 
 export interface AssessmentSubmitResult {
@@ -2486,7 +2487,7 @@ export class FollowupRuntime {
     const rawJson = canonicalJson(response?.raw ?? null)
     let drafts
     try {
-      drafts = parseDrafts(response?.drafts)
+      drafts = response?.taskControl && Array.isArray(response.drafts) && response.drafts.length === 0 ? [] : parseDrafts(response?.drafts)
     } catch (error) {
       store.finish(requestId, { status: 'failed', raw_json: rawJson, error_code: 'parse_error', error_detail: (error as Error).message, completed_at: now })
       this.db.driverLog(now, row.ticket_id, 'assessment.failed', { requestId, code: 'parse_error' })
@@ -2513,6 +2514,16 @@ export class FollowupRuntime {
       return { ok: false, code: staleCode, detail, results: [] }
     }
     const snapshot = JSON.parse(row.snapshot_json) as AssessmentSnapshot
+    if (response.taskControl) {
+      const control = response.taskControl
+      const valid = control.kind === 'cancel' && typeof control.itemId === 'string' && typeof control.reason === 'string'
+        && drafts.length === 0 && this.assessmentOptions?.validateTaskControl?.(control, snapshot, now) === true
+      const result: AssessmentGuardResult = { decisionId: stableId('dec', 'control', requestId), draftIndex: 0, kind: 'record_only', guard: 'host', outcome: valid ? 'cancelled' : 'rejected', code: valid ? 'user_memory_cancel' : 'invalid_task_control', detail: String(control.itemId) }
+      store.finish(requestId, { status: 'submitted', raw_json: rawJson, pre_guard_json: preGuard, post_guard_json: canonicalJson([result]), completed_at: now })
+      this.db.driverLog(now, row.ticket_id, 'assessment.task_control', { requestId, control, accepted: valid })
+      if (valid) this.cancel({ ticketId: row.ticket_id, reason: control.reason, sourceId: `memory-control:${control.itemId}`, at: now })
+      return { ok: valid, code: result.code, detail: result.detail, results: [result] }
+    }
     const packet = JSON.parse(row.packet_json) as MemoryPacket
     const menu = snapshot.actionMenu
     const allowed = new Set<string>([...snapshot.evidence, ...packet.evidenceRefs, ...menu.flatMap((item) => item.evidenceRefs)].map(refKey))

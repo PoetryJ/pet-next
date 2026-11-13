@@ -295,7 +295,7 @@ export async function extractPending(
   store: CapabilityMemoryStore,
   client: ModelClient,
   options: { entities: readonly { id: string; type: string; label: string }[]; now: string; signal?: AbortSignal; contextTurns?: number; keyVocabulary?: readonly string[]; maxTurns?: number; roles?: readonly string[]; maxTokens?: number; taskId?: string },
-): Promise<{ status: 'nothing' | 'applied' | 'failed' | 'pending'; request?: ModelRequest; report?: ExtractionApplyReport; detail?: string }> {
+): Promise<{ status: 'nothing' | 'applied' | 'failed' | 'pending'; request?: ModelRequest; response?: ModelResponse; report?: ExtractionApplyReport; detail?: string }> {
   const done = store.extractedTurnIds()
   const retracted = store.retractedTurns()
   const all = store.turns().filter((t) => !retracted.has(t.turnId))
@@ -321,5 +321,5 @@ export async function extractPending(
     return { status: result.code === 'pending' ? 'pending' : 'failed', request, detail: `${result.code}: ${result.detail}` }
   }
   const report = applyExtraction(store, request, result.response, fresh.map((t) => t.turnId), options.now)
-  return { status: report.parseError ? 'failed' : 'applied', request, report }
+  return { status: report.parseError ? 'failed' : 'applied', request, response: result.response, report }
 }

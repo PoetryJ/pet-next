@@ -41,6 +41,7 @@ export interface CapabilityHandle {
   /** 宿主已校验的结果：先逐字写入工具原话，再成为 authority=tool 的 outcome 条目（不让模型复述机器字段）。 */
   readonly ingestResult: (turn: Omit<Turn, 'seq'>, taskId: string, outcome: VerifiedOutcome) => boolean
   readonly hostRecheckMs: number
+  readonly validateTaskControl: (control: NonNullable<AssessmentResponse['taskControl']>, snapshot: AssessmentSnapshot, now: string) => boolean
   readonly model: { readonly baseUrl: string; readonly name: string; readonly provider: string }
 }
 
@@ -114,6 +115,16 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
     return { store, plan }
   }
   let seq = 0
+  const taskControl = (taskId: string, now: string): AssessmentResponse['taskControl'] => {
+    const { store: s } = need()
+    const packet = readForDecision(s, { taskId, asOf: now, intent: 'current', question: '用户当前任务状态', requiredSlots: ['taskStatus'], budget: { maxItems: 8, maxChars: 2000 } })
+    const item = [...packet.commitments, ...packet.currentFacts].find((i) => i.key === 'taskStatus' && i.authority === 'user' && i.status === 'active' && i.scope.level === 'task' && i.scope.id === taskId && /^(cancelled|canceled|cancel|取消|已取消|终止|停止)$/i.test(String(i.value)))
+    if (!item || packet.conflicts.some((c) => c.itemIds.includes(item.itemId))) return undefined
+    const source = s.items().find((i) => i.itemId === item.itemId)!
+    // A newer, not-yet-compiled user message may reverse the cancellation.
+    if (packet.context.recentTurns.some((t) => t.role === 'user' && t.seq > source.recordedSeq)) return undefined
+    return { kind: 'cancel', itemId: item.itemId, reason: `用户取消：${item.statement}` }
+  }
   const assessor: AsyncAssessor = {
     id: `capability:${cfg.ok ? cfg.config.model : 'override'}`,
     capability: true,
@@ -131,6 +142,11 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         taskId: task.ticketId,
       })
       if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
+      const control = taskControl(task.ticketId, new Date().toISOString())
+      if (control) return {
+        drafts: [], taskControl: control,
+        raw: { provider: extraction.response?.model.provider ?? 'persisted-user-memory', model: extraction.response?.model.name ?? 'no-new-model-call', rawOutput: extraction.response?.rawText ?? '', requestPayload: extraction.request ?? null, meta: { taskControl: control, extraction: extraction.report ?? null } },
+      }
       const packet = readForDecision(s, {
         taskId: task.ticketId,
         asOf: now,
@@ -142,9 +158,11 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
       const askTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user')
       const options = (askTemplate?.options ?? []).map((option) => ({ optionId: option.id, label: option.label }))
       const capSnapshot = snapshotFromTask(task, now, options)
+      // The model sees the same bounded wake option that the submission guard uses.
+      const currentSnapshot = { ...capSnapshot, waitContract: { boundedRecheckAt: new Date(Date.now() + hostRecheckMs).toISOString() } }
       const baseQ = { text: '此刻该做什么：等待、马上问我、合并到摘要、直接执行某个选项，还是什么都不做？', requestedFactKeys: [] as string[] }
-      let record = await capAssess(capSnapshot, packet, signal, client, baseQ, ASSESS_MAX)
-      let submit = capSubmit(record, packet, { taskRevision: task.taskRevision, assignmentId: task.assignmentId, now: new Date().toISOString() }, s, capSnapshot)
+      let record = await capAssess(currentSnapshot, packet, signal, client, baseQ, ASSESS_MAX)
+      let submit = capSubmit(record, packet, { taskRevision: task.taskRevision, assignmentId: task.assignmentId, now: new Date().toISOString() }, s, currentSnapshot)
       let first: Record<string, unknown> | null = null
       // 等待契约优先：未知 ETA 不是错误，由宿主有界复查，不触发修复/提问
       let wc = applyWaitContract(record, submit, packet, new Date().toISOString(), hostRecheckMs)
@@ -153,8 +171,8 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
       if (!submit.accepted && REPAIRABLE.includes(submit.code) && record.failure?.code !== 'timeout' && !signal.aborted) {
         p.logAssessment(record, submit, null, now)
         first = { requestId: record.request.requestId, rawText: record.rawText, code: submit.code, detail: submit.detail, proposal: record.proposal }
-        record = await capAssess(capSnapshot, packet, signal, client, repairQuestion(submit, baseQ), ASSESS_MAX)
-        submit = capSubmit(record, packet, { taskRevision: task.taskRevision, assignmentId: task.assignmentId, now: new Date().toISOString() }, s, capSnapshot)
+        record = await capAssess(currentSnapshot, packet, signal, client, repairQuestion(submit, baseQ), ASSESS_MAX)
+        submit = capSubmit(record, packet, { taskRevision: task.taskRevision, assignmentId: task.assignmentId, now: new Date().toISOString() }, s, currentSnapshot)
         wc = applyWaitContract(record, submit, packet, new Date().toISOString(), hostRecheckMs)
         submit = wc.submit
       }
@@ -221,6 +239,10 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
       return true
     },
     hostRecheckMs,
+    validateTaskControl(control, snapshot, now) {
+      const current = taskControl(snapshot.task.ticketId, now)
+      return !!current && current.kind === control.kind && current.itemId === control.itemId
+    },
     memorySummary(taskId: string, now: string) {
       const { store: s } = need()
       return readForDecision(s, { taskId, asOf: now, intent: 'current', question: '', requiredSlots: [], budget: { maxItems: 20, maxChars: 3000 } })

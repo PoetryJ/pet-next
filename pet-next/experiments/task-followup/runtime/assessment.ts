@@ -130,6 +130,8 @@ export interface AssessmentRaw {
 export interface AssessmentResponse {
   readonly drafts: readonly AssessmentDraft[]
   readonly raw: AssessmentRaw
+  /** User-origin task control compiled from persisted memory, revalidated by the host at submission. */
+  readonly taskControl?: { readonly kind: 'cancel'; readonly itemId: string; readonly reason: string }
 }
 
 export interface AsyncAssessor {

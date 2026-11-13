@@ -231,6 +231,7 @@ export async function runHost(options: HostOptions): Promise<number> {
       ? {
           assessment: {
             assessor: loaded.assessor,
+            ...(capability ? { validateTaskControl: capability.validateTaskControl } : {}),
             ...(loaded.packets ? { packets: loaded.packets } : {}),
             ...(options.assessorTimeoutMs ? { timeoutMs: options.assessorTimeoutMs } : {}),
             onSettled: (requestId: string, status: string) => {
