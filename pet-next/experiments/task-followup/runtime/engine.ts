@@ -2306,7 +2306,7 @@ export class FollowupRuntime {
       this.reassessNext.delete(task.ticketId)
       this.abortAssessments(task.ticketId, 'superseded by new user turn')
       round = (store.latestForIdentity(base)?.round ?? latest.round) + 1
-      latest = null
+      latest = undefined
     } else if (this.reassessNext.has(task.ticketId)) {
       this.reassessNext.delete(task.ticketId)
     }
