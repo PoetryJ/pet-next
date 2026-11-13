@@ -97,7 +97,7 @@ export class OpenAICompatibleClient implements ModelClient {
       temperature: cfg.temperature,
       stream: false,
       messages: request.messages.map((m: ChatMessage) => ({ role: m.role, content: m.content })),
-      ...(cfg.maxTokens ? { max_tokens: cfg.maxTokens } : {}),
+      ...((cfg.maxTokens || request.maxTokens) ? { max_tokens: Math.min(cfg.maxTokens ?? Infinity, request.maxTokens ?? Infinity) } : {}),
       ...(cfg.disableThinking ? { enable_thinking: false, chat_template_kwargs: { enable_thinking: false } } : {}),
       ...(process.env.PET_MODEL_NO_RESPONSE_FORMAT === '1' ? {} : { response_format: { type: 'json_object' } }),
     }

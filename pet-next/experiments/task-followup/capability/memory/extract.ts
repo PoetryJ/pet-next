@@ -6,7 +6,7 @@ import { createHash } from 'node:crypto'
 import type { CapabilityMemoryStore } from './store.ts'
 import type { Authority, ItemStatus, MemoryItem, MemoryKind, QuoteSpan, ScopeLevel, Turn } from './types.ts'
 import { normalizeKey } from './text.ts'
-import { FOLLOWUP_ATTRIBUTES, attributesForPrompt, resolveKey } from './attributes.ts'
+import { FOLLOWUP_ATTRIBUTES, attributesForPrompt, resolveKey, timeLike } from './attributes.ts'
 import type { AttributeDef } from './attributes.ts'
 import { makeRequest, parseModelJson } from '../model/protocol.ts'
 import type { ModelClient, ModelRequest, ModelResponse } from '../model/protocol.ts'
@@ -52,6 +52,8 @@ export const EXTRACTION_SYSTEM = `你是记忆抽取器。把对话原话拆成�
  {"kind":"preference","key":"notificationPolicy","value":"only_when_user_choice_needed","statement":"只有需要用户选择时才放到面板","scope":{"level":"global","id":null},"validFrom":"2026-03-02T09:00:00+08:00","validUntil":null,"supersedes":[],"confidence":0.8,"status":"active","quotes":[{"turnId":"t9","start":30,"end":39,"text":"有要我选的再放面板"}]}
 ]}`
 
+/** 输出结构本身的字段名不是属性（模型常把 taskIds/scope 当 key） */
+const META_KEYS = new Set(['taskids', 'taskid', 'task', 'scope', 'turnid', 'turnids', 'kind', 'key', 'value', 'status', 'id', 'itemid', 'quotes', 'statement', 'text', 'role'].map((k) => k))
 export interface ExtractionContextItem {
   readonly itemId: string
   readonly kind: MemoryKind
@@ -130,7 +132,8 @@ export function applyExtraction(
     const value = raw.value
     if (!(value === null || ['string', 'number', 'boolean'].includes(typeof value))) return rejected.push({ index, reason: 'value_not_scalar' })
     const resolved = resolveKey(raw.key)
-    const finalKey = resolved.attribute ?? `other.${normalizeKey(raw.key)}`
+    if (META_KEYS.has(normalizeKey(raw.key.replace(/^other\./, '')).toLowerCase())) return rejected.push({ index, reason: `key_is_metadata:${raw.key}` })
+    let finalKey = resolved.attribute ?? `other.${normalizeKey(raw.key)}`
     if (resolved.via === 'alias') checks.push(`key_alias:${raw.key}->${resolved.attribute}`)
     if (resolved.via === 'unmapped') checks.push(`key_unmapped:${raw.key}`)
     const level = raw.scope?.level
@@ -163,6 +166,22 @@ export function applyExtraction(
     }
     // 只允许从本批原话产生新条目：全部引用都落在上下文原话里，说明是在重复抽取旧内容
     if (quotes.every((qq) => !covered.has(qq.turnId))) return rejected.push({ index, reason: 'all_quotes_outside_batch' })
+    // 每句原话只抽一次：去掉批外引用，条目来源 = 本批原话片段
+    for (let qi = quotes.length - 1; qi >= 0; qi--) if (!covered.has(quotes[qi]!.turnId)) quotes.splice(qi, 1)
+    // 值不能是整句原话（应是短值）
+    if (typeof value === 'string' && value.length >= 12 && quotes.some((qq) => { const tt = turns.get(qq.turnId)!.text; return tt.includes(value) && value.length >= 0.6 * tt.length })) return rejected.push({ index, reason: 'value_is_whole_utterance' })
+    // 时间型属性（截止/预计到达）值必须是时间，否则不归入该属性
+    const def = FOLLOWUP_ATTRIBUTES.find((a) => a.id === finalKey)
+    if (def?.valueType === 'time' && !timeLike(value, isoOk(raw.validUntil) ? raw.validUntil : null, quotes.map((qq) => qq.text))) {
+      checks.push(`attribute_type_mismatch:${finalKey}->other.${normalizeKey(raw.key)}`)
+      finalKey = `other.${normalizeKey(raw.key)}`
+    }
+    // 来源片段去重：同一 key、同一作用域、引用片段重叠的既有/本批条目已存在 → 幂等跳过
+    const overlaps = (a: readonly QuoteSpan[], b: readonly QuoteSpan[]) => a.some((x) => b.some((y) => x.turnId === y.turnId && x.start < y.end && y.start < x.end))
+    // 既有条目（之前批次）重叠即重复；本批内仅在同值时视为重复（同一片段不同取值保留，交给冲突/假设判定）
+    const sameSlot = (o: MemoryItem) => o.key === finalKey && o.scope.level === level && (o.scope.id ?? null) === (scopeId ?? null) && overlaps(o.quotes, quotes)
+    const dup = [...existing.values()].find(sameSlot) ?? accepted.find((o) => sameSlot(o) && o.value === value && o.status === status)
+    if (dup) return rejected.push({ index, reason: `duplicate_span:${dup.itemId}` })
     const quotedTurns = quotes.map((q) => turns.get(q.turnId)!)
     const roles = new Set(quotedTurns.map((t) => t.role))
     const authority: Authority = roles.has('user') ? 'user' : roles.has('tool') ? 'tool' : 'assistant'
@@ -202,10 +221,12 @@ export function applyExtraction(
         continue
       }
       if (old.key !== finalKey) {
-        checks.push(`supersede_key_mismatch:${target}`)
-        status = 'conflict'
+        // 换属性不是更正：忽略这条 supersedes，不把新条目整体打成冲突
+        checks.push(`supersede_key_mismatch_ignored:${target}`)
         continue
       }
+      if (overlaps(old.quotes, quotes)) { checks.push(`supersede_same_span_ignored:${target}`); continue }
+      if (old.authority === 'user' && authority !== 'user') { checks.push(`supersede_authority_ignored:${target}`); continue }
       const sameScope = old.scope.level === level && old.scope.id === scopeId
       const narrows = old.scope.level === 'global' && level !== 'global'
       if (!sameScope && !narrows) {
@@ -248,19 +269,19 @@ export function applyExtraction(
 export async function extractPending(
   store: CapabilityMemoryStore,
   client: ModelClient,
-  options: { entities: readonly { id: string; type: string; label: string }[]; now: string; signal?: AbortSignal; contextTurns?: number; keyVocabulary?: readonly string[] },
+  options: { entities: readonly { id: string; type: string; label: string }[]; now: string; signal?: AbortSignal; contextTurns?: number; keyVocabulary?: readonly string[]; maxTurns?: number; roles?: readonly string[]; maxTokens?: number },
 ): Promise<{ status: 'nothing' | 'applied' | 'failed' | 'pending'; request?: ModelRequest; report?: ExtractionApplyReport; detail?: string }> {
   const done = store.extractedTurnIds()
   const retracted = store.retractedTurns()
   const all = store.turns().filter((t) => !retracted.has(t.turnId))
-  const fresh = all.filter((t) => !done.has(t.turnId))
+  const fresh = all.filter((t) => !done.has(t.turnId) && (!options.roles || options.roles.includes(t.role))).slice(0, options.maxTurns ?? Infinity)
   if (fresh.length === 0) return { status: 'nothing' }
   const prior = all.filter((t) => done.has(t.turnId)).slice(-(options.contextTurns ?? 6))
   const existing = store.items().filter((i) => i.status !== 'hypothetical').map((i) => ({ itemId: i.itemId, kind: i.kind, key: i.key, value: i.value, scope: i.scope, statement: i.statement }))
   const request = buildExtractionRequest({ newTurns: fresh, priorTurns: prior, existingItems: existing, entities: options.entities, createdAt: options.now, keyVocabulary: options.keyVocabulary })
-  const result = await client.complete(request, options.signal)
+  const result = await client.complete(options.maxTokens ? { ...request, maxTokens: options.maxTokens } : request, options.signal)
   if (!result.ok) {
-    if (result.code !== 'pending') store.recordExtraction({ requestId: request.requestId, status: 'failed', detail: `${result.code}: ${result.detail}`, turnIds: fresh.map((t) => t.turnId) }, options.now)
+    if (result.code !== 'pending' && result.code !== 'aborted') store.recordExtraction({ requestId: request.requestId, status: 'failed', detail: `${result.code}: ${result.detail}`, turnIds: fresh.map((t) => t.turnId) }, options.now)
     return { status: result.code === 'pending' ? 'pending' : 'failed', request, detail: `${result.code}: ${result.detail}` }
   }
   const report = applyExtraction(store, request, result.response, fresh.map((t) => t.turnId), options.now)

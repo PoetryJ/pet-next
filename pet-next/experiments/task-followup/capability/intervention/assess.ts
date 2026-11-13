@@ -98,6 +98,7 @@ reasonCode 取值：waiting_external_info, needs_user_choice, ready_to_execute, 
 判断依据：只用记忆包中 status 为 active 的偏好、约定和事实；nonActionable 里的旧版本只能用来解释，不能作为依据。
 考虑缺失信息、截止时间、预计下一条结果何时到、用户偏好的通知方式；等待能消除问题且来得及时选 wait；临近截止或可能造成不可逆错误时 ask。
 memory.context.slotResolution 说明决定所需属性：satisfied 表示已有有效条目（直接使用，不要再问用户）；unresolved 表示没有同名条目，需结合 recentTurns 和条目原话自行判断是否已给出；只有 missing 且确实影响决定时才 ask 澄清。conflicts 影响决定时不要猜，应 ask 澄清。
+若记忆中有 active 的 waitPolicy / notificationPolicy / availability（例如“等某版本/更正出来再问”“共享屏幕期间只记进度”），而当前 latestResult 还不满足其条件，应 wait（wakeAt 取预计更正时间）而不是 ask；条件满足且确有需要用户在 options 中选择时才 ask。
 只有需要用户在 options 之间做选择、或用户明确要求确认时才 ask；正常进度、等待中的结果用 wait/digest/none，不要为了“确认一下”打扰用户。
 输出格式：{"kind":"...","reasonCode":"...","question":"或null","optionIds":[],"wakeAt":"或null","waitFor":"或null","deadlineAt":"或null","deliverAt":"或null","batchable":true或false,"evidenceTurnIds":["原话id"],"evidenceItemIds":["条目itemId"],"answerFacts":[{"key":"字段","value":标量,"sourceTurnIds":["原话id"]}]}
 所有时间（wakeAt/deadlineAt/deliverAt）必须是带时区的绝对 ISO8601，且晚于 snapshot.now；从原话里的相对时间按原话时间换算。
@@ -162,9 +163,10 @@ export function parseProposal(raw: string): { ok: true; proposal: Proposal } | {
 }
 
 /** 事务外异步评估。调用方负责：发起前读取 snapshot/packet，期间不持有事务。 */
-export async function assess(snapshot: AssessSnapshot, packet: MemoryPacket, signal: AbortSignal | undefined, client: ModelClient, question?: AssessQuestion): Promise<AssessmentRecord> {
+export async function assess(snapshot: AssessSnapshot, packet: MemoryPacket, signal: AbortSignal | undefined, client: ModelClient, question?: AssessQuestion, maxTokens?: number): Promise<AssessmentRecord> {
   const identity = identityOf(snapshot, packet)
-  const request = buildAssessRequest(snapshot, packet, question)
+  const base = buildAssessRequest(snapshot, packet, question)
+  const request = maxTokens ? { ...base, maxTokens } : base
   const startedAt = new Date().toISOString()
   const result = await client.complete(request, signal)
   if (!result.ok) {
@@ -225,29 +227,70 @@ export function submitAssessment(record: AssessmentRecord, packet: MemoryPacket,
   const nonActionable = new Set(packet.context.nonActionable.map((i) => i.itemId))
   const retracted = store.retractedTurns()
   const checks: string[] = []
-  for (const ref of [...p.evidenceTurnIds, ...p.evidenceItemIds, ...p.answerFacts.flatMap((f) => f.sourceTurnIds)]) {
-    if (!known.has(ref)) return res(false, 'evidence_unknown', `cited ${ref} not in packet`)
-    if (retracted.has(ref)) return res(false, 'evidence_unknown', `cited retracted turn ${ref}`)
+  // 引用清洗：未知/已撤回/已失效引用逐个剔除并记录（属于 guard 前错误）；只有剔除后不剩任何有效依据才拒绝整个动作
+  const bad = (ref: string) => !known.has(ref) || retracted.has(ref)
+  const allRefs = [...p.evidenceTurnIds, ...p.evidenceItemIds]
+  const unknown = allRefs.filter(bad)
+  const stale = p.evidenceItemIds.filter((x) => !bad(x) && nonActionable.has(x))
+  const evidenceTurnIds = p.evidenceTurnIds.filter((x) => !bad(x))
+  const evidenceItemIds = p.evidenceItemIds.filter((x) => !bad(x) && !nonActionable.has(x))
+  const answerFacts = p.answerFacts.map((f) => ({ ...f, sourceTurnIds: f.sourceTurnIds.filter((x) => !bad(x)) }))
+  const factUnknown = p.answerFacts.flatMap((f) => f.sourceTurnIds).filter(bad)
+  if (unknown.length) checks.push(`dropped_unknown_refs:${unknown.join(',')}`)
+  if (factUnknown.length) checks.push(`dropped_unknown_fact_refs:${factUnknown.join(',')}`)
+  if (stale.length) checks.push(`dropped_non_actionable_refs:${stale.join(',')}`)
+  const remaining = evidenceTurnIds.length + evidenceItemIds.length
+  // 依赖旧值：被引用的失效条目有不同取值的当前继任者、而继任者未被引用 → 这是按旧版本行动，拒绝
+  const activeItems = [...packet.currentFacts, ...packet.preferences, ...packet.commitments, ...packet.outcomes]
+  const staleItems = packet.context.nonActionable.filter((i) => stale.includes(i.itemId))
+  const reliesOnOld = staleItems.filter((o) => {
+    const succ = activeItems.filter((a) => a.supersedes.includes(o.itemId) || o.supersededBy.includes(a.itemId))
+    return succ.some((a) => a.value !== o.value) && !succ.some((a) => p.evidenceItemIds.includes(a.itemId))
+  })
+  if (reliesOnOld.length > 0) return res(false, 'evidence_not_actionable', `relies on superseded value ${reliesOnOld.map((o) => `${o.itemId}=${JSON.stringify(o.value)}`).join(',')}`)
+  if (allRefs.length > 0 && remaining === 0) {
+    if (stale.length > 0) return res(false, 'evidence_not_actionable', `cited only superseded/expired items ${stale.join(',')}`)
+    return res(false, 'evidence_unknown', `cited ${unknown.join(',')} not in packet`)
   }
-  const staleCites = p.evidenceItemIds.filter((x) => nonActionable.has(x))
-  if (staleCites.length > 0) return res(false, 'evidence_not_actionable', `cited superseded/expired items ${staleCites.join(',')}`)
-  if ((p.kind === 'ask' || p.kind === 'act') && p.evidenceTurnIds.length + p.evidenceItemIds.length === 0) {
-    return res(false, 'evidence_missing', `${p.kind} without evidence`, { kind: 'ask', reasonCode: 'insufficient_evidence' })
+  if (factUnknown.length > 0 && remaining === 0) return res(false, 'evidence_unknown', `answer facts cite unknown ${factUnknown.join(',')}`)
+  const offeredIds = new Set((snapshot?.options ?? []).map((o) => o.optionId))
+  const askBadOpts = p.kind === 'ask' ? p.optionIds.filter((o) => !offeredIds.has(o)) : []
+  const askOpts = p.kind === 'ask' ? p.optionIds.filter((o) => offeredIds.has(o)) : p.optionIds
+  if (askBadOpts.length && askOpts.length) checks.push(`dropped_unoffered_options:${askBadOpts.join(',')}`)
+  const cleaned: { -readonly [K in keyof Proposal]: Proposal[K] } = { ...p, evidenceTurnIds, evidenceItemIds, answerFacts, optionIds: askBadOpts.length && askOpts.length ? askOpts : p.optionIds }
+  const res2 = (accepted: boolean, code: SubmitCode, detail: string, fallback: SubmitResult['fallback'] = null, extra: string[] = []): SubmitResult => ({ accepted, code, detail, proposal: cleaned, fallback, checks: [...checks, ...extra] })
+  if ((p.kind === 'ask' || p.kind === 'act') && remaining === 0) {
+    return res2(false, 'evidence_missing', `${p.kind} without evidence`, { kind: 'ask', reasonCode: 'insufficient_evidence' })
   }
   if (p.kind === 'wait') {
-    if (!p.wakeAt || !Number.isFinite(Date.parse(p.wakeAt)) || Date.parse(p.wakeAt) <= Date.parse(current.now)) {
-      return res(false, 'wait_without_recheck', `wakeAt=${p.wakeAt}`, { kind: 'ask', reasonCode: 'insufficient_evidence' })
+    const nowMs = Date.parse(current.now)
+    const future = (v: string | null) => !!v && Number.isFinite(Date.parse(v)) && Date.parse(v) > nowMs
+    // 时间锚点只取自记忆包里的有效条目（可追溯），不由本地猜
+    const anchor = (key: string) => activeItems.filter((i) => i.key === key).map((i) => ({ id: i.itemId, at: typeof i.value === 'string' && future(i.value) ? i.value : future(i.validUntil) ? i.validUntil : null })).filter((x) => x.at).sort((a, b) => Date.parse(a.at!) - Date.parse(b.at!))[0]
+    let wakeAt = p.wakeAt
+    let deadlineAt = p.deadlineAt
+    if (deadlineAt && !future(deadlineAt)) {
+      const d = anchor('decisionDeadline')
+      checks.push(`deadlineAt_not_future:${deadlineAt}${d ? `->${d.at}@${d.id}` : '->dropped'}`)
+      deadlineAt = d ? d.at : null
     }
-    if (p.deadlineAt && Number.isFinite(Date.parse(p.deadlineAt)) && Date.parse(p.wakeAt) >= Date.parse(p.deadlineAt)) {
-      return res(false, 'wait_past_deadline', `wakeAt ${p.wakeAt} >= deadline ${p.deadlineAt}`, { kind: 'ask', reasonCode: 'deadline_risk' })
+    if (!future(wakeAt)) {
+      const e = anchor('expectedUpdateAt') ?? anchor('decisionDeadline')
+      if (!e) return res2(false, 'wait_without_recheck', `wakeAt=${p.wakeAt}`, { kind: 'ask', reasonCode: 'insufficient_evidence' })
+      checks.push(`wakeAt_repaired:${p.wakeAt}->${e.at}@${e.id}`)
+      wakeAt = e.at
     }
+    if (deadlineAt && Date.parse(wakeAt!) >= Date.parse(deadlineAt)) {
+      return res2(false, 'wait_past_deadline', `wakeAt ${wakeAt} >= deadline ${deadlineAt}`, { kind: 'ask', reasonCode: 'deadline_risk' })
+    }
+    ;(cleaned as any).wakeAt = wakeAt
+    ;(cleaned as any).deadlineAt = deadlineAt
   }
-  if (p.kind === 'act' || (p.kind === 'ask' && p.optionIds.length > 0)) {
-    const offered = new Set((snapshot?.options ?? []).map((o) => o.optionId))
-    const bad = p.optionIds.filter((o) => !offered.has(o))
-    if (bad.length > 0) return res(false, 'option_not_offered', bad.join(','))
-    if (p.kind === 'act' && p.optionIds.length !== 1) return res(false, 'option_not_offered', 'act needs exactly one optionId')
+  if (p.kind === 'act' || (p.kind === 'ask' && cleaned.optionIds.length > 0)) {
+    const bad = cleaned.optionIds.filter((o) => !offeredIds.has(o))
+    if (bad.length > 0) return res2(false, 'option_not_offered', bad.join(','))
+    if (p.kind === 'act' && p.optionIds.length !== 1) return res2(false, 'option_not_offered', 'act needs exactly one optionId')
   }
   if (p.kind === 'digest' && !p.deliverAt) checks.push('digest_without_deliverAt:deliver_on_next_window')
-  return res(true, 'accepted', 'ok', null, checks)
+  return res2(true, 'accepted', 'ok')
 }

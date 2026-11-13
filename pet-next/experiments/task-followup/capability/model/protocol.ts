@@ -19,6 +19,8 @@ export interface ModelRequest {
   readonly messages: readonly ChatMessage[]
   /** 期望模型输出单个 JSON 对象 */
   readonly responseFormat: 'json_object'
+  /** 可选：本次调用的输出上限（与 PET_MODEL_MAX_TOKENS 取较小者） */
+  readonly maxTokens?: number
 }
 
 export interface ModelMeta {

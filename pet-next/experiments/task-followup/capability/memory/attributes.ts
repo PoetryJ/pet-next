@@ -12,6 +12,8 @@ export interface AttributeDef {
   readonly description: string
   readonly valueHint: string
   readonly aliases: readonly string[]
+  /** time：值必须是时间（ISO 或原话含明确时间表达），否则不归入此属性 */
+  readonly valueType?: 'time'
 }
 
 export const FOLLOWUP_ATTRIBUTES: readonly AttributeDef[] = [
@@ -23,8 +25,8 @@ export const FOLLOWUP_ATTRIBUTES: readonly AttributeDef[] = [
   { id: 'notificationPolicy', kind: 'preference', scope: 'either', description: '什么时候提醒/打断用户；正常进度如何处理', valueHint: '如 "only_when_user_choice_needed"', aliases: ['reminderPreference', 'notifyWhen', 'notification', 'interruptPolicy', 'reminder'] },
   { id: 'availability', kind: 'preference', scope: 'global', description: '用户暂时不可用/忙碌的时段及期间希望的处理方式（validUntil 写结束时间）', valueHint: '如 "busy_progress_only"', aliases: ['busy', 'meeting', 'unavailable', 'screenSharing', 'doNotDisturb'] },
   { id: 'waitPolicy', kind: 'commitment', scope: 'either', description: '在什么条件下应先等待更正/后续结果而不是提问', valueHint: '如 "wait_if_eta_before_decision_deadline"', aliases: ['waitCondition', 'waitRule'] },
-  { id: 'decisionDeadline', kind: 'commitment', scope: 'task', description: '用户需要做决定或结论必须给出的最晚时间', valueHint: 'ISO8601 带时区', aliases: ['deadline', 'dueAt', 'cutoff', 'decisionDue'] },
-  { id: 'expectedUpdateAt', kind: 'fact', scope: 'task', description: '已知的下一份结果/更正预计到达时间', valueHint: 'ISO8601 带时区', aliases: ['eta', 'nextResultAt', 'correctionEta'] },
+  { id: 'decisionDeadline', kind: 'commitment', scope: 'task', description: '用户需要做决定或结论必须给出的最晚时间', valueHint: 'ISO8601 带时区', aliases: ['deadline', 'dueAt', 'cutoff', 'decisionDue'], valueType: 'time' },
+  { id: 'expectedUpdateAt', kind: 'fact', scope: 'task', description: '已知的下一份结果/更正预计到达时间', valueHint: 'ISO8601 带时区', aliases: ['eta', 'nextResultAt', 'correctionEta'], valueType: 'time' },
   { id: 'taskSeparation', kind: 'commitment', scope: 'task', description: '本任务与其他任务必须分开统计/不得混用的约束', valueHint: '如 "separate_from_other_tasks"', aliases: ['isolation', 'doNotMerge'] },
   { id: 'reportRequirements', kind: 'commitment', scope: 'task', description: '分析/报告内容要求（保留样本编号、同一修订统计等）', valueHint: '短字符串', aliases: ['analysisRequirements', 'reportContent'] },
   { id: 'taskStatus', kind: 'commitment', scope: 'task', description: '用户对任务本身的指令：取消/暂停/继续', valueHint: '"cancelled" | "paused" | "active"', aliases: ['cancel', 'cancelled', 'status', 'taskState'] },
@@ -56,4 +58,12 @@ export function resolveKey(key: string, attributes: readonly AttributeDef[] = FO
 
 export function attributesForPrompt(attributes: readonly AttributeDef[] = FOLLOWUP_ATTRIBUTES) {
   return attributes.map((a) => ({ key: a.id, kind: a.kind, scope: a.scope, meaning: a.description, value: a.valueHint }))
+}
+
+const TIME_EXPR = /(\d{4}-\d{2}-\d{2}|\d{1,2}[:：]\d{2}|\d{1,2}\s*[点时]|\d+\s*(分钟|小时|天)|今天|明天|今晚|下班|周[一二三四五六日天]|星期)/
+/** 时间型属性的值校验：值可解析为时间，或 validUntil 给出，或引用原话含明确时间表达。 */
+export function timeLike(value: unknown, validUntil: string | null, quoteTexts: readonly string[]): boolean {
+  if (typeof value === 'string' && /\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value))) return true
+  if (validUntil) return true
+  return quoteTexts.some((q) => TIME_EXPR.test(q))
 }
