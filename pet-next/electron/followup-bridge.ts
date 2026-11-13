@@ -248,9 +248,14 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
     if (panel && !panel.isDestroyed()) {
       void panel.loadURL(url);
       if (panel.isMinimized()) panel.restore();
-      panel.show();
-      if (recordingOnTop) panel.setAlwaysOnTop(true, 'floating');
-      panel.focus();
+      if (recordingOnTop) {
+        // 录制辅助：置顶但不抢键盘焦点（showInactive），避免影响正在使用电脑的人。
+        panel.setAlwaysOnTop(true, 'screen-saver');
+        panel.showInactive();
+      } else {
+        panel.show();
+        panel.focus();
+      }
       log('panel-focus', { ticketId: ticketId ?? null });
       return;
     }
@@ -261,13 +266,17 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
       y: 60,
       title: '跟进任务',
       alwaysOnTop: recordingOnTop,
+      show: !recordingOnTop,
       autoHideMenuBar: true,
       backgroundColor: '#0f1217',
       webPreferences: { preload: options.preloadPath, contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
     });
     lockNavigation(panel);
     // Windows 上构造参数 alwaysOnTop 并不总生效（实测窗口缺 WS_EX_TOPMOST），显式再设一次。
-    if (recordingOnTop) panel.setAlwaysOnTop(true, 'floating');
+    if (recordingOnTop) {
+      panel.setAlwaysOnTop(true, 'screen-saver');
+      panel.showInactive();
+    }
     panel.on('closed', () => {
       panel = null;
       log('panel-closed', {});
@@ -332,13 +341,17 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
       x: 1000,
       y: 140,
       alwaysOnTop: recordingOnTop,
+      show: !recordingOnTop,
       title: `分析报告 · ${report.path ?? ''}`,
       autoHideMenuBar: true,
       backgroundColor: '#ffffff',
       webPreferences: { contextIsolation: true, nodeIntegration: false, sandbox: true, spellcheck: false },
     });
     lockNavigation(viewer);
-    if (recordingOnTop) viewer.setAlwaysOnTop(true, 'floating');
+    if (recordingOnTop) {
+      viewer.setAlwaysOnTop(true, 'screen-saver');
+      viewer.showInactive();
+    }
     viewers.set(ticketId, viewer);
     viewer.on('closed', () => viewers.delete(ticketId));
     const query = new URLSearchParams({ token: connection.token, ticket: ticketId });
