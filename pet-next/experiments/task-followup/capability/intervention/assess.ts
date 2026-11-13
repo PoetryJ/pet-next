@@ -97,7 +97,8 @@ export const ASSESS_SYSTEM = `你是桌宠的跟进介入判断器。根据任�
 reasonCode 取值：waiting_external_info, needs_user_choice, ready_to_execute, no_current_action, insufficient_evidence, cancelled, scheduled_digest, deadline_risk。
 判断依据：只用记忆包中 status 为 active 的偏好、约定和事实；nonActionable 里的旧版本只能用来解释，不能作为依据。
 考虑缺失信息、截止时间、预计下一条结果何时到、用户偏好的通知方式；等待能消除问题且来得及时选 wait；临近截止或可能造成不可逆错误时 ask。
-记忆包有 conflicts 或 missing 影响决定时，不要猜，应 ask 澄清。
+memory.context.slotResolution 说明决定所需属性：satisfied 表示已有有效条目（直接使用，不要再问用户）；unresolved 表示没有同名条目，需结合 recentTurns 和条目原话自行判断是否已给出；只有 missing 且确实影响决定时才 ask 澄清。conflicts 影响决定时不要猜，应 ask 澄清。
+只有需要用户在 options 之间做选择、或用户明确要求确认时才 ask；正常进度、等待中的结果用 wait/digest/none，不要为了“确认一下”打扰用户。
 输出格式：{"kind":"...","reasonCode":"...","question":"或null","optionIds":[],"wakeAt":"或null","waitFor":"或null","deadlineAt":"或null","deliverAt":"或null","batchable":true或false,"evidenceTurnIds":["原话id"],"evidenceItemIds":["条目itemId"],"answerFacts":[{"key":"字段","value":标量,"sourceTurnIds":["原话id"]}]}
 所有时间（wakeAt/deadlineAt/deliverAt）必须是带时区的绝对 ISO8601，且晚于 snapshot.now；从原话里的相对时间按原话时间换算。
 snapshot.latestResult 的 assignment 与 snapshot.assignmentId 不一致时，它是旧执行的结果，不能据此行动或提问。

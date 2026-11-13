@@ -137,6 +137,8 @@ export interface MemoryPacket {
     readonly nonActionable: readonly PacketItem[]
     /** 最近的相关原话（未被抽取的也给出，防止抽取遗漏） */
     readonly recentTurns: readonly EvidenceRef[]
+    /** requiredSlots 的可追溯解析：satisfied / unresolved（待模型结合原话判断）/ missing */
+    readonly slotResolution: readonly { slot: string; key: string; status: 'satisfied' | 'unresolved' | 'missing'; itemIds: readonly string[]; via: readonly string[] }[]
     readonly budgetUsed: { readonly items: number; readonly chars: number }
     readonly truncated: boolean
     readonly diagnostics: readonly string[]

@@ -9,14 +9,27 @@
 import type { CapabilityMemoryStore } from './store.ts'
 import type { ConflictEntry, EvidenceRef, MemoryItem, MemoryPacket, PacketItem, ReadForDecisionInput, Turn } from './types.ts'
 import { keyTerms, normalizeKey, scoreDocs, terms } from './text.ts'
+import { FOLLOWUP_ATTRIBUTES, resolveKey } from './attributes.ts'
 
 const t = (s: string) => Date.parse(s)
 
+/** 调用方槽位 → 共享属性 key（与抽取同一份定义）；未登记的槽位规范为 other.<name>。 */
+export function slotKey(slot: string): string {
+  const r = resolveKey(slot)
+  return r.attribute ?? `other.${normalizeKey(slot)}`
+}
+
 function slotMatches(key: string, slot: string): boolean {
-  if (normalizeKey(key) === normalizeKey(slot)) return true
-  const a = keyTerms(key)
-  const b = keyTerms(slot)
-  return b.length > 0 && b.every((x) => a.includes(x))
+  if (key === slotKey(slot)) return true
+  // 旧数据（定义引入前写入的 key）也走同一解析
+  const k = resolveKey(key)
+  return (k.attribute ?? `other.${normalizeKey(key)}`) === slotKey(slot)
+}
+
+function slotTerms(slot: string): string[] {
+  const k = slotKey(slot)
+  const def = FOLLOWUP_ATTRIBUTES.find((a) => a.id === k)
+  return [...keyTerms(slot), ...(def ? [...keyTerms(def.id), ...def.aliases.flatMap(keyTerms), ...terms(def.description)] : [])]
 }
 
 function coversTask(item: MemoryItem, taskId: string, projectId: string | null | undefined): boolean {
@@ -175,7 +188,19 @@ export function readForDecision(store: CapabilityMemoryStore, input: ReadForDeci
   }
   if (candidates.length > 0) diagnostics.push(`unextracted_turns:${candidates.length}`)
 
-  const missing = input.requiredSlots.filter((s) => !picked.some((i) => slotMatches(i.key, s) && i.status === 'active' && effective(i) === 'active'))
+  // 槽位解析：satisfied（同一属性的有效条目）/ unresolved（无同名属性，但有未登记条目或未抽取原话可能满足，交给 assessment 结合原话判断）/ missing（确实没有任何候选）
+  const slotResolution = input.requiredSlots.map((slot) => {
+    const sat = picked.filter((i) => slotMatches(i.key, slot) && i.status === 'active' && effective(i) === 'active')
+    if (sat.length > 0) return { slot, key: slotKey(slot), status: 'satisfied' as const, itemIds: sat.map((i) => i.itemId), via: sat.map((i) => (i.key === slotKey(slot) ? 'attribute' : 'alias')) }
+    const st = slotTerms(slot)
+    const cands = actionable.filter((i) => i.key.startsWith('other.') && [...keyTerms(i.key.slice(6)), ...terms(i.statement)].some((x) => st.includes(x)))
+    if (cands.length > 0 || recentTurns.length > 0) {
+      return { slot, key: slotKey(slot), status: 'unresolved' as const, itemIds: cands.map((i) => i.itemId), via: [...(cands.length ? ['unmapped_items'] : []), ...(recentTurns.length ? ['unextracted_turns'] : [])] }
+    }
+    return { slot, key: slotKey(slot), status: 'missing' as const, itemIds: [] as string[], via: [] as string[] }
+  })
+  for (const r of slotResolution) if (r.status === 'unresolved') for (const id of r.itemIds) if (!chosen.has(id)) { chosen.add(id); pickedPackets.push(toPacket(byId.get(id)!)) }
+  const missing = slotResolution.filter((r) => r.status === 'missing').map((r) => r.slot)
   return {
     schema: 'pet-capability-memory-packet/v1',
     taskId: input.taskId,
@@ -190,6 +215,6 @@ export function readForDecision(store: CapabilityMemoryStore, input: ReadForDeci
     evidenceRefs: [...refsMap.values()].sort((a, b) => a.seq - b.seq || a.start - b.start),
     missing,
     conflicts,
-    context: { nonActionable: non, recentTurns, budgetUsed: { items: chosen.size, chars }, truncated, diagnostics },
+    context: { nonActionable: non, recentTurns, slotResolution, budgetUsed: { items: chosen.size, chars }, truncated, diagnostics },
   }
 }
