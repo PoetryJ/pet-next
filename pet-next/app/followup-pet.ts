@@ -90,6 +90,7 @@ export function mountFollowupPet(container: HTMLElement): void {
     badge.hidden = state.pendingCount === 0;
     badge.textContent = String(state.pendingCount);
     document.documentElement.dataset.followupPending = String(state.pendingCount);
+    document.documentElement.dataset.followupConnected = String(state.connected);
     if (state.top) {
       head.textContent = `需要你决定 · ${state.top.title}`;
       question.textContent = state.top.question;

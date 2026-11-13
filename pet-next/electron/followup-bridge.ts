@@ -183,12 +183,25 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
       });
     });
 
+  // 修复（S3 实测）：重开时宿主状态一开始就是最终态，首个推送可能早于桌宠页面订阅而丢失，
+  // 之后相同状态被去重永不再发 → 桌宠不提醒。现在：页面每次加载完成后重置去重，并且至少每 3 秒重发一次当前状态。
+  let lastPushAt = 0;
+  let hookedContents: Electron.WebContents | null = null;
   const pushState = (state: PetFollowupState): void => {
-    const text = JSON.stringify(state);
-    if (text === lastState) return;
-    lastState = text;
     const win = options.getPetWindow();
-    if (win && !win.isDestroyed()) win.webContents.send(FOLLOWUP_STATE_CHANNEL, state);
+    if (!win || win.isDestroyed()) return;
+    if (hookedContents !== win.webContents) {
+      hookedContents = win.webContents;
+      win.webContents.on('did-finish-load', () => {
+        lastState = '';
+      });
+    }
+    const text = JSON.stringify(state);
+    const now = Date.now();
+    if (text === lastState && now - lastPushAt < 3000) return;
+    lastState = text;
+    lastPushAt = now;
+    win.webContents.send(FOLLOWUP_STATE_CHANNEL, state);
   };
 
   const poll = async (): Promise<void> => {
