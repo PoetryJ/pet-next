@@ -24,6 +24,7 @@ import { DEFAULT_QUIET, normalizeTimeZone } from '../contracts.ts'
 import { buildRuntime } from '../runtime/build.ts'
 import type { BuiltRuntime } from '../runtime/build.ts'
 import { RealClock } from '../runtime/clock.ts'
+import { loadAssessor } from '../runtime/assessors.ts'
 import { InboxWatcher } from '../tools/watch.ts'
 import { EXPERIMENT_ROOT } from '../paths.ts'
 import { SERVICE_STOP_RECEIPT, SERVICE_STOP_REQUEST } from './scheduler-service.ts'
@@ -47,6 +48,9 @@ export interface HostOptions {
   readonly rescanMs?: number
   readonly port?: number
   readonly onLog?: (line: string) => void
+  /** 事务外异步 assessment 来源：none（默认，P3 规则基线）| baseline-menu-first | file-queue[:dir] | module:<path>。 */
+  readonly assessor?: string
+  readonly assessorTimeoutMs?: number
 }
 
 interface Binding {
@@ -183,13 +187,44 @@ export async function runHost(options: HostOptions): Promise<number> {
     ...(options.minGapMs === undefined ? {} : { minGapMs: options.minGapMs }),
   }
   const clock = new RealClock()
+  // 能力接入点：assessor 失败加载直接报错退出（不静默回退到规则）。
+  let loaded: Awaited<ReturnType<typeof loadAssessor>>
+  try {
+    loaded = await loadAssessor(options.assessor, { workspaceRoot: root, stateDir })
+  } catch (error) {
+    record({ event: 'host.assessor_error', spec: options.assessor ?? null, error: (error as Error).message })
+    process.stderr.write(`assessor 加载失败：${(error as Error).message}\n`)
+    try {
+      unlinkSync(lockPath)
+    } catch {
+      // 锁文件不在不影响失败退出。
+    }
+    return 1
+  }
+  let wakeLoop: (() => void) | null = null
   const built: BuiltRuntime = buildRuntime({
     workspaceRoot: root,
     policy: options.policy ?? 'P3',
     clock,
     quiet,
     ...(options.wakeAfterMs === undefined ? {} : { wakeAfterMs: options.wakeAfterMs }),
+    ...(loaded
+      ? {
+          assessment: {
+            assessor: loaded.assessor,
+            ...(loaded.packets ? { packets: loaded.packets } : {}),
+            ...(options.assessorTimeoutMs ? { timeoutMs: options.assessorTimeoutMs } : {}),
+            onSettled: (requestId: string, status: string) => {
+              record({ event: 'host.assessment_settled', requestId, status })
+              wakeLoop?.()
+            },
+          },
+        }
+      : {}),
   })
+  const judgment = loaded
+    ? `异步 assessment：${loaded.assessor.id}（${loaded.assessor.capability ? '外部判断' : '基线包装，非模型'}；记忆包 ${loaded.packets?.id ?? 'legacy-readRelevant'}）；执行仍经既有版本/证据/通知校验`
+    : JUDGMENT_LABEL
   const token = randomBytes(18).toString('hex')
   const startedAt = clock.now()
   const demoConfig = options.demoLabel ?? null
@@ -209,7 +244,7 @@ export async function runHost(options: HostOptions): Promise<number> {
     atomicJson(hostJson, lockFile)
   }
   writeLock({})
-  record({ event: 'host.start', workspace: root, timezone, quiet, wakeAfterMs: options.wakeAfterMs ?? null, demoConfig, configSha: built.configSha })
+  record({ event: 'host.start', workspace: root, timezone, quiet, wakeAfterMs: options.wakeAfterMs ?? null, demoConfig, configSha: built.configSha, assessor: loaded ? loaded.spec : 'none' })
 
   // ---------------- 绑定与 watcher ----------------
   const bindingOf = (ticketId: string): Binding | null => {
@@ -382,7 +417,8 @@ export async function runHost(options: HostOptions): Promise<number> {
       now: clock.now(),
       pid: process.pid,
       workspace: root,
-      judgment: JUDGMENT_LABEL,
+      judgment,
+      assessor: loaded ? { id: loaded.assessor.id, capability: loaded.assessor.capability, spec: loaded.spec } : null,
       demoConfig,
       timezone,
       quietHours: `${quiet.fromHour}:00-${quiet.toHour}:00 ${timezone}`,
@@ -396,6 +432,7 @@ export async function runHost(options: HostOptions): Promise<number> {
   let stopReason = 'unknown'
   let stopRequestId: string | null = null
   let wakeSleep: (() => void) | null = null
+  wakeLoop = () => wakeSleep?.()
   const stop = (reason: string): void => {
     if (stopping) return
     stopping = true
@@ -453,7 +490,7 @@ export async function runHost(options: HostOptions): Promise<number> {
       return
     }
     if (request.method === 'GET' && url.pathname === '/api/health') {
-      send(response, 200, { ok: true, pid: process.pid, workspace: root, startedAt, clock: clock.kind, timezone, demoConfig, judgment: JUDGMENT_LABEL, quiet, wakeAfterMs: options.wakeAfterMs ?? null, configSha: built.configSha })
+      send(response, 200, { ok: true, pid: process.pid, workspace: root, startedAt, clock: clock.kind, timezone, demoConfig, judgment, quiet, wakeAfterMs: options.wakeAfterMs ?? null, configSha: built.configSha })
       return
     }
     if (request.method === 'GET' && url.pathname === '/api/overview') {
@@ -475,6 +512,22 @@ export async function runHost(options: HostOptions): Promise<number> {
         receipts: built.runtime.exportTask(task.ticketId).receipts,
         attempt: task.attempt,
         completionCheck: built.runtime.completionCheck(task),
+        assessments: built.runtime.listAssessments(task.ticketId).map((row) => ({
+          requestId: row.request_id,
+          status: row.status,
+          assessor: row.assessor,
+          capability: row.capability === 1,
+          taskRevision: row.task_revision,
+          memoryCursor: row.memory_cursor,
+          round: row.round,
+          errorCode: row.error_code,
+          preGuard: row.pre_guard_json ? JSON.parse(row.pre_guard_json) : null,
+          postGuard: row.post_guard_json ? JSON.parse(row.post_guard_json) : null,
+          raw: row.raw_json ? JSON.parse(row.raw_json) : null,
+          waitUntil: row.wait_until,
+          createdAt: row.created_at,
+          completedAt: row.completed_at,
+        })),
       })
       return
     }
@@ -677,6 +730,9 @@ export async function runHost(options: HostOptions): Promise<number> {
     process.stderr.write(`host fatal: ${(error as Error).message}\n`)
   } finally {
     writeLock({ state: 'stopping' })
+    // 在途 assessment 先中止（回交会被拒绝），重启后按同身份下一轮重新请求；不在关机期间“继续判断”。
+    built.runtime.abortAllAssessments('host stopping')
+    await Promise.race([built.runtime.settleAssessments(), new Promise((done) => setTimeout(done, 2000))])
     for (const state of watchers.values()) state.stop()
     watchers.clear()
     await new Promise<void>((done) => server.close(() => done()))

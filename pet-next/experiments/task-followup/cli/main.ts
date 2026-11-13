@@ -420,6 +420,8 @@ async function hostCommand(args: Map<string, string>, flags: Set<string>): Promi
     ...(wakeAfterMs === undefined ? {} : { wakeAfterMs }),
     demoLabel: label,
     ...(args.has('port') ? { port: Number(args.get('port')) } : {}),
+    ...(args.has('assessor') ? { assessor: args.get('assessor')! } : {}),
+    ...(args.has('assessor-timeout-ms') ? { assessorTimeoutMs: Number(args.get('assessor-timeout-ms')) } : {}),
     onLog: (line) => process.stdout.write(`${line}\n`),
   })
 }

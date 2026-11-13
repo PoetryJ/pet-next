@@ -286,8 +286,8 @@ export interface ProposedDecision {
   readonly notBefore?: string
   readonly deadline?: string
   readonly toolRequest?: ToolRequest
-  /** 规则实现标识；当前固定 scripted-rule。 */
-  readonly implementation: 'scripted-rule'
+  /** 实现标识：scripted-rule（P3/N1 基线）或 async-assessment（事务外 assessment 回交，经同一套校验执行）。 */
+  readonly implementation: 'scripted-rule' | 'async-assessment'
 }
 
 export type AttentionState = 'open' | 'answered' | 'superseded' | 'expired' | 'stale_answer'

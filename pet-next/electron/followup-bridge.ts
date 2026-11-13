@@ -14,6 +14,7 @@ import { createWriteStream, existsSync, mkdirSync, readFileSync, type WriteStrea
 import path from 'node:path';
 import {
   FOLLOWUP_RECORDING_ON_TOP_ENV,
+  FOLLOWUP_ASSESSOR_ENV,
   FOLLOWUP_OPEN_PANEL_CHANNEL,
   FOLLOWUP_OPEN_REPORT_CHANNEL,
   FOLLOWUP_PICK_DIR_CHANNEL,
@@ -126,6 +127,8 @@ export function startFollowupBridge(options: FollowupBridgeOptions): FollowupBri
       const runMjs = path.join(options.experimentRoot, 'run.mjs');
       const args = ['--experimental-transform-types', '--no-warnings', runMjs, 'host', '--workspace', workspace, '--timezone', 'Asia/Shanghai'];
       if (options.demoShortWait) args.push('--demo-short-wait');
+      const assessorSpec = process.env[FOLLOWUP_ASSESSOR_ENV];
+      if (assessorSpec && assessorSpec !== 'none') args.push('--assessor', assessorSpec);
       childLog = createWriteStream(path.join(workspace, 'state', 'host-console.log'), { flags: 'a' });
       const proc = spawn(options.nodePath, args, {
         stdio: ['ignore', 'pipe', 'pipe', 'ipc'],

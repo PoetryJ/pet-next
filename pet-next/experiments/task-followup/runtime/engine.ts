@@ -71,10 +71,26 @@ import type {
   ToolRequest,
   VisibilityReceipt,
 } from '../contracts.ts'
-import type { AttentionPort, WakeHandleResult, WakeJob } from '../contracts.ts'
+import type { AttentionPort, DecisionKind, WakeHandleResult, WakeJob } from '../contracts.ts'
 import { SqliteRepositories } from './repo.ts'
 import { WakeScheduler } from './scheduler.ts'
 import type { EffectRow, FollowupDb, ProposalRow, TaskRow } from './db.ts'
+import {
+  ASSESSMENT_PROTOCOL,
+  AssessmentStore,
+  intentKind,
+  legacyMemoryPacketProvider,
+  parseDrafts,
+  refKey,
+  type ActionTemplate,
+  type AssessmentGuardResult,
+  type AssessmentResponse,
+  type AssessmentRow,
+  type AssessmentSnapshot,
+  type AsyncAssessor,
+  type MemoryPacket,
+  type MemoryPacketProvider,
+} from './assessment.ts'
 
 export const POLICY_VERSION = 'pet-followup-r4/v1'
 const MAX_DRAIN_STEPS = 64
@@ -102,6 +118,28 @@ export interface RuntimeOptions {
   readonly skipInvalidation?: boolean
   /** R5：等待重新判断的压缩间隔（毫秒）。演示用短值；评估用默认值。 */
   readonly wakeAfterMs?: number
+  /**
+   * 事务外异步 assessment（可选）。配置后，需要提案的时刻不再直接执行 DecisionPort 的提案，
+   * 而是把它作为“合法动作菜单”连同快照与记忆包交给 assessor；回交经 submitAssessment 校验后执行。
+   * 未配置时行为与 8fa3819 完全一致（P3/N1 基线不变）。
+   */
+  readonly assessment?: RuntimeAssessmentOptions
+}
+
+export interface RuntimeAssessmentOptions {
+  readonly assessor: AsyncAssessor
+  readonly packets?: MemoryPacketProvider
+  /** 单次 assess 超时（毫秒），默认 60000；超时记 failed/timeout，不回退成功。 */
+  readonly timeoutMs?: number
+  /** 每个请求结束（提交/失败）后回调，供宿主刷新。 */
+  readonly onSettled?: (requestId: string, status: string) => void
+}
+
+export interface AssessmentSubmitResult {
+  readonly ok: boolean
+  readonly code: string
+  readonly detail: string
+  readonly results: readonly AssessmentGuardResult[]
 }
 
 export interface DelegateInput {
@@ -253,6 +291,9 @@ export class FollowupRuntime {
   /** R5 持久唤醒调度。 */
   readonly scheduler: WakeScheduler
   private readonly wakeAfterMs: number
+  private readonly assessmentOptions: RuntimeAssessmentOptions | null
+  readonly assessments: AssessmentStore | null
+  private readonly assessInFlight = new Map<string, { controller: AbortController; ticketId: string; promise: Promise<void> }>()
 
   constructor(options: RuntimeOptions) {
     this.db = options.db
@@ -268,6 +309,8 @@ export class FollowupRuntime {
     this.deferProposals = options.deferProposals ?? false
     this.skipInvalidation = options.skipInvalidation ?? false
     this.wakeAfterMs = options.wakeAfterMs ?? 10 * 60_000
+    this.assessmentOptions = options.assessment ?? null
+    this.assessments = options.assessment ? new AssessmentStore(this.db.handle) : null
     this.scheduler = new WakeScheduler({ db: this.db, now: () => this.clock.now() })
     this.repo = new SqliteRepositories(this.db)
     this.engine = new Engine({
@@ -711,6 +754,7 @@ export class FollowupRuntime {
     const now = input.at ?? this.clock.now()
     const task = this.requireTask(input.ticketId)
     if (task.status !== 'active') return { ok: false, detail: `task ${task.status}` }
+    this.abortAssessments(task.ticketId, 'task cancelled')
     const sourceId = input.sourceId ?? `user-cancel-${randomUUID()}`
     this.db.atomic(() => {
       const fresh = this.requireTask(task.ticketId)
@@ -782,6 +826,10 @@ export class FollowupRuntime {
   /** 重启恢复：记忆追赶、effect 对账、上游 assignment 恢复。 */
   recover(): RecoveryReport {
     const details: string[] = []
+    if (this.assessments) {
+      const abandoned = this.assessments.abandonPending(this.clock.now())
+      if (abandoned > 0) details.push(`assessment requests abandoned after restart: ${abandoned}`)
+    }
     const restored: string[] = []
     const needsReconciliation: string[] = []
     let memoryRebuilt = false
@@ -1947,6 +1995,11 @@ export class FollowupRuntime {
 
       const context = this.buildContext(task, goal.ok)
       const proposals = this.decision.propose(context)
+      if (this.assessmentOptions && !this.userAuthorizedContinuation(context, proposals)) {
+        // 事务外 assessment：规则提案只作为合法动作菜单；不在这里执行任何动作。
+        this.requestAssessment(task, context, proposals)
+        continue
+      }
       let executed = false
       for (const proposal of proposals) {
         if (this.executeProposal(task, proposal)) {
@@ -2221,6 +2274,314 @@ export class FollowupRuntime {
       this.db.driverLog(now, task.ticketId, 'task.completed', { receiptId: check.receiptId, artifactSha: check.artifactSha })
     })
     return true
+  }
+
+  // ------------------------------------------------------------------
+  // 事务外异步 assessment
+  // ------------------------------------------------------------------
+
+  /** 用户已明确选择的继续动作（例如回答“分析失败样本”）按既有路径执行，不再交给 assessor 重新决定是否执行。 */
+  private userAuthorizedContinuation(context: DecisionContext, proposals: readonly ProposedDecision[]): boolean {
+    return Boolean(context.lastAnswer) && proposals[0]?.kind === 'continue_local'
+  }
+
+  private requestAssessment(task: TaskRecord, context: DecisionContext, menuProposals: readonly ProposedDecision[]): boolean {
+    const options = this.assessmentOptions
+    const store = this.assessments
+    if (!options || !store) return false
+    const now = this.clock.now()
+    const base = {
+      ticketId: task.ticketId,
+      taskRevision: task.taskRevision,
+      assignmentId: task.assignmentId ?? '',
+      memoryCursor: task.memoryCursor,
+      eventCursor: task.eventCursor,
+    }
+    const latest = store.latestForIdentity(base)
+    let round = 0
+    if (latest) {
+      if (latest.status === 'pending') return false
+      if (latest.status === 'failed' || latest.status === 'stale') return false
+      if (latest.status === 'submitted' && (!latest.wait_until || Date.parse(now) < Date.parse(latest.wait_until))) return false
+      round = latest.round + 1
+    }
+    // 同一任务的旧身份请求已过时：中止（其回交也会被身份校验拒绝），避免无效等待占用。
+    this.abortAssessments(task.ticketId, 'superseded by newer task/memory identity')
+    const requestId = stableId('assess', base.ticketId, String(base.taskRevision), base.assignmentId, String(base.memoryCursor), String(base.eventCursor), String(round))
+    const actionMenu: ActionTemplate[] = menuProposals.map((proposal, index) => ({
+      actionId: `a${index}-${proposal.kind}`,
+      source: 'baseline-rule-menu',
+      kind: proposal.kind,
+      reasonCode: proposal.reasonCode,
+      reasonText: proposal.reasonText,
+      ...(proposal.question ? { question: proposal.question } : {}),
+      ...(proposal.options ? { options: proposal.options } : {}),
+      ...(proposal.notBefore ? { notBefore: proposal.notBefore } : {}),
+      ...(proposal.deadline ? { deadline: proposal.deadline } : {}),
+      ...(proposal.toolRequest ? { toolRequest: proposal.toolRequest } : {}),
+      evidenceRefs: proposal.evidenceRefs,
+    }))
+    const identity = { requestId, ...base, round, sourceRefs: [...context.evidence] }
+    const withoutMenu: Omit<AssessmentSnapshot, 'actionMenu'> = {
+      protocol: ASSESSMENT_PROTOCOL,
+      identity,
+      now,
+      task: context.task,
+      evidence: context.evidence,
+      history: context.history,
+      openAttention: context.openAttention ?? null,
+      lastAnswer: context.lastAnswer ?? null,
+      attempt: context.attempt,
+      inputReady: context.inputReady,
+      goalSatisfied: context.goalSatisfied,
+      quiet: context.quiet,
+    }
+    const snapshot: AssessmentSnapshot = { ...withoutMenu, actionMenu }
+    let packet: MemoryPacket
+    try {
+      packet = (options.packets ?? legacyMemoryPacketProvider).build({ snapshot: withoutMenu, context })
+    } catch (error) {
+      packet = { protocol: ASSESSMENT_PROTOCOL, provider: options.packets?.id ?? 'unknown', packetId: `pkt-${requestId}`, cursor: base.memoryCursor, asOf: now, evidenceRefs: [], body: null }
+      store.insert(this.assessmentRow(snapshot, packet, options.assessor, 'failed', now, 'memory_packet_error', (error as Error).message))
+      this.db.driverLog(now, task.ticketId, 'assessment.failed', { requestId, code: 'memory_packet_error', detail: (error as Error).message })
+      return false
+    }
+    store.insert(this.assessmentRow(snapshot, packet, options.assessor, 'pending', now, null, null))
+    this.db.driverLog(now, task.ticketId, 'assessment.requested', { requestId, assessor: options.assessor.id, capability: options.assessor.capability, round, memoryCursor: base.memoryCursor, menu: actionMenu.map((item) => item.actionId) })
+    const controller = new AbortController()
+    const timeoutMs = options.timeoutMs ?? 60_000
+    const timer = setTimeout(() => controller.abort(new Error('timeout')), timeoutMs)
+    // 在当前同步事务/排水结束后才真正调用 assessor（事务外）。
+    const promise = Promise.resolve()
+      .then(() => {
+        if (controller.signal.aborted) throw controller.signal.reason ?? new Error('aborted')
+        // 不依赖 assessor 自己响应 signal：中止/超时时宿主侧立即结束等待。
+        const aborted = new Promise<never>((_, reject) => {
+          controller.signal.addEventListener('abort', () => reject(controller.signal.reason ?? new Error('aborted')), { once: true })
+        })
+        return Promise.race([options.assessor.assess(snapshot, packet, controller.signal), aborted])
+      })
+      .then(
+        (response) => {
+          if (controller.signal.aborted) throw controller.signal.reason ?? new Error('aborted')
+          this.submitAssessment(requestId, response)
+        },
+        (error: unknown) => {
+          throw error
+        },
+      )
+      .catch((error: unknown) => {
+        try {
+          this.failAssessment(requestId, error, controller.signal)
+        } catch {
+          // 数据库已关闭（进程退出中）：pending 行留给下次启动标为 abandoned。
+        }
+      })
+      .finally(() => {
+        clearTimeout(timer)
+        this.assessInFlight.delete(requestId)
+        let status = 'unknown'
+        try {
+          status = this.assessments?.get(requestId)?.status ?? 'unknown'
+        } catch {
+          status = 'db_closed'
+        }
+        options.onSettled?.(requestId, status)
+      })
+    this.assessInFlight.set(requestId, { controller, ticketId: task.ticketId, promise })
+    return true
+  }
+
+  private assessmentRow(snapshot: AssessmentSnapshot, packet: MemoryPacket, assessor: AsyncAssessor, status: AssessmentRow['status'], now: string, code: string | null, detail: string | null): AssessmentRow {
+    const id = snapshot.identity
+    return {
+      request_id: id.requestId,
+      ticket_id: id.ticketId,
+      task_revision: id.taskRevision,
+      assignment_id: id.assignmentId,
+      memory_cursor: id.memoryCursor,
+      event_cursor: id.eventCursor,
+      round: id.round,
+      assessor: assessor.id,
+      capability: assessor.capability ? 1 : 0,
+      status,
+      snapshot_json: canonicalJson(snapshot),
+      packet_json: canonicalJson(packet),
+      raw_json: null,
+      pre_guard_json: null,
+      post_guard_json: null,
+      error_code: code,
+      error_detail: detail,
+      wait_until: null,
+      created_at: now,
+      completed_at: status === 'pending' ? null : now,
+    }
+  }
+
+  private failAssessment(requestId: string, error: unknown, signal: AbortSignal): void {
+    const store = this.assessments
+    const row = store?.get(requestId)
+    if (!store || !row || row.status !== 'pending') return
+    const message = error instanceof Error ? error.message : String(error)
+    const reason = signal.aborted ? String((signal.reason as Error | undefined)?.message ?? signal.reason ?? 'aborted') : ''
+    const code = signal.aborted ? (reason === 'timeout' ? 'timeout' : 'aborted') : message.startsWith('parse_error') ? 'parse_error' : 'provider_error'
+    const now = this.clock.now()
+    store.finish(requestId, { status: code === 'aborted' ? 'aborted' : 'failed', error_code: code, error_detail: (reason || message).slice(0, 2000), completed_at: now })
+    this.db.driverLog(now, row.ticket_id, 'assessment.failed', { requestId, code, detail: (reason || message).slice(0, 300) })
+  }
+
+  private abortAssessments(ticketId: string, reason: string): void {
+    for (const [requestId, entry] of this.assessInFlight) {
+      if (entry.ticketId === ticketId) {
+        entry.controller.abort(new Error(reason))
+        this.db.driverLog(this.clock.now(), ticketId, 'assessment.abort', { requestId, reason })
+      }
+    }
+  }
+
+  /** 等待所有在途 assessment 结束（测试与有序退出用）。 */
+  async settleAssessments(): Promise<void> {
+    while (this.assessInFlight.size > 0) {
+      await Promise.allSettled([...this.assessInFlight.values()].map((entry) => entry.promise))
+    }
+  }
+
+  /** 停止前中止所有在途请求（它们的回交会被拒绝；重启后按同身份下一轮重新请求）。 */
+  abortAllAssessments(reason: string): void {
+    for (const entry of this.assessInFlight.values()) entry.controller.abort(new Error(reason))
+  }
+
+  listAssessments(ticketId?: string): AssessmentRow[] {
+    return this.assessments?.list(ticketId) ?? []
+  }
+
+  /**
+   * 回交 assessment。先核对原快照身份与当前任务（版本/指派/记忆游标/事件游标），
+   * 再把草案转换为 ProposedDecision 交给既有 executeProposal（proposal 校验 → notify 校验）。
+   * guard 前草案与原始输出、guard 后每条结果都持久化。
+   */
+  submitAssessment(requestId: string, response: AssessmentResponse): AssessmentSubmitResult {
+    const store = this.assessments
+    const now = this.clock.now()
+    const row = store?.get(requestId)
+    if (!store || !row) return { ok: false, code: 'unknown_request', detail: requestId, results: [] }
+    if (row.status !== 'pending') return { ok: false, code: 'not_pending', detail: row.status, results: [] }
+    const rawJson = canonicalJson(response?.raw ?? null)
+    let drafts
+    try {
+      drafts = parseDrafts(response?.drafts)
+    } catch (error) {
+      store.finish(requestId, { status: 'failed', raw_json: rawJson, error_code: 'parse_error', error_detail: (error as Error).message, completed_at: now })
+      this.db.driverLog(now, row.ticket_id, 'assessment.failed', { requestId, code: 'parse_error' })
+      return { ok: false, code: 'parse_error', detail: (error as Error).message, results: [] }
+    }
+    const preGuard = canonicalJson(drafts)
+    const fresh = this.db.getTaskRow(row.ticket_id)
+    const current = fresh ? this.toTask(fresh) : null
+    const staleCode = !current
+      ? 'task_missing'
+      : current.status !== 'active'
+        ? 'task_closed'
+        : current.taskRevision !== row.task_revision
+          ? 'stale_task_revision'
+          : (current.assignmentId ?? '') !== row.assignment_id
+            ? 'stale_assignment'
+            : current.memoryCursor !== row.memory_cursor || current.eventCursor !== row.event_cursor
+              ? 'stale_memory_cursor'
+              : null
+    if (staleCode) {
+      const detail = current ? `request r${row.task_revision}/m${row.memory_cursor}/e${row.event_cursor} current ${current.status} r${current.taskRevision}/m${current.memoryCursor}/e${current.eventCursor}` : 'task missing'
+      store.finish(requestId, { status: 'stale', raw_json: rawJson, pre_guard_json: preGuard, post_guard_json: canonicalJson([]), error_code: staleCode, error_detail: detail, completed_at: now })
+      this.db.driverLog(now, row.ticket_id, 'assessment.stale', { requestId, code: staleCode, detail })
+      return { ok: false, code: staleCode, detail, results: [] }
+    }
+    const snapshot = JSON.parse(row.snapshot_json) as AssessmentSnapshot
+    const packet = JSON.parse(row.packet_json) as MemoryPacket
+    const menu = snapshot.actionMenu
+    const allowed = new Set<string>([...snapshot.evidence, ...packet.evidenceRefs, ...menu.flatMap((item) => item.evidenceRefs)].map(refKey))
+    const supportedOptions = new Set(menu.flatMap((item) => (item.kind === 'ask_user' ? (item.options ?? []).map((option) => option.id) : [])))
+    const results: AssessmentGuardResult[] = []
+    let waitUntil: string | null = null
+    const task = this.requireTask(row.ticket_id)
+    for (let index = 0; index < drafts.length; index += 1) {
+      const draft = drafts[index]!
+      const decisionId = stableId('dec', 'assess', requestId, String(index))
+      const reject = (code: string, detail: string, kind: DecisionKind = 'record_only'): void => {
+        results.push({ decisionId, draftIndex: index, kind, guard: 'host', outcome: 'rejected', code, detail })
+      }
+      const kind = intentKind(draft, menu)
+      if (!kind) {
+        reject('unknown_action', `intent ${draft.intent} action ${draft.actionId ?? '-'}`)
+        continue
+      }
+      const template = draft.actionId ? menu.find((item) => item.actionId === draft.actionId) : undefined
+      if (draft.actionId && !template) {
+        reject('unknown_action', `action ${draft.actionId} not in menu`, kind)
+        continue
+      }
+      if ((kind === 'continue_local' || kind === 'notify_result') && !template) {
+        reject('action_not_in_menu', kind, kind)
+        continue
+      }
+      const refs = draft.evidenceRefs?.length ? draft.evidenceRefs : template?.evidenceRefs ?? snapshot.evidence
+      const unknownRef = refs.find((ref) => !allowed.has(refKey(ref)))
+      if (unknownRef) {
+        reject('evidence_not_in_packet', refKey(unknownRef).slice(0, 200), kind)
+        continue
+      }
+      let notBefore = draft.notBefore ?? template?.notBefore
+      if (kind === 'defer') {
+        const due = notBefore ? Date.parse(notBefore) : Number.NaN
+        if (!Number.isFinite(due) || due <= Date.parse(now)) {
+          reject('wait_without_eta', `notBefore ${String(notBefore)}`, kind)
+          continue
+        }
+        if (draft.deadline && Date.parse(draft.deadline) < due) notBefore = draft.deadline
+      }
+      const question = draft.question ?? template?.question
+      const options = draft.options ?? template?.options
+      if (kind === 'ask_user') {
+        if (!question || !options?.length) {
+          reject('ask_without_options', 'question/options missing', kind)
+          continue
+        }
+        const unsupported = options.find((option) => !supportedOptions.has(option.id))
+        if (unsupported) {
+          reject('option_not_supported', unsupported.id, kind)
+          continue
+        }
+      }
+      const proposal: ProposedDecision = {
+        decisionId,
+        ticketId: row.ticket_id,
+        taskRevision: row.task_revision,
+        assignmentId: row.assignment_id,
+        evidenceRefs: refs,
+        kind,
+        reasonCode: draft.reasonCode ?? template?.reasonCode ?? `assess_${draft.intent}`,
+        reasonText: draft.reasonText,
+        decisionKey: stableId('dk', 'assess', row.ticket_id, String(row.task_revision), kind),
+        ...(kind === 'ask_user' ? { question, options } : {}),
+        ...(notBefore ? { notBefore } : {}),
+        ...((draft.deadline ?? template?.deadline) ? { deadline: draft.deadline ?? template?.deadline } : {}),
+        ...(template?.toolRequest ? { toolRequest: template.toolRequest } : {}),
+        implementation: 'async-assessment',
+      }
+      const executed = this.executeProposal(task, proposal)
+      const stored = this.db.getProposal(decisionId)
+      const validation = stored ? ((JSON.parse(stored.validation_json) as ValidationRecord[])[0] ?? null) : null
+      const outcome = stored?.outcome ?? 'unknown'
+      if (kind === 'defer' && outcome === 'recorded' && notBefore) {
+        this.scheduler.schedule({ ticketId: row.ticket_id, taskRevision: row.task_revision, assignmentId: row.assignment_id || null, reason: 'defer', decisionId, dueAt: notBefore, detail: 'assessment_wait' })
+        waitUntil = notBefore
+      }
+      results.push({ decisionId, draftIndex: index, kind, guard: 'runtime', outcome, code: validation?.code ?? 'unknown', detail: validation?.detail ?? '' })
+      if (executed) break
+    }
+    store.finish(requestId, { status: 'submitted', raw_json: rawJson, pre_guard_json: preGuard, post_guard_json: canonicalJson(results), wait_until: waitUntil, completed_at: now })
+    this.db.driverLog(now, row.ticket_id, 'assessment.submitted', { requestId, results: results.map((item) => `${item.kind}:${item.outcome}:${item.code}`) })
+    this.drain()
+    return { ok: true, code: 'submitted', detail: `${results.length} draft(s) processed`, results }
   }
 
   // ------------------------------------------------------------------

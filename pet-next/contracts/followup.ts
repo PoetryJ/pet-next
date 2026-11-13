@@ -23,6 +23,8 @@ export const FOLLOWUP_NODE_ENV = 'PET_FOLLOWUP_NODE';
 /** 有标识的短等待演示配置（RealClock，只缩短 minGap/wakeAfter；不改静默/阈值/冷却）。 */
 export const FOLLOWUP_DEMO_WAIT_ENV = 'PET_FOLLOWUP_DEMO_SHORT_WAIT';
 /** 录制辅助：=1 时面板与报告窗置顶（仅用于录屏取证，默认关闭，不影响跟进语义）。 */
+/** 能力接入：传给宿主 --assessor（none | baseline-menu-first | file-queue[:dir] | module:<path>）；缺省 none = P3 规则基线。 */
+export const FOLLOWUP_ASSESSOR_ENV = 'PET_FOLLOWUP_ASSESSOR';
 export const FOLLOWUP_RECORDING_ON_TOP_ENV = 'PET_FOLLOWUP_RECORDING_ON_TOP';
 /** 页面查询参数：桌宠页面据此挂载跟进入口。 */
 export const FOLLOWUP_QUERY = 'followup';

@@ -12,7 +12,7 @@ import type { ClockPort, DecisionPort, PolicyId, QuietConfig } from '../contract
 import { DEFAULT_QUIET, normalizeTimeZone } from '../contracts.ts'
 import { RealClock } from './clock.ts'
 import { FollowupDb } from './db.ts'
-import { FollowupRuntime } from './engine.ts'
+import { FollowupRuntime, type RuntimeAssessmentOptions } from './engine.ts'
 
 export interface BuildRuntimeOptions {
   readonly workspaceRoot: string
@@ -31,6 +31,8 @@ export interface BuildRuntimeOptions {
   readonly wakeAfterMs?: number
   /** R5 对照用：直接注入策略（例如 NeedRule），不再按 policy id 构造。 */
   readonly decision?: DecisionPort
+  /** final-demo：事务外异步 assessment（可选；未给时与 8fa3819 行为一致）。 */
+  readonly assessment?: RuntimeAssessmentOptions
 }
 
 export interface BuiltRuntime {
@@ -81,6 +83,7 @@ export function buildRuntime(options: BuildRuntimeOptions): BuiltRuntime {
     ...(options.deferProposals ? { deferProposals: options.deferProposals } : {}),
     ...(options.skipInvalidation ? { skipInvalidation: options.skipInvalidation } : {}),
     ...(options.wakeAfterMs === undefined ? {} : { wakeAfterMs: options.wakeAfterMs }),
+    ...(options.assessment ? { assessment: options.assessment } : {}),
   })
   return { runtime, db, clock, tools, attention, decision, quiet, configSha: decision.configSha }
 }
