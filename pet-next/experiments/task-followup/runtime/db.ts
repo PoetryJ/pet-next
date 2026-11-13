@@ -815,6 +815,65 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
       )
   }
 
+  /** R5.1：同一逻辑等待（ticket/revision/assignment/reason/decision）的全部 scheduled 行，最早到期在前。 */
+  listScheduledWakeJobsFor(key: {
+    readonly ticketId: string
+    readonly taskRevision: number
+    readonly assignmentId: string | null
+    readonly reason: string
+    readonly decisionId: string | null
+  }): WakeJob[] {
+    const rows = this.handle
+      .prepare(
+        "SELECT * FROM wake_jobs WHERE status = 'scheduled' AND ticket_id = ? AND task_revision = ? AND COALESCE(assignment_id, '') = ? AND reason = ? AND COALESCE(decision_id, '') = ? ORDER BY due_at, created_at, job_id",
+      )
+      .all(key.ticketId, key.taskRevision, key.assignmentId ?? '', key.reason, key.decisionId ?? '') as unknown as RawWakeRow[]
+    return rows.map(rowToWakeJob)
+  }
+
+  /** R5.1：只插入新行；已存在（任何状态）时不覆盖、不复活，返回 false。 */
+  insertWakeJobIfAbsent(job: WakeJob): boolean {
+    const result = this.handle
+      .prepare(
+        `INSERT INTO wake_jobs (job_id, ticket_id, task_revision, assignment_id, reason, decision_id, source_id, source_revision, due_at, status, attempts, created_at, updated_at, detail)
+         VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+         ON CONFLICT(job_id) DO NOTHING`,
+      )
+      .run(
+        job.jobId,
+        job.ticketId,
+        job.taskRevision,
+        job.assignmentId,
+        job.reason,
+        job.decisionId,
+        job.sourceId,
+        job.sourceRevision,
+        job.dueAt,
+        job.status,
+        job.attempts,
+        job.createdAt,
+        job.updatedAt,
+        job.detail,
+      )
+    return Number(result.changes) === 1
+  }
+
+  /** R5.1：仅当仍为 scheduled 且新到期更早时提前；不会后移，也不会改动已领取/完成/取消的行。 */
+  moveWakeDueEarlier(jobId: string, dueAt: string, now: string): boolean {
+    const result = this.handle
+      .prepare("UPDATE wake_jobs SET due_at = ?, updated_at = ? WHERE job_id = ? AND status = 'scheduled' AND due_at > ?")
+      .run(dueAt, now, jobId, dueAt)
+    return Number(result.changes) === 1
+  }
+
+  /** R5.1：带前置状态的状态迁移（例如只把 scheduled 改为 cancelled），避免覆盖已领取/完成行。 */
+  updateWakeStatusFrom(jobId: string, from: WakeStatus, to: WakeStatus, now: string, detail: string | null): boolean {
+    const result = this.handle
+      .prepare('UPDATE wake_jobs SET status = ?, updated_at = ?, detail = ? WHERE job_id = ? AND status = ?')
+      .run(to, now, detail, jobId, from)
+    return Number(result.changes) === 1
+  }
+
   deleteWakeJob(jobId: string): void {
     this.handle.prepare('DELETE FROM wake_jobs WHERE job_id = ?').run(jobId)
   }

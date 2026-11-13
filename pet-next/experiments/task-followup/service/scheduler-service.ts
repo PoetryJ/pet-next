@@ -6,6 +6,9 @@
  * - 循环只在“有到期 job”或“固定重判间隔”时工作；重判不写 tick 事件，只写 wake 日志。
  * - 关掉面板/浏览器不影响：服务进程自己按 dueAt 唤醒。
  * - 到期后只重判当前状态，不执行 job 里保存的旧工具调用。
+ * - R5.1 合作停止：父进程经本地 IPC 发 {type:'pet-followup:stop'} → 退出循环 → 写 state=stopped 与
+ *   service.stop → 关闭 DB → 经 IPC 回 {type:'pet-followup:service-stopped'} 回执 → 断开 IPC 正常 exit0。
+ *   不新增网络接口；没有 IPC 通道（直接命令行运行）时行为与 R5 相同。
  *
  * @module pet-next/experiments/task-followup/service/scheduler-service
  */
@@ -42,8 +45,12 @@ export interface SchedulerServiceReport {
   readonly reason: string
 }
 
-function sleep(ms: number): Promise<void> {
-  return new Promise((resolve) => setTimeout(resolve, Math.max(20, ms)))
+/** 本地合作停止协议（仅子进程 IPC；不开端口）。 */
+export const SERVICE_STOP_REQUEST = 'pet-followup:stop'
+export const SERVICE_STOP_RECEIPT = 'pet-followup:service-stopped'
+
+function isStopRequest(message: unknown): message is { type: string; requestId?: unknown } {
+  return typeof message === 'object' && message !== null && (message as { type?: unknown }).type === SERVICE_STOP_REQUEST
 }
 
 export async function runSchedulerService(options: SchedulerServiceOptions): Promise<SchedulerServiceReport> {
@@ -91,64 +98,115 @@ export async function runSchedulerService(options: SchedulerServiceOptions): Pro
 
   let stopping = false
   let reasonText = 'max_run'
+  let wakeSleep: (() => void) | null = null
+  const sleep = (ms: number): Promise<void> =>
+    new Promise((resolve) => {
+      const timer = setTimeout(done, Math.max(20, ms))
+      function done(): void {
+        clearTimeout(timer)
+        wakeSleep = null
+        resolve()
+      }
+      wakeSleep = done
+    })
   const stop = (reason: string): void => {
     if (stopping) return
     stopping = true
     reasonText = reason
+    wakeSleep?.()
   }
   const onSignal = (signal: NodeJS.Signals): void => stop(`signal:${signal}`)
   process.once('SIGINT', onSignal)
   process.once('SIGTERM', onSignal)
-
-  writeStatus({ state: 'starting' })
-  record({ event: 'service.start', pid: process.pid })
-
-  const recovered = built.runtime.recover()
-  record({ event: 'service.recover', restored: recovered.restored.length, needsReconciliation: recovered.needsReconciliation.length })
-
-  let wakes = 0
-  let cancelled = 0
-  let stale = 0
-  let iterations = 0
-  const handleDue = (): void => {
-    for (const result of built.runtime.wakeDue()) {
-      if (result.action === 'woken') wakes += 1
-      if (result.action === 'cancelled') cancelled += 1
-      if (result.action === 'stale') stale += 1
-      record({ event: 'wake', ...result })
-      log(`wake ${result.action} ${result.jobId} ${result.detail}`)
+  const ipc = typeof process.send === 'function' && process.connected
+  let stopRequest: { readonly requestId: string | null; readonly receivedAt: string } | null = null
+  const onMessage = (message: unknown): void => {
+    if (!isStopRequest(message) || stopRequest) return
+    stopRequest = { requestId: typeof message.requestId === 'string' ? message.requestId : null, receivedAt: clock.now() }
+    record({ event: 'service.stop_request', via: 'ipc', requestId: stopRequest.requestId, pid: process.pid })
+    if (process.env.PET_FOLLOWUP_CRASH_AT === 'service_stop') {
+      // 负控注入：模拟收到停止请求后异常退出（无 stopped 状态、无回执）。
+      process.stderr.write('[crash-injected] service_stop\n')
+      process.exit(43)
     }
+    stop('ipc:stop')
   }
+  if (ipc) process.on('message', onMessage)
+  try {
+    writeStatus({ state: 'starting' })
+    record({ event: 'service.start', pid: process.pid })
 
-  const deadline = options.maxRunMs === undefined ? null : Date.now() + options.maxRunMs
-  handleDue()
-  while (!stopping) {
-    iterations += 1
-    built.runtime.reevaluate()
+    const recovered = built.runtime.recover()
+    record({ event: 'service.recover', restored: recovered.restored.length, needsReconciliation: recovered.needsReconciliation.length })
+
+    let wakes = 0
+    let cancelled = 0
+    let stale = 0
+    let iterations = 0
+    const handleDue = (): void => {
+      for (const result of built.runtime.wakeDue()) {
+        if (result.action === 'woken') wakes += 1
+        if (result.action === 'cancelled') cancelled += 1
+        if (result.action === 'stale') stale += 1
+        record({ event: 'wake', ...result })
+        log(`wake ${result.action} ${result.jobId} ${result.detail}`)
+      }
+    }
+
+    const deadline = options.maxRunMs === undefined ? null : Date.now() + options.maxRunMs
     handleDue()
-    writeStatus({ state: 'running', iterations, wakes, nextWakeAt: built.runtime.nextWakeAt() })
-    if (options.maxIterations !== undefined && iterations >= options.maxIterations) {
-      reasonText = 'max_iterations'
-      break
+    while (!stopping) {
+      iterations += 1
+      built.runtime.reevaluate()
+      handleDue()
+      writeStatus({ state: 'running', iterations, wakes, nextWakeAt: built.runtime.nextWakeAt() })
+      if (!stopping && options.maxIterations !== undefined && iterations >= options.maxIterations) {
+        reasonText = 'max_iterations'
+        break
+      }
+      if (!stopping && deadline !== null && Date.now() >= deadline) {
+        reasonText = 'max_run'
+        break
+      }
+      const next = built.runtime.nextWakeAt()
+      const untilDue = next === null ? intervalMs : Math.max(20, Date.parse(next) - Date.now())
+      await sleep(Math.min(intervalMs, untilDue))
+      if (!stopping && deadline !== null && Date.now() >= deadline) {
+        reasonText = 'max_run'
+        break
+      }
     }
-    if (deadline !== null && Date.now() >= deadline) {
-      reasonText = 'max_run'
-      break
+
+    process.removeListener('SIGINT', onSignal)
+    process.removeListener('SIGTERM', onSignal)
+    const stoppedAt = clock.now()
+    const requestId = (stopRequest as { readonly requestId: string | null } | null)?.requestId ?? null
+    writeStatus({ state: 'stopped', iterations, wakes, reason: reasonText, stoppedAt, stopRequestId: requestId })
+    record({ event: 'service.stop', reason: reasonText, iterations, wakes, requestId })
+    built.db.close()
+    if (ipc && process.connected) {
+      const receipt = {
+        type: SERVICE_STOP_RECEIPT,
+        pid: process.pid,
+        requestId,
+        reason: reasonText,
+        state: 'stopped',
+        dbClosed: true,
+        startedAt,
+        stoppedAt,
+        iterations,
+        wakes,
+      }
+      await new Promise<void>((resolve) => {
+        process.send!(receipt, undefined, {}, () => resolve())
+      })
     }
-    const next = built.runtime.nextWakeAt()
-    const untilDue = next === null ? intervalMs : Math.max(20, Date.parse(next) - Date.now())
-    await sleep(Math.min(intervalMs, untilDue))
-    if (deadline !== null && Date.now() >= deadline) {
-      reasonText = 'max_run'
-      break
+    return { startedAt, stoppedAt, iterations, wakes, cancelled, stale, reason: reasonText }
+  } finally {
+    // IPC 通道会让进程一直存活：无论正常还是异常，结束时都断开，退出码由调用方决定。
+    if (ipc) {
+      process.removeListener('message', onMessage)
+      if (process.connected) process.disconnect()
     }
   }
-
-  process.removeListener('SIGINT', onSignal)
-  process.removeListener('SIGTERM', onSignal)
-  const stoppedAt = clock.now()
-  writeStatus({ state: 'stopped', iterations, wakes, reason: reasonText, stoppedAt })
-  record({ event: 'service.stop', reason: reasonText, iterations, wakes })
-  built.db.close()
-  return { startedAt, stoppedAt, iterations, wakes, cancelled, stale, reason: reasonText }
 }

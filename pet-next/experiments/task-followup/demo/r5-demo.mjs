@@ -9,9 +9,10 @@
  * 用法：node run.mjs r5-demo [--workspace <dir>]
  */
 import { spawn } from 'node:child_process'
-import { existsSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
+import { mkdirSync, readFileSync, rmSync, writeFileSync } from 'node:fs'
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
+import { evaluateBoundedExit, evaluateStop, startServiceProcess } from '../service/stop-client.ts'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const ROOT = resolve(HERE, '..')
@@ -47,13 +48,8 @@ function runCli(args) {
   })
 }
 
-function startService(workspace, extra) {
+function startService(workspace, extra, env) {
   const args = [
-    RUN,
-    'serve',
-    '--scheduler',
-    '--workspace',
-    workspace,
     '--timezone',
     'UTC',
     '--min-gap-ms',
@@ -66,46 +62,26 @@ function startService(workspace, extra) {
     '2000',
     ...extra,
   ]
-  // 直接带 transform 参数，避免 run.mjs 再开一层子进程（否则 kill 的是包装进程）。
-  const child = spawn(process.execPath, ['--experimental-transform-types', '--no-warnings', ...args], { env: { ...process.env } })
-  const out = []
-  child.stdout.on('data', (chunk) => out.push(String(chunk)))
-  child.stderr.on('data', (chunk) => out.push(String(chunk)))
-  let exited = null
-  child.on('exit', (code, signal) => {
-    exited = { code, signal }
-  })
+  // R5.1：直接带 transform 参数并开本地 IPC 通道（stop-client.ts）；停止走合作停止，不再 SIGTERM。
+  const service = startServiceProcess({ runPath: RUN, workspace, args, env: env ?? { ...process.env } })
   return {
-    child,
-    output: () => out.join(''),
-    waitForRunning: async (timeoutMs = 15_000) => {
-      const until = Date.now() + timeoutMs
-      while (Date.now() < until) {
-        if (existsSync(join(workspace, 'state', 'service.json'))) {
-          try {
-            const meta = JSON.parse(readFileSync(join(workspace, 'state', 'service.json'), 'utf8'))
-            if (meta.pid === child.pid && meta.state === 'running') return true
-          } catch {
-            // 文件正在写入，下一轮再读
-          }
-        }
-        if (exited) return false
-        await sleep(50)
-      }
-      return false
-    },
-    waitForExit: async (timeoutMs = 15_000) => {
-      const until = Date.now() + timeoutMs
-      while (Date.now() < until && !exited) await sleep(50)
-      return exited
-    },
-    stop: async () => {
-      if (!exited) child.kill('SIGTERM')
-      const until = Date.now() + 10_000
-      while (Date.now() < until && !exited) await sleep(50)
-      return exited
-    },
+    service,
+    child: service.child,
+    output: service.output,
+    waitForRunning: service.waitForRunning,
+    waitForExit: service.waitForExit,
+    stop: service.stop,
   }
+}
+
+function saveEvidence(workspace, name, value) {
+  const dir = join(workspace, 'evidence')
+  mkdirSync(dir, { recursive: true })
+  writeFileSync(join(dir, `${name}.json`), `${JSON.stringify(value, null, 2)}\n`)
+}
+
+function processRecord(svc) {
+  return { pid: svc.child.pid, argv: svc.service.argv, exit: svc.service.exited(), messages: svc.service.messages, output: svc.output() }
 }
 
 function sleep(ms) {
@@ -162,13 +138,24 @@ export async function runR5Demo(workspaceArg) {
 
   console.log('\n4) 停止并重启服务：到期项不重复送达')
   assert(await service1.waitForRunning(), 'service reached running state', service1.output())
-  const stopped1 = await service1.stop()
-  assert(stopped1?.code === 0, 'service stopped cleanly', stopped1)
+  const stop1 = await service1.stop()
+  const stopped1 = stop1.exit
+  const gate1 = evaluateStop(stop1)
+  saveEvidence(workspace, 'service1-stop', { ...stop1, gate: gate1, output: service1.output() })
+  console.log(`stop request ${stop1.requestId} -> pid ${stop1.pid} exit ${JSON.stringify(stop1.exit)} receipt ${JSON.stringify(stop1.receipt)}`)
+  assert(stopped1?.code === 0, 'service stopped cleanly', stop1)
+  assert(gate1.ok, 'cooperative stop: IPC request, same-PID receipt, state=stopped, service.stop logged, DB closed, exit 0 without signal', {
+    problems: gate1.problems,
+    stop: stop1,
+  })
   const before = await runCli(['notifications', '--workspace', workspace, '--ticket', ticketId])
   const service2 = startService(workspace, ['--max-iterations', '5'])
   await service2.waitForRunning()
   const stopped2 = await service2.waitForExit()
   assert(stopped2?.code === 0, 'second service exit 0', stopped2)
+  const bounded2 = evaluateBoundedExit(service2.service, 'max_iterations')
+  saveEvidence(workspace, 'service2-bounded', { ...processRecord(service2), gate: bounded2 })
+  assert(bounded2.ok, 'second service bounded completion receipt (max_iterations; bounded, not an explicit stop)', bounded2.problems)
   const after = await runCli(['notifications', '--workspace', workspace, '--ticket', ticketId])
   assert(after.json.notifications.length === before.json.notifications.length, 'restart did not duplicate notifications', {
     before: before.json.notifications.length,
@@ -196,6 +183,9 @@ export async function runR5Demo(workspaceArg) {
   await service3.waitForRunning()
   const stopped3 = await service3.waitForExit()
   assert(stopped3?.code === 0, 'third service exit 0', stopped3)
+  const bounded3 = evaluateBoundedExit(service3.service, 'max_iterations')
+  saveEvidence(workspace, 'service3-bounded', { ...processRecord(service3), gate: bounded3 })
+  assert(bounded3.ok, 'third service bounded completion receipt (max_iterations; bounded, not an explicit stop)', bounded3.problems)
   const notes2 = await runCli(['notifications', '--workspace', workspace, '--ticket', t2])
   assert(notes2.json.notifications.length === 0, 'no notification after cancel', notes2.json.notifications)
   void firstAttention

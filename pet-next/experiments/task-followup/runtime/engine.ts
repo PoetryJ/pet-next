@@ -888,8 +888,20 @@ export class FollowupRuntime {
   // R5 持久唤醒
   // ------------------------------------------------------------------
 
-  /** 当前应排的下一次唤醒；由持久状态推导，进程重启后可重建同一个 job。 */
+  /**
+   * 当前应排的下一次唤醒；由持久状态推导，进程重启后可重建同一个 job。
+   * R5.1：同窗等待由 scheduler 合并；不再属于当前问题的 quiet 等待（已送达/已回答/换问题/
+   * 改版本/换派工）立即标 cancelled 并记录原因，不再被冗余领取。
+   */
   private syncWake(task: TaskSnapshot): WakeJob | null {
+    const job = this.computeWake(task)
+    this.scheduler.cancelSuperseded(task.ticketId, 'quiet', job?.reason === 'quiet' ? job.jobId : null, (stale) =>
+      quietSupersededDetail(stale, task),
+    )
+    return job
+  }
+
+  private computeWake(task: TaskSnapshot): WakeJob | null {
     const now = this.clock.now()
     const cancelAll = (detail: string): null => {
       this.scheduler.cancelFor(task.ticketId, detail)
@@ -1015,6 +1027,14 @@ export class FollowupRuntime {
     if (task!.stage === 'needs_reconciliation') {
       this.scheduler.finish(claimed.jobId, 'cancelled', 'needs_reconciliation')
       return { action: 'blocked', jobId, detail: 'needs_reconciliation', proposals: 0, notifications: 0 }
+    }
+    if (claimed.reason === 'quiet') {
+      // R5.1：quiet 等待只为把“已写库未送达”的同一问题送出去；问题已送达/已回答/已换时不再重评。
+      const settled = quietSettledDetail(claimed, task!)
+      if (settled) {
+        this.scheduler.finish(claimed.jobId, 'cancelled', settled)
+        return { action: 'cancelled', jobId, detail: settled, proposals: 0, notifications: 0 }
+      }
     }
     const beforeProposals = this.db.listProposals(task!.ticketId).length
     const beforeNotifications = this.db.listNotificationReceipts(task!.ticketId).length
@@ -2667,4 +2687,21 @@ export class FollowupRuntime {
 /** 任务状态里没有“开放问题”时的显式空值，便于调用方分支。 */
 export function openAttentionOf(task: TaskSnapshot): AttentionView | undefined {
   return task.openAttention
+}
+
+/** R5.1：quiet job 对应的问题是否已不再需要送达；返回处理原因，仍需送达返回 null。 */
+function quietSettledDetail(job: WakeJob, task: TaskSnapshot): string | null {
+  const open = task.openAttention
+  if (!open) return 'quiet_settled:attention_closed'
+  if ((job.decisionId ?? null) !== (open.decisionId ?? null)) return 'quiet_settled:decision_changed'
+  if (open.answeredAt) return 'quiet_settled:answered'
+  if (open.deliveredAt || open.presentedAt) return 'quiet_settled:delivered'
+  return null
+}
+
+/** R5.1：被当前等待取代的 quiet job 的取消原因（审计用，不删行）。 */
+function quietSupersededDetail(job: WakeJob, task: TaskSnapshot): string {
+  if (job.taskRevision !== task.taskRevision) return 'quiet_superseded:stale_revision'
+  if (job.assignmentId !== null && job.assignmentId !== task.assignmentId) return 'quiet_superseded:stale_assignment'
+  return (quietSettledDetail(job, task) ?? 'quiet_settled:duplicate_window').replace('quiet_settled:', 'quiet_superseded:')
 }
