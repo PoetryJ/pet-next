@@ -1,0 +1,46 @@
+桌宠持续委托主线 — 2026-11-13
+
+目标沿用 R4：能持续跟进事情，并知道何时需要用户选择。
+H1 仍是任务、结果、记忆、问题和授权在执行时保持当前有效。
+H2 仍是相对强规则减少无用打扰，同时不增加漏办。
+
+本轮实现（运行代码 26813fc；decision frame 前一节点 269b80c）：
+1. 新原话先进入决策包；样本数、基线版本、实验号分开，避免旧摘要挤掉更正。
+2. 每任务的记忆编译独立于某次 assessment；新消息废弃旧判断，却不反复取消仍需完成的记忆编译。
+3. 用户取消/恢复可用作为有来源的状态转移；无新结果时不空转调用判断模型。
+4. 当前已验证结果、时间先后、最新原话整理成 decisionFrame。它不包含 gold 或预选动作；Qwen3-8B 根据这些输入提出问题。
+5. 用户选择先进入持久 AnswerOutbox。宿主重启后原身份重送，旧问题由宿主拒绝；不把旧授权换绑到新问题。
+6. Electron 面板重读宿主连接信息，自动重连；面板 API 走受限 IPC，避免继续使用失效的端口/token。
+
+实际结果：
+TDEV01 model04：有效完成1，通知1，漏答0；64样本/61通过/3失败的r2分析文件与输入快照、回执、输出SHA一致。展板取消后通知0。独立30/30。
+TDEV01 rule03：同样完成1、通知1；采用同模型记忆抽取+强规则介入。独立30/30。
+TDEV02 model02 / rule02：各有效完成1、通知2，旧回答HTTP409，新授权HTTP200，唯一分析effect/receipt，取消后通知0。独立各33/33；队列与身份补充25/25。
+model02实际在宿主停止期间入队，恢复后投递原payload；choice/queue/持久文件/HTTP/回执逐项相等，无补present。
+TDEV02模型11次调用/45499 tokens；规则9次/36450 tokens，均有完整usage。
+两故事当前模型与强规则在完成和通知数上打平。模型旧版误等已到达结果的失败已被实际模型重跑修正；这里不声称优于强规则或通用长程记忆基准。
+
+这些是公开开发故事：历史原话跨多个会话，实时阶段用真实时钟、真实产品宿主/SQLite/目录监听/工具、真实Qwen模型；结果生产者为编写的开发数据，用户呈现/回答为HTTP测试客户端。未把它们写成真实用户研究或开源项目排名。
+
+运行与检查：
+Node v24.22.1 / Windows；Qwen3-8B BF16，官方revision b968826d9c46dd6066d109eabc6255188de91218，thinking=false，temperature=0。
+两个A10副本同模型/源代码，分别供模型臂与规则臂，调用通过本机SSH隧道。
+138项产品测试通过；46项能力测试通过；TypeScript及Electron主进程/预加载/静态资源构建通过。独立源码解包后138项复跑通过。
+实际Electron预览自动恢复已测：主动停止预览宿主后，桥自动建立新PID并沿用原工作区。桌面点击时工具返回访问拒绝，因此不把点击验收标为通过。
+
+复现：
+在 pet-next/experiments/task-followup 下：
+  node run.mjs test
+  node --experimental-transform-types --no-warnings --test capability/tests/*.test.ts
+设置 PET_MODEL_BASE_URL / PET_MODEL_NAME=Qwen3-8B / PET_MODEL_DISABLE_THINKING=1 / PET_MODEL_TEMPERATURE=0 / PET_MODEL_TIMEOUT_MS=240000 / PET_MODEL_MAX_TOKENS=4096 / PET_FOLLOWUP_RECHECK_MS=20000。
+  node --experimental-transform-types --no-warnings capability/intervention/trajectory/product-driver.ts --trajectory <TDEV-01或02> --producer <producer.mjs> --out <新目录> --timezone Asia/Shanghai --assessor capability
+规则对照使用 --assessor capability-need-rule；每臂独占输出和模型副本。
+
+原始材料位于本机 dsh-pet-research/benefit-research-20261113/：
+eval-design/public-trajectories/ 保存冻结故事、producer与独立预期。
+runs/product-tdev01-model-03 是原误等待失败，model-04 是修正后完整结果。
+runs/product-tdev02-model-01 是离线丢回答失败，model-02 / rule-02 为共享持久队列后的结果。
+runs/final-mainline-check/ 保存直接读原始HTTP、SQLite、文件与回执的独立核验器和逐项JSON。
+preview/START-MODEL-PREVIEW.cmd 打开真实模型预览；START-PREVIEW.cmd 打开强规则介入预览，两者使用独立副本。
+verification-269b80c/ 保留测试日志、模型环境、增量bundle、381个跟进与记忆模块源码文件的独立压缩包。outbox-tests/source-clone-tests对应26813fc。
+旧失败、旧记录和原始生产者未覆盖。当前为codex/pet-mainline-integration分支，未合并main。
