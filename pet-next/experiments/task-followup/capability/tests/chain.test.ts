@@ -30,7 +30,7 @@ function extractionFixture(req: any): string {
   if (ids.has('turn-002')) items.push({ kind: 'commitment', key: 'baselineVersion', value: 'v1', statement: 'A 用基线 v1', scope: { level: 'task', id: 'task:A' }, validFrom: '2026-11-13T09:01:00+08:00', validUntil: null, supersedes: [], confidence: 0.9, status: 'active', quotes: [q('turn-002', '先用基线v1')] })
   if (ids.has('turn-003')) items.push({ kind: 'commitment', key: 'baselineVersion', value: 'v1', statement: 'B 用基线 v1', scope: { level: 'task', id: 'task:B' }, validFrom: '2026-11-13T09:02:00+08:00', validUntil: null, supersedes: [], confidence: 0.9, status: 'active', quotes: [q('turn-003', '任务B用基线v1')] })
   if (ids.has('turn-004')) {
-    const oldA = user.existingItems.find((i: any) => i.key === 'runTarget' && i.scope.id === 'task:A')
+    const oldA = user.existingItems.find((i: any) => i.key === 'baselineVersion' && i.scope.id === 'task:A')
     items.push({ kind: 'commitment', key: 'baselineVersion', value: 'v2', statement: 'A 改用 v2', scope: { level: 'task', id: 'task:A' }, validFrom: '2026-11-13T10:30:00+08:00', validUntil: null, supersedes: oldA ? [oldA.itemId] : [], confidence: 0.9, status: 'active', quotes: [q('turn-004', 'A改用v2，旧v1别再用了')] })
     items.push({ kind: 'preference', key: 'nonUrgentDelivery', value: 'batch', statement: '今天下午开会，非紧急合并告知', scope: { level: 'global', id: null }, validFrom: '2026-11-13T10:30:00+08:00', validUntil: '2026-11-13T18:00:00+08:00', supersedes: [], confidence: 0.8, status: 'active', quotes: [q('turn-004', '今天下午我开会，非紧急的事一起告诉我')] })
   }
@@ -273,9 +273,11 @@ test('槽位映射：别名 key 落到共享属性；把任务名写进 key 的�
     { kind: 'commitment', key: 'sampleCount', value: 64, statement: 'Q 样本数 64', scope: { level: 'task', id: 'task:Q' }, validFrom: null, validUntil: null, supersedes: [], confidence: 0.9, status: 'active', quotes: [{ turnId: 'q1', start: 0, end: 0, text: '样本数是64' }] },
   ] }))
   const r = await extractPending(store, client, { entities: [], now: '2026-11-13T09:02:00+08:00' })
-  assert.deepEqual(r.report!.accepted.map((i) => i.key), ['other.taskP', 'runTarget'])
+  assert.deepEqual(r.report!.accepted.map((i) => i.key), ['other.taskP', 'sampleCount'])
   const q = readForDecision(store, { taskId: 'task:Q', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '样本数', requiredSlots: ['baselineVersion'], budget })
-  assert.deepEqual(q.context.slotResolution.map((x) => [x.slot, x.key, x.status, x.via]), [['baselineVersion', 'runTarget', 'satisfied', ['attribute']]])
+  assert.deepEqual(q.context.slotResolution.map((x) => [x.slot, x.key, x.status, x.via]), [['baselineVersion', 'baselineVersion', 'missing', []]], '样本数不能满足基线版本')
+  const count = readForDecision(store, { taskId: 'task:Q', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '样本数', requiredSlots: ['sampleCount'], budget })
+  assert.equal(count.context.slotResolution[0]!.status, 'satisfied')
   const p = readForDecision(store, { taskId: 'task:P', asOf: '2026-11-13T10:00:00+08:00', intent: 'current', question: '基线', requiredSlots: ['baselineVersion'], budget })
   assert.deepEqual(p.missing, [], '记住了但 key 不同名：不是 missing')
   assert.equal(p.context.slotResolution[0]!.status, 'unresolved')

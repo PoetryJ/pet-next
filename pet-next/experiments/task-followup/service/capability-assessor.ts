@@ -128,6 +128,7 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         maxTurns: 3,
         roles: ['user', 'assistant'],
         maxTokens: EXTRACT_MAX,
+        taskId: task.ticketId,
       })
       if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
       const packet = readForDecision(s, {
@@ -135,7 +136,7 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         asOf: now,
         intent: 'current',
         question: `${task.title} 当前结果、授权范围、通知偏好与等待条件`,
-        requiredSlots: ['runTarget', 'allowedActions', 'notificationPolicy', 'waitPolicy', 'decisionDeadline'],
+        requiredSlots: ['sampleCount', 'baselineVersion', 'experimentId', 'allowedActions', 'notificationPolicy', 'waitPolicy', 'decisionDeadline'],
         budget: { maxItems: 24, maxChars: 4500 },
       })
       const askTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user')

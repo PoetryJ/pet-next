@@ -101,6 +101,7 @@ reasonCode 取值：waiting_external_info, needs_user_choice, ready_to_execute, 
 考虑缺失信息、截止时间、预计下一条结果何时到、用户偏好的通知方式；等待能消除问题且来得及时选 wait；临近截止或可能造成不可逆错误时 ask。
 memory.context.slotResolution 说明决定所需属性：satisfied 表示已有有效条目（直接使用，不要再问用户）；unresolved 表示没有同名条目，需结合 recentTurns 和条目原话自行判断是否已给出；只有 missing 且确实影响决定时才 ask 澄清。conflicts 影响决定时不要猜，应 ask 澄清。
 若记忆中有 active 的 waitPolicy / notificationPolicy / availability（例如“等某版本/更正出来再问”“共享屏幕期间只记进度”），而当前 latestResult 还不满足其条件，应 wait（wakeAt 取预计更正时间）而不是 ask；条件满足且确有需要用户在 options 中选择时才 ask。
+等待约定是有条件的，不是永久暂停：每次把约定中的等待对象与 snapshot.latestResult 对照。所等修订已经到达、用户已恢复可用，且没有新的预计结果时，旧的等待条件已经满足；不要再次等待同一个已到达结果，也不要为了等待而假设未来还会自动修订。recentTurns 中较新的更正/取消/可用状态必须与旧记忆一并核对。
 只有需要用户在 options 之间做选择、或用户明确要求确认时才 ask；正常进度、等待中的结果用 wait/digest/none，不要为了“确认一下”打扰用户。
 输出格式：{"kind":"...","reasonCode":"...","question":"或null","optionIds":[],"wakeAt":"或null","waitFor":"或null","deadlineAt":"或null","deliverAt":"或null","batchable":true或false,"evidenceTurnIds":["原话id"],"evidenceItemIds":["条目itemId"],"answerFacts":[{"key":"字段","value":标量,"sourceTurnIds":["原话id"]}]}
 所有时间（wakeAt/deadlineAt/deliverAt）必须是带时区的绝对 ISO8601，且晚于 snapshot.now。

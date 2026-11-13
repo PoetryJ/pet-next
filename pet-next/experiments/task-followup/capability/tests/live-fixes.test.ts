@@ -31,10 +31,10 @@ test('同一句原话再次送抽（全历史重抽）不产生重复/被自己�
   const first = r1.report!.accepted[0]!
   // 宿主把全历史再送一次（同一 turn 再作为本批）：模型又抽出同片段并声称取代旧条目
   const req = buildExtractionRequest({ newTurns: store.turns(), priorTurns: [], existingItems: [], entities: [], createdAt: T(2) })
-  const again = JSON.stringify({ items: [item({ key: 'runTarget', value: 48, supersedes: [first.itemId], quotes: quote('u1', '跑48个样本') })] })
+  const again = JSON.stringify({ items: [item({ key: 'sampleCount', value: 48, supersedes: [first.itemId], quotes: quote('u1', '跑48个样本') })] })
   const r2 = applyExtraction(store, { ...req, requestId: 'req-again' }, { requestId: 'req-again', rawText: again }, ['u1'], T(2))
   assert.deepEqual(r2.rejected.map((x) => x.reason), [`duplicate_span:${first.itemId}`])
-  const p = readForDecision(store, { taskId: 'task:R', asOf: T(3), intent: 'current', question: '样本数', requiredSlots: ['runTarget'], budget })
+  const p = readForDecision(store, { taskId: 'task:R', asOf: T(3), intent: 'current', question: '样本数', requiredSlots: ['sampleCount'], budget })
   assert.deepEqual(p.commitments.map((i) => i.value), [48])
   assert.equal(p.context.nonActionable.length, 0, '没有自我取代出来的 superseded 副本')
   store.close()

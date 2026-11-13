@@ -263,12 +263,17 @@ const counters = { preGuard: [] as any[], guardCaught: [] as any[] }
 async function runAssess(alias: string, why: string) {
   const t = byAlias(alias)!
   if (t.cancelled) return
+  // A user change is foreground state, not optional idle-time consolidation.
+  // Compile the relevant delta before deciding; raw new turns remain visible if
+  // extraction is incomplete. Result observation continues in the ticker.
+  await extractOnce(t.taskId)
+  if (stopping) return
   // 共享属性 taskStatus：用户来源的有效“取消”条目直接约束当前任务（可追溯到条目与原话）
   const statusPacket = readForDecision(store, { taskId: t.taskId, asOf: iso(), intent: 'current', question: '任务状态 取消', requiredSlots: ['taskStatus'], budget: { maxItems: 8, maxChars: 1500 } })
   const cancelItem = [...statusPacket.commitments, ...statusPacket.currentFacts].find((i) => i.key === 'taskStatus' && i.status === 'active' && i.authority === 'user' && i.scope.id === t.taskId && /cancel|取消|stop|终止/i.test(String(i.value)))
   if (cancelItem) { t.cancelled = true; t.status = 'cancelled'; plan.cancelTask(t.taskId, iso()); save(); ev('task.cancelled', { alias, by: `memory item ${cancelItem.itemId} taskStatus=${JSON.stringify(cancelItem.value)}`, evidence: cancelItem.evidenceTurnIds }); return }
   const snapshot = snapshotOf(t)
-  const packet = readForDecision(store, { taskId: t.taskId, asOf: snapshot.now, intent: 'current', question: `${t.title} 当前结果、样本数口径、授权范围、通知偏好与等待条件`, requiredSlots: ['runTarget', 'allowedActions', 'notificationPolicy', 'waitPolicy', 'decisionDeadline'], budget: { maxItems: 24, maxChars: 4500 } })
+  const packet = readForDecision(store, { taskId: t.taskId, asOf: snapshot.now, intent: 'current', question: `${t.title} 当前结果、样本数口径、授权范围、通知偏好与等待条件`, requiredSlots: ['sampleCount', 'baselineVersion', 'experimentId', 'allowedActions', 'notificationPolicy', 'waitPolicy', 'decisionDeadline'], budget: { maxItems: 24, maxChars: 4500 } })
   inflight = new AbortController(); inflightTask = t.taskId
   ev('assess.start', { alias, why, taskRevision: t.revision, assignment: t.assignmentId, memoryCursor: packet.memoryCursor, options: (snapshot.options ?? []).map((o) => o.optionId), slotResolution: packet.context.slotResolution.map((s) => `${s.slot}:${s.status}`), items: [...packet.currentFacts, ...packet.commitments, ...packet.preferences].map((i) => `${i.itemId}:${i.key}=${JSON.stringify(i.value)}`), nonActionable: packet.context.nonActionable.map((i) => `${i.key}=${JSON.stringify(i.value)}/${i.status}`), recentTurns: packet.context.recentTurns.map((r) => r.turnId) })
   const baseQ = { text: '此刻该做什么：等待、马上问我、合并到摘要、直接执行某个选项，还是什么都不做？', requestedFactKeys: [] as string[] }
@@ -305,9 +310,9 @@ async function runAssess(alias: string, why: string) {
   if (outcome.type === 'execute') ev('act.not_executed', { optionId: outcome.optionId, note: '工具执行需用户在卡片上选择；模型 act 不直接执行' })
 }
 
-async function extractOnce(): Promise<'nothing' | 'applied' | 'failed' | 'pending'> {
+async function extractOnce(taskId?: string): Promise<'nothing' | 'applied' | 'failed' | 'pending'> {
   inflight = new AbortController(); inflightTask = '(extract)'
-  const r = await extractPending(store, client, { entities, now: iso(), signal: inflight.signal, maxTurns: PRELUDE ? 2 : 3, roles: ['user', 'assistant'], maxTokens: EXTRACT_MAX })
+  const r = await extractPending(store, client, { entities, now: iso(), signal: inflight.signal, maxTurns: PRELUDE ? 2 : 3, roles: ['user', 'assistant'], maxTokens: EXTRACT_MAX, taskId })
   inflight = null; inflightTask = null
   if (r.status === 'nothing') return 'nothing'
   if (r.detail?.startsWith('aborted')) { ev('extract.aborted', { requestId: r.request?.requestId }); return 'pending' }

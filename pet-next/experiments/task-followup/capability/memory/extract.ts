@@ -16,25 +16,18 @@ const LEVELS: readonly ScopeLevel[] = ['global', 'project', 'task']
 const STATUSES: readonly ItemStatus[] = ['active', 'hypothetical', 'inferred', 'conflict']
 
 export const EXTRACTION_SYSTEM = `你是记忆抽取器。把对话原话拆成可核对的原子记忆条目，只输出一个 JSON 对象。
-输出格式：{"coverage":[{"turnId":"本批每条新原话 id","status":"extracted|no_relevant_fact"}],"items":[{
- "kind":"fact|preference|commitment|outcome",
+输出紧凑 JSON，不要缩进。输出格式：{"coverage":[{"turnId":"本批原话 id","status":"extracted|no_relevant_fact"}],"items":[{
  "key":"必须取自输入 attributes 里的 key；确实没有合适的才写 other.<camelCase>。任务身份只放 scope，绝不写进 key（禁止 taskA、regressionSampleCount 这类）",
  "value":"JSON 标量（字符串/数字/布尔/null；人或任务用给定实体 id）",
- "statement":"一句话陈述",
  "scope":{"level":"global|project|task","id":"任务/项目 id；global 用 null"},
- "validFrom":"ISO8601 带时区；默认为原话时间",
- "validUntil":"ISO8601 或 null（原话给出绝对的结束时刻时填写）",
- "durationMinutes":"原话是相对时长（如“接下来4分钟”“两小时内”）时填分钟数，系统按原话时间换算；否则 null",
- "supersedes":["被本条更正的已有条目 itemId"],
- "confidence":0到1,
- "status":"active|hypothetical|inferred|conflict",
- "quotes":[{"turnId":"原话 id","start":起始下标,"end":结束下标,"text":"逐字摘录"}]
+ "quotes":[{"turnId":"本批原话 id","text":"支持该值的最短逐字摘录"}]
 }]}
+只有非默认情况才增加可选字段：supersedes（明确更正的旧 itemId 数组）、validUntil（明确绝对结束时刻）、durationMinutes（相对时长的分钟数）、status（hypothetical/inferred/conflict）。kind 按 attributes 定义，validFrom 按引用原话时间，statement/quote字符区间由系统补齐；不要复述这些字段。不得省略某个独立属性来凑短输出。
 规则：
 - 原子性：一个条目只表达一个属性（一个 key 一个值）。一句话里有多个意思（改配置、说明忙碌时段、给截止时间、提通知方式）就拆成多个条目。
 - value 是该属性的简短值（如 "v2"、"2026-11-14T18:00:00+08:00"、"batch"、true），不要把整句原话当 value。
 - quotes 只截取支持该条目的最短连续片段，不要整句引用。
-- quotes.text 必须是该原话中逐字出现的片段；start/end 为该片段在原话中的字符下标（半开区间）。
+- quotes.text 必须是该原话中逐字出现且能唯一定位的片段；不要输出 start/end。
 - kind：preference=用户偏好/通知方式；commitment=约定、截止时间、许可或禁止；outcome=工具/执行回报的已验证结果；fact=其他事实。
 - 只有 role=user 的原话能产生用户偏好、约定和许可；助手复述不能当成用户的话；工具回报才是执行结果。
 - 作用域按原话所指对象判定：只对某任务生效的用 task；明确适用于所有事情的用 global。不要把对一个任务的更正扩散到其他任务。
@@ -44,17 +37,17 @@ export const EXTRACTION_SYSTEM = `你是记忆抽取器。把对话原话拆成�
 - 相对时长写 durationMinutes（数字），不要自己换算 validUntil；“今天下班前”这类模糊时刻保留原文作 value，不要编造具体时刻。
 - 只为 newTurns 产生条目：每个条目的 quotes 至少引用一条 newTurns 原话；priorTurnsForContext 只用于理解指代。
 - coverage 必须逐条列出 newTurns 中每个 turnId：有条目的写 extracted，确实没有可记内容的写 no_relevant_fact。
-- 输出要短：最多 8 个条目，statement 不超过 30 字。
+- 输出要短：最多 8 个条目；不重复输出派生字段。
 - priorTurnsForContext 和 existingItems 里已有的内容不要重复输出；只有当新原话更正了某个已有条目时，输出新条目并在 supersedes 写该已有条目的 itemId。
 - 用户关于“什么时候提醒/打断我”“忙的时候怎么处理”“哪些动作允许/禁止”“谁来做决定”的话都要抽成条目（notificationPolicy/availability/allowedActions/forbiddenActions/decisionOwner），这些直接决定之后要不要打扰用户。
 - 用户说取消/暂停某个任务时，输出 key=taskStatus 的条目，scope 为该任务。
 - 不要编造原话中没有的信息。没有可抽取内容时输出 {"items":[]}。
-示例（与当前任务无关，仅示范格式）：existingItems 有 {"itemId":"mem-x1","key":"runTarget","value":20,"scope":{"level":"task","id":"task:weekly"}}；
+示例（与当前任务无关，仅示范格式）：existingItems 有 {"itemId":"mem-x1","key":"sampleCount","value":20,"scope":{"level":"task","id":"task:weekly"}}；
 新原话 {"id":"t9","at":"2026-03-02T09:00:00+08:00","role":"user","taskIds":["task:weekly"],"text":"周报统计改用30份样本，之前20份作废。下午两点前别打扰我，有要我选的再放面板。"}
-应输出：{"items":[
- {"kind":"commitment","key":"runTarget","value":30,"statement":"周报统计样本数改为30","scope":{"level":"task","id":"task:weekly"},"validFrom":"2026-03-02T09:00:00+08:00","validUntil":null,"supersedes":["mem-x1"],"confidence":0.9,"status":"active","quotes":[{"turnId":"t9","start":0,"end":11,"text":"周报统计改用30份样本"}]},
- {"kind":"preference","key":"availability","value":"busy","statement":"14:00 前不要打扰","scope":{"level":"global","id":null},"validFrom":"2026-03-02T09:00:00+08:00","validUntil":"2026-03-02T14:00:00+08:00","supersedes":[],"confidence":0.8,"status":"active","quotes":[{"turnId":"t9","start":20,"end":29,"text":"下午两点前别打扰我"}]},
- {"kind":"preference","key":"notificationPolicy","value":"only_when_user_choice_needed","statement":"只有需要用户选择时才放到面板","scope":{"level":"global","id":null},"validFrom":"2026-03-02T09:00:00+08:00","validUntil":null,"supersedes":[],"confidence":0.8,"status":"active","quotes":[{"turnId":"t9","start":30,"end":39,"text":"有要我选的再放面板"}]}
+应输出：{"coverage":[{"turnId":"t9","status":"extracted"}],"items":[
+ {"key":"sampleCount","value":30,"scope":{"level":"task","id":"task:weekly"},"supersedes":["mem-x1"],"quotes":[{"turnId":"t9","text":"周报统计改用30份样本，之前20份作废"}]},
+ {"key":"availability","value":"busy","scope":{"level":"global","id":null},"validUntil":"2026-03-02T14:00:00+08:00","quotes":[{"turnId":"t9","text":"下午两点前别打扰我"}]},
+ {"key":"notificationPolicy","value":"only_when_user_choice_needed","scope":{"level":"global","id":null},"quotes":[{"turnId":"t9","text":"有要我选的再放面板"}]}
 ]}`
 
 /** 输出结构本身的字段名不是属性（模型常把 taskIds/scope 当 key） */
@@ -140,6 +133,7 @@ export function applyExtraction(
   rawItems.forEach((raw: any, index: number) => {
     const checks: string[] = []
     if (!raw || typeof raw !== 'object') return rejected.push({ index, reason: 'not_object' })
+    if (raw.kind == null && typeof raw.key === 'string') raw.kind = FOLLOWUP_ATTRIBUTES.find((a) => a.id === resolveKey(raw.key).attribute)?.kind ?? 'fact'
     if (!KINDS.includes(raw.kind)) return rejected.push({ index, reason: `bad_kind:${raw.kind}` })
     if (typeof raw.key !== 'string' || normalizeKey(raw.key).length === 0) return rejected.push({ index, reason: 'bad_key' })
     const value = raw.value
@@ -267,7 +261,7 @@ export function applyExtraction(
       kind: raw.kind,
       key: finalKey,
       value,
-      statement: typeof raw.statement === 'string' ? raw.statement : '',
+      statement: typeof raw.statement === 'string' ? raw.statement : quotes.map((q) => q.text).join('；'),
       scope: { level, id: scopeId! },
       validFrom,
       validUntil,
@@ -300,14 +294,14 @@ export function applyExtraction(
 export async function extractPending(
   store: CapabilityMemoryStore,
   client: ModelClient,
-  options: { entities: readonly { id: string; type: string; label: string }[]; now: string; signal?: AbortSignal; contextTurns?: number; keyVocabulary?: readonly string[]; maxTurns?: number; roles?: readonly string[]; maxTokens?: number },
+  options: { entities: readonly { id: string; type: string; label: string }[]; now: string; signal?: AbortSignal; contextTurns?: number; keyVocabulary?: readonly string[]; maxTurns?: number; roles?: readonly string[]; maxTokens?: number; taskId?: string },
 ): Promise<{ status: 'nothing' | 'applied' | 'failed' | 'pending'; request?: ModelRequest; report?: ExtractionApplyReport; detail?: string }> {
   const done = store.extractedTurnIds()
   const retracted = store.retractedTurns()
   const all = store.turns().filter((t) => !retracted.has(t.turnId))
   const triedUncovered = new Set(store.extractions().filter((e) => e.status === 'uncovered').flatMap((e) => e.turnIds))
   const failedBefore = new Set(store.extractions().filter((e) => e.status === 'failed').flatMap((e) => e.turnIds))
-  let fresh = all.filter((t) => !done.has(t.turnId) && !triedUncovered.has(t.turnId) && (!options.roles || options.roles.includes(t.role))).slice(0, options.maxTurns ?? Infinity)
+  let fresh = all.filter((t) => !done.has(t.turnId) && !triedUncovered.has(t.turnId) && (!options.roles || options.roles.includes(t.role)) && (!options.taskId || t.taskIds.length === 0 || t.taskIds.includes(options.taskId))).slice(0, options.maxTurns ?? Infinity)
   if (fresh.length === 0) return { status: 'nothing' }
   // 上次失败（多为输出截断）的批次缩到单条原话重试，而不是加大输出上限
   if (fresh.length > 1 && failedBefore.has(fresh[0]!.turnId)) fresh = [fresh[0]!]

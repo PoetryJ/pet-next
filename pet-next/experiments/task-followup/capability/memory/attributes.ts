@@ -12,12 +12,15 @@ export interface AttributeDef {
   readonly description: string
   readonly valueHint: string
   readonly aliases: readonly string[]
-  /** time：值必须是时间（ISO 或原话含明确时间表达），否则不归入此属性 */
+  /** time：value 本身必须是带时区的有效 ISO 时间戳，否则不归入此属性。 */
   readonly valueType?: 'time'
 }
 
 export const FOLLOWUP_ATTRIBUTES: readonly AttributeDef[] = [
-  { id: 'runTarget', kind: 'commitment', scope: 'task', description: '要跑/要统计的范围：样本数、配置或基线版本、实验号', valueHint: '如 "64"、"v2"、"E-LANTERN"；数字写数字', aliases: ['sampleCount', 'baselineVersion', 'baseline', 'config', 'version', 'experimentId', 'targetSpec'] },
+  { id: 'runTarget', kind: 'commitment', scope: 'task', description: '要跟进、运行或统计的对象和范围的一般描述；样本数、基线版本和实验标识分别记入各自属性', valueHint: '如 "local_regression_suite"；不以此替代 sampleCount、baselineVersion 或 experimentId', aliases: ['targetSpec', 'targetDescription'] },
+  { id: 'sampleCount', kind: 'commitment', scope: 'task', description: '本任务约定使用的样本数量；与基线版本、实验标识相互独立', valueHint: 'JSON 数字，如 64', aliases: ['sampleSize', 'numSamples', 'numberOfSamples'] },
+  { id: 'baselineVersion', kind: 'commitment', scope: 'task', description: '本任务采用的基线或配置版本；不是样本数量、实验标识或结果修订号', valueHint: '如 "v2" 或 "config-b"', aliases: ['baseline', 'config', 'configVersion', 'version'] },
+  { id: 'experimentId', kind: 'commitment', scope: 'task', description: '本任务所跟进实验的标识；不是基线版本或任务作用域 id', valueHint: '如 "E-LANTERN"', aliases: ['experiment', 'experimentCode', 'experimentIdentifier'] },
   { id: 'deliverable', kind: 'commitment', scope: 'task', description: '最终应交付什么、放在哪里（如本地分析文件）', valueHint: '如 "local_analysis_file"', aliases: ['output', 'outputFormat', 'format', 'artifact', 'report'] },
   { id: 'allowedActions', kind: 'commitment', scope: 'either', description: '用户明确允许自动执行的工具/动作', valueHint: '如 "local_failure_analysis"', aliases: ['authorizedActions', 'permission', 'authorization', 'allowedTools'] },
   { id: 'forbiddenActions', kind: 'commitment', scope: 'either', description: '用户明确禁止的动作（发送、上传、重跑、改代码…）', valueHint: '如 "rerun,modify_code,send"', aliases: ['prohibited', 'forbidden', 'restrictions', 'doNot'] },
@@ -50,6 +53,9 @@ export interface KeyResolution {
 
 /** 把任意 key（抽取输出或调用方槽位）解析到共享属性；不做模糊猜测，只走 id/alias 精确规范化。 */
 export function resolveKey(key: string, attributes: readonly AttributeDef[] = FOLLOWUP_ATTRIBUTES): KeyResolution {
+  // other.* is an explicit unmapped/downgraded namespace. In particular, an
+  // invalid time demoted to other.deadline must not later satisfy deadline.
+  if (/^other\./i.test(key)) return { attribute: null, via: 'unmapped', original: key }
   const k = norm(key)
   const exact = attributes.find((a) => norm(a.id) === k)
   if (exact) return { attribute: exact.id, via: 'exact', original: key }
@@ -62,10 +68,20 @@ export function attributesForPrompt(attributes: readonly AttributeDef[] = FOLLOW
   return attributes.map((a) => ({ key: a.id, kind: a.kind, scope: a.scope, meaning: a.description, value: a.valueHint }))
 }
 
-const TIME_EXPR = /(\d{4}-\d{2}-\d{2}|\d{1,2}[:：]\d{2}|\d{1,2}\s*[点时]|\d+\s*(分钟|小时|天)|今天|明天|今晚|下班|周[一二三四五六日天]|星期)/
-/** 时间型属性的值校验：值可解析为时间，或 validUntil 给出，或引用原话含明确时间表达。 */
-export function timeLike(value: unknown, validUntil: string | null, quoteTexts: readonly string[]): boolean {
-  if (typeof value === 'string' && /\d{4}-\d{2}-\d{2}T/.test(value) && Number.isFinite(Date.parse(value))) return true
-  if (validUntil) return true
-  return quoteTexts.some((q) => TIME_EXPR.test(q))
+const ISO_WITH_ZONE = /^(\d{4})-(\d{2})-(\d{2})T(\d{2}):(\d{2})(?::(\d{2})(?:\.(\d{1,9}))?)?(Z|([+-])(\d{2}):(\d{2}))$/
+/** 只验证 value；有效期或原话中出现时间，不能为无效的槽位值背书。 */
+export function timeLike(value: unknown, _validUntil: string | null, _quoteTexts: readonly string[]): boolean {
+  if (typeof value !== 'string') return false
+  const match = ISO_WITH_ZONE.exec(value)
+  if (!match) return false
+  const [, yearText, monthText, dayText, hourText, minuteText, secondText, , zone, , zoneHour, zoneMinute] = match
+  const year = Number(yearText)
+  const month = Number(monthText)
+  const day = Number(dayText)
+  const leap = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0)
+  const days = [31, leap ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31]
+  if (month < 1 || month > 12 || day < 1 || day > days[month - 1]!) return false
+  if (Number(hourText) > 23 || Number(minuteText) > 59 || Number(secondText ?? 0) > 59) return false
+  if (zone !== 'Z' && (Number(zoneHour) > 23 || Number(zoneMinute) > 59)) return false
+  return Number.isFinite(Date.parse(value))
 }

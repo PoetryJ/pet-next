@@ -4,7 +4,7 @@
  * 2) 作用域：global + 同 project + 本任务；其他任务的条目不进入。
  * 3) 有效性：在评估时刻重新计算 supersede/过期/撤回；旧版本放 nonActionable。
  * 4) 检索：词项/中文二元组 BM25 + requiredSlots 字段匹配；偏好/约定作为决定依赖总是候选。
- * 5) 预算：以“条目+更正链+冲突对+原话引用”为一组，整组放入或整组放弃。
+ * 5) 预算：先给新原话留位，再放当前条目+冲突对+引用；旧更正链有余量才回填。
  */
 import type { CapabilityMemoryStore } from './store.ts'
 import type { ConflictEntry, EvidenceRef, MemoryItem, MemoryPacket, PacketItem, ReadForDecisionInput, Turn } from './types.ts'
@@ -99,9 +99,10 @@ export function readForDecision(store: CapabilityMemoryStore, input: ReadForDeci
   const docOf = (i: MemoryItem) => [...terms(i.statement), ...keyTerms(i.key), ...terms(String(i.value ?? '')), ...i.quotes.flatMap((x) => terms(x.text))]
   const scores = scoreDocs(q, actionable.map(docOf))
   const tier = (i: MemoryItem) => {
-    if (input.requiredSlots.some((s) => slotMatches(i.key, s))) return 0
-    if (i.kind === 'preference' || i.kind === 'commitment') return 1
-    if (i.kind === 'outcome') return 2
+    if (i.kind === 'outcome') return 0
+    if (input.requiredSlots.some((s) => slotMatches(i.key, s))) return 1
+    if (i.key.startsWith('other.') && input.requiredSlots.some((s) => [...keyTerms(i.key.slice(6)), ...terms(i.statement)].some((x) => slotTerms(s).includes(x)))) return 1
+    if (i.kind === 'preference' || i.kind === 'commitment') return 2
     return 3
   }
   const ranked = actionable
@@ -124,28 +125,59 @@ export function readForDecision(store: CapabilityMemoryStore, input: ReadForDeci
   }
   const chosen = new Set<string>()
   const chosenNon = new Set<string>()
+  // Foreground user changes are working context, not leftover space after old notes.
+  // A delayed/background extraction must never hide a newly received correction.
+  const extracted = store.extractedTurnIds()
+  const candidates = [...turns.values()]
+    .filter((x: Turn) => t(x.at) <= cutoff && seqOk(x.seq) && !retractedBy(retractedTurns.get(x.turnId)?.at))
+    .filter((x) => x.taskIds.length === 0 || x.taskIds.includes(input.taskId))
+    .filter((x) => !extracted.has(x.turnId))
+    .sort((a, b) => Number(b.role === 'user') - Number(a.role === 'user') || b.seq - a.seq)
+  const recentTurns: EvidenceRef[] = []
   let chars = 0
   let truncated = false
+  const recentBudget = Math.min(input.budget.maxChars, Math.max(
+    Math.floor(input.budget.maxChars * 0.4),
+    candidates.length ? JSON.stringify(candidates[0]).length + 100 : 0,
+  ))
+  for (const x of candidates) {
+    const ref: EvidenceRef = { turnId: x.turnId, sessionId: x.sessionId, seq: x.seq, at: x.at, role: x.role, taskIds: x.taskIds, quote: x.text, start: 0, end: x.text.length }
+    const cost = JSON.stringify(ref).length
+    if (chars + cost > recentBudget) { truncated = true; continue }
+    chars += cost
+    recentTurns.push(ref)
+  }
+  if (candidates.length) diagnostics.push(`unextracted_turns:${candidates.length};included:${recentTurns.length}`)
   const sizeOf = (i: MemoryItem) => JSON.stringify(toPacket(i)).length + i.quotes.reduce((a, x) => a + x.text.length + 40, 0)
+  const historyCandidates = new Set<string>()
   for (const r of ranked) {
     if (chosen.has(r.i.itemId)) continue
     const partners = conflicts.filter((c) => c.itemIds.includes(r.i.itemId)).flatMap((c) => c.itemIds).map((id) => byId.get(id)!).filter(Boolean)
     const group = [r.i, ...partners.filter((p) => p.itemId !== r.i.itemId)]
     const chain = group.flatMap(chainOf)
-    const cost = [...group, ...chain].filter((x) => !chosen.has(x.itemId) && !chosenNon.has(x.itemId)).reduce((a, x) => a + sizeOf(x), 0)
+    const cost = group.filter((x) => !chosen.has(x.itemId)).reduce((a, x) => a + sizeOf(x), 0)
     const count = group.filter((x) => !chosen.has(x.itemId)).length
     if (chosen.size + count > input.budget.maxItems || chars + cost > input.budget.maxChars) {
       truncated = true
       continue
     }
     for (const g of group) chosen.add(g.itemId)
-    for (const c of chain) chosenNon.add(c.itemId)
+    for (const c of chain) historyCandidates.add(c.itemId)
     chars += cost
+  }
+  // The full lineage stays in storage. Current decision evidence takes precedence
+  // over copying every superseded ancestor into the model's context.
+  for (const id of historyCandidates) {
+    const old = byId.get(id)!
+    if (chosen.has(id) || chosenNon.has(id)) continue
+    if (chars + sizeOf(old) > input.budget.maxChars) { truncated = true; continue }
+    chosenNon.add(id)
+    chars += sizeOf(old)
   }
   // 冲突条目（模型标记）也要随包给出，便于澄清
   for (const c of conflicts) for (const id of c.itemIds) {
     const i = byId.get(id)
-    if (i && !chosen.has(id) && chars + sizeOf(i) <= input.budget.maxChars) {
+    if (i && !chosen.has(id) && !chosenNon.has(id) && chars + sizeOf(i) <= input.budget.maxChars) {
       chosenNon.add(id)
       chars += sizeOf(i)
     }
@@ -170,36 +202,18 @@ export function readForDecision(store: CapabilityMemoryStore, input: ReadForDeci
     }
   }
 
-  // 未抽取的相关原话：防止抽取遗漏/待抽取时完全失明，但只作上下文
-  const extracted = store.extractedTurnIds()
-  const recentTurns: EvidenceRef[] = []
-  const candidates = [...turns.values()]
-    .filter((x: Turn) => t(x.at) <= cutoff && seqOk(x.seq) && !retractedBy(retractedTurns.get(x.turnId)?.at))
-    .filter((x) => x.taskIds.length === 0 || x.taskIds.includes(input.taskId))
-    .filter((x) => !extracted.has(x.turnId))
-    .sort((a, b) => b.seq - a.seq)
-  for (const x of candidates) {
-    if (chars + x.text.length + 80 > input.budget.maxChars) {
-      truncated = true
-      break
-    }
-    chars += x.text.length + 80
-    recentTurns.push({ turnId: x.turnId, sessionId: x.sessionId, seq: x.seq, at: x.at, role: x.role, taskIds: x.taskIds, quote: x.text, start: 0, end: x.text.length })
-  }
-  if (candidates.length > 0) diagnostics.push(`unextracted_turns:${candidates.length}`)
-
   // 槽位解析：satisfied（同一属性的有效条目）/ unresolved（无同名属性，但有未登记条目或未抽取原话可能满足，交给 assessment 结合原话判断）/ missing（确实没有任何候选）
   const slotResolution = input.requiredSlots.map((slot) => {
     const sat = picked.filter((i) => slotMatches(i.key, slot) && i.status === 'active' && effective(i) === 'active')
     if (sat.length > 0) return { slot, key: slotKey(slot), status: 'satisfied' as const, itemIds: sat.map((i) => i.itemId), via: sat.map((i) => (i.key === slotKey(slot) ? 'attribute' : 'alias')) }
     const st = slotTerms(slot)
     const cands = actionable.filter((i) => i.key.startsWith('other.') && [...keyTerms(i.key.slice(6)), ...terms(i.statement)].some((x) => st.includes(x)))
-    if (cands.length > 0 || recentTurns.length > 0) {
-      return { slot, key: slotKey(slot), status: 'unresolved' as const, itemIds: cands.map((i) => i.itemId), via: [...(cands.length ? ['unmapped_items'] : []), ...(recentTurns.length ? ['unextracted_turns'] : [])] }
+    const omitted = actionable.some((i) => slotMatches(i.key, slot) && !chosen.has(i.itemId)) || cands.some((i) => !chosen.has(i.itemId))
+    if (cands.length > 0 || candidates.length > 0 || omitted) {
+      return { slot, key: slotKey(slot), status: 'unresolved' as const, itemIds: cands.filter((i) => chosen.has(i.itemId)).map((i) => i.itemId), via: [...(cands.length ? ['unmapped_items'] : []), ...(candidates.length ? ['unextracted_turns'] : []), ...(omitted ? ['evidence_outside_budget'] : [])] }
     }
     return { slot, key: slotKey(slot), status: 'missing' as const, itemIds: [] as string[], via: [] as string[] }
   })
-  for (const r of slotResolution) if (r.status === 'unresolved') for (const id of r.itemIds) if (!chosen.has(id)) { chosen.add(id); pickedPackets.push(toPacket(byId.get(id)!)) }
   const missing = slotResolution.filter((r) => r.status === 'missing').map((r) => r.slot)
   return {
     schema: 'pet-capability-memory-packet/v1',
