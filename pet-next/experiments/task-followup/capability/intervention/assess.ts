@@ -30,6 +30,8 @@ export interface AssessSnapshot {
   readonly now: string
   /** 当前可见的最新结果摘要（来自宿主已校验的结果，不是模型猜测） */
   readonly latestResult?: { readonly sourceId: string; readonly revision: number; readonly status: string; readonly summary: string; readonly assignment?: string; readonly artifact?: string } | null
+  /** 共享等待契约：宿主给出的有界复查时刻（未知 ETA 时 wait 用它，不能自己编时间） */
+  readonly waitContract?: { readonly boundedRecheckAt: string; readonly note?: string } | null
   /** 宿主可执行的动作选项（act/ask 时模型只能从中选） */
   readonly options?: readonly { readonly optionId: string; readonly label: string }[]
 }
@@ -101,7 +103,8 @@ memory.context.slotResolution 说明决定所需属性：satisfied 表示已有�
 若记忆中有 active 的 waitPolicy / notificationPolicy / availability（例如“等某版本/更正出来再问”“共享屏幕期间只记进度”），而当前 latestResult 还不满足其条件，应 wait（wakeAt 取预计更正时间）而不是 ask；条件满足且确有需要用户在 options 中选择时才 ask。
 只有需要用户在 options 之间做选择、或用户明确要求确认时才 ask；正常进度、等待中的结果用 wait/digest/none，不要为了“确认一下”打扰用户。
 输出格式：{"kind":"...","reasonCode":"...","question":"或null","optionIds":[],"wakeAt":"或null","waitFor":"或null","deadlineAt":"或null","deliverAt":"或null","batchable":true或false,"evidenceTurnIds":["原话id"],"evidenceItemIds":["条目itemId"],"answerFacts":[{"key":"字段","value":标量,"sourceTurnIds":["原话id"]}]}
-所有时间（wakeAt/deadlineAt/deliverAt）必须是带时区的绝对 ISO8601，且晚于 snapshot.now；从原话里的相对时间按原话时间换算。
+所有时间（wakeAt/deadlineAt/deliverAt）必须是带时区的绝对 ISO8601，且晚于 snapshot.now。
+等待契约：kind=wait 时必须在 evidenceTurnIds/evidenceItemIds 引用说明“在等什么”的证据；wakeAt 只能取 (1) 被引用证据里写明的预计到达时间/截止时间，或 (2) snapshot.waitContract.boundedRecheckAt（不知道何时到时用它）；不要自己编时间（如“24 小时后”）。等待期间不要改成反复问用户。
 snapshot.latestResult 的 assignment 与 snapshot.assignmentId 不一致时，它是旧执行的结果，不能据此行动或提问。
 batchable=true 表示这个问题可以与其他任务的问题合并在一次通知里回答。若输入含 question，answerFacts 必须逐个回答 question.requestedFactKeys 中的字段（key 原样使用；人/任务用实体 id；无有效证据时 value=null），sourceTurnIds 引用支持该值的原话 id。`
 
@@ -283,22 +286,35 @@ export function submitAssessment(record: AssessmentRecord, packet: MemoryPacket,
     return res2(false, 'evidence_missing', `${p.kind} without evidence`, { kind: 'ask', reasonCode: 'insufficient_evidence' })
   }
   if (p.kind === 'wait') {
+    // 共享等待契约：wait 必须引用有效证据；wakeAt 只能是 (a) 被引用证据里给出的明确时间（ETA/截止）或 (b) 宿主给的有界复查时刻；
+    // 其他时间（如无依据的 +24h、当前时间）一律改为有界复查并记录；不伪造事实时间，也不改成去问用户。
     const nowMs = Date.parse(current.now)
-    const future = (v: string | null) => !!v && Number.isFinite(Date.parse(v)) && Date.parse(v) > nowMs
-    // 时间锚点只取自记忆包里的有效条目（可追溯），不由本地猜
-    const anchor = (key: string) => activeItems.filter((i) => i.key === key).map((i) => ({ id: i.itemId, at: typeof i.value === 'string' && future(i.value) ? i.value : future(i.validUntil) ? i.validUntil : null })).filter((x) => x.at).sort((a, b) => Date.parse(a.at!) - Date.parse(b.at!))[0]
-    let wakeAt = p.wakeAt
-    let deadlineAt = p.deadlineAt
-    if (deadlineAt && !future(deadlineAt)) {
-      const d = anchor('decisionDeadline')
-      checks.push(`deadlineAt_not_future:${deadlineAt}${d ? `->${d.at}@${d.id}` : '->dropped'}`)
-      deadlineAt = d ? d.at : null
-    }
-    if (!future(wakeAt)) {
-      const e = anchor('expectedUpdateAt') ?? anchor('decisionDeadline')
-      if (!e) return res2(false, 'wait_without_recheck', `wakeAt=${p.wakeAt}`, { kind: 'ask', reasonCode: 'insufficient_evidence' })
-      checks.push(`wakeAt_repaired:${p.wakeAt}->${e.at}@${e.id}`)
+    const future = (v: string | null | undefined) => !!v && Number.isFinite(Date.parse(v)) && Date.parse(v) > nowMs
+    if (remaining === 0) return res2(false, 'evidence_missing', 'wait without cited evidence')
+    const citedItems = activeItems.filter((i) => evidenceItemIds.includes(i.itemId))
+    const turnText = new Map([...packet.evidenceRefs, ...packet.context.recentTurns].map((r) => [r.turnId, store.turn(r.turnId)?.text ?? r.quote]))
+    const anchors: { at: string; src: string }[] = []
+    for (const i of citedItems) for (const v of [i.value, i.validUntil]) if (typeof v === 'string' && future(v)) anchors.push({ at: new Date(Date.parse(v)).toISOString(), src: i.itemId })
+    for (const t of evidenceTurnIds) for (const m of (turnText.get(t) ?? '').match(/\d{4}-\d{2}-\d{2}T\d{2}:\d{2}(:\d{2}(\.\d+)?)?(Z|[+-]\d{2}:?\d{2})/g) ?? []) if (future(m)) anchors.push({ at: new Date(Date.parse(m)).toISOString(), src: t })
+    const near = (x: string, y: string) => Math.abs(Date.parse(x) - Date.parse(y)) <= 2000
+    const bounded = snapshot?.waitContract?.boundedRecheckAt && future(snapshot.waitContract.boundedRecheckAt) ? snapshot.waitContract.boundedRecheckAt : null
+    const memAnchor = (key: string) => activeItems.filter((i) => i.key === key).map((i) => ({ id: i.itemId, at: typeof i.value === 'string' && future(i.value) ? i.value : future(i.validUntil) ? i.validUntil : null })).filter((x) => x.at).sort((x, y) => Date.parse(x.at!) - Date.parse(y.at!))[0]
+    let wakeAt: string | null = p.wakeAt
+    const hit = wakeAt && future(wakeAt) ? anchors.find((a2) => near(a2.at, wakeAt!)) : undefined
+    if (hit) checks.push(`wakeAt_from_evidence:${hit.src}`)
+    else if (wakeAt && future(wakeAt) && bounded && Date.parse(wakeAt) <= Date.parse(bounded)) checks.push('wakeAt_within_bounded_recheck')
+    else if (bounded) { checks.push(`wakeAt_unsupported:${p.wakeAt}->bounded:${bounded}`); wakeAt = bounded }
+    else {
+      const e = anchors.sort((x, y) => Date.parse(x.at) - Date.parse(y.at))[0] ?? (() => { const m = memAnchor('expectedUpdateAt') ?? memAnchor('decisionDeadline'); return m ? { at: m.at!, src: m.id } : undefined })()
+      if (!e) return res2(false, 'wait_without_recheck', `wakeAt=${p.wakeAt}; no cited time and no host bounded recheck`, { kind: 'ask', reasonCode: 'insufficient_evidence' })
+      checks.push(`wakeAt_repaired:${p.wakeAt}->${e.at}@${e.src}`)
       wakeAt = e.at
+    }
+    let deadlineAt: string | null = p.deadlineAt
+    if (deadlineAt && !(future(deadlineAt) && (anchors.some((a2) => near(a2.at, deadlineAt!)) || activeItems.some((i) => i.key === 'decisionDeadline' && typeof i.value === 'string' && near(i.value, deadlineAt!))))) {
+      const d = memAnchor('decisionDeadline')
+      checks.push(`deadlineAt_unsupported:${deadlineAt}${d ? `->${d.at}@${d.id}` : '->dropped'}`)
+      deadlineAt = d ? d.at : null
     }
     if (deadlineAt && Date.parse(wakeAt!) >= Date.parse(deadlineAt)) {
       return res2(false, 'wait_past_deadline', `wakeAt ${wakeAt} >= deadline ${deadlineAt}`, { kind: 'ask', reasonCode: 'deadline_risk' })

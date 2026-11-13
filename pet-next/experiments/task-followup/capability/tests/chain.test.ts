@@ -203,10 +203,14 @@ test('介入：wait 持久化且重判不能后推；A/B 合并通知各自保�
     const pB = read(store, 'task:B', now)
     // A：先等待（等第二批结果），带最晚重判
     const w1 = await assess(snap('task:A', now), pA, undefined, new FixtureClient(assessFixture('wait', { wakeAt: '2026-11-13T15:00:00+08:00', waitFor: '剩余样本结果', deadlineAt: '2026-11-13T17:00:00+08:00' })))
-    const o1 = plan.apply(w1, submitAssessment(w1, pA, { taskRevision: 1, assignmentId: 'asg-1', now }, store), now)
+    // 等待契约：宿主有界复查 15:00；无证据支撑的时间不能超过它
+    const snapW = { ...snap('task:A', now), waitContract: { boundedRecheckAt: '2026-11-13T15:00:00+08:00' } }
+    const o1 = plan.apply(w1, submitAssessment(w1, pA, { taskRevision: 1, assignmentId: 'asg-1', now }, store, snapW), now)
     assert.equal(o1.type, 'waiting')
     const w2 = await assess(snap('task:A', now), pA, undefined, new FixtureClient(assessFixture('wait', { wakeAt: '2026-11-13T16:30:00+08:00', waitFor: '剩余样本结果' })))
-    const o2 = plan.apply(w2, submitAssessment(w2, pA, { taskRevision: 1, assignmentId: 'asg-1', now }, store), now)
+    const s2 = submitAssessment(w2, pA, { taskRevision: 1, assignmentId: 'asg-1', now }, store, snapW)
+    assert.ok(s2.checks.some((c) => c.startsWith('wakeAt_unsupported:')), '无依据的更晚时间被改为有界复查')
+    const o2 = plan.apply(w2, s2, now)
     assert.equal(o2.type === 'waiting' && o2.wait.recheckAt, '2026-11-13T15:00:00+08:00', '重判不能把最晚时间往后推')
     assert.equal(plan.waits().length, 1)
     assert.equal(plan.nextWakeAt(), '2026-11-13T15:00:00+08:00')

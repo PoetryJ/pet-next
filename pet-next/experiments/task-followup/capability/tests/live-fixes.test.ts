@@ -154,3 +154,20 @@ test('宿主验真的工具结果直接成为 outcome，新修订取代旧修订
   assert.ok(store.extractedTurnIds().has('o2'), '工具原话按验真入库后才算覆盖')
   store.close()
 })
+
+test('共享等待契约：无引用的 wait 被拒；无依据 +24h 改为宿主有界复查；引用证据里的 ETA 原样采用', async () => {
+  const store = seed()
+  store.appendTurn({ turnId: 'r1', sessionId: 'obs', seq: 2, at: T(1), role: 'tool', text: `[结果] 5 项补录中，更正预计 ${T(10)}`, taskIds: ['task:R'] })
+  const now = T(2)
+  const bounded = T(5)
+  const sn = { ...snap(now), waitContract: { boundedRecheckAt: bounded } }
+  const packet = readForDecision(store, { taskId: 'task:R', asOf: now, intent: 'current', question: '等待', requiredSlots: [], budget })
+  const run = async (o: Record<string, unknown>) => submitAssessment(await assess(sn, packet, undefined, new FixtureClient(() => proposal(o))), packet, { taskRevision: 1, assignmentId: 'run-r1', now }, store, sn)
+  const plus24h = new Date(Date.parse(now) + 24 * 3600_000).toISOString()
+  assert.equal((await run({ wakeAt: plus24h })).code, 'evidence_missing')
+  const a = await run({ wakeAt: plus24h, evidenceTurnIds: ['u1'] })
+  assert.equal(a.code, 'accepted'); assert.equal(a.proposal!.wakeAt, bounded)
+  const b = await run({ wakeAt: T(10), evidenceTurnIds: ['r1'] })
+  assert.equal(b.code, 'accepted'); assert.equal(b.proposal!.wakeAt, T(10)); assert.ok(b.checks.includes('wakeAt_from_evidence:r1'))
+  store.close()
+})

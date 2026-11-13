@@ -26,6 +26,7 @@ const INSTANCE = argOf('--instance')!
 const PRELUDE = argv.includes('--prelude')
 const ASSESS_MAX = Number(process.env.PET_ASSESS_MAX_TOKENS ?? 768)
 const EXTRACT_MAX = Number(process.env.PET_EXTRACT_MAX_TOKENS ?? 1536)
+const BOUNDED_RECHECK_MS = Number(process.env.PET_BOUNDED_RECHECK_MS ?? 20000)
 for (const d of ['mailbox', 'cards', 'receipts', 'events']) mkdirSync(join(STATE, d), { recursive: true })
 process.env.PET_MODEL_RECORD_DIR ??= join(STATE, 'model-io')
 const client = new OpenAICompatibleClient()
@@ -128,6 +129,7 @@ function snapshotOf(t: TaskState): AssessSnapshot {
     status: t.cancelled ? 'cancelled' : t.status, stage: t.status, now: iso(),
     latestResult: r ? { sourceId: `inbox/${r.experimentId}/result.json@${t.resultFileSha!.slice(0, 16)}`, revision: r.revision, status: r.status, summary: `总数${r.metrics.total} 通过${r.metrics.passed} 未通过${r.metrics.failed}；${r.note}`, assignment: `${r.runId}-r${r.revision}`, artifact: r.artifactPath } : null,
     options: optionsFor(t),
+    waitContract: { boundedRecheckAt: iso(Date.now() + BOUNDED_RECHECK_MS), note: `宿主有界复查：未知 ETA 时最晚 ${BOUNDED_RECHECK_MS / 1000}s 后重新判断（演示配置，RealClock）` },
   }
 }
 
