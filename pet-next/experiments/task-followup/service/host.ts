@@ -196,7 +196,9 @@ export async function runHost(options: HostOptions): Promise<number> {
     if (options.assessor === 'capability') {
       const mod = await import('./capability-assessor.ts')
       try {
-        capability = mod.createCapabilityHandle(process.env)
+        const recheckEnv = Number(process.env.PET_FOLLOWUP_RECHECK_MS ?? '')
+        const hostRecheckMs = Number.isFinite(recheckEnv) && recheckEnv > 0 ? recheckEnv : options.demoLabel ? 90_000 : 30 * 60_000
+        capability = mod.createCapabilityHandle(process.env, fetch, undefined, { hostRecheckMs })
         loaded = { assessor: capability.assessor, spec: 'capability' }
       } catch (error) {
         if (!(error instanceof mod.CapabilityNotConfigured)) throw error
@@ -241,7 +243,7 @@ export async function runHost(options: HostOptions): Promise<number> {
   })
   if (capability) capability.attach(built.db.handle)
   const judgment = capability
-    ? `模型判断（${capability.model.name} @ ${capability.model.baseUrl}，记忆抽取+有效记忆读取+介入评估，事务外异步）；执行仍经版本/证据/通知校验，工具执行须用户授权`
+    ? `模型判断（${capability.model.name} @ ${capability.model.baseUrl}，记忆抽取+有效记忆读取+介入评估，事务外异步；未知ETA由宿主每${Math.round(capability.hostRecheckMs / 1000)}秒有界复查）；执行仍经版本/证据/通知校验，工具执行须用户授权`
     : capabilityUnavailable
       ? `${JUDGMENT_LABEL}；模型判断未启用：${capabilityUnavailable}`
       : loaded
@@ -305,14 +307,14 @@ export async function runHost(options: HostOptions): Promise<number> {
         if (capability && outcome.disposition === 'appended') {
           const r = built.runtime.getTask(ticketId)?.result
           if (r) {
-            capability.appendTurn({
+            capability.ingestResult({
               turnId: `result-${ticketId}-${r.runId}-${r.revision}`,
               sessionId: 'tools',
               at: clock.now(),
               role: 'tool',
               text: `结果 ${r.runId} 第${r.revision}版：${r.status}，通过 ${r.metrics.passed}/${r.metrics.total}，失败 ${r.metrics.failed}${r.metrics.score === null ? '' : `，得分 ${r.metrics.score}`}${r.note ? `；说明：${r.note}` : ''}`,
               taskIds: [ticketId],
-            })
+            }, ticketId, { runId: r.runId, revision: r.revision, status: r.status, metrics: { ...r.metrics }, resultFileSha: observed.sha256 })
           }
         }
         log(`observe ${ticketId} ${observed.sourceRevision} ${outcome.disposition} ${outcome.detail}`)

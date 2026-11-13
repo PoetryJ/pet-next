@@ -23,11 +23,13 @@ import type { DatabaseSync } from 'node:sqlite'
 import { CapabilityMemoryStore } from '../capability/memory/store.ts'
 import { extractPending } from '../capability/memory/extract.ts'
 import { readForDecision } from '../capability/memory/read.ts'
-import { assess as capAssess, snapshotFromTask, submitAssessment as capSubmit } from '../capability/intervention/assess.ts'
+import { assess as capAssess, repairQuestion, REPAIRABLE, snapshotFromTask, submitAssessment as capSubmit } from '../capability/intervention/assess.ts'
+import type { AssessmentRecord, SubmitResult } from '../capability/intervention/assess.ts'
+import { ingestVerifiedOutcome, type VerifiedOutcome } from '../capability/memory/verified.ts'
 import { InterventionStore } from '../capability/intervention/planner.ts'
 import { OpenAICompatibleClient, configFromEnv } from '../capability/model/openai-compatible.ts'
 import type { ModelClient } from '../capability/model/protocol.ts'
-import type { Turn } from '../capability/memory/types.ts'
+import type { MemoryPacket as CapPacket, Turn } from '../capability/memory/types.ts'
 import type { AssessmentDraft, AssessmentResponse, AssessmentSnapshot, AsyncAssessor } from '../runtime/assessment.ts'
 
 export interface CapabilityHandle {
@@ -36,6 +38,9 @@ export interface CapabilityHandle {
   /** 宿主写入原话（用户聊天/委托说明）或工具结果；返回是否新写入。 */
   readonly appendTurn: (turn: Omit<Turn, 'seq'> & { seq?: number }) => boolean
   readonly memorySummary: (taskId: string, now: string) => unknown
+  /** 宿主已校验的结果：先逐字写入工具原话，再成为 authority=tool 的 outcome 条目（不让模型复述机器字段）。 */
+  readonly ingestResult: (turn: Omit<Turn, 'seq'>, taskId: string, outcome: VerifiedOutcome) => boolean
+  readonly hostRecheckMs: number
   readonly model: { readonly baseUrl: string; readonly name: string; readonly provider: string }
 }
 
@@ -62,7 +67,43 @@ function qwenFetch(base: typeof fetch): typeof fetch {
 
 export class CapabilityNotConfigured extends Error {}
 
-export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch, clientOverride?: ModelClient): CapabilityHandle {
+export interface CapabilityHandleOptions {
+  /** 共享等待契约：模型未给出可引用的 ETA/截止时，由宿主在这一有界间隔后复查（不伪造事实时间，也不转成向用户提问）。 */
+  readonly hostRecheckMs?: number
+}
+
+const ASSESS_MAX = 768
+const EXTRACT_MAX = 1536
+
+/** 等待契约：引用的 ETA（记忆条目值/有效期或 guard 的锚点修复）原样采用；否则用宿主有界复查。 */
+export function applyWaitContract(record: AssessmentRecord, submit: SubmitResult, packet: CapPacket, now: string, hostRecheckMs: number): { submit: SubmitResult; contract: Record<string, unknown> | null } {
+  const p = record.proposal
+  if (!p || p.kind !== 'wait') return { submit, contract: null }
+  const nowMs = Date.parse(now)
+  const hostAt = (deadline: string | null) => {
+    let at = nowMs + hostRecheckMs
+    if (deadline && Number.isFinite(Date.parse(deadline))) at = Math.min(at, Date.parse(deadline) - 1000)
+    return new Date(Math.max(at, nowMs + 1000)).toISOString()
+  }
+  if (submit.accepted && submit.proposal) {
+    const c = submit.proposal
+    const items = [...packet.currentFacts, ...packet.preferences, ...packet.commitments, ...packet.outcomes]
+    const same = (v: unknown) => typeof v === 'string' && Number.isFinite(Date.parse(v)) && Date.parse(v) === Date.parse(c.wakeAt ?? '')
+    const citedAnchor = items.find((i) => c.evidenceItemIds.includes(i.itemId) && (same(i.value) || same(i.validUntil)))
+    const repaired = submit.checks.some((x) => x.startsWith('wakeAt_repaired:'))
+    if (citedAnchor || repaired) return { submit, contract: { source: repaired ? 'guard_anchor' : 'cited_item', itemId: citedAnchor?.itemId ?? null, wakeAt: c.wakeAt, modelWakeAt: p.wakeAt } }
+    const wakeAt = hostAt(c.deadlineAt)
+    return { submit: { ...submit, proposal: { ...c, wakeAt }, checks: [...submit.checks, `wakeAt_uncited:${p.wakeAt}->host_bounded_recheck:${wakeAt}`] }, contract: { source: 'host_bounded_recheck', reason: 'model wakeAt not anchored to a cited item', modelWakeAt: p.wakeAt, wakeAt, hostRecheckMs } }
+  }
+  if (!submit.accepted && submit.code === 'wait_without_recheck' && submit.proposal) {
+    const wakeAt = hostAt(submit.proposal.deadlineAt)
+    return { submit: { ...submit, accepted: true, code: 'accepted', detail: `unknown ETA -> host bounded recheck (${submit.detail})`, proposal: { ...submit.proposal, wakeAt }, fallback: null, checks: [...submit.checks, `wait_unknown_eta->host_bounded_recheck:${wakeAt}`] }, contract: { source: 'host_bounded_recheck', reason: 'unknown ETA', modelWakeAt: p.wakeAt, wakeAt, hostRecheckMs } }
+  }
+  return { submit, contract: null }
+}
+
+export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fetchImpl: typeof fetch = fetch, clientOverride?: ModelClient, handleOptions: CapabilityHandleOptions = {}): CapabilityHandle {
+  const hostRecheckMs = handleOptions.hostRecheckMs ?? 30 * 60_000
   const cfg = configFromEnv(env)
   if (!clientOverride && !cfg.ok) throw new CapabilityNotConfigured(`模型未配置：缺 ${cfg.missing.join(', ')}`)
   const client: ModelClient = clientOverride ?? new OpenAICompatibleClient(cfg.ok ? cfg.config : undefined, qwenFetch(fetchImpl))
@@ -84,34 +125,52 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         entities: [{ id: task.ticketId, type: 'task', label: task.title }],
         now,
         signal,
+        maxTurns: 3,
+        roles: ['user', 'assistant'],
+        maxTokens: EXTRACT_MAX,
       })
       if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
       const packet = readForDecision(s, {
         taskId: task.ticketId,
         asOf: now,
         intent: 'current',
-        question: `${task.title}：${task.goal}。此刻需要用户做什么？`,
-        requiredSlots: [],
-        budget: { maxItems: 40, maxChars: 6000 },
+        question: `${task.title} 当前结果、授权范围、通知偏好与等待条件`,
+        requiredSlots: ['runTarget', 'allowedActions', 'notificationPolicy', 'waitPolicy', 'decisionDeadline'],
+        budget: { maxItems: 24, maxChars: 4500 },
       })
       const askTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user')
       const options = (askTemplate?.options ?? []).map((option) => ({ optionId: option.id, label: option.label }))
       const capSnapshot = snapshotFromTask(task, now, options)
-      const record = await capAssess(capSnapshot, packet, signal, client)
-      const submit = capSubmit(record, packet, { taskRevision: task.taskRevision, assignmentId: task.assignmentId, now }, s, capSnapshot)
+      const baseQ = { text: '此刻该做什么：等待、马上问我、合并到摘要、直接执行某个选项，还是什么都不做？', requestedFactKeys: [] as string[] }
+      let record = await capAssess(capSnapshot, packet, signal, client, baseQ, ASSESS_MAX)
+      let submit = capSubmit(record, packet, { taskRevision: task.taskRevision, assignmentId: task.assignmentId, now: new Date().toISOString() }, s, capSnapshot)
+      let first: Record<string, unknown> | null = null
+      // 等待契约优先：未知 ETA 不是错误，由宿主有界复查，不触发修复/提问
+      let wc = applyWaitContract(record, submit, packet, new Date().toISOString(), hostRecheckMs)
+      submit = wc.submit
+      // 至多一次定向修复重评（第一次原始输出照样落库）
+      if (!submit.accepted && REPAIRABLE.includes(submit.code) && record.failure?.code !== 'timeout' && !signal.aborted) {
+        p.logAssessment(record, submit, null, now)
+        first = { requestId: record.request.requestId, rawText: record.rawText, code: submit.code, detail: submit.detail, proposal: record.proposal }
+        record = await capAssess(capSnapshot, packet, signal, client, repairQuestion(submit, baseQ), ASSESS_MAX)
+        submit = capSubmit(record, packet, { taskRevision: task.taskRevision, assignmentId: task.assignmentId, now: new Date().toISOString() }, s, capSnapshot)
+        wc = applyWaitContract(record, submit, packet, new Date().toISOString(), hostRecheckMs)
+        submit = wc.submit
+      }
       p.logAssessment(record, submit, null, now)
       const raw = {
         provider: record.model?.provider ?? (cfg.ok ? cfg.config.provider : 'override'),
         model: record.model?.name ?? (cfg.ok ? cfg.config.model : 'unknown'),
         rawOutput: record.rawText ?? '',
         requestPayload: record.request,
-        meta: { extraction: { status: extraction.status, detail: extraction.detail ?? null }, capabilitySubmit: submit, memoryPacket: packet, capabilityIdentity: record.identity, sessionId: record.sessionId },
+        meta: { extraction: { status: extraction.status, detail: extraction.detail ?? null }, firstAttemptRejected: first, capabilitySubmit: submit, waitContract: wc.contract, memoryPacket: packet, capabilityIdentity: record.identity, sessionId: record.sessionId },
       }
       if (record.failure) throw new Error(`${record.failure.code === 'parse_error' ? 'parse_error' : 'provider_error'}: capability assess ${record.failure.code}: ${record.failure.detail}`)
-      const proposal = record.proposal!
+      const proposal = (submit.proposal ?? record.proposal)!
       if (!submit.accepted && submit.code.startsWith('stale_')) throw new Error(`provider_error: ${submit.code} ${submit.detail}`)
-      const kind = submit.accepted ? proposal.kind : submit.fallback?.kind ?? 'none'
-      const why = submit.accepted ? `${proposal.reasonCode}` : `capability guard 拒绝 ${submit.code}（${submit.detail}）→ ${kind}`
+      // 修复一次仍被拒：不自动当授权、不转成提问，只记录（等下一次证据变化再评估）
+      const kind = submit.accepted ? proposal.kind : 'none'
+      const why = submit.accepted ? `${proposal.reasonCode}` : `capability guard 拒绝 ${submit.code}（${submit.detail}）；修复一次仍被拒→只记录，等待下一次证据变化`
       const drafts: AssessmentDraft[] = []
       const optionList = askTemplate?.options ?? []
       if ((kind === 'ask' || kind === 'act') && askTemplate) {
@@ -127,7 +186,8 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
           ...(proposal.deadlineAt ? { deadline: proposal.deadlineAt } : {}),
         })
       } else if (kind === 'wait' && submit.accepted && proposal.wakeAt) {
-        drafts.push({ intent: 'wait', reasonCode: `cap_${proposal.reasonCode}`, reasonText: `${why}；等待：${proposal.waitFor ?? '新证据'}`, notBefore: proposal.wakeAt, ...(proposal.deadlineAt ? { deadline: proposal.deadlineAt } : {}) })
+        const src = wc.contract?.source === 'host_bounded_recheck' ? '宿主有界复查' : '引用的预计时间'
+        drafts.push({ intent: 'wait', reasonCode: `cap_${proposal.reasonCode}`, reasonText: `${why}；等待：${proposal.waitFor ?? '新证据'}；复查时间来自${src}`, notBefore: proposal.wakeAt, ...(proposal.deadlineAt ? { deadline: proposal.deadlineAt } : {}) })
       } else if (kind === 'digest') {
         drafts.push({ intent: 'digest', reasonCode: `cap_${proposal.reasonCode}`, reasonText: why })
       } else {
@@ -150,6 +210,16 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
       s.appendTurn({ ...turn, seq: turn.seq ?? seq } as Turn)
       return true
     },
+    ingestResult(turn, taskId, outcome) {
+      const { store: s } = need()
+      if (!s.turns().some((existing) => existing.turnId === turn.turnId)) {
+        seq += 1
+        s.appendTurn({ ...turn, seq } as Turn)
+      }
+      ingestVerifiedOutcome(s, s.turn(turn.turnId)!, taskId, outcome, turn.at)
+      return true
+    },
+    hostRecheckMs,
     memorySummary(taskId: string, now: string) {
       const { store: s } = need()
       return readForDecision(s, { taskId, asOf: now, intent: 'current', question: '', requiredSlots: [], budget: { maxItems: 20, maxChars: 3000 } })
