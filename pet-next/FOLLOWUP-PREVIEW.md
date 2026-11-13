@@ -12,7 +12,7 @@
 | 文件 | 判断方式 | 说明 |
 |---|---|---|
 | `followup-preview.cmd` | 本地规则原型（scripted-rule P3，不调用模型） | 默认入口。面板标“本地规则原型 · 不调用模型”。不理解任意自然语言目标。 |
-| `followup-preview-model.cmd` | 模型判断（capability：记忆抽取 + 有效记忆读取 + 介入评估） | 默认连接本机回环 `http://127.0.0.1:18881/v1`、模型 `Qwen3-1.7B`（可用同名环境变量覆盖）。面板标“模型判断 · capability:<模型名>”，并多出“补充说明 / 改口”输入框。 |
+| `followup-preview-model.cmd` | 模型判断（capability：记忆抽取 + 有效记忆读取 + 介入评估） | 默认连接本机回环 `http://127.0.0.1:18882/v1`、模型 `Qwen3-8B`，单次模型请求超时 240000 ms（一次判断含抽取+评估两次调用，总超时 500000 ms），均可用同名环境变量覆盖。面板标“模型判断 · capability:<模型名>”，并多出“补充说明 / 改口”输入框。 |
 
 双击后：一个控制台窗口（显示预检与日志）+ 桌宠出现。点桌宠上的“帮我跟进”打开面板。
 
@@ -31,10 +31,10 @@
 - 模型的原始输出、guard 前提案和 guard 后结果都会落库：`assessments` 表，以及 capability 的 `cap_assessments` / `cap_items` / `cap_turns`。面板“开发者信息”里也能看到。
 - 工具执行仍然需要你在问题里明确授权。模型提议“直接执行”时，会改成向你提问。
 - 失败会被如实记录，不生成占位动作：模型不可达、超时、解析错误都记为 failed，也不会冒出问题。如果没配模型环境变量，宿主会回退到本地规则原型，并在面板上写明“模型未启用”。
-- 请求固定带 `temperature=0`、`stream=false`、`chat_template_kwargs.enable_thinking=false`、`max_tokens=1024`。
+- 请求固定带 `temperature=0`、`stream=false`、`chat_template_kwargs.enable_thinking=false`、`max_tokens`（入口默认 2048，上限 4096）。
 
 ## 已知限制
 
 - 规则入口的跟进判断是本地规则原型，不是通用理解。
-- 模型入口只是接线完成，不代表能力达标。在 Qwen3-1.7B 上的一次长任务实测里，用户说过“等第二版再问”，模型仍在第一版就提问了（多打扰一次）。详见交付目录里的 `FINAL-DELIVERY.txt` 和 `evidence/LIVE-model-longtask`。
+- 模型入口只是接线完成，不代表能力达标。在 Qwen3-1.7B 上的一次初步长任务实测（8B 正式结果待补）里，用户说过“等第二版再问”，模型仍在第一版就提问了（多打扰一次）。详见交付目录里的 `FINAL-DELIVERY.txt` 和 `evidence/LIVE-model-longtask`。
 - 只支持模板 `local-tests`（`result.json`，结构见 `experiments/task-followup/contracts.ts`）。
