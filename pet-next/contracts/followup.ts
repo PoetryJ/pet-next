@@ -25,6 +25,8 @@ export const FOLLOWUP_DEMO_WAIT_ENV = 'PET_FOLLOWUP_DEMO_SHORT_WAIT';
 /** 录制辅助：=1 时面板与报告窗置顶（仅用于录屏取证，默认关闭，不影响跟进语义）。 */
 /** 能力接入：传给宿主 --assessor（none | baseline-menu-first | file-queue[:dir] | module:<path>）；缺省 none = P3 规则基线。 */
 export const FOLLOWUP_ASSESSOR_ENV = 'PET_FOLLOWUP_ASSESSOR';
+/** 单次事务外判断的总超时（毫秒；含记忆抽取与评估两次模型调用）。 */
+export const FOLLOWUP_ASSESSOR_TIMEOUT_ENV = 'PET_FOLLOWUP_ASSESSOR_TIMEOUT_MS';
 export const FOLLOWUP_RECORDING_ON_TOP_ENV = 'PET_FOLLOWUP_RECORDING_ON_TOP';
 /** 页面查询参数：桌宠页面据此挂载跟进入口。 */
 export const FOLLOWUP_QUERY = 'followup';
