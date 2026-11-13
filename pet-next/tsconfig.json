@@ -26,5 +26,5 @@
     "experiments/**/*.ts",
     "assets-pipeline/**/*.ts"
   ],
-  "exclude": ["dist", "node_modules", "electron/preload.ts"]
+  "exclude": ["dist", "node_modules", "electron/preload.ts", "experiments/task-followup"]
 }

@@ -3,3 +3,4 @@
 * text=auto eol=lf
 # 双击入口必须 CRLF：cmd.exe 对 LF 批处理的 goto/label 解析不可靠（M3-7 R1 REVIEW）
 pet-next/启动.cmd text eol=crlf
+pet-next/followup-preview.cmd text eol=crlf

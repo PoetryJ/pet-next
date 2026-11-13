@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8" />
+<title>分析报告</title>
+<style>
+  body { margin:0; font:14px/1.6 "Microsoft YaHei UI","Noto Sans SC",system-ui,sans-serif; color:#1d232b; background:#fff; }
+  header { padding:12px 18px; border-bottom:1px solid #dde3ea; background:#f6f8fa; }
+  header h1 { margin:0 0 4px; font-size:16px; }
+  .meta { font-size:12px; color:#56606c; word-break:break-all; }
+  .ok { color:#1d7a3a; font-weight:600; }
+  .bad { color:#b03030; font-weight:600; }
+  pre { margin:0; padding:16px 18px; white-space:pre-wrap; word-break:break-word; font:13px/1.6 "Cascadia Mono",Consolas,ui-monospace,monospace; }
+</style>
+</head>
+<body>
+<header>
+  <h1 id="title">分析报告</h1>
+  <div class="meta" id="meta">加载中…</div>
+</header>
+<pre id="content"></pre>
+<script>
+'use strict';
+const params = new URLSearchParams(location.search);
+fetch(`/api/report?ticket=${encodeURIComponent(params.get('ticket') || '')}`, { headers: { 'x-followup-token': params.get('token') || '' }, cache: 'no-store' })
+  .then((res) => res.json())
+  .then((json) => {
+    if (!json.ok) {
+      document.getElementById('meta').innerHTML = '<span class="bad"></span>';
+      document.querySelector('#meta .bad').textContent = `无法打开：${json.error || '未知错误'}`;
+      return;
+    }
+    document.getElementById('title').textContent = `分析报告 · ${json.title}`;
+    const meta = document.getElementById('meta');
+    meta.textContent = `文件 ${json.path} · SHA256 ${json.sha256} · 回执 ${json.receiptId || '—'} · `;
+    const v = document.createElement('span');
+    v.className = json.verified ? 'ok' : 'bad';
+    v.textContent = json.verified ? '宿主已核验：文件 SHA 与回执一致（只读查看）' : '核验失败';
+    meta.append(v);
+    document.getElementById('content').textContent = json.content;
+  })
+  .catch((error) => { document.getElementById('meta').textContent = `加载失败：${error.message}`; });
+</script>
+</body>
+</html>

@@ -100,3 +100,47 @@ contextBridge.exposeInMainWorld('petTestWindow', {
     return ipcRenderer.invoke(TEST_WINDOW_CHANNEL, action);
   },
 });
+
+/**
+ * final-demo 跟进预览桥（桌宠页面与任务面板共用；主进程按 sender 校验来源）。
+ * 只有固定动作：订阅状态、打开面板、回报气泡已显示、选目录、打开/定位受控报告、退出。
+ * 主进程只在 PET_FOLLOWUP_PREVIEW=1 时注册这些通道；没有任意 IPC、文件或 shell 入口。
+ * 通道名与 contracts/followup.ts 保持一致（preload 独立编译，内联）。
+ */
+const FOLLOWUP_STATE_CHANNEL = 'followup:state';
+const FOLLOWUP_OPEN_PANEL_CHANNEL = 'followup:open-panel';
+const FOLLOWUP_SHOWN_CHANNEL = 'followup:shown';
+const FOLLOWUP_PICK_DIR_CHANNEL = 'followup:pick-dir';
+const FOLLOWUP_OPEN_REPORT_CHANNEL = 'followup:open-report';
+const FOLLOWUP_REVEAL_REPORT_CHANNEL = 'followup:reveal-report';
+const FOLLOWUP_QUIT_CHANNEL = 'followup:quit';
+
+contextBridge.exposeInMainWorld('petFollowup', {
+  onState(listener: (state: unknown) => void): () => void {
+    const handler = (_event: unknown, state: unknown): void => {
+      listener(state);
+    };
+    ipcRenderer.on(FOLLOWUP_STATE_CHANNEL, handler);
+    return () => {
+      ipcRenderer.removeListener(FOLLOWUP_STATE_CHANNEL, handler);
+    };
+  },
+  openPanel(ticketId?: string): void {
+    ipcRenderer.send(FOLLOWUP_OPEN_PANEL_CHANNEL, typeof ticketId === 'string' ? ticketId : '');
+  },
+  shown(ticketId: string, decisionId: string): void {
+    ipcRenderer.send(FOLLOWUP_SHOWN_CHANNEL, { ticketId: String(ticketId), decisionId: String(decisionId) });
+  },
+  pickDirectory(): Promise<unknown> {
+    return ipcRenderer.invoke(FOLLOWUP_PICK_DIR_CHANNEL);
+  },
+  openReport(ticketId: string): Promise<unknown> {
+    return ipcRenderer.invoke(FOLLOWUP_OPEN_REPORT_CHANNEL, String(ticketId));
+  },
+  revealReport(ticketId: string): Promise<unknown> {
+    return ipcRenderer.invoke(FOLLOWUP_REVEAL_REPORT_CHANNEL, String(ticketId));
+  },
+  quitApp(): void {
+    ipcRenderer.send(FOLLOWUP_QUIT_CHANNEL);
+  },
+});

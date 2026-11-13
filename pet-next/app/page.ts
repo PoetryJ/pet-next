@@ -24,6 +24,8 @@ import { createFeedbackView } from './feedback-view.ts';
 import { attachPetMedia, type PetMedia } from './pet-media.ts';
 import { previewDataset } from './preview-gate.ts';
 import { createPetController, parseClipRequest, type PetController } from './wire.ts';
+import { FOLLOWUP_QUERY } from '../contracts/followup.ts';
+import { mountFollowupPet } from './followup-pet.ts';
 
 const DRAG_THRESHOLD_PX = 5;
 const LOAD_TIMEOUT_MS = 8000;
@@ -56,6 +58,9 @@ if (previewMark !== null) {
   document.documentElement.dataset.previewRequested = previewMark.previewRequested;
   document.documentElement.dataset.previewActive = previewMark.previewActive;
 }
+
+// final-demo：只有主进程显式注入 followup=1（跟进预览入口）才挂载“跟进任务”入口；默认零对象。
+if (params.get(FOLLOWUP_QUERY) === '1') mountFollowupPet(document.body);
 
 // M3-6：反馈控制器必须能被拖动回调与聊天面板共用，故提前声明。
 const holder: {

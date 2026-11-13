@@ -45,6 +45,14 @@ import { resolveQwenConfig } from './chat-config.ts';
 import { launcherRunOptions } from './launcher-run-options.ts';
 import { registerChatService, type ChatServiceHandle } from './chat-service.ts';
 import { logReady } from './ready-report.ts';
+import {
+  FOLLOWUP_DEMO_WAIT_ENV,
+  FOLLOWUP_NODE_ENV,
+  FOLLOWUP_PREVIEW_ENV,
+  FOLLOWUP_QUERY,
+  FOLLOWUP_WORKSPACE_ENV,
+} from '../contracts/followup.ts';
+import { startFollowupBridge, type FollowupBridge } from './followup-bridge.ts';
 
 const root = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '..');
 const WINDOW_WIDTH = 320;
@@ -55,6 +63,10 @@ let launcherController: LauncherController | null = null;
 let launcherWindow: BrowserWindow | null = null;
 /** 启动页已把用户送进桌宠：阻止重复进入，也用于退出清理只做一次。 */
 let launcherQuitting = false;
+/** final-demo 跟进预览：只有 PET_FOLLOWUP_PREVIEW=1 时创建；默认运行模式下始终为 null。 */
+let followupBridge: FollowupBridge | null = null;
+let followupStopping = false;
+const followupEnabled = process.env[FOLLOWUP_PREVIEW_ENV] === '1';
 
 if (process.env.PET_NEXT_USER_DATA) {
   app.setPath('userData', process.env.PET_NEXT_USER_DATA);
@@ -252,6 +264,21 @@ function createWindow(chatOverride?: LocalChatOverride): void {
   if (preview !== undefined && preview !== '') query[PREVIEW_QUERY] = preview;
   // M3-9：只有单槽且开关打开才通知页面订阅窗口快照（页面据此决定是否创建节能对象）。
   if (idlePauseApplies) query[IDLE_PAUSE_QUERY] = '1';
+  // final-demo：显式跟进预览才挂载入口与宿主桥；默认入口不变。
+  if (followupEnabled && followupBridge === null) {
+    query[FOLLOWUP_QUERY] = '1';
+    // root = dist；源码试用包里实验宿主与默认工作区都在 dist 的上一级（pet-next/）。
+    const workspace = process.env[FOLLOWUP_WORKSPACE_ENV] || path.join(root, '..', 'followup-workspace');
+    followupBridge = startFollowupBridge({
+      workspace,
+      nodePath: process.env[FOLLOWUP_NODE_ENV] || 'node',
+      experimentRoot: path.join(root, '..', 'experiments', 'task-followup'),
+      demoShortWait: process.env[FOLLOWUP_DEMO_WAIT_ENV] === '1',
+      preloadPath: path.join(root, 'electron/preload.js'),
+      getPetWindow: () => (win.isDestroyed() ? null : win),
+      quit: () => app.quit(),
+    });
+  }
   // M3-6：体验预览缺省 undefined（页面不创建反馈对象，原路径不变）。
   // M3-7：launcher 启动时以用户显式选择为准（standard 显式为 undefined）；否则仍只由 env 决定。
   const experience: ChatExperience | undefined = chatOverride
@@ -460,6 +487,17 @@ void app.whenReady().then(() => {
 app.on('before-quit', (event) => {
   chatHandle?.dispose();
   chatHandle = null;
+  // final-demo：退出整个应用时先让跟进宿主保存并合作停止，再真正退出。
+  if (followupBridge !== null && !followupStopping) {
+    followupStopping = true;
+    event.preventDefault();
+    const bridge = followupBridge;
+    void bridge.stop().finally(() => {
+      followupBridge = null;
+      app.quit();
+    });
+    return;
+  }
   // M3-7：launcher 模式下隧道由 controller 持有；退出前等它真正收掉本次 ssh 再退。
   if (launcherQuitting || launcherController === null) return;
   launcherQuitting = true;

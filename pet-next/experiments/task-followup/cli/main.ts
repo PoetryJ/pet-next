@@ -157,6 +157,7 @@ export async function runCommand(argv: readonly string[]): Promise<number> {
     return 0
   }
   if (command === 'serve') return serve(options, args)
+  if (command === 'host') return hostCommand(args, flags)
   if (command === 'watch') return watchCommand(options, args)
   if (command === 'demo') {
     // @ts-expect-error demo 是纯 ESM 脚本，不参与 TS 检查
@@ -400,6 +401,29 @@ export async function runCommand(argv: readonly string[]): Promise<number> {
   }
 }
 
+/**
+ * final-demo 宿主：一个进程统一 runtime/DB、目录 watcher、RealClock 调度、恢复与 HTTP API。
+ * --demo-short-wait 是有标识的演示短等待（RealClock，只缩短 minGap 与 defer 等待）。
+ */
+async function hostCommand(args: Map<string, string>, flags: Set<string>): Promise<number> {
+  const { runHost } = await import('../service/host.ts')
+  const short = flags.has('demo-short-wait')
+  const minGapMs = args.has('min-gap-ms') ? Number(args.get('min-gap-ms')) : short ? 20_000 : undefined
+  const wakeAfterMs = args.has('wake-after-ms') ? Number(args.get('wake-after-ms')) : short ? 30_000 : undefined
+  const label = short || minGapMs !== undefined || wakeAfterMs !== undefined
+    ? `演示短等待配置（RealClock）：minGap=${minGapMs ?? 'default'}ms，defer 等待=${wakeAfterMs ?? 'default'}ms；静默/阈值/冷却不变`
+    : null
+  return runHost({
+    workspaceRoot: resolve(args.get('workspace') ?? join(DEFAULT_WORKSPACE, '..', 'host-workspace')),
+    timezone: args.get('timezone') ?? 'Asia/Shanghai',
+    ...(minGapMs === undefined ? {} : { minGapMs }),
+    ...(wakeAfterMs === undefined ? {} : { wakeAfterMs }),
+    demoLabel: label,
+    ...(args.has('port') ? { port: Number(args.get('port')) } : {}),
+    onLog: (line) => process.stdout.write(`${line}\n`),
+  })
+}
+
 function watchCommand(options: CliOptions, args: Map<string, string>): Promise<number> {
   const ticket = args.get('ticket')
   if (!ticket) throw new Error('missing --ticket')
@@ -452,7 +476,7 @@ async function serve(options: CliOptions, args: Map<string, string>): Promise<nu
   }
   const built = openRuntime(options)
   const port = Number(args.get('port') ?? 0)
-  const panelPath = join(EXPERIMENT_ROOT, 'demo', 'panel.html')
+  const panelPath = join(EXPERIMENT_ROOT, 'demo', 'panel-legacy.html')
   const server = createServer((request, response) => {
     handleRequest(built, options, panelPath, request, response).catch((error: unknown) => {
       sendJson(response, 500, { ok: false, error: (error as Error).message })
@@ -639,6 +663,7 @@ function helpText(): string {
   node run.mjs reconcile --ticket <id> --option accept_receipt|abandon_attempt
   node run.mjs repair-memory
   node run.mjs serve [--port 0]
+  node run.mjs host --workspace <dir> [--timezone Asia/Shanghai] [--demo-short-wait]   # 桌宠预览宿主
   node run.mjs demo
   node run.mjs eval
   node run.mjs test
