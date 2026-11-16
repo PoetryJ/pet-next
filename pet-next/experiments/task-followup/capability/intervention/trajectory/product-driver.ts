@@ -44,7 +44,7 @@ async function main(): Promise<number> {
   const TRAJECTORY = resolve(arg('--trajectory')!), PRODUCER = resolve(arg('--producer')!), OUT = resolve(arg('--out')!)
   const DRY = process.argv.includes('--dry-run')
   const ASSESSOR = arg('--assessor') ?? 'capability'
-  must(['capability', 'capability-need-rule'].includes(ASSESSOR), 'unknown paired intervention arm')
+  must(['capability', 'capability-need-rule', 'capability-conditions'].includes(ASSESSOR), 'unknown paired intervention arm')
   must(existsSync(TRAJECTORY) && existsSync(PRODUCER) && existsSync(RUN), 'trajectory, producer or product run.mjs missing')
   must(!existsSync(OUT), `refusing existing output directory: ${OUT}`)
   const source = readFileSync(TRAJECTORY)

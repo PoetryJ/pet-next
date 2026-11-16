@@ -670,6 +670,7 @@ function helpText(): string {
   node run.mjs eval
   node run.mjs test
   node run.mjs typecheck
+  node run.mjs host --assessor capability-conditions   # R6 实验模式，默认关闭
   node run.mjs negative
   node run.mjs reveal --raw <raw.json>
   node run.mjs verify-eval

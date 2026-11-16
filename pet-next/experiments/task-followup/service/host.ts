@@ -48,7 +48,7 @@ export interface HostOptions {
   readonly rescanMs?: number
   readonly port?: number
   readonly onLog?: (line: string) => void
-  /** 事务外异步 assessment 来源：none（默认，P3 规则基线）| baseline-menu-first | file-queue[:dir] | module:<path>。 */
+  /** 事务外异步 assessment 来源：none（默认，P3 规则基线）| baseline-menu-first | file-queue[:dir] | module:<path> | capability | capability-need-rule | capability-conditions。 */
   readonly assessor?: string
   readonly assessorTimeoutMs?: number
 }
@@ -191,20 +191,27 @@ export async function runHost(options: HostOptions): Promise<number> {
   let loaded: Awaited<ReturnType<typeof loadAssessor>>
   // capability：宿主内置的记忆+介入+模型适配；模型未配置时显式回退到规则路径并在面板标注，不假装成功。
   let capability: import('./capability-assessor.ts').CapabilityHandle | null = null
+  let conditions: import('./capability-conditions.ts').ConditionsHandle | null = null
   let capabilityUnavailable: string | null = null
   try {
-    if (options.assessor === 'capability' || options.assessor === 'capability-need-rule') {
+    if (options.assessor === 'capability' || options.assessor === 'capability-need-rule' || options.assessor === 'capability-conditions') {
       const mod = await import('./capability-assessor.ts')
       try {
         const recheckEnv = Number(process.env.PET_FOLLOWUP_RECHECK_MS ?? '')
         const hostRecheckMs = Number.isFinite(recheckEnv) && recheckEnv > 0 ? recheckEnv : options.demoLabel ? 90_000 : 30 * 60_000
-        capability = mod.createCapabilityHandle(process.env, fetch, undefined, { hostRecheckMs, intervention: options.assessor === 'capability-need-rule' ? 'need-rule' : 'model' })
+        if (options.assessor === 'capability-conditions') {
+          const cond = await import('./capability-conditions.ts')
+          conditions = cond.createConditionsHandle(process.env, fetch, undefined, { hostRecheckMs })
+          capability = conditions
+        } else {
+          capability = mod.createCapabilityHandle(process.env, fetch, undefined, { hostRecheckMs, intervention: options.assessor === 'capability-need-rule' ? 'need-rule' : 'model' })
+        }
         loaded = { assessor: capability.assessor, spec: options.assessor }
       } catch (error) {
         if (!(error instanceof mod.CapabilityNotConfigured)) throw error
         capabilityUnavailable = error.message
         loaded = null
-        record({ event: 'host.assessor_unavailable', spec: 'capability', error: error.message, fallback: 'scripted-rule P3' })
+        record({ event: 'host.assessor_unavailable', spec: options.assessor ?? 'capability', error: error.message, fallback: 'scripted-rule P3' })
         process.stderr.write(`capability 未启用：${error.message}；回退到本地规则原型\n`)
       }
     } else {
@@ -244,7 +251,7 @@ export async function runHost(options: HostOptions): Promise<number> {
   })
   if (capability) capability.attach(built.db.handle)
   const judgment = capability
-    ? `${options.assessor === 'capability-need-rule' ? '共享模型抽取＋强规则介入' : '模型判断'}（${capability.model.name} @ ${capability.model.baseUrl}，事务外；未知ETA由宿主每${Math.round(capability.hostRecheckMs / 1000)}秒有界复查）；执行仍经版本/证据/通知校验，工具执行须用户授权`
+    ? `${options.assessor === 'capability-conditions' ? '条件承诺编译＋事件求值（实验）' : options.assessor === 'capability-need-rule' ? '共享模型抽取＋强规则介入' : '模型判断'}（${capability.model.name} @ ${capability.model.baseUrl}，事务外；未知ETA由宿主每${Math.round(capability.hostRecheckMs / 1000)}秒有界复查）；执行仍经版本/证据/通知校验，工具执行须用户授权`
     : capabilityUnavailable
       ? `${JUDGMENT_LABEL}；模型判断未启用：${capabilityUnavailable}`
       : loaded
@@ -446,7 +453,7 @@ export async function runHost(options: HostOptions): Promise<number> {
       .listTasks()
       .slice()
       .sort((a, b) => b.createdAt.localeCompare(a.createdAt))
-      .map(taskView)
+      .map((task) => (conditions ? { ...taskView(task), condition: conditions.conditionSummary(task.ticketId) } : taskView(task)))
     const pending = tasks
       .filter((task) => task.bucket === 'needs_decision' && task.decision)
       .map((task) => ({ ticketId: task.ticketId, title: task.title, decision: task.decision }))
@@ -459,6 +466,7 @@ export async function runHost(options: HostOptions): Promise<number> {
       assessor: loaded ? { id: loaded.assessor.id, capability: loaded.assessor.capability, spec: loaded.spec } : null,
       modelUnavailable: capabilityUnavailable,
       canSay: Boolean(capability),
+      conditionStats: conditions ? conditions.conditionStats() : null,
       demoConfig,
       timezone,
       quietHours: `${quiet.fromHour}:00-${quiet.toHour}:00 ${timezone}`,

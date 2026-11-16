@@ -70,6 +70,17 @@ function qwenFetch(base: typeof fetch): typeof fetch {
   }) as typeof fetch
 }
 
+/** 用户取消是权威任务控制：走与检索相同的有效性/更正规则，供 capability 与 conditions 两条线共用。 */
+export function findUserCancel(store: CapabilityMemoryStore, taskId: string, now: string): AssessmentResponse['taskControl'] {
+  const packet = readForDecision(store, { taskId, asOf: now, intent: 'current', question: '用户当前任务状态', requiredSlots: ['taskStatus'], budget: { maxItems: Number.MAX_SAFE_INTEGER, maxChars: Number.MAX_SAFE_INTEGER } })
+  const item = [...packet.commitments, ...packet.currentFacts].find((i) => i.key === 'taskStatus' && i.authority === 'user' && i.status === 'active' && i.scope.level === 'task' && i.scope.id === taskId && /^(cancelled|canceled|cancel|取消|已取消|终止|停止)$/i.test(String(i.value)))
+  if (!item || packet.conflicts.some((c) => c.itemIds.includes(item.itemId))) return undefined
+  const source = store.items().find((i) => i.itemId === item.itemId)!
+  // 更新的、尚未编译的用户消息可能撤回取消
+  if (packet.context.recentTurns.some((t) => t.role === 'user' && t.seq > source.recordedSeq)) return undefined
+  return { kind: 'cancel', itemId: item.itemId, reason: `用户取消：${item.statement}` }
+}
+
 export class CapabilityNotConfigured extends Error {}
 
 export interface CapabilityHandleOptions {
@@ -121,18 +132,7 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
   }
   let seq = 0
   const compilation = new MemoryCompilation<Awaited<ReturnType<typeof extractPending>>>()
-  const taskControl = (taskId: string, now: string): AssessmentResponse['taskControl'] => {
-    const { store: s } = need()
-    // Cancellation is authoritative task control, not a best-effort retrieval hit.
-    // Use the same validity/supersession rules without the model-context budget.
-    const packet = readForDecision(s, { taskId, asOf: now, intent: 'current', question: '用户当前任务状态', requiredSlots: ['taskStatus'], budget: { maxItems: Number.MAX_SAFE_INTEGER, maxChars: Number.MAX_SAFE_INTEGER } })
-    const item = [...packet.commitments, ...packet.currentFacts].find((i) => i.key === 'taskStatus' && i.authority === 'user' && i.status === 'active' && i.scope.level === 'task' && i.scope.id === taskId && /^(cancelled|canceled|cancel|取消|已取消|终止|停止)$/i.test(String(i.value)))
-    if (!item || packet.conflicts.some((c) => c.itemIds.includes(item.itemId))) return undefined
-    const source = s.items().find((i) => i.itemId === item.itemId)!
-    // A newer, not-yet-compiled user message may reverse the cancellation.
-    if (packet.context.recentTurns.some((t) => t.role === 'user' && t.seq > source.recordedSeq)) return undefined
-    return { kind: 'cancel', itemId: item.itemId, reason: `用户取消：${item.statement}` }
-  }
+  const taskControl = (taskId: string, now: string): AssessmentResponse['taskControl'] => findUserCancel(need().store, taskId, now)
   const assessor: AsyncAssessor = {
     id: `${handleOptions.intervention === 'need-rule' ? 'strong-need-rule:shared-extraction' : 'capability'}:${cfg.ok ? cfg.config.model : 'override'}`,
     capability: handleOptions.intervention !== 'need-rule',
