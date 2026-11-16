@@ -1,0 +1,16 @@
+2026-11-16 Codex已认证登录h20v7并GET核实两个模型服务ready。无需新下载模型，不把密钥/密码写进代码或交付。
+远端服务机：h20v7；项目 /data/home/user_00/pet-benefit-20261113
+远端Vibe直接使用：
+  PET_MODEL_BASE_URL=http://127.0.0.1:18882/v1
+  PET_MODEL_NAME=Qwen3-8B
+  PET_MODEL_DISABLE_THINKING=1
+  PET_MODEL_TEMPERATURE=0
+  PET_MODEL_TIMEOUT_MS=240000
+  PET_MODEL_MAX_TOKENS=4096
+  PET_FOLLOWUP_RECHECK_MS=20000
+第二队列只换18883。GET http://127.0.0.1:18882/health 和18883/health应ready=true；/v1/models可校模型。
+模型revision b968826d9c46dd6066d109eabc6255188de91218；BF16，contextLimit16384，torch2.5.1+cu121/transformers4.51.3，serve-cancel-v1.py；端口绑定loopback。GPU0/1检查时利用率0%，已载入模型约18GB，勿以已占显存判定无卡。
+Windows端Codex已建双SSH转发；若转发断开，用现有SSH认证重新建立 -L 127.0.0.1:18882:127.0.0.1:18882 -L 127.0.0.1:18883:127.0.0.1:18883。远端Vibe不用隧道。
+Node需24：原R6日志为24.14.0；Codex Windows24.22.1。先打印node --version并确认路径，再运行。npm不在PATH时使用已有包管理器入口，按锁文件装tooling及producer/test-report/tooling；不会因为CLI路径问题判产品失败。
+输出/临时目录使用本人可写的新目录；原交付只读。不要复制env -u NODE_OPTIONS绕过删除保护作为通用步骤，遇权限问题先换隔离临时目录。
+服务若不ready先核日志与进程身份，再报告/恢复原配置；不能自动把live模式降成fixture或模拟器。

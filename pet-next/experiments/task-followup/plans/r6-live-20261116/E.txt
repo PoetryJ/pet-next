@@ -1,0 +1,5 @@
+你负责可实际启动的Windows体验；读CONTRACT。独占demo/、demos/conditions/、新增条件模式启动器；Electron既有桥或host需改时只交给负责人，避免撞文件。
+1. 先核实际启动行为。旧preview/launch.mjs不接受新模式；demo/r5-demo.mjs存在但仅导出旧R5演示函数，文档的直接node命令无操作exit0，不是Electron入口。交一个显式支持capability-conditions的启动器，直接拉起实际宿主与Electron面板。
+2. 面板展示有效原话、已收到/正在等的报告名称、为何问/为何等待；内部source ID只在开发区。复用Outbox/重连，不另写授权链。
+3. Windows中文+空格目录实际做：两报告分批到达→忙碌不误问→改成只等A→重启→一次必要提问→点击授权→当前输入分析→取消→新文件不提醒。保留实际时间、pid、点击/截图及请求/回执，不能拿静态样例页当验收。
+4. 若你的执行机确无桌面，仍完成并测试启动器、打独立Windows可运行包，交W1-RUN.ps1一条命令；将needs_owner_desktop明确交Codex，不能把入口尚未实现写成仅未点击。

@@ -1,0 +1,32 @@
+R6 单次候选提示验证（开发诊断，非留出集），2026-11-16
+
+原源码：2062807687b912a9ed65958d95c3e62b05b957ad，未修改。
+候选：candidate-system.txt，SHA256 a9b23ed87134ce3479a0e13b12f2dc64c2c14d6fa81b3aa683b88d83f88053f9。
+只通过ModelClient wrapper追加system规则和宿主计算的原话长度；实际用户消息、生产compiler解析/引用校验/IR生成与kernel不变。每题同时保存原请求、追加后的请求、真实HTTP请求/响应。
+
+实际额外POST=6，HTTP成功6，编译成功5/失败1，输入7337/输出372tokens，unknown usage=0，编译墙钟合计19152ms。没有重试，没有看失败后再改prompt。
+单请求max_tokens=1024，预留6144；本批授权上限6 POST/8192输出未超。
+
+结果：
+01 原始A/B都到齐：compiled；9格三值表9/9；完整引用当前原话。
+02 原始更正只等A：compiled；9/9；B存在/不存在/未知均不改变A判定；完整引用更正。
+03 B仅供归档、不再影响：parse_error；无plan，9格未运行。原输出仍试图A.present=true AND B.present=false，撤销依赖语义仍错。
+04 改为只等B：compiled；9/9；完整引用更正。
+05 撤销后恢复A/B双等待：compiled；9/9；完整引用恢复原话。
+06 从只等A加回B，报告失败也算已到：compiled；9/9；完整引用更正。
+总计5个可求值IR的45项判据全部成立，1个编译失败导致9项未执行。summary的45/54为整体场景覆盖通过，不是9次IR误判。
+
+明确范围：isolated_semantic_test。手工构造A/B当前证据事实矩阵，仅调用未改的生产kernel检查真实模型IR；未用手写IR替代模型输出。没有声称生产makeContext或宿主已支持两来源，也没有真实长历史、任务完成率、H2收益或UI证据。
+
+可交给Vibe：沿用本候选作为开发起点，直接复用六题和原始失败；不要重头猜prompt。保留失败题作为编译/兜底反例，非法JSON必须走现有明确失败路径；不要只补JSON后放行，因为原始语义还保留了错误B条件。后续编译缓存必须绑定本候选prompt与实际参数指纹。
+本候选可提高已有开发题表现，但5/6不构成生产编译器通过；不能凭此启用默认。
+
+复跑（会产生新模型调用，需要独立预算）：
+node --experimental-transform-types --no-warnings run.mjs --out <新的绝对目录>
+既有environment.json存在时拒绝覆盖，并在模型调用之前报错。
+
+补充：对03仅做一次bounded_retry，原六题首试数字保持不变。
+模板见bounded-retry-template.txt：携原始输入、原始输出和parse_error，仅要求合法JSON并保留已确定语义。
+该请求HTTP成功，仍返回同样非法JSON及B.present=false，真实compiler继续parse_error；没有plan，9格未运行。按上限停止，没有继续调prompt或重试。
+重试耗时3689ms，输入1402/输出71tokens；全部三批累计9个实际POST、输入10230/输出584tokens、未知usage=0、调用墙钟30091ms，逐批账本见TOTAL-MODEL-LEDGER.json。
+交给B的实现建议：可复用候选及一次失败重试模板，但当前模板未解决03；必须保留失败时明确fallback/不可行动状态，不能宣称“有重试所以修好”。下一次真实编译验证应直接包含03原句及对其B状态不敏感的独立判据。

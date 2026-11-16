@@ -1,0 +1,70 @@
+{
+  "startedAt": "2026-11-16T09:23:28.561Z",
+  "finishedAt": "2026-11-16T09:23:47.722Z",
+  "sourceHead": "2062807687b912a9ed65958d95c3e62b05b957ad",
+  "candidateSha256": "a9b23ed87134ce3479a0e13b12f2dc64c2c14d6fa81b3aa683b88d83f88053f9",
+  "actualPosts": 6,
+  "httpSuccess": 6,
+  "compileSuccess": 5,
+  "completionTokens": 372,
+  "promptTokens": 7337,
+  "unknownUsage": 0,
+  "elapsedMs": 19152,
+  "checks": {
+    "total": 54,
+    "passed": 45
+  },
+  "wholeLatestQuote": 5,
+  "cases": [
+    {
+      "id": "01-original-both",
+      "status": "compiled",
+      "elapsedMs": 3560,
+      "passed": 9,
+      "total": 9,
+      "lastWholeTurnQuoted": true
+    },
+    {
+      "id": "02-original-correction-A",
+      "status": "compiled",
+      "elapsedMs": 2414,
+      "passed": 9,
+      "total": 9,
+      "lastWholeTurnQuoted": true
+    },
+    {
+      "id": "03-B-archive-only",
+      "status": "error",
+      "reason": "parse_error:not valid JSON",
+      "elapsedMs": 3582,
+      "passed": 0,
+      "total": 9,
+      "lastWholeTurnQuoted": false
+    },
+    {
+      "id": "04-only-B",
+      "status": "compiled",
+      "elapsedMs": 2379,
+      "passed": 9,
+      "total": 9,
+      "lastWholeTurnQuoted": true
+    },
+    {
+      "id": "05-restore-both",
+      "status": "compiled",
+      "elapsedMs": 3636,
+      "passed": 9,
+      "total": 9,
+      "lastWholeTurnQuoted": true
+    },
+    {
+      "id": "06-add-B-back",
+      "status": "compiled",
+      "elapsedMs": 3581,
+      "passed": 9,
+      "total": 9,
+      "lastWholeTurnQuoted": true
+    }
+  ],
+  "scope": "Single frozen prompt candidate, six developer cases, no retries. Synthetic kernel contexts do not close production multi-source gap or prove H2/long-memory."
+}

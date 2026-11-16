@@ -1,0 +1,106 @@
+{
+  "id": "03-B-archive-only",
+  "target": "A",
+  "elapsedMs": 3582,
+  "result": {
+    "status": "error",
+    "reason": "parse_error:not valid JSON",
+    "rawCall": {
+      "requestId": "req-4dadbad4d86ad796f500",
+      "provider": "local-transformers",
+      "model": "Qwen3-8B",
+      "rawText": "{\"when\":{\"op\":\"all\",\"args\":[{\"op\":\"cmp\",\"fact\":\"task:A.result.present\",\"rel\":\"eq\",\"value\":true},{\"op\":\"cmp\",\"fact\":\"task:B.result.present\",\"rel\":\"eq\",\"value\":false}]},{\"quotes\":[{\"turnId\":\"u2\",\"start\":0,\"end\":55}],\"unsupported\":[]}}",
+      "usage": {
+        "prompt_tokens": 1233,
+        "completion_tokens": 71,
+        "total_tokens": 1304
+      },
+      "latencyMs": 3582,
+      "startedAt": "2026-11-16T09:23:34.540Z",
+      "finishedAt": "2026-11-16T09:23:38.122Z",
+      "failure": {
+        "code": "parse_error",
+        "detail": "not valid JSON"
+      }
+    },
+    "checks": [
+      "parse_error"
+    ]
+  },
+  "lastWholeTurnQuoted": false,
+  "checks": [
+    {
+      "A": "unknown",
+      "B": "unknown",
+      "expected": "unknown",
+      "actual": null,
+      "pass": false,
+      "evaluation": null
+    },
+    {
+      "A": "unknown",
+      "B": "false",
+      "expected": "unknown",
+      "actual": null,
+      "pass": false,
+      "evaluation": null
+    },
+    {
+      "A": "unknown",
+      "B": "true",
+      "expected": "unknown",
+      "actual": null,
+      "pass": false,
+      "evaluation": null
+    },
+    {
+      "A": "false",
+      "B": "unknown",
+      "expected": "false",
+      "actual": null,
+      "pass": false,
+      "evaluation": null
+    },
+    {
+      "A": "false",
+      "B": "false",
+      "expected": "false",
+      "actual": null,
+      "pass": false,
+      "evaluation": null
+    },
+    {
+      "A": "false",
+      "B": "true",
+      "expected": "false",
+      "actual": null,
+      "pass": false,
+      "evaluation": null
+    },
+    {
+      "A": "true",
+      "B": "unknown",
+      "expected": "true",
+      "actual": null,
+      "pass": false,
+      "evaluation": null
+    },
+    {
+      "A": "true",
+      "B": "false",
+      "expected": "true",
+      "actual": null,
+      "pass": false,
+      "evaluation": null
+    },
+    {
+      "A": "true",
+      "B": "true",
+      "expected": "true",
+      "actual": null,
+      "pass": false,
+      "evaluation": null
+    }
+  ],
+  "scope": "isolated_semantic_test"
+}

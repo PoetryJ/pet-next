@@ -1,0 +1,17 @@
+审查归档布局：source/是2062807独立clone；delivery/是服务器原交付；verification/是Codex新输出；原产物未覆盖。
+
+Windows复跑（Node24，先装task-followup/tooling与producer/test-report/tooling依赖，memory-consistency也须检出）：
+在source/pet-next/experiments/task-followup：
+  node run.mjs test
+  node --experimental-transform-types --no-warnings --test capability/tests/*.test.ts
+  node run.mjs typecheck
+  node --experimental-transform-types --no-warnings producer/test-report/two-source-demo.mjs --out <新的中文空格目录>
+
+在review根（含source/delivery布局）：
+  node --experimental-transform-types --no-warnings runtime-probes.mjs
+  node --experimental-transform-types --no-warnings runtime-revision-probe.mjs
+  node eval-independent-probe.mjs
+后两类为独立诊断，原脚本按固定输出文件写入；重新复跑请先复制到新review目录，或改新输出，不能覆盖原证据。
+
+真实模型诊断位于verification/live-compiler-smoke与live-compiler-candidate；脚本读取../..相对source、两端点GET核验并有POST限额。先读READOUT及run.mjs参数，在新目录输出；所有复跑重新记费。candidate不是生产补丁；bounded retry失败原文保留。
+下一轮正式运行必须用新live入口，旧eval/condition-followup/run.mjs只做模拟，不能因退出0写成真实五臂通过。

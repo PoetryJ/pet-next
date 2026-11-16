@@ -1,0 +1,6 @@
+你负责真正可运行的五臂driver和记忆适配；读CONTRACT/EVAL。独占eval/condition-followup/live/**、capability/memory/decision-provider.ts及对应测试。旧harness仅保留作旧失败证据，不能再承载收益实验。
+1. 复用capability/intervention/trajectory/product-driver.ts协议，原生pet-followup-public-trajectory/v1输入；提供匹配--trajectory/--workspace/--start-at的真实JUnit producer包装。先--dry-run验证，再真实pilot。
+2. 实际调用V-R强规则、V-L逐事件模型、V-C条件模式；T-L/T-C接现有strong-text-memory模块，不能用关键词contains冒充两种记忆。统一DecisionMemoryProvider接口给负责人嵌入两种assessor。
+3. 生成共享历史seed：V/T各一次、各策略独立运行目录；V保留2turn抽取；T按global+3任务分区滚动摘要并保留全文BM25。准备成本与在线成本全记录。
+4. 一个命令能跑--pilot或--matrix；接真实host/watcher/RealClock/重启/HTTP呈现与回答，记录actual POST attempts/usage/错误。模型未配置直接非零退出，不能自动换stub。不把HTTP呈现称Windows点击。
+交付live runner+两条真实pilot，别只写REAL-RUN.md。接口冻结后D只对你的原始日志评分，不共享判定代码。

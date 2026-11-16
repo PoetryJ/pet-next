@@ -1,0 +1,30 @@
+{
+  "baseline": "2062807687b912a9ed65958d95c3e62b05b957ad",
+  "codeHead": null,
+  "problem": null,
+  "classicalProblem": null,
+  "whyThisSolution": null,
+  "realPipelineImplemented": false,
+  "pipelineEvidence": null,
+  "summaryByArm": [],
+  "perTrajectory": [],
+  "inputSetTests": [],
+  "compiler": {
+    "firstAttempt": [],
+    "failures": [],
+    "retry": []
+  },
+  "windowsDemo": {
+    "evidence": null,
+    "command": null,
+    "status": "not_run"
+  },
+  "actualModelCost": {},
+  "validResults": [],
+  "failures": [],
+  "unproven": [],
+  "reproduceCommands": [],
+  "decision": "pass | rework | stop",
+  "ownerDecisionNeeded": "new mode default",
+  "artifacts": {}
+}

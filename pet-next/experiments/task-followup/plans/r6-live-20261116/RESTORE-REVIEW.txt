@@ -1,0 +1,10 @@
+原始证据在review-evidence.tgz。解压到新的空review目录；里面delivery来自原交付，verification与probe来自Codex，不要覆盖旧目录。
+若需要复跑独立probe，在解压目录旁的source子目录还原审查代码：
+  git clone --depth 1 --filter=blob:none --sparse --branch codex/pet-conditions-r6 https://github.com/PoetryJ/pet-next.git source
+  git -C source rev-parse HEAD
+预期2062807687b912a9ed65958d95c3e62b05b957ad。若分支已变，fetch该完整SHA并detached checkout，不使用更新代码冒充原复跑。
+  git -C source sparse-checkout set pet-next/experiments/task-followup pet-next/experiments/memory-consistency
+或在已有964e03e基线仓库中fetch delivery/r6-conditions-incremental-2062807.bundle里的codex/pet-conditions-r6。
+
+然后按REPRO.txt安装依赖并在新目录运行。实时probe读取loopback18882，Windows需要SSH隧道，h20v7原机直接可用。先核源码HEAD；每次真实复跑都追加调用账本。
+source保持独立审查；实际下一轮实现另建codex/pet-r6-live，不能用新的实现覆盖这里的失败证据。

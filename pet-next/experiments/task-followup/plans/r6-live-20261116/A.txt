@@ -1,0 +1,6 @@
+你负责多来源权威状态与H1；读CONTRACT。独占runtime/engine.ts、runtime/db.ts、runtime/assessment.ts、contracts.ts、tools/workspace.ts和对应tests；公共新增类型先由负责人定稿，别与B抢类型文件。
+1. 将显式reportBindings持久化，读取依赖任务当前结果及原始文件；单来源旧模式保持兼容。来源事件用现有scheduler唤醒父任务。
+2. InputSet全程贯穿提案/问题/授权/effect/receipt/analysis；执行前与恢复对每个依赖重验，任一变化使旧决定失效，不只核主报告。
+3. 正控用真正创建任务、真实JUnit文件、watcher、RealClock、独立进程：先A再B→只在符合条件时询问→授权→分析；交换先后顺序也成立。
+4. 负控仅选决定性4项：B派发前变化、B撤回、旧授权重放、重启后旧B；都不得过期执行。所有原始字节/回执保留。
+交付可被B/负责人直接调用的readInputSet/verifyInputSet与真实闭环，不以手造context代替宿主。

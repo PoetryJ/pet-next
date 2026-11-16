@@ -1,0 +1,18 @@
+唯一目标：真实多报告任务能依照有效承诺跟进；比较完成、漏办、打扰与成本。五臂都经过同一真实宿主/H1/呈现与回答链。
+
+多来源选“显式任务依赖”，复用每任务现有result，不造第二调度器或reportSet汇总运行时。用户/宿主在创建委托时声明reportBindings:{alias,taskId}[]，持久化于既有任务库；模型只在已注册字段中选，不得凭文字猜taskId。一个主任务的主报告可绑定自身，其他报告绑定明确依赖任务。演示/数据中的所有任务通知都计分，不能隐藏子任务打扰。
+
+公共类型由负责人第一小时落盘冻结：
+- ReportBinding={alias:string,taskId:string}；别名/任务集合变化更新bindingSha与承诺版本，来源revision变化只求值。
+- 事实快照含每个声明来源的当前已校验结果或missing/conflict/retracted及扫描依据；makeContext逐来源投影。未扫描缺失=unknown；完整扫描确认不存在可false；availability仅从有效同作用域availability键取，保留有效期，冲突unknown。
+- 执行集合 InputSet={schema:'pet-input-set/v1',bindingSha,primary:InputRef,dependencies:InputRef[]}；缺证阶段不能伪造InputRef。复用单个InputRef原子身份，不削旧模式校验。
+- readInputSet(taskId) / verifyInputSet(expected)：从runtime权威任务状态及实际文件校验产生集合。assessment、问题/授权、effect、receipt、analysis绑定同一集合；提交/执行/completionCheck/reconcile逐项重验，依赖变化废弃旧问题与授权。工具只读已验证不可变快照。
+- 依赖结果事件通过现有scheduler唤醒父任务；恢复读现有SQLite和事件，不新增时间循环或手动tick。
+
+承诺缓存只绑定本任务有效控制原话/更正/撤回、声明依赖、编译器身份；不取全局最后一句、不把结果SHA放入编译键。旧plan引用被撤回即不可行动。已失败/unsupported的编译也持久记账；同身份不因recheck无限重编译。有限重试最多一次，需独立attempt与实际usage。
+
+“不再等B”意味着删除B触发依赖：A已到时B为到/未到/未知三种都不影响。不能写成B.present=false。提示候选及真实失败见compiler-candidate，首试成功和重试成功分开记，不能把语法修复当语义修复。
+
+两种记忆统一提供受预算限制的decision context及来源引用，≤4500字符；V使用现有版本记忆，T使用已给摘要+BM25+近期原话。全历史只供本地核验来源，不直接塞给编译器。取消/授权/工具结果账本两臂共用，不让T丢安全边界，也不能让T暗中用V语义检索。
+
+所有模型请求使用真实ModelClient与统一POST账本；fixture只作模块测试。来源、更正与候选动作不含gold。用户明确新条件出现即使编译未成也不得继续旧条件行动。默认、旧模式和上游不变。

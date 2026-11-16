@@ -1,0 +1,13 @@
+执行R6真实闭环冲刺，沿原主线，不重做R0–R5。基线2062807687b912a9ed65958d95c3e62b05b957ad，已推GitHub codex/pet-conditions-r6。原树 /data3/DATA/project/project_meishijiang/r6-vibe-20261116/wt-lead 与delivery只读；新建codex/pet-r6-live工作树。
+
+负责人读CONTRACT.txt、ENVIRONMENT.txt、EVAL.txt；5名worker分别只读公共契约及A/B/C/D/E.txt。有可写worker就并行；只有只读agent则让其交接口/补丁建议，由负责人落盘，别为形式并行重复搭5套环境。负责人独占host/cli/assessor选择器与适配器接线，负责集成。
+
+现状：151/67在Codex的Windows已复跑通过；现五臂是未调用产品的模拟器；双报告在生产context尚不可表达。不要只补URL跑旧run.mjs。两个真实Qwen服务已确认ready，直接用ENVIRONMENT里的远端loopback地址。
+
+顺序：第1小时冻结公共类型/分工；1–4小时完成真实双报告→改口→授权执行开发闭环；4–8小时完成五臂接线与两条真实开发pilot；8–12小时冻结后完整矩阵、Windows演示、归档。代码、可运行脚本与证据一起交；不能用执行清单代替尚未写出的live runner。
+
+保留R6导入器/面板/三值内核，修集成和语义。5路同时推进：A多来源H1，B编译与承诺状态，C真实driver与V/T记忆适配，D独立故事/评分，E真实Windows入口/交互。新模式仍显式启用。
+
+本轮2000实际POST/800000输出tokens/12h上限，给开发接线和正式矩阵分别留出预算；计入Codex已用9次（见model-cost.json）与全部预处理/重试。各agent不得独自抢模型队列。先2条开发pilot，后全量；沿用固定Qwen，不临时换模型/改gold求胜。
+
+交付REPORT.json+≤800字：有效结果、根因/修正、未证明、判断；附HEAD、源码/产物SHA、原始HTTP/SQLite/报告、失败链和一条复跑命令。归档并推执行分支，不merge main、不改默认。若预算内完整矩阵未完，已完成部分与剩余精确列出；“未运行”和“未实现”分开。

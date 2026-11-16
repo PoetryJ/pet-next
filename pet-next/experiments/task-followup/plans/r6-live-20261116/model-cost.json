@@ -1,0 +1,37 @@
+{
+  "sourceHead": "2062807687b912a9ed65958d95c3e62b05b957ad",
+  "totalActualPosts": 9,
+  "promptTokens": 10230,
+  "completionTokens": 584,
+  "unknownUsage": 0,
+  "elapsedMs": 30091,
+  "batches": [
+    {
+      "id": "original-compiler-smoke",
+      "posts": 2,
+      "promptTokens": 1491,
+      "completionTokens": 141,
+      "elapsedMs": 7250,
+      "compileSuccess": 1
+    },
+    {
+      "id": "frozen-candidate-first-attempt",
+      "posts": 6,
+      "promptTokens": 7337,
+      "completionTokens": 372,
+      "elapsedMs": 19152,
+      "compileSuccess": 5
+    },
+    {
+      "id": "one-bounded-json-retry",
+      "posts": 1,
+      "promptTokens": 1402,
+      "completionTokens": 71,
+      "elapsedMs": 3689,
+      "compileSuccess": 0,
+      "semanticChecksPassed": 0,
+      "semanticChecksTotal": 9
+    }
+  ],
+  "note": "First-attempt candidate remains5/6,45/54. Retry does not overwrite prior scores. All truth tables synthetic; source untouched."
+}

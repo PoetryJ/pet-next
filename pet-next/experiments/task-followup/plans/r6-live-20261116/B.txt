@@ -1,0 +1,6 @@
+你负责条件语义与状态；读CONTRACT。独占capability/conditions/**及对应capability/tests，service/capability-conditions.ts由负责人接线。
+1. context消费A的明确来源集合，不能只填snapshot.ticketId；availability精确投影，禁止用最后一条普通事实代替。
+2. 提供承诺身份/有效性方法：别的任务消息不重编译；原来源撤回立即失效；结果新revision不重编译。失败/unsupported缓存，最多一次计量重试。
+3. 从compiler-candidate真实试过的提示开始：撤销依赖必须删除原子条件；把完整控制语句/更正作为引用。保留parse失败，勿正则修补后声称语义正确。需要repair时原输入+原输出+错误都留档，一次为限。
+4. 对开发语义覆盖“都要/只要任一/不再依赖B/恢复B/例外/缺证”。每个生成IR跑B到/未到/未知的独立真值组合；不要引用模型自己的解释当gold。真实调用由负责人统一队列，先最多16次开发诊断。
+交付模块+实际编译原始链+错误分类。原6项内核测试保留；不要改gold或增加任意执行代码表达式。
