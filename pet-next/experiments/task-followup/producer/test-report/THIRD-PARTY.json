@@ -1,0 +1,15 @@
+{
+  "schema": "pet-third-party/v1",
+  "purpose": "JUnit XML 解析（R6-C 真实报告接入）",
+  "components": [
+    {
+      "name": "fast-xml-parser",
+      "version": "5.2.5",
+      "license": "MIT",
+      "homepage": null,
+      "repository": "https://github.com/NaturalIntelligence/fast-xml-parser",
+      "installedAt": "producer/test-report/tooling/node_modules（不入库，按 package-lock.json 复现）",
+      "usage": "import-test-report.mjs 用 XMLParser 解析 Node 内建 JUnit reporter 输出；不手写 regex 解析器"
+    }
+  ]
+}

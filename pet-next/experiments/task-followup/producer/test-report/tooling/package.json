@@ -1,0 +1,8 @@
+{
+  "name": "task-followup-junit-tooling",
+  "private": true,
+  "description": "R6 报告导入用 XML 解析器（独立 tooling，不改总 package.json/锁文件）",
+  "dependencies": {
+    "fast-xml-parser": "5.2.5"
+  }
+}
