@@ -45,6 +45,9 @@
   .kv { display:grid; grid-template-columns: 110px 1fr; gap:4px 10px; font-size:13px; }
   .kv > div:nth-child(odd) { color:var(--muted); }
   code, .mono { font-family: "Cascadia Mono", Consolas, ui-monospace, monospace; font-size:12px; word-break:break-all; }
+  .condition { border-color:#2f4a3a; }
+  .condition .chip { display:inline-block; padding:1px 6px; margin:2px 4px 2px 0; border:1px solid #2f4a3a; border-radius:10px; font-size:12px; }
+  .condition .quotes { margin-top:8px; font-size:13px; color:#c8d3e0; }
   .question { border-color:#2a4f7c; background:#121b28; }
   .question p { margin:0 0 10px; font-size:15px; }
   .options { display:flex; flex-wrap:wrap; gap:8px; }
@@ -116,6 +119,10 @@
   </section>
 </main>
 <div id="toast"></div>
+<script type="module">
+import { conditionCardHtml } from './condition-view.mjs';
+window.petConditionView = conditionCardHtml;
+</script>
 <script>
 'use strict';
 const params = new URLSearchParams(location.search);
@@ -220,6 +227,11 @@ function renderDetail() {
     </div></div>`);
   } else if (t.status === 'active') {
     parts.push(`<div class="notice">正在等待结果：宿主在后台观察 <code>${esc(t.dir || '')}</code>，新结果文件出现会自动读取（无需手动扫描）。</div>`);
+  }
+  // R6 实验模式：宿主给出 conditionSummary 时才显示条件跟进卡片；旧模式没有该字段，布局不变。
+  if (t.condition && typeof window.petConditionView === 'function') {
+    const conditionHtml = window.petConditionView(t.condition, esc);
+    if (conditionHtml) parts.push(conditionHtml);
   }
   if (t.decision && t.bucket === 'needs_decision') {
     const d = t.decision;

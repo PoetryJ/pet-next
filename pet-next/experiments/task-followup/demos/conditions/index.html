@@ -1,0 +1,85 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+<meta charset="utf-8">
+<title>R6 条件面板 · 固定样例</title>
+<style>
+  body { font: 14px/1.6 -apple-system, "Microsoft YaHei", sans-serif; background:#0d1117; color:#e6edf3; margin:0; padding:24px; }
+  h1 { font-size:18px; margin:0 0 4px; }
+  .muted { color:#8b949e; }
+  .grid { display:grid; grid-template-columns: repeat(auto-fill, minmax(360px, 1fr)); gap:16px; margin-top:20px; }
+  .card { background:#161b22; border:1px solid #30363d; border-radius:10px; padding:14px; }
+  .card h3 { margin:0 0 10px; font-size:15px; }
+  .card.condition { border-color:#2f4a3a; }
+  .kv { display:grid; grid-template-columns:84px 1fr; gap:6px 10px; }
+  .kv > div:nth-child(odd) { color:#8b949e; }
+  .chip { display:inline-block; padding:1px 6px; margin:2px 4px 2px 0; border:1px solid #2f4a3a; border-radius:10px; font-size:12px; }
+  .quotes { margin-top:8px; font-size:13px; color:#c8d3e0; }
+  details.dev { margin-top:10px; color:#8b949e; }
+  details.dev pre { white-space:pre-wrap; font-size:12px; }
+  .banner { margin-top:10px; padding:8px 10px; border-radius:8px; background:#1f2937; color:#f0b429; }
+  .case-label { font-size:12px; color:#8b949e; margin-top:14px; }
+</style>
+</head>
+<body>
+<h1>R6 条件跟进面板 · 固定样例（不需要模型）</h1>
+<div class="muted">这些样例直接来自宿主 <code>conditionSummary</code> 的形状；主区域只显示状态与用户原话，hash 放在开发区。</div>
+<div class="banner">这是 UI 样例页，不是真实运行结果。真实数据由 <code>--assessor capability-conditions</code> 的宿主提供。</div>
+<div class="grid" id="grid"></div>
+
+<script type="module">
+import { conditionCardHtml } from '../../demo/condition-view.mjs';
+
+const samples = [
+  {
+    key: '满足并提问',
+    summary: {
+      available: true, state: 'true', action: 'ask',
+      why: ['条件已满足'],
+      satisfied: ['task:task:R6.result.present', 'user.availability'],
+      waiting: [],
+      unknown: [],
+      quotes: [{ turnId: 'u1', text: '两份检查报告都回来以后再问我' }],
+      at: '2026-11-16T02:00:00.000Z',
+      dev: { compilationKey: 'c'.repeat(64), evidenceKey: 'e'.repeat(64), compilerSha256: 'f'.repeat(64), planRevision: 2 },
+    },
+  },
+  {
+    key: '未满足',
+    summary: {
+      available: true, state: 'false', action: 'wait',
+      why: ['条件还不满足'],
+      satisfied: ['task:task:R6.result.present'],
+      waiting: ['task:task:R6.result.failed'],
+      unknown: [],
+      quotes: [{ turnId: 'u1', text: '两份检查报告都回来以后再问我' }],
+      at: '2026-11-16T03:00:00.000Z',
+      dev: { compilationKey: 'c'.repeat(64), evidenceKey: 'e'.repeat(64), compilerSha256: 'f'.repeat(64), planRevision: 2 },
+    },
+  },
+  {
+    key: '缺证据',
+    summary: {
+      available: true, state: 'unknown', action: 'wait',
+      why: ['缺证据'],
+      satisfied: [],
+      waiting: [],
+      unknown: ['user.availability（missing）', 'task:task:R6.result.present（stale_or_retracted）'],
+      quotes: [{ turnId: 'u2', text: '改口：只要主报告回来就问我' }],
+      at: '2026-11-16T04:00:00.000Z',
+      dev: { compilationKey: 'c'.repeat(64), evidenceKey: 'e'.repeat(64), compilerSha256: 'f'.repeat(64), planRevision: 3 },
+    },
+  },
+  { key: '旧模式（无摘要）', summary: { available: false, state: null, action: null, why: [], satisfied: [], waiting: [], unknown: [], quotes: [], at: null, dev: { compilationKey: null, evidenceKey: null, compilerSha256: null, planRevision: null } } },
+];
+
+const grid = document.getElementById('grid');
+for (const sample of samples) {
+  const html = conditionCardHtml(sample.summary);
+  const wrap = document.createElement('div');
+  wrap.innerHTML = `<div class="case-label">样例：${sample.key}</div>${html || '<div class="muted">旧模式：不显示条件卡片（布局与行为不变）</div>'}`;
+  grid.appendChild(wrap);
+}
+</script>
+</body>
+</html>
