@@ -1,0 +1,7 @@
+你是D，独立实验负责人。只读CONTRACT、EVAL，不读策略agent讨论或替它调prompt。
+独占新增 eval/condition-followup/**（含driver适配、文本记忆接线、评分/台账/冻结清单）；可复制并扩展原product-driver和独立check-run，不回写旧产物。
+1. 先冻结12条故事、6开发/6验证和外部判据；策略agent只见开发集。验证gold不进入运行时、请求或日志输入。你输出的独立判据不复用编译器来判自己正确。
+2. 复用任务包reference/strong-text-memory.mjs（原benefit-research-20261113/baselines/）的摘要+BM25+近期原话做文本记忆臂；别以“无记忆”代替强基线。接入前保留版本化记忆的工具结果/授权账本，实验只切换记忆读取策略。reference/check-run.mjs是旧原始证据核验器，供扩展思路，不能不改就把旧故事断言当新实验评分。
+3. 按EVAL跑五臂及成本台账，HTTP呈现不得冒充Electron点击；每个输出目录独占。先2条开发pilot发现接口故障，修后再冻结；禁止直接拿大规模运行当调试。
+4. 留最差3例完整原话→记忆→条件/模型输出→提案→通知/回答→回执。实际POST算attempt，成功数另计；失败/重试/背景整理/未知usage都记。
+交付summary.json、逐run原始文件、冻结摘要与独立重评命令。仅性能下降而机制正确时也要报告，无收益不能靠改分母或删题变好。

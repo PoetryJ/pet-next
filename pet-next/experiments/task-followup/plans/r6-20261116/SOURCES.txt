@@ -1,0 +1,33 @@
+来源核对：2026-11-16。本轮任务仍是R4 H1/H2，不换主线。正文给负责人看，执行agent按文件路径遇到具体问题再查，不必全读。
+
+1. DeepSeek SuperAgent（本项目已vendored，先读本地upstream/PROVENANCE.json确定固定版本）
+https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/src/policy.ts
+https://github.com/deepseek-ai/dsh-superagent-prototype/blob/main/src/app/outbox.ts
+已有Mandate.basis、policy.version、revalidate、policyEffects与持久outbox；继续复用授权重验、定向失效、持久执行，不能称我们的原创。
+
+2. Anthropic The components of agent memory
+https://www.anthropic.com/research/components-of-agent-memory
+借日志、笔记、知识表示、上下文注入与后台整理的分工。当前选任务条件作为记忆表示，不再建通用记忆数据库；引用原话不等于编译语义正确，必须有独立对照。
+
+3. Common Expression Language
+https://cel.dev/overview/cel-overview
+成熟的compile-once/evaluate-many、宿主声明变量和受限表达式思想。R6只用小型有限JSON条件，不引入另一门运行环境/完整语言；提供的三值内核是经典逻辑参考实现，不是研究创新声明。
+
+4. Temporal TypeScript message passing
+https://docs.temporal.io/develop/typescript/workflows/message-passing
+借Signal、condition、持久timer模式；本地桌宠继续用已有scheduler/SQLite，暂不部署Temporal服务。
+
+5. Horvitz 1999 Principles of Mixed-Initiative User Interfaces
+https://www.microsoft.com/en-us/research/wp-content/uploads/2016/11/chi99horvitz.pdf
+“何时介入”对应经典主动性/不确定性/注意力成本问题。先测漏办与打扰，不直接堆一个无法校准的加权奖励函数。
+
+6. dsh-pet生态
+https://github.com/PC2005-cloud/dsh-pet （API.md/openapi.yaml/src/client/todo-bubble.ts）
+https://github.com/MerZlin/dsh-pet-indesktop （integrations/dsh-pet-bridge）
+可借Agent进度/完成接线和气泡/系统通知交互。后者为Python/PySide6分支；本轮不搬运行时、不换Electron，不重造已存在提醒UI。运行效果须本机验证，不能按README给自己记通过。
+
+7. REA
+https://github.com/morluto/rea
+适合源码缺失或打包产物行为不清时逆向。当前相关实现有源码，先追调用链/固定版本/看原测试。本轮没有安装或执行REA，不把普通源码审读称为REA结果。只有具体打包断点阻塞再使用，保留输入/工具输出/人工核对。
+
+拟检验的自己的贡献：在持续委托中维护带来源、更正和版本关系的可执行条件；区分未满足与缺证；按变化定向重算，并保留当前授权闭环。是否带来提醒/完成/成本收益由EVAL决定，不以“没搜到同名项目”证明新颖。

@@ -1,0 +1,26 @@
+{
+  "verifiedAt": "2026-11-16T14:55:27.5700241+08:00",
+  "baseline": "964e03ed621dd1f9965b8e33e0e8c56185b3b70d",
+  "node": "v24.22.1",
+  "kernel": {
+    "passed": 6,
+    "failed": 0,
+    "sourceSha256": "a00affc7fdcfdb8beb502eff26679fc61ad4821ab34a8db2dee8f4ddd6a7dd7e",
+    "tests": 6,
+    "command": "node --experimental-transform-types --no-warnings --test conditions-kernel.test.ts",
+    "exit": 0
+  },
+  "strictTypecheck": {
+    "flags": "--noEmit --strict --skipLibCheck --target ES2023 --module NodeNext --moduleResolution NodeNext --allowImportingTsExtensions --types node",
+    "exit": 0,
+    "files": [
+      "conditions-kernel.ts",
+      "conditions-kernel.test.ts"
+    ]
+  },
+  "previousProductResults": {
+    "date": "2026-11-13",
+    "rerunThisTurn": false
+  },
+  "liveModelCallsThisTurn": 0
+}

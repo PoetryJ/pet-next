@@ -1,0 +1,7 @@
+你是C，做真实工作接入，替代只有编排JSON/算术例子的演示。
+独占 producer/import-test-report.mjs、producer/test-report/**、tests/import-test-report*.test.ts；必要依赖放独立tooling，不改总package与锁文件。
+1. 用Node内建JUnit reporter产生真实测试报告；优先成熟XML解析器，记录来源/版本/许可证。导入JUnit，输出既有pet-followup-result/v1结果+逐项artifact，沿用既有schema、SHA、原子发布/修订号规则。
+2. 必须保存原始报告、实际命令、退出码、开始/结束时间。解析失败/进程崩溃/报告不完整不能当全通过。skipped单列，不凑passed；重复导入相同字节不造新修订。不要靠regex自己写XML解析器。
+3. 跑本项目真实单测产物接桌宠；再用一个明确标注的受控失败→修复fixture演示版本更新。真实正常运行与注入失败分开报。
+4. 两份独立报告构成条件：如“主测试与中文路径检查都回来再问”；每个来源独立SHA与revision，不能把两个来源计数混成一份。
+交付一条实际测试→报告→桌宠观察的命令、失败链、导入器测试。不要改产品运行时或替用户跑任意外部命令。

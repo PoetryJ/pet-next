@@ -1,0 +1,7 @@
+你是B，只读CONTRACT后做证据/事件适配。
+独占 capability/conditions/{kernel,context,watch-index}.ts、对应 capability/tests/condition-context*.test.ts 与 conditions-kernel.test.ts。复制内核为conditions/kernel.ts、测试为tests/conditions-kernel.test.ts，测试import改为../conditions/kernel.ts，保留语义。
+1. makeContext只读宿主已核验的结果字节、用户有效记忆、当前时钟；给每字段当前source/version/sha。声明外任务不可见。
+2. 建字段→计划的反向索引；新结果只重算受影响计划。时间边界复用既有scheduler，不能手动tick；记录eval次数、跳过原因、模型次数。
+3. true/false/unknown和读证据交负责人转换为现有AssessmentDraft；不直接写任务完成、不发通知、不执行工具。
+4. 测：旧结果迟到、撤回、unknown/false区别、不同任务字段同名、时区边界、100个重复事件只重算必要项、重启重新验证当前证据。测试数字是机制证据，别称模型能力。
+交付模块+事件→重算→证据链样例+自测命令。不要改engine/scheduler/源码包内其他agent文件。

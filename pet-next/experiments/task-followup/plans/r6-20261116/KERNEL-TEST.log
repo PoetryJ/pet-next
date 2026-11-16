@@ -1,0 +1,14 @@
+✔ all/any/not exhaustively preserve unknown (Strong Kleene truth tables) (0.8833ms)
+✔ new result changes evaluation while compile identity remains reusable (0.7333ms)
+✔ missing, retracted and mismatched evidence never become true under NOT (0.1488ms)
+✔ future, expiry and wrong types remain unknown without coercion (0.1087ms)
+✔ partial facts can decide OR/AND and watch includes all referenced fields (0.1419ms)
+✔ reject invented fields, empty conditions, executable expressions and deep trees (0.2158ms)
+ℹ tests 6
+ℹ suites 0
+ℹ pass 6
+ℹ fail 0
+ℹ cancelled 0
+ℹ skipped 0
+ℹ todo 0
+ℹ duration_ms 143.8719

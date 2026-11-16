@@ -1,0 +1,13 @@
+你负责执行 dsh-pet R6，别重做R0–R5。目标仍是：持续跟进真实工作，记住更正后的承诺，减少无用打扰且不漏办。
+
+仓库 https://github.com/PoetryJ/pet-next ，基线 964e03ed621dd1f9965b8e33e0e8c56185b3b70d；本机工作树 ../pet-mainline-integration。新建独立 codex/pet-conditions-r6 分支/工作树，原树和归档只读。若从GitHub获取任务包：在codex/pet-r6-plan分支的pet-next/experiments/task-followup/plans/r6-20261116/，先复制到工作树外，再从上述基线开展实现。
+任务包是本目录。负责人只读 CONTRACT.txt、EVAL.txt；5个并行agent各只读 CONTRACT.txt 和自己的 A/B/C/D/E.txt，不灌整段历史。已有内核 conditions-kernel.ts，6项测试已过，复制后复用。你负责集成，独占 service/capability-assessor.ts、host.ts、assessor选择器、cli；不要和agent抢文件。
+起跑：Node 24，稀疏检出须包含只读兄弟目录memory-consistency。在pet-next/experiments/task-followup下运行 node run.mjs test 与 node --experimental-transform-types --no-warnings --test capability/tests/*.test.ts（当前归档138/46）；完成后运行 node run.mjs typecheck。现有宿主/模型配置和演示入口见 MAINLINE-STATUS-20261113.txt，沿用已配置地址，不重新猜服务器。
+
+A 编译/持久化条件；B 证据与事件适配；C 真实测试报告接入；D 五臂对照/原始记录；E Windows桌宠条件面板/完整演示。先冻结接口，模块用各自fixture解耦，随后集成真实宿主。单项卡住继续其他任务，不把一轮交付缩成一项修复。
+
+顺序：0–1h核验基线/分工/接口，1–5h并行实现，5–9h集成与实测，9–12h独立重评/归档。全轮1600次实际POST、输出60万tokens上限；含历史整理/编译/修复/兜底，未知usage按请求上限预留。两A10各一队列，同固定模型。无可用模型时先完成全部离线实现，并准确标记未运行。
+
+新增 --assessor capability-conditions；旧模式、SuperAgent核、H1门和通知额度保留。使用现有模型地址/环境，不把密码或密钥写交付。最多一次按开发集改进强规则；开发完成后一起冻结，验证集只跑一次，不能看完再调参。
+
+交付一个可启动演示、代码提交、五臂结果和原始失败链。回报按 REPORT.json，正文≤800中文字：解决的问题/经典对应/方案理由、有效结果、根因与修正、未证明、通过/返工/停止建议。token/延迟没有变好就照实写，不改gold求胜。不改产品默认、不合并main；把数据与代价交负责人决定是否正式启用。

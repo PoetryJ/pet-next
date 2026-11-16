@@ -1,0 +1,27 @@
+R6冻结契约：把用户“何时需要我选择”的承诺编译为有限条件，结果事件只求值。
+经典对应：ECA规则＋真值维护＋增量计算。复用现有记忆库、MemoryCompilation、scheduler、Outbox、capSubmit/runtime.submitAssessment，不新造存储/调度/授权系统。
+
+公共类型由 conditions-kernel.ts 提供。B把该文件复制为 capability/conditions/kernel.ts；A/B不能自行改变其语义。
+补充唯一公共接口（A创建plan-types.ts，负责人冻结后各agent使用）：
+ConditionPlan={schema:'pet-conditions/v1', taskId, commitmentRevision, compilationKey, bindingRegistrySha256, sourceQuotes:QuoteSpan[], when:Expr, unsupported:string[], compiledAt, compilerSha256}
+compile({taskId,commitmentRevision,userTurns,allowedFacts,bindingRegistrySha256,compilerSha256},client,signal) -> {status:'compiled',plan,rawCall} | {status:'unsupported'|'error',reason,rawCall}
+makeContext(snapshot,packet,verifiedInputs,now) -> EvalContext
+evaluate(plan.when,context) -> Evaluation（内核已写，不含行动选择）
+store.get(compilationKey)/store.put(plan)；历史编译保留，当前指针只在完整编译和来源校验通过后切换。
+新承诺revision出现时，旧plan立即不可行动；新编译pending/error/unsupported期间只允许新版本兜底，不能因保留旧指针而继续执行旧条件。
+接口实现置于task-followup/capability/conditions/，原始模型调用沿用现有ModelClient。
+compile的userTurns只来自该臂选中的记忆与近期原话，合计遵守4500字符预算；不能直接读取完整96轮绕过V/T检索。完整源日志仅供宿主本地核对引用，不额外暴露给模型。共享历史seed不预存条件IR；编译费用计入首次实际使用。
+
+只允许 cmp(eq/ne/lt/le/gt/ge)、all、any、not；数值排序不做字符串强转。上限64节点、深8、每组1–8子节点。日期由宿主规范化为毫秒，不让模型算时差。
+allowedFacts由宿主注册，模型不能增加字段或任务ID。首批：已声明任务的 result.present/total/passed/failed/revision/status、user.availability、clock.nowMs。字段ID携带任务身份，源绑定含sourceId/version/sha256；禁止从模型摘要生成“已验证结果”。多任务只读已在委托中声明的依赖。
+缺失≠false。缺失/冲突/撤回/过期/未来证据为unknown；已完整扫描且不存在文件才可提供带扫描依据的present=false。not unknown仍unknown；false AND unknown=false；true OR unknown=true。
+
+缓存身份只绑定任务、用户承诺版本/有效来源、编译器/模型/字段注册表版本；不绑定每份结果SHA。用户更正/撤回/依赖绑定改变才重编译；新结果只求值。每次求值证明另绑定当前结果版本，提交前仍经H1重验。
+bindingRegistrySha256由宿主对排序后的字段ID/类型和已声明任务/来源依赖计算，实质参与compilationKey；不含结果revision/SHA。字段绑定改变必须失效，结果内容变化只重算。
+来源逐字span和用户角色由本地校验；“有引用”不等于语义正确，编译误义必须单独评分。模型不支持的条件不硬猜成IR，回现有模型判断并计成本。
+
+负责人接线：关闭/取消走原链路；when=true且宿主有当前合法选择，才提问；false继续有界等待；unknown/unsupported按相同证据版本最多一次模型兜底，不能直接变成提问。已有选择不重复发。到截止仍缺资料可澄清，但必须来自当前任务的实际决策需要。工具执行始终要既有用户授权。
+watch只订阅引用字段/时间边界；无关事件/未变化的证据不重新调用模型。兜底去重不拿每次now时间戳当新证据；实际时间条件跨边界才触发。重启后用当前证据重算，不能复用旧求值结果。
+E展示why/waiting/unknown摘要，只展示原话及可核对的结果；hash/内部ID放开发区。
+
+新方案默认关闭，强规则和逐事件模型保留为对照。只支持本地跟进/当前已授权工具，不增加自动执行权限。

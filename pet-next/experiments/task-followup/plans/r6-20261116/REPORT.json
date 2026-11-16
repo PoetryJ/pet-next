@@ -1,0 +1,21 @@
+{
+  "baseline": "964e03ed621dd1f9965b8e33e0e8c56185b3b70d",
+  "codeHead": null,
+  "worktree": null,
+  "problem": null,
+  "classicalProblem": null,
+  "whyThisSolution": null,
+  "environment": {"os":null,"node":null,"model":null,"modelRevision":null,"configuredEndpoints":[],"gpuAllocation":[]},
+  "summaryByArm": [],
+  "perTrajectory": [],
+  "validResults": [],
+  "failures": [{"cause":null,"fix":null,"rawEvidence":null}],
+  "cost": {"physicalPostAttempts":null,"success":null,"failed":null,"unknownUsage":null,"inputTokens":null,"outputTokens":null,"unknownOutputReservation":null,"sharedPreparationCost":null,"coldStartChargedPerArm":[],"wallSeconds":null},
+  "windowsDemo": {"status":"not_run","command":null,"evidence":null},
+  "unproven": [],
+  "reproduceCommands": [],
+  "decision": "pass | rework | stop",
+  "decisionReason": null,
+  "formalAdoption": "owner_decision_required",
+  "artifacts": {"raw":null,"independentScore":null,"manifest":null}
+}

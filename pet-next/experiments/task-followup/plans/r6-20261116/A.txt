@@ -1,0 +1,7 @@
+你是A，只读CONTRACT后做编译器，不读其他agent提示。
+独占 capability/conditions/{plan-types,compiler,store}.ts 及对应 capability/tests/condition-compiler*.test.ts。
+1. 按冻结接口把有效用户原话/更正+allowedFacts送现有ModelClient，输出有限IR及逐字来源。compilerSha覆盖prompt、模型版本/配置、schema/字段表版本。
+2. 用现有QuoteSpan校验与内核validateExpr；无来源、越任务、未知字段、歧义/不支持必须返回明确状态，不能猜。结构正确与语义正确分别记录。
+3. 复用现有SQLite连接/事务持久化编译记录与当前指针；先写新完整版本再切换。沿用MemoryCompilation，避免并行抽取互相取消。
+4. 测：条件合取/例外/改口；结果r1→r2不重编译；用户改口必须重编译；撤回/重启不会激活旧条件；错误来源拒绝。用fixture做模块测试，真正模型由集成/D统一调度，别自己抢GPU。
+交付源码+自测命令+3个真实/fixture编译例子的原话→IR→判定差异，注明类型。不要实现通知或执行。
