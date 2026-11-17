@@ -264,6 +264,27 @@ export interface ToolReceipt {
   readonly inputRef: InputRef | null
   /** 工具实际读取的字节是否与 inputRef 声明一致。 */
   readonly inputsVerified: boolean
+  /** R6 explicit analysis: durable user grant and the entire report set. */
+  readonly analysisEvidence?: AnalysisEvidence | null
+}
+
+export interface AnalysisEvidence {
+  readonly inputSet: InputSet
+  readonly authorization: {
+    readonly attentionId: string
+    readonly decisionId: string
+    readonly optionId: string
+    readonly at: string
+    readonly taskRevision: number
+    readonly assignmentId: string
+  }
+}
+
+export interface AnalysisSnapshot {
+  readonly alias: string
+  readonly ref: InputRef
+  readonly resultPath: string
+  readonly artifactPath: string
 }
 
 export interface ToolExecution {
@@ -287,6 +308,8 @@ export interface ToolContext {
   readonly inputRef: InputRef
   /** 工作区内不可变快照路径（内容 SHA = inputRef.resultFileSha）。 */
   readonly resultSnapshotPath: string
+  readonly analysisEvidence?: AnalysisEvidence
+  readonly analysisSnapshots?: readonly AnalysisSnapshot[]
 }
 
 /** 决策种类。 */
@@ -531,6 +554,8 @@ export type TaskStatus = 'active' | 'completed' | 'cancelled' | 'failed'
 export interface GoalCondition {
   readonly requireResultArtifact: boolean
   readonly requireAnalysisArtifact: boolean
+  /** Legacy tasks analyze insufficient results; explicit analysis goals also analyze successful reports. */
+  readonly analysisWhen?: 'insufficient' | 'always'
   /** 分析产物必须由受控工具写入且带上回执。 */
   readonly requireReceipt: boolean
   /** 结果状态为这些值时视为“结果不足”，需要用户选择下一步。 */
@@ -569,7 +594,7 @@ export interface TaskSnapshot {
   readonly evidence: readonly EvidenceRef[]
   readonly openAttention?: AttentionView
   readonly lastProposal?: ProposalSummary
-  readonly lastAnswer?: { readonly optionId: string; readonly at: string }
+  readonly lastAnswer?: { readonly optionId: string; readonly at: string; readonly analysisEvidence?: AnalysisEvidence }
   readonly continuation?: ContinuationState
   readonly attempt: number
   /** R6-live：显式声明的报告依赖（空/缺省=单来源旧模式）。 */

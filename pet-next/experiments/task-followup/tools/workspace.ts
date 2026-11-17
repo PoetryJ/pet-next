@@ -125,6 +125,7 @@ export class LocalTools implements ToolPort {
   }
 
   private writeAnalysis(request: ToolRequest, context: ToolContext, startedAt: string): ToolExecution {
+    if (context.analysisEvidence) return this.writeReportAnalysis(context, startedAt)
     // 快照路径以 context 为准（runtime 派发时核验过）；args 里的同名字段仅作兼容。
     const snapshotArg = String(request.args.resultSnapshotPath ?? context.resultSnapshotPath ?? '')
     if (!snapshotArg) {
@@ -278,8 +279,62 @@ export class LocalTools implements ToolPort {
       needsReconciliation: false,
       inputRef: context.inputRef,
       inputsVerified: options.inputsVerified,
+      ...(context.analysisEvidence ? { analysisEvidence: context.analysisEvidence } : {}),
     }
     return { receipt, payload }
+  }
+
+  /** Analyze every authorized source from content-addressed snapshots, never caller paths. */
+  private writeReportAnalysis(context: ToolContext, startedAt: string): ToolExecution {
+    const evidence = context.analysisEvidence!
+    const entries = [evidence.inputSet.primary, ...evidence.inputSet.dependencies]
+    const snapshots = context.analysisSnapshots ?? []
+    if (snapshots.length !== entries.length || !evidence.inputSet.ok) throw new Error('analysis input set incomplete')
+    let bytesRead = 0
+    let anyFailure = false
+    let anyIncomplete = false
+    const lines = ['# 测试报告分析', '', `任务：${context.ticketId}`, `授权：${evidence.authorization.attentionId}`,
+      `输入集合 SHA256：${evidence.inputSet.sha}`, '', '各来源单独核算；不把重复或不同范围的测试合成通过率。', '']
+    for (const [i, entry] of entries.entries()) {
+      const snapshot = snapshots[i]!
+      if (!entry.ref || snapshot.alias !== entry.alias || canonicalJson(snapshot.ref) !== canonicalJson(entry.ref)) throw new Error('analysis snapshot identity mismatch')
+      const resultBytes = this.readLimited(this.resolveSafe(snapshot.resultPath))
+      const artifactBytes = this.readLimited(this.resolveSafe(snapshot.artifactPath))
+      bytesRead += resultBytes.length + artifactBytes.length
+      if (sha256Bytes(resultBytes) !== entry.ref.resultFileSha || sha256Bytes(artifactBytes) !== entry.ref.artifactSha) throw new Error('analysis snapshot bytes changed')
+      const result = JSON.parse(resultBytes.toString('utf8'))
+      const artifactText = artifactBytes.toString('utf8')
+      const artifact = artifactText.trimStart().startsWith('{') ? JSON.parse(artifactText) : {}
+      if (result.runId !== entry.ref.runId || result.revision !== entry.ref.revision || result.artifactSha !== entry.ref.artifactSha) throw new Error('analysis report identity mismatch')
+      const metrics = result.metrics
+      if (!metrics || ![metrics.total, metrics.passed, metrics.failed].every((n) => Number.isInteger(n) && n >= 0) || metrics.passed + metrics.failed > metrics.total) throw new Error('analysis metrics invalid')
+      anyFailure ||= metrics.failed > 0 || result.status === 'failed'
+      anyIncomplete ||= result.status === 'partial' || metrics.passed + metrics.failed < metrics.total
+      lines.push(`## ${entry.alias} / ${entry.ref.runId} r${entry.ref.revision}`, '',
+        `- 结果 SHA256：${entry.ref.resultFileSha}`, `- 原始产物 SHA256：${entry.ref.artifactSha}`,
+        `- 状态：${result.status}`, `- total=${metrics.total} passed=${metrics.passed} failed=${metrics.failed}`, '')
+      const cases = Array.isArray(artifact.tests) ? artifact.tests : Array.isArray(result.samples) ? result.samples : []
+      const failures = cases.filter((item: { state?: string; pass?: boolean }) => item.state === 'failed' || item.state === 'error' || item.pass === false)
+      lines.push('失败明细：')
+      if (!failures.length) lines.push(metrics.failed ? '- 计数表明有失败，但当前产物未提供逐条明细；需查看原始报告。' : '- 当前报告没有记录失败。')
+      for (const item of failures) lines.push(`- ${String(item.name ?? item.id)}: ${String(item.message ?? item.failure ?? item.note ?? item.state)}`)
+      lines.push('')
+    }
+    lines.push('## 判断与下一步', '', anyFailure
+      ? '至少一个来源仍有失败：先处理上述失败并重跑对应测试，不把本轮报告作为全通过结果。'
+      : anyIncomplete ? '报告含未完成或跳过项：补齐这些项后再判断覆盖范围。'
+      : '所列报告均通过；可进入下一阶段真实对照。这只证明列出的测试，不代表模型收益已经成立。', '')
+    const content = lines.join('\n')
+    const outputDir = join(this.root, 'artifacts', context.ticketId)
+    mkdirSync(outputDir, { recursive: true })
+    const outputPath = join(outputDir, `analysis-${context.effectId}.md`)
+    const tmp = `${outputPath}.tmp-${process.pid}`
+    writeFileSync(tmp, content, 'utf8')
+    renameSync(tmp, outputPath)
+    const digest = sha256Bytes(Buffer.from(content))
+    return this.success('write_analysis', context, startedAt, { inputSetSha: evidence.inputSet.sha, sources: entries.length },
+      this.rel(outputPath), digest, bytesRead, `analyzed ${entries.length} authorized reports`,
+      { inputsVerified: true, bytesWritten: Buffer.byteLength(content) })
   }
 
   private failure(

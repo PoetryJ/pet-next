@@ -19,6 +19,7 @@ import { existsSync, mkdirSync, readFileSync, readdirSync, rmSync, writeFileSync
 import { dirname, join, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import { DatabaseSync } from 'node:sqlite'
+import { verifyCompletion } from '../../core-completion/verify.mjs'
 
 const HERE = dirname(fileURLToPath(import.meta.url))
 const EXPERIMENT_ROOT = resolve(HERE, '..', '..', '..')
@@ -195,8 +196,7 @@ export async function runOne(options) {
   mkdirSync(join(workspace, 'inbox', 'A'), { recursive: true })
   mkdirSync(join(workspace, 'inbox', 'B'), { recursive: true })
   const hostLog = join(outDir, 'host.log')
-  const logStream = spawnSync('bash', ['-c', `: > ${JSON.stringify(hostLog)}`])
-  void logStream
+  writeFileSync(hostLog, '')
   const hostEnv = {
     ...process.env,
     PET_MODEL_BASE_URL: cfg.url,
@@ -289,6 +289,9 @@ export async function runOne(options) {
         return t.json?.task?.result ? t : null
       }, 60000)
       mark('host.observed.A', { observed: Boolean(aSeen) })
+    } else {
+      if (!producer('cn-path-check', join(workspace, 'inbox', 'B'), [['1+1', 2]], outDir)) throw new Error('producer B failed')
+      mark('producer.B.done')
     }
 
     const asked = await waitFor(async () => {
@@ -301,8 +304,9 @@ export async function runOne(options) {
     let answered = null
     if (asked) {
       const options = asked.decision.options ?? []
-      const pick = options.find((o) => /继续|分析/.test(o.label)) ?? options[0]
+      const pick = options.find((o) => ['continue_now', 'analyze_failing', 'retry_analysis'].includes(o.id))
       if (pick) {
+        await api.api('POST', '/api/present', { ticketId: aId, attentionId: asked.decision.attentionId })
         answered = await api.api('POST', '/api/answer', {
           ticketId: aId, attentionId: asked.decision.attentionId, decisionId: asked.decision.decisionId,
           taskRevision: asked.decision.taskRevision, optionId: pick.id,
@@ -332,6 +336,8 @@ export async function runOne(options) {
     try { cost = ledger(outDir) } catch { /* 账本缺失就记 0 */ }
     const aId = timeline.find((t) => t.kind === 'task.created.A')?.ticketId ?? null
     const taskRow = aId ? db?.tasks?.find((t) => t.ticket_id === aId) ?? null : null
+    const completion = aId ? verifyCompletion(workspace, aId) : { ok: false, failures: ['task_missing'] }
+    writeJson(join(outDir, 'independent-completion.json'), completion)
     const end = {
       schema: 'pet-r6-live-run/v1',
       arm: armId, armLabel: arm.label, memory: arm.memory, scenario,
@@ -342,7 +348,8 @@ export async function runOne(options) {
       bindings: taskRow?.bindings_json ? JSON.parse(taskRow.bindings_json) : null,
       attentions: db?.attentions?.length ?? 0,
       cost,
-      ok: Boolean(timeline.some((t) => t.kind === 'window.two_sources' && t.asked)) && answeredOk && !earlyAttention,
+      completion,
+      ok: completion.ok && Boolean(timeline.some((t) => t.kind === 'window.two_sources' && t.asked)) && answeredOk && !earlyAttention,
     }
     writeJson(join(outDir, 'END-STATE.json'), end)
   }

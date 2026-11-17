@@ -276,6 +276,7 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
     add('effects', 'input_ref_json', 'input_ref_json TEXT')
     add('receipts', 'input_ref_json', 'input_ref_json TEXT')
     add('receipts', 'inputs_verified', 'inputs_verified INTEGER NOT NULL DEFAULT 0')
+    add('receipts', 'analysis_evidence_json', 'analysis_evidence_json TEXT')
     add('attentions', 'notified_at', 'notified_at TEXT')
     add('attentions', 'delivered_at', 'delivered_at TEXT')
     add('attentions', 'presented_at', 'presented_at TEXT')
@@ -598,8 +599,8 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
       .prepare(
         `INSERT INTO receipts(receipt_id, effect_id, attempt_id, ticket_id, task_revision, assignment_id, tool, ok, output_path,
            output_sha256, bytes_written, bytes_read, started_at, finished_at, detail, needs_reconciliation,
-           input_ref_json, inputs_verified)
-         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+           input_ref_json, inputs_verified, analysis_evidence_json)
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
       )
       .run(
         receipt.receiptId,
@@ -620,6 +621,7 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
         receipt.needsReconciliation ? 1 : 0,
         receipt.inputRef ? canonicalJson(receipt.inputRef) : null,
         receipt.inputsVerified ? 1 : 0,
+        receipt.analysisEvidence ? canonicalJson(receipt.analysisEvidence) : null,
       )
   }
 
@@ -1091,6 +1093,7 @@ interface RawReceiptRow {
   needs_reconciliation: number
   input_ref_json: string | null
   inputs_verified: number
+  analysis_evidence_json: string | null
 }
 
 interface RawAttentionRow {
@@ -1163,6 +1166,7 @@ function rowToReceipt(row: RawReceiptRow): ToolReceipt {
     needsReconciliation: row.needs_reconciliation === 1,
     inputRef: row.input_ref_json ? (JSON.parse(row.input_ref_json) as ToolReceipt['inputRef']) : null,
     inputsVerified: row.inputs_verified === 1,
+    ...(row.analysis_evidence_json ? { analysisEvidence: JSON.parse(row.analysis_evidence_json) as ToolReceipt['analysisEvidence'] } : {}),
   }
 }
 

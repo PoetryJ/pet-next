@@ -686,7 +686,8 @@ export async function runHost(options: HostOptions): Promise<number> {
         title,
         goal,
         ...(reportBindings.length ? { reportBindings } : {}),
-        goalCondition: { requireResultArtifact: true, requireAnalysisArtifact: true, requireReceipt: true, insufficientStatuses: ['failed', 'partial'] },
+        goalCondition: { requireResultArtifact: true, requireAnalysisArtifact: true, requireReceipt: true, insufficientStatuses: ['failed', 'partial'],
+          analysisWhen: reportBindings.length || body.analysisWhen === 'always' ? 'always' : 'insufficient' },
       })
       const binding: Binding = { dir: relNorm, template, createdAt: clock.now() }
       built.db.metaSet(`${BINDING_PREFIX}${created.ticketId}`, JSON.stringify(binding))

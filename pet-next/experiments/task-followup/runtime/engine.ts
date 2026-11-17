@@ -44,6 +44,8 @@ import {
 } from '../contracts.ts'
 import type {
   AnswerResult,
+  AnalysisEvidence,
+  AnalysisSnapshot,
   ArtifactPayload,
   AttentionView,
   ClockPort,
@@ -252,7 +254,7 @@ interface TaskRecord {
   memoryCursor: number
   evidence: EvidenceRef[]
   lastProposal?: ProposalSummary
-  lastAnswer?: { optionId: string; at: string }
+  lastAnswer?: TaskSnapshot['lastAnswer']
   continuation?: ContinuationState
   attempt: number
   reportBindings?: ReportBinding[]
@@ -608,6 +610,16 @@ export class FollowupRuntime {
         detail: `attention r${attention.taskRevision} / answer r${input.taskRevision} / current r${task.taskRevision}`,
       }
     }
+    let analysisEvidence: AnalysisEvidence | undefined
+    if (task.goalCondition.analysisWhen === 'always' && ['continue_now', 'analyze_failing', 'retry_analysis'].includes(option.id)) {
+      const expected = this.db.metaGet(`attention.input-set:${attention.attentionId}`)
+      const gate = this.verifyInputSet(task.ticketId, expected)
+      if (!gate.ok) return { ok: false, code: 'stale_answer', detail: `${gate.code}:${gate.detail}` }
+      analysisEvidence = { inputSet: this.readInputSet(task), authorization: {
+        attentionId: attention.attentionId, decisionId: attention.decisionId, optionId: option.id,
+        at: now, taskRevision: task.taskRevision, assignmentId: task.assignmentId ?? '',
+      } }
+    }
     const sourceId = input.sourceId ?? `user-answer-${randomUUID()}`
     const result = this.db.atomic(() => {
       const fresh = this.requireTask(task.ticketId)
@@ -638,7 +650,7 @@ export class FollowupRuntime {
       })
       fresh.eventCursor = inserted.seq
       fresh.memoryCursor = memory.cursor
-      fresh.lastAnswer = { optionId: option.id, at: now }
+      fresh.lastAnswer = { optionId: option.id, at: now, ...(analysisEvidence ? { analysisEvidence } : {}) }
       fresh.updatedAt = now
       if (option.id === 'keep_current' || option.id === 'use_latest') {
         fresh.diagnostics = fresh.diagnostics.filter((item) => !item.startsWith('evidence_conflict'))
@@ -715,6 +727,10 @@ export class FollowupRuntime {
       fresh.taskRevision += 1
       fresh.goal = input.goal
       fresh.goalCondition = goalCondition
+      if (fresh.goalCondition.analysisWhen === 'always') {
+        fresh.lastAnswer = undefined
+        fresh.analysis = undefined
+      }
       fresh.attempt += 1
       fresh.continuation = undefined
       fresh.updatedAt = now
@@ -1426,6 +1442,7 @@ export class FollowupRuntime {
     detail: string
     inputRef: InputRef
     snapshotPath: string | null
+    analysisSnapshots?: AnalysisSnapshot[]
   } {
     const empty: InputRef = {
       taskId: effect.ticket_id,
@@ -1445,6 +1462,22 @@ export class FollowupRuntime {
     }
     const expected = JSON.parse(effect.input_ref_json) as InputRef
     const task = this.requireTask(effect.ticket_id)
+    const analysisSnapshots: AnalysisSnapshot[] = []
+    if (task.goalCondition.analysisWhen === 'always') {
+      const proof = (effect.args_json ? JSON.parse(effect.args_json).__analysisEvidence : null) as AnalysisEvidence | null
+      if (!proof || canonicalJson(proof) !== canonicalJson(task.lastAnswer?.analysisEvidence ?? null)) {
+        return { ok: false, detail: 'analysis_authorization_missing_or_stale', inputRef: expected, snapshotPath: null }
+      }
+      const setGate = this.verifyInputSet(task.ticketId, proof.inputSet.sha)
+      if (!setGate.ok) return { ok: false, detail: setGate.code, inputRef: expected, snapshotPath: null }
+      for (const entry of [proof.inputSet.primary, ...proof.inputSet.dependencies]) {
+        const ref = entry.ref!
+        const result = this.writeInputSnapshot(this.absoluteToRoot(ref.resultPath!), ref.resultFileSha)
+        const artifact = this.writeInputSnapshot(this.absoluteToRoot(ref.artifactPath!), ref.artifactSha)
+        if (!result.ok || !artifact.ok) return { ok: false, detail: 'analysis_snapshot_failed', inputRef: expected, snapshotPath: null }
+        analysisSnapshots.push({ alias: entry.alias, ref, resultPath: result.path!, artifactPath: artifact.path! })
+      }
+    }
     const current = this.inputRefFromTask(task)
     if (!current.ref) {
       return { ok: false, detail: `current_input_identity_incomplete:${current.reasons.join('+')}`, inputRef: expected, snapshotPath: null }
@@ -1470,7 +1503,7 @@ export class FollowupRuntime {
     if (!snapshot.ok) {
       return { ok: false, detail: `snapshot:${snapshot.detail}`, inputRef: expected, snapshotPath: null }
     }
-    return { ok: true, detail: 'inputs verified', inputRef: expected, snapshotPath: snapshot.path }
+    return { ok: true, detail: 'inputs verified', inputRef: expected, snapshotPath: snapshot.path, analysisSnapshots }
   }
 
   /** 内容寻址的不可变输入快照；同一 SHA 只写一次，已存在则重新校验。 */
@@ -1584,7 +1617,12 @@ export class FollowupRuntime {
     const insufficient = Boolean(
       task.result && task.goalCondition.insufficientStatuses.includes(task.result.status as 'succeeded' | 'failed' | 'partial'),
     )
-    if (task.goalCondition.requireAnalysisArtifact && insufficient) {
+    if (task.goalCondition.analysisWhen === 'always') {
+      const set = this.readInputSet(task.ticketId)
+      const gate = this.verifyInputSet(task.ticketId, set.sha)
+      if (!gate.ok) identityReasons.push(`input_set:${gate.code}:${gate.detail}`)
+    }
+    if (task.goalCondition.requireAnalysisArtifact && (insufficient || task.goalCondition.analysisWhen === 'always')) {
       const analysis = task.analysis
       if (!analysis) {
         reasons.push('analysis_missing')
@@ -1595,6 +1633,28 @@ export class FollowupRuntime {
         else if (!receipt.ok) reasons.push('receipt_not_ok')
         else if (task.goalCondition.requireReceipt && receipt.taskRevision !== task.taskRevision) {
           reasons.push('receipt_revision_stale')
+        }
+        if (receipt && task.goalCondition.analysisWhen === 'always') {
+          const effect = this.db.getEffect(receipt.effectId)
+          const bound = effect?.args_json ? JSON.parse(effect.args_json).__analysisEvidence as AnalysisEvidence | undefined : undefined
+          const proof = receipt.analysisEvidence
+          if (!proof || !bound || canonicalJson(proof) !== canonicalJson(bound)) reasons.push('analysis_evidence_missing_or_mismatched')
+          else {
+            const gate = this.verifyInputSet(task.ticketId, proof.inputSet.sha)
+            if (!gate.ok) identityReasons.push(`analysis_input_set:${gate.code}`)
+            const auth = proof.authorization
+            const answered = this.attention.get(auth.attentionId)
+            if (!answered || answered.state !== 'answered' || answered.decisionId !== auth.decisionId ||
+                answered.taskRevision !== task.taskRevision || answered.ticketId !== task.ticketId ||
+                answered.answer?.optionId !== auth.optionId || auth.taskRevision !== task.taskRevision ||
+                auth.assignmentId !== task.assignmentId || !['continue_now', 'analyze_failing', 'retry_analysis'].includes(auth.optionId)) {
+              reasons.push('analysis_authorization_invalid')
+            }
+          }
+          if (!effect || effect.state !== 'succeeded' || effect.attempt_id !== receipt.attemptId ||
+              receipt.ticketId !== task.ticketId || receipt.assignmentId !== task.assignmentId ||
+              receipt.tool !== 'write_analysis' || receipt.needsReconciliation) reasons.push('analysis_effect_invalid')
+          if (!receipt.outputSha256 || !receipt.outputPath || receipt.outputPath !== analysis.artifactPath) reasons.push('analysis_output_identity_missing')
         }
         const abs = this.absoluteToRoot(analysis.artifactPath)
         checked.push(abs)
@@ -1805,7 +1865,8 @@ export class FollowupRuntime {
       // R6-live：声明了多份报告的任务，先把产物留在本地等有效承诺判断；
       // 否则上游收到输入就会结束委托，后续报告与提问都失去机会。旧模式不受影响。
       const bound = this.requireTask(effect.ticket_id)
-      if (bound.reportBindings?.length && bound.status === 'active' && !bound.lastAnswer) {
+      if (bound.reportBindings?.length && bound.status === 'active' &&
+          (bound.goalCondition.analysisWhen === 'always' ? !this.completionCheck(bound).ok : !bound.lastAnswer)) {
         this.db.atomic(() => {
           this.db.saveEffect({ ...effect, state: 'deferred', detail: 'held_for_followup', finished_at: null })
           this.db.driverLog(now, effect.ticket_id, 'effect.deliver_held', { effectId: effect.effect_id, inputIds })
@@ -1895,6 +1956,7 @@ export class FollowupRuntime {
         tool,
         args: { ...args, ...(gate.snapshotPath ? { resultSnapshotPath: gate.snapshotPath } : {}) },
       }
+      const analysisEvidence = (effect.args_json ? JSON.parse(effect.args_json).__analysisEvidence : undefined) as AnalysisEvidence | undefined
       const execution = this.tools.execute(request, {
         effectId: effect.effect_id,
         attemptId: effect.attempt_id,
@@ -1904,6 +1966,7 @@ export class FollowupRuntime {
         now,
         inputRef: gate.inputRef,
         resultSnapshotPath: gate.snapshotPath ?? '',
+        ...(analysisEvidence ? { analysisEvidence, analysisSnapshots: gate.analysisSnapshots } : {}),
       })
       this.db.atomic(() => {
         const task = this.requireTask(effect.ticket_id)
@@ -1911,6 +1974,7 @@ export class FollowupRuntime {
         this.db.saveEffect({
           ...effect,
           state: receipt.needsReconciliation ? 'needs_reconciliation' : receipt.ok ? 'succeeded' : 'failed',
+          started_at: now,
           finished_at: this.clock.now(),
           detail: receipt.detail,
         })
@@ -2018,6 +2082,12 @@ export class FollowupRuntime {
       }
       const goal = this.completionCheck(task)
       if (goal.ok) {
+        const held = this.db.listEffects('deferred').filter((effect) => effect.ticket_id === task.ticketId)
+        if (held.length) {
+          this.db.atomic(() => { for (const effect of held) this.db.saveEffect({ ...effect, state: 'pending', detail: 'verified_analysis_ready' }) })
+          progressed = true
+          continue
+        }
         // completeTask 返回 false = 多来源任务被暂缓判完成：继续走承诺判断/提问，不空转。
         if (this.completeTask(task, goal)) {
           progressed = true
@@ -2133,6 +2203,9 @@ export class FollowupRuntime {
       return false
     }
     const opened = this.attention.open(proposal, now, this.quiet)
+    if (!opened.merged && task.goalCondition.analysisWhen === 'always') {
+      this.db.metaSet(`attention.input-set:${opened.attention.attentionId}`, this.readInputSet(task).sha)
+    }
     const urgent = this.isUrgent(proposal)
     const notified = this.attention.notify(opened.attention.attentionId, now, this.quiet, urgent)
     this.db.atomic(() => {
@@ -2165,6 +2238,10 @@ export class FollowupRuntime {
     const now = this.clock.now()
     const request = proposal.toolRequest
     if (!request) {
+      this.db.atomic(() => this.db.saveProposal({ ...row, outcome: 'invalidated' }))
+      return false
+    }
+    if (task.goalCondition.analysisWhen === 'always' && !task.lastAnswer?.analysisEvidence) {
       this.db.atomic(() => this.db.saveProposal({ ...row, outcome: 'invalidated' }))
       return false
     }
@@ -2217,7 +2294,7 @@ export class FollowupRuntime {
         taskRevision: task.taskRevision,
         dedupeKey,
         tool: request.tool,
-        args: request.args,
+        args: { ...request.args, ...(task.lastAnswer?.analysisEvidence ? { __analysisEvidence: task.lastAnswer.analysisEvidence } : {}) },
         inputRef: input.ref,
       })
       this.db.saveProposal({ ...row, outcome: 'executed', validation_json: canonicalJson([executeValidation]) })
@@ -2348,7 +2425,11 @@ export class FollowupRuntime {
     }
     let latest = store.latestForIdentity(base)
     let round = 0
-    if (latest && this.reassessNext.has(task.ticketId)) {
+    // Dependency changes do not advance the parent's event cursor. Compare the
+    // persisted snapshot so restart cannot reuse an assessment of an older set.
+    const setChanged = latest && context.task.inputSet &&
+      (JSON.parse(latest.snapshot_json) as AssessmentSnapshot).task.inputSet?.sha !== context.task.inputSet.sha
+    if (latest && (this.reassessNext.has(task.ticketId) || setChanged)) {
       // 宿主收到新原话（记忆在 runtime 之外更新）：同一身份强制新一轮，旧的进行中请求中止。
       this.reassessNext.delete(task.ticketId)
       this.abortAssessments(task.ticketId, 'superseded by new user turn')
@@ -2390,7 +2471,7 @@ export class FollowupRuntime {
         reasonCode: 'sources_ready',
         reasonText: '声明的报告来源已按承诺齐备',
         question: '报告都到齐了，现在开始处理吗？',
-        options: [{ id: 'continue_now', label: '现在处理' }, { id: 'later', label: '稍后再说' }],
+        options: [{ id: 'continue_now', label: '生成分析报告' }, { id: 'later', label: '稍后再说' }],
         evidenceRefs: [...context.evidence],
       })
     }
@@ -2799,9 +2880,12 @@ export class FollowupRuntime {
       if (row.status !== 'active') continue
       const parent = this.toTask(row)
       const superseded = this.attention.supersede(parent.ticketId, parent.taskRevision, 'dependency result changed', now)
-      if (superseded.length) {
+      if (superseded.length || parent.lastAnswer || parent.analysis) {
         parent.attempt += 1
         parent.lastAnswer = undefined
+        parent.analysis = undefined
+        this.invalidatePendingEffects(parent.ticketId, 'dependency result changed')
+        this.invalidateOpenProposals(parent.ticketId, 'dependency result changed')
         this.db.driverLog(now, parent.ticketId, 'dependency.invalidate', { changedTicketId, attentionIds: superseded.map((a) => a.attentionId) })
       }
       parent.diagnostics = [...parent.diagnostics.slice(-40), `dependency_changed:${changedTicketId}`]
@@ -2818,7 +2902,7 @@ export class FollowupRuntime {
   }
 
   private buildContext(task: TaskRecord, goalSatisfied: boolean): DecisionContext {
-    const snapshot: TaskSnapshot = { ...task, ...(task.reportBindings?.length ? { inputSet: this.readInputSet(task) } : {}) }
+    const snapshot: TaskSnapshot = { ...task, ...(task.reportBindings?.length || task.goalCondition.analysisWhen === 'always' ? { inputSet: this.readInputSet(task) } : {}) }
     const memory = this.memory.readRelevant(snapshot, task.goal)
     return {
       task: snapshot,
@@ -2838,6 +2922,7 @@ export class FollowupRuntime {
 
   /** 当前版本的输入是否已可核验：身份齐全且磁盘字节与记录一致。 */
   private currentInputReady(task: TaskRecord): boolean {
+    if (task.goalCondition.analysisWhen === 'always') return this.verifyInputSet(task.ticketId, this.readInputSet(task).sha).ok
     const current = this.inputRefFromTask(task)
     const ref = current.ref
     const resultPath = ref?.resultPath

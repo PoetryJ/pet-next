@@ -101,6 +101,7 @@ function necessaryDecision(context: DecisionContext): NecessaryDecision | null {
   const task = context.task
   const result = task.result
   if (!result) return null
+  if (task.goalCondition.analysisWhen === 'always' && (!context.inputReady || !task.inputSet?.ok)) return null
   const conflict = [...task.diagnostics].reverse().find((item) => item.startsWith('evidence_conflict'))
   if (conflict) {
     return {
@@ -149,13 +150,22 @@ function necessaryDecision(context: DecisionContext): NecessaryDecision | null {
       deadline: deadlineAt(context.now, context.quiet.deadlineHour, context.quiet.timezone),
     }
   }
+  if (task.goalCondition.requireAnalysisArtifact && task.goalCondition.analysisWhen === 'always' && !task.analysis) {
+    return {
+      decisionKey: `analysis:${task.inputSet?.sha ?? result.resultFileSha}:a${task.attempt}`,
+      question: '当前报告已核验。现在生成分析报告吗？',
+      options: [{ id: 'continue_now', label: '生成分析报告' }, WAIT_OPTION],
+      reasonCode: 'analysis_authorization_required',
+      reasonText: '分析是委托要求的交付物，需要对当前报告集合授权',
+    }
+  }
   return null
 }
 
 function answerRequestsAnalysis(context: DecisionContext): boolean {
   const answer = context.task.lastAnswer
   if (!answer) return false
-  if (answer.optionId !== 'analyze_failing' && answer.optionId !== 'retry_analysis') return false
+  if (!['analyze_failing', 'retry_analysis', 'continue_now'].includes(answer.optionId)) return false
   if (context.task.analysis) return false
   // 已经尝试并失败的同一次分析请求不再自动重做；失败要留给明确的选择。
   const last = context.task.diagnostics.at(-1) ?? ''
