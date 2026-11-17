@@ -39,6 +39,7 @@ import {
   millisBetween,
   quietEndsAt,
   sha256Bytes,
+  sha256Hex,
   stableId,
 } from '../contracts.ts'
 import type {
@@ -55,6 +56,9 @@ import type {
   GoalCondition,
   IngestOutcome,
   InputRef,
+  InputSet,
+  InputSetEntry,
+  ReportBinding,
   MemoryPort,
   MemoryReading,
   ObservedArtifact,
@@ -150,6 +154,8 @@ export interface DelegateInput {
   readonly sourceId?: string
   readonly at?: string
   readonly threadId?: string
+  /** R6-live：显式报告依赖（别名 → 已存在的任务）。单来源旧模式不传。 */
+  readonly reportBindings?: readonly ReportBinding[]
 }
 
 export interface DelegateResult {
@@ -249,6 +255,8 @@ interface TaskRecord {
   lastAnswer?: { optionId: string; at: string }
   continuation?: ContinuationState
   attempt: number
+  reportBindings?: ReportBinding[]
+  inputSet?: InputSet
   result?: TaskSnapshot['result']
   analysis?: TaskSnapshot['analysis']
   completion?: TaskSnapshot['completion']
@@ -295,6 +303,10 @@ export class FollowupRuntime {
   private readonly assessmentOptions: RuntimeAssessmentOptions | null
   readonly assessments: AssessmentStore | null
   private readonly assessInFlight = new Map<string, { controller: AbortController; ticketId: string; promise: Promise<void> }>()
+  /** 过期回交后按当前证据重判的次数（每 ticket+revision 上限 3），防止无限重试。 */
+  private readonly assessCatchUp = new Map<string, number>()
+  /** 过期自愈：允许同一任务在证据变化后再发起一次判断（仅 catch-up 路径置位）。 */
+  private readonly assessForce = new Set<string>()
 
   constructor(options: RuntimeOptions) {
     this.db = options.db
@@ -366,6 +378,7 @@ export class FollowupRuntime {
       const decision = this.engine.decide(trigger.id, outcome)
       const ticketId = decision.ticketId
       if (!ticketId) throw new Error('engine accepted delegation without ticket id')
+      const reportBindings = this.normalizeBindings(ticketId, input.reportBindings)
       const event = this.makeEvent({
         kind: 'user.delegated',
         sourceId,
@@ -391,6 +404,7 @@ export class FollowupRuntime {
         memoryCursor: 0,
         evidence: [],
         attempt: 1,
+        ...(reportBindings.length ? { reportBindings } : {}),
         diagnostics: [],
       }
       this.saveTask(record)
@@ -542,6 +556,7 @@ export class FollowupRuntime {
             this.reportSafe(fresh.ticketId, assignment, { state: 'waiting', summary: '证据已更新，旧问题已撤销并重新判定', question: null })
           }
         }
+        this.wakeDependents(fresh.ticketId, now)
         this.attachTrigger(fresh, {
           id: `trig-${inserted.seq}-${event.eventId}`,
           threadId: this.taskThreadId(fresh.ticketId),
@@ -563,6 +578,7 @@ export class FollowupRuntime {
     const attention = this.attention.get(input.attentionId)
     if (!attention) return { ok: false, code: 'unknown_attention', detail: 'attention not found' }
     if (attention.state === 'answered') return { ok: false, code: 'already_answered', detail: 'attention already answered' }
+    if (attention.state !== 'open') return { ok: false, code: 'attention_not_open', detail: `attention state ${attention.state}` }
     const task = this.requireTask(attention.ticketId)
     const option = attention.options.find((item) => item.id === input.optionId)
     if (!option) return { ok: false, code: 'invalid_option', detail: `option ${input.optionId} not offered` }
@@ -682,6 +698,8 @@ export class FollowupRuntime {
     })
     this.db.maybeCrash('ingest_persisted')
     this.drain()
+    // 多来源任务：用户已作答，才把暂缓的输入交付放行（旧模式没有 deferred，恒为 0）。
+    this.releaseHeldDeliveries(task.ticketId)
     const updated = this.attention.get(input.attentionId)!
     return { ok: true, attention: updated, answerEventId: result.eventId }
   }
@@ -1784,6 +1802,16 @@ export class FollowupRuntime {
     }
     if (effect.kind === 'deliver_inputs' && effect.assignment_id) {
       const inputIds = this.parseInputIds(effect)
+      // R6-live：声明了多份报告的任务，先把产物留在本地等有效承诺判断；
+      // 否则上游收到输入就会结束委托，后续报告与提问都失去机会。旧模式不受影响。
+      const bound = this.requireTask(effect.ticket_id)
+      if (bound.reportBindings?.length && bound.status === 'active' && !bound.lastAnswer) {
+        this.db.atomic(() => {
+          this.db.saveEffect({ ...effect, state: 'deferred', detail: 'held_for_followup', finished_at: null })
+          this.db.driverLog(now, effect.ticket_id, 'effect.deliver_held', { effectId: effect.effect_id, inputIds })
+        })
+        return
+      }
       this.db.atomic(() => {
         this.db.saveEffect({ ...effect, state: 'running', started_at: now })
         const task = this.requireTask(effect.ticket_id)
@@ -1990,8 +2018,11 @@ export class FollowupRuntime {
       }
       const goal = this.completionCheck(task)
       if (goal.ok) {
-        if (this.completeTask(task, goal)) progressed = true
-        continue
+        // completeTask 返回 false = 多来源任务被暂缓判完成：继续走承诺判断/提问，不空转。
+        if (this.completeTask(task, goal)) {
+          progressed = true
+          continue
+        }
       }
 
       const context = this.buildContext(task, goal.ok)
@@ -2226,6 +2257,21 @@ export class FollowupRuntime {
 
   private completeTask(task: TaskRecord, check: CompletionCheck): boolean {
     const now = this.clock.now()
+    // R6-live：多来源任务在上游结束委托时先不判完成，等有效承诺判断与用户授权；
+    // 否则后续报告到来时任务已关闭，问题无法成立。旧模式没有 bindings，行为不变。
+    if (task.reportBindings?.length && !task.lastAnswer) {
+      // 返回 false：本任务现在不该判完成，继续走承诺判断/提问路径（返回 true 会让 proposeAll 空转）。
+      if (!task.diagnostics.includes('completion_held_for_followup')) {
+        this.db.atomic(() => {
+          const fresh = this.requireTask(task.ticketId)
+          fresh.stage = 'result_received'
+          fresh.diagnostics = [...fresh.diagnostics.slice(-40), 'completion_held_for_followup']
+          this.saveTask(fresh)
+        })
+        this.db.driverLog(now, task.ticketId, 'completion.held', { reason: 'multi_source_pending_decision' })
+      }
+      return false
+    }
     const assignment = this.currentAssignmentId(task.ticketId)
     const reported = assignment
       ? this.reportSafe(task.ticketId, assignment, { state: 'ready', summary: `目标条件已由核验产物满足：${check.artifactPath}` })
@@ -2311,9 +2357,10 @@ export class FollowupRuntime {
     } else if (this.reassessNext.has(task.ticketId)) {
       this.reassessNext.delete(task.ticketId)
     }
+    const forced = this.assessForce.delete(task.ticketId)
     if (latest) {
-      if (latest.status === 'pending') return false
-      if (latest.status === 'failed' || latest.status === 'stale') return false
+      if (latest.status === 'pending' && !forced) return false
+      if ((latest.status === 'failed' || latest.status === 'stale') && !forced) return false
       if (latest.status === 'submitted' && (!latest.wait_until || Date.parse(now) < Date.parse(latest.wait_until))) return false
       round = latest.round + 1
     }
@@ -2333,6 +2380,20 @@ export class FollowupRuntime {
       ...(proposal.toolRequest ? { toolRequest: proposal.toolRequest } : {}),
       evidenceRefs: proposal.evidenceRefs,
     }))
+    // 多来源任务：菜单里没有提问模板时，补一个“来源齐备后确认”的合法动作，
+    // 让条件命中时能真正形成问题；选项仍受 submitAssessment 的菜单校验约束。
+    if (task.reportBindings?.length && !actionMenu.some((item) => item.kind === 'ask_user')) {
+      actionMenu.push({
+        actionId: 'a-conditions-ready',
+        source: 'baseline-rule-menu',
+        kind: 'ask_user',
+        reasonCode: 'sources_ready',
+        reasonText: '声明的报告来源已按承诺齐备',
+        question: '报告都到齐了，现在开始处理吗？',
+        options: [{ id: 'continue_now', label: '现在处理' }, { id: 'later', label: '稍后再说' }],
+        evidenceRefs: [...context.evidence],
+      })
+    }
     const identity = { requestId, ...base, round, sourceRefs: [...context.evidence] }
     const withoutMenu: Omit<AssessmentSnapshot, 'actionMenu'> = {
       protocol: ASSESSMENT_PROTOCOL,
@@ -2496,7 +2557,7 @@ export class FollowupRuntime {
     const preGuard = canonicalJson(drafts)
     const fresh = this.db.getTaskRow(row.ticket_id)
     const current = fresh ? this.toTask(fresh) : null
-    const staleCode = !current
+    let staleCode = !current
       ? 'task_missing'
       : current.status !== 'active'
         ? 'task_closed'
@@ -2507,10 +2568,29 @@ export class FollowupRuntime {
             : current.memoryCursor !== row.memory_cursor || current.eventCursor !== row.event_cursor
               ? 'stale_memory_cursor'
               : null
+    const snapshotTask = (JSON.parse(row.snapshot_json) as AssessmentSnapshot).task
+    const expectedSetSha = snapshotTask.inputSet?.sha ?? null
+    if (!staleCode && current && expectedSetSha && expectedSetSha !== this.readInputSet(current.ticketId).sha) {
+      staleCode = 'stale_input_set'
+    }
     if (staleCode) {
       const detail = current ? `request r${row.task_revision}/m${row.memory_cursor}/e${row.event_cursor} current ${current.status} r${current.taskRevision}/m${current.memoryCursor}/e${current.eventCursor}` : 'task missing'
       store.finish(requestId, { status: 'stale', raw_json: rawJson, pre_guard_json: preGuard, post_guard_json: canonicalJson([]), error_code: staleCode, error_detail: detail, completed_at: now })
       this.db.driverLog(now, row.ticket_id, 'assessment.stale', { requestId, code: staleCode, detail })
+      // 证据在评估途中又变了：立刻按当前状态重排一次判断，而不是等下一次外部事件。
+      if (current && current.status === 'active') {
+        const key = `${current.ticketId}:${current.taskRevision}`
+        const used = this.assessCatchUp.get(key) ?? 0
+        if (used < 3) {
+          this.assessCatchUp.set(key, used + 1)
+          this.db.driverLog(now, current.ticketId, 'assessment.catch_up', { attempt: used + 1, code: staleCode })
+          this.assessForce.add(current.ticketId)
+          // 异步重判：避免在 submitAssessment 的同一栈里再次插入同身份请求（request_id 冲突）。
+          queueMicrotask(() => {
+            try { this.reevaluate() } catch { /* 由下一轮事件自愈 */ }
+          })
+        }
+      }
       return { ok: false, code: staleCode, detail, results: [] }
     }
     const snapshot = JSON.parse(row.snapshot_json) as AssessmentSnapshot
@@ -2569,6 +2649,12 @@ export class FollowupRuntime {
       const question = draft.question ?? template?.question
       const options = draft.options ?? template?.options
       if (kind === 'ask_user') {
+        // 声明了多个来源时，只有全部来源都核验过才允许发问（缺证不伪造 InputRef）。
+        // 只要求主来源已核验；依赖是否必须到齐由条件本身决定（“只等A”时 B 可以缺）。
+        if (snapshotTask.inputSet && !snapshotTask.inputSet.primary.ref) {
+          reject('input_set_incomplete', 'primary source not verified', kind)
+          continue
+        }
         if (!question || !options?.length) {
           reject('ask_without_options', 'question/options missing', kind)
           continue
@@ -2616,8 +2702,123 @@ export class FollowupRuntime {
   // 上下文与校验
   // ------------------------------------------------------------------
 
+  /** 别名唯一的显式绑定；重复别名/自依赖/不存在的任务直接丢弃（不猜 taskId）。 */
+  private normalizeBindings(ticketId: string, bindings: readonly ReportBinding[] | undefined): ReportBinding[] {
+    const out: ReportBinding[] = []
+    const aliases = new Set<string>()
+    const tasks = new Set<string>()
+    for (const raw of bindings ?? []) {
+      const alias = String(raw?.alias ?? '').trim().slice(0, 40)
+      const taskId = String(raw?.taskId ?? '').trim()
+      if (!alias || !taskId || taskId === ticketId) continue
+      if (aliases.has(alias) || tasks.has(taskId)) continue
+      if (!this.db.getTaskRow(taskId)) continue
+      aliases.add(alias)
+      tasks.add(taskId)
+      out.push({ alias, taskId })
+    }
+    return out
+  }
+
+  /**
+   * 读取当前输入集合：主来源（本任务）+ 已声明依赖。只读权威任务状态；
+   * 缺证阶段 ref=null，不伪造 InputRef。
+   */
+  readInputSet(taskOrId: string | TaskRecord): InputSet {
+    const task = typeof taskOrId === 'string' ? this.requireTask(taskOrId) : taskOrId
+    const bindings = task.reportBindings ?? []
+    const entry = (alias: string, owner: TaskRecord): InputSetEntry => {
+      const current = this.inputRefFromTask(owner)
+      const result = owner.result
+      return {
+        alias,
+        taskId: owner.ticketId,
+        ref: current.ref,
+        reasons: current.reasons,
+        ...(result && current.ref
+          ? { summary: { runId: result.runId, revision: result.revision, status: result.status, metrics: result.metrics, observedAt: owner.updatedAt } }
+          : {}),
+      }
+    }
+    const primary = entry('primary', task)
+    const dependencies = bindings.map((binding) => {
+      const row = this.db.getTaskRow(binding.taskId)
+      if (!row) return { alias: binding.alias, taskId: binding.taskId, ref: null, reasons: ['task_missing'] } as InputSetEntry
+      return entry(binding.alias, this.toTask(row))
+    })
+    const bindingSha = sha256Hex(canonicalJson(bindings.map((b) => ({ alias: b.alias, taskId: b.taskId }))))
+    const shape = {
+      bindingSha,
+      primary: { alias: primary.alias, taskId: primary.taskId, ref: primary.ref },
+      dependencies: dependencies.map((d) => ({ alias: d.alias, taskId: d.taskId, ref: d.ref })),
+    }
+    return {
+      schema: 'pet-input-set/v1',
+      bindingSha,
+      primary,
+      dependencies,
+      ok: Boolean(primary.ref) && dependencies.every((d) => d.ref !== null),
+      sha: sha256Hex(canonicalJson(shape)),
+    }
+  }
+
+  /** 执行/回交前逐项重验：集合身份 + 每个来源的文件字节。 */
+  verifyInputSet(ticketId: string, expectedSha: string | null | undefined): { ok: boolean; code: string; detail: string } {
+    if (!expectedSha) return { ok: false, code: 'input_set_missing', detail: 'no input set recorded' }
+    const set = this.readInputSet(ticketId)
+    if (set.sha !== expectedSha) return { ok: false, code: 'stale_input_set', detail: `expected ${expectedSha.slice(0, 12)} current ${set.sha.slice(0, 12)}` }
+    for (const entry of [set.primary, ...set.dependencies]) {
+      const ref = entry.ref
+      if (!ref) return { ok: false, code: 'input_missing', detail: `${entry.alias}:${entry.taskId} ${entry.reasons.join(',')}` }
+      if (!ref.resultPath || !this.verifyArtifactFile(this.absoluteToRoot(ref.resultPath), ref.resultFileSha).ok) {
+        return { ok: false, code: 'input_file_changed', detail: `${entry.alias}:${entry.taskId}` }
+      }
+      if (ref.artifactPath && !this.verifyArtifactFile(this.absoluteToRoot(ref.artifactPath), ref.artifactSha).ok) {
+        return { ok: false, code: 'artifact_changed', detail: `${entry.alias}:${entry.taskId}` }
+      }
+    }
+    return { ok: true, code: 'ok', detail: `${1 + set.dependencies.length} sources verified` }
+  }
+
+  /** 依赖任务出现新结果：撤销父任务旧问题并从现有调度器唤醒（不新增时间循环）。 */
+  /** 用户已作答（或任务结束）后，把暂缓的输入交付重新排队；由 answer/取消路径调用。 */
+  releaseHeldDeliveries(ticketId: string): number {
+    const held = this.db.listEffects('deferred').filter((effect) => effect.ticket_id === ticketId)
+    if (!held.length) return 0
+    const now = this.clock.now()
+    this.db.atomic(() => {
+      for (const effect of held) this.db.saveEffect({ ...effect, state: 'pending', detail: 'released_after_answer' })
+      this.db.driverLog(now, ticketId, 'effect.deliver_released', { count: held.length })
+    })
+    this.drain()
+    return held.length
+  }
+
+  private wakeDependents(changedTicketId: string, now: string): void {
+    for (const row of this.db.listTaskRowsBindingTo(changedTicketId)) {
+      if (row.status !== 'active') continue
+      const parent = this.toTask(row)
+      const superseded = this.attention.supersede(parent.ticketId, parent.taskRevision, 'dependency result changed', now)
+      if (superseded.length) {
+        parent.attempt += 1
+        parent.lastAnswer = undefined
+        this.db.driverLog(now, parent.ticketId, 'dependency.invalidate', { changedTicketId, attentionIds: superseded.map((a) => a.attentionId) })
+      }
+      parent.diagnostics = [...parent.diagnostics.slice(-40), `dependency_changed:${changedTicketId}`]
+      this.saveTask(parent)
+      this.scheduler.schedule({
+        ticketId: parent.ticketId,
+        taskRevision: parent.taskRevision,
+        assignmentId: parent.assignmentId ?? '',
+        reason: 'dependency',
+        dueAt: now,
+        detail: `dependency result ${changedTicketId}`,
+      })
+    }
+  }
+
   private buildContext(task: TaskRecord, goalSatisfied: boolean): DecisionContext {
-    const snapshot: TaskSnapshot = { ...task }
+    const snapshot: TaskSnapshot = { ...task, ...(task.reportBindings?.length ? { inputSet: this.readInputSet(task) } : {}) }
     const memory = this.memory.readRelevant(snapshot, task.goal)
     return {
       task: snapshot,
@@ -2832,6 +3033,7 @@ export class FollowupRuntime {
       ...(row.last_answer_json ? { lastAnswer: JSON.parse(row.last_answer_json) as { optionId: string; at: string } } : {}),
       ...(row.continuation_json ? { continuation: JSON.parse(row.continuation_json) as ContinuationState } : {}),
       attempt: row.attempt,
+      ...(row.bindings_json ? { reportBindings: JSON.parse(row.bindings_json) as ReportBinding[] } : {}),
       ...(row.result_json ? { result: JSON.parse(row.result_json) as NonNullable<TaskRecord['result']> } : {}),
       ...(row.analysis_json ? { analysis: JSON.parse(row.analysis_json) as NonNullable<TaskRecord['analysis']> } : {}),
       ...(row.completion_json ? { completion: JSON.parse(row.completion_json) as NonNullable<TaskRecord['completion']> } : {}),
@@ -2865,6 +3067,7 @@ export class FollowupRuntime {
       completion_json: task.completion ? canonicalJson(task.completion) : null,
       close_reason: task.closeReason ?? null,
       diagnostics_json: canonicalJson(task.diagnostics),
+      bindings_json: task.reportBindings?.length ? canonicalJson(task.reportBindings) : null,
     })
   }
 

@@ -99,20 +99,23 @@ export interface ConditionCompiler {
   compile(input: CompileInput, client: ModelClient, signal?: AbortSignal): Promise<CompileResult>
 }
 
+/** 单一来源的已核验结果摘要。 */
+export interface VerifiedResult {
+  readonly runId: string
+  readonly revision: number
+  readonly status: string
+  readonly metrics: { readonly total: number; readonly passed: number; readonly failed: number; readonly score?: number | null }
+  readonly resultFileSha: string
+  readonly artifactSha: string
+  readonly observedAt: string
+}
+
 /** 宿主已核验的输入：只来自结果文件、用户记忆与宿主时钟，不来自模型摘要。 */
 export interface VerifiedInputs {
   readonly taskId: string
   /** 委托中已声明的任务（可读取其字段），未声明任务的字段不可见。 */
   readonly declaredTasks: readonly string[]
-  readonly result?: {
-    readonly runId: string
-    readonly revision: number
-    readonly status: string
-    readonly metrics: { readonly total: number; readonly passed: number; readonly failed: number; readonly score?: number }
-    readonly resultFileSha: string
-    readonly artifactSha: string
-    readonly observedAt: string
-  } | null
+  readonly result?: VerifiedResult | null
   readonly userAvailability?: {
     readonly value: string
     readonly itemId: string

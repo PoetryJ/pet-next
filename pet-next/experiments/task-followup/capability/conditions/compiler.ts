@@ -43,7 +43,17 @@ export const COMPILER_SYSTEM = `你是“承诺编译器”，只做一件事：
 3. 缺失字段不等于 false：不要用 not 包装“还没到的结果”来表达“未完成”。
 4. 用户的更正/例外必须体现为条件本身（例如“除非我出差”），不要只写在 unsupported。
 5. 若用户的承诺无法用上述语法表达（例如需要跨文件内容判断、需要工具执行结果），
-   把该子句原文放进 unsupported，when 只保留可确定的部分。`
+   把该子句原文放进 unsupported，when 只保留可确定的部分。
+
+补充准则（R6-live 开发候选，来自真实失败；只影响结构，不改变语义标准）：
+6. 按用户原话的时间顺序维护“当前需要等待的条件”。后来的更正替换相冲突的旧条件。
+7. “不用等B / B仅供归档 / B不影响是否来问我”＝删除 B 依赖：when 里不得再读取 B；
+   绝不翻译成 B.present=false 或 not B.present。
+8. “恢复也等B / A与B都到齐”＝用 all 组合 A 与 B。“报告到达”只比较 result.present=true；
+   报告显示成功/失败是另一个事实。
+9. when 只保留当前仍有效的依赖；单条件直接用 cmp，多条件才用 all/any。
+10. quotes 必须覆盖支持当前条件的完整原话：start=0，end=该用户消息的 UTF-16 长度（宿主给出）。
+11. 输出必须是一个完整 JSON 对象，顶层键恰为 when、quotes、unsupported；不要省略引号或注释。`
 
 export function quoteSha(text: string): string {
   return createHash('sha256').update(text).digest('hex')
@@ -88,7 +98,9 @@ export function buildCompileView(input: CompileInput): CompileRequestView {
       commitmentRevision: input.commitmentRevision,
       allowedFacts: facts,
       turns: budgetTurns(input.userTurns).map((t) => ({ turnId: t.turnId, role: t.role, at: t.at, text: t.text })),
-      instruction: '把这个任务“何时需要用户选择/确认”的承诺编译为 when；只引用上面用户原话；无法表达的放进 unsupported。',
+      // 宿主计算的原话长度：引用整条时 start=0、end=这里的 length，不要自己数。
+      turnLengths: budgetTurns(input.userTurns).map((t) => ({ turnId: t.turnId, length: t.text.length })),
+      instruction: '把这个任务“何时需要用户选择/确认”的承诺编译为 when；只引用上面用户原话；无法表达的放进 unsupported。quotes 用整条原话：start=0，end=turnLengths 给出的 length。',
     }),
   }
 }
@@ -154,10 +166,35 @@ export function createConditionCompiler(): ConditionCompiler {
         return { status: 'error', reason: `model_${result.code}:${result.detail}`, rawCall: callRecord(request, model, '', null, startedAt, finishedAt, { code: result.code, detail: result.detail }), checks: [...checks, `model_failure:${result.code}`] }
       }
       const rawText = result.response.rawText
-      const parsed = parseModelJson(rawText)
-      if (!parsed.ok) return { status: 'error', reason: `parse_error:${parsed.detail}`, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'parse_error', detail: parsed.detail }), checks: [...checks, 'parse_error'] }
+      let parsed = parseModelJson(rawText)
+      let finalText = rawText
+      let usage: unknown = result.response.usage ?? null
+      if (!parsed.ok) {
+        // 有界重试（仅语法修复）：原输入+原输出+错误都留在 rawCall/checks；
+        // 成功也标 parse_retry_used，绝不把“补了 JSON”当成语义修复。
+        checks.push(`parse_error_first:${parsed.detail}`)
+        const repair = makeRequest('condition-repair', [
+          { role: 'system', content: view.system },
+          { role: 'user', content: `${view.user}\n\n---\n你上一次的输出是：\n${rawText}\n\n它不是合法 JSON（${parsed.detail}）。只做语法修复：保持已确定的 when/quotes/unsupported 语义不变，输出一个完整合法 JSON 对象；不要新增或删除条件。` },
+        ], input.now)
+        const retry = await client.complete(repair, signal)
+        if (retry.ok) {
+          const retryParsed = parseModelJson(retry.response.rawText)
+          if (retryParsed.ok) {
+            parsed = retryParsed
+            finalText = retry.response.rawText
+            usage = [usage, retry.response.usage ?? null]
+            checks.push('parse_retry_used')
+          } else {
+            checks.push(`parse_retry_failed:${retryParsed.detail}`)
+          }
+        } else {
+          checks.push(`parse_retry_model_${retry.code}`)
+        }
+      }
+      if (!parsed.ok) return { status: 'error', reason: `parse_error:${parsed.detail}`, rawCall: callRecord(request, model, finalText, usage, startedAt, finishedAt, { code: 'parse_error', detail: parsed.detail }), checks: [...checks, 'parse_error'] }
       const candidate = parsed.value as RawCandidate
-      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return { status: 'error', reason: 'output_not_object', rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'bad_response', detail: 'not_object' }), checks: [...checks, 'structure_error'] }
+      if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return { status: 'error', reason: 'output_not_object', rawCall: callRecord(request, model, finalText, usage, startedAt, finishedAt, { code: 'bad_response', detail: 'not_object' }), checks: [...checks, 'structure_error'] }
 
       const unsupported = Array.isArray(candidate.unsupported) ? candidate.unsupported.filter((x): x is string => typeof x === 'string') : []
       const quoteCheck = validateQuotes(candidate, budgetTurns(input.userTurns))

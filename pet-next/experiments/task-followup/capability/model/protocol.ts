@@ -4,7 +4,7 @@
  */
 import { createHash } from 'node:crypto'
 
-export type ModelPurpose = 'memory-extract' | 'assess' | 'eval-answer' | 'eval-summary' | 'condition-compile'
+export type ModelPurpose = 'memory-extract' | 'assess' | 'eval-answer' | 'eval-summary' | 'condition-compile' | 'condition-repair'
 
 export interface ChatMessage {
   readonly role: 'system' | 'user'

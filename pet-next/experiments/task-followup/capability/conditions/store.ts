@@ -33,6 +33,7 @@ export class SqliteConditionStore implements ConditionStore {
       CREATE TABLE IF NOT EXISTS cond_revisions (task_id TEXT PRIMARY KEY, revision INTEGER NOT NULL, fingerprint TEXT NOT NULL, at TEXT NOT NULL);
       CREATE TABLE IF NOT EXISTS cond_once (task_id TEXT NOT NULL, key TEXT NOT NULL, at TEXT NOT NULL, PRIMARY KEY (task_id, key));
       CREATE TABLE IF NOT EXISTS cond_evals (id INTEGER PRIMARY KEY AUTOINCREMENT, task_id TEXT NOT NULL, at TEXT NOT NULL, json TEXT NOT NULL);
+      CREATE TABLE IF NOT EXISTS cond_failures (task_id TEXT NOT NULL, identity TEXT NOT NULL, status TEXT NOT NULL, detail TEXT NOT NULL, raw_json TEXT, at TEXT NOT NULL, PRIMARY KEY (task_id, identity));
     `)
   }
 
@@ -66,6 +67,17 @@ export class SqliteConditionStore implements ConditionStore {
     if (!plan || plan.taskId !== taskId) throw new Error(`condition_plan_missing: ${taskId}/${compilationKey}`)
     this.db.prepare('INSERT INTO cond_current (task_id, compilation_key, at) VALUES (?,?,?) ON CONFLICT(task_id) DO UPDATE SET compilation_key = excluded.compilation_key, at = excluded.at')
       .run(taskId, compilationKey, plan.compiledAt)
+  }
+
+  /** 失败/unsupported 也记账：同一编译身份不因 recheck 无限重编译。 */
+  failure(taskId: string, identity: string): { status: string; detail: string; rawJson: string | null; at: string } | null {
+    const row = this.db.prepare('SELECT status, detail, raw_json, at FROM cond_failures WHERE task_id = ? AND identity = ?').get(taskId, identity) as { status: string; detail: string; raw_json: string | null; at: string } | undefined
+    return row ? { status: row.status, detail: row.detail, rawJson: row.raw_json, at: row.at } : null
+  }
+
+  putFailure(entry: { taskId: string; identity: string; status: string; detail: string; rawJson?: string | null; at: string }): void {
+    this.db.prepare('INSERT INTO cond_failures (task_id, identity, status, detail, raw_json, at) VALUES (?,?,?,?,?,?) ON CONFLICT(task_id, identity) DO UPDATE SET status = excluded.status, detail = excluded.detail, raw_json = excluded.raw_json, at = excluded.at')
+      .run(entry.taskId, entry.identity, entry.status, entry.detail, entry.rawJson ?? null, entry.at)
   }
 
   history(taskId: string): ConditionPlan[] {

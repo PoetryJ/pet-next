@@ -666,16 +666,36 @@ export async function runHost(options: HostOptions): Promise<number> {
         return
       }
       const goal = String(body.goal ?? '').trim() || '跟进本地测试/实验结果；失败时让我选择是否分析失败样本'
+      // R6-live：显式报告依赖（别名 → 已存在任务）。缺省=单来源旧模式。
+      const rawBindings = Array.isArray(body.reportBindings) ? body.reportBindings : []
+      const reportBindings: { alias: string; taskId: string }[] = []
+      for (const item of rawBindings) {
+        const alias = String((item as { alias?: unknown })?.alias ?? '').trim().slice(0, 40)
+        const depId = String((item as { taskId?: unknown })?.taskId ?? '').trim()
+        if (!alias || !depId) {
+          send(response, 400, { ok: false, code: 'binding_invalid', error: 'reportBindings 需要 alias 与 taskId' })
+          return
+        }
+        if (!built.runtime.listTasks().some((task) => task.ticketId === depId)) {
+          send(response, 400, { ok: false, code: 'binding_unknown_task', error: `依赖任务不存在：${depId}` })
+          return
+        }
+        reportBindings.push({ alias, taskId: depId })
+      }
       const created = built.runtime.delegate({
         title,
         goal,
+        ...(reportBindings.length ? { reportBindings } : {}),
         goalCondition: { requireResultArtifact: true, requireAnalysisArtifact: true, requireReceipt: true, insufficientStatuses: ['failed', 'partial'] },
       })
       const binding: Binding = { dir: relNorm, template, createdAt: clock.now() }
       built.db.metaSet(`${BINDING_PREFIX}${created.ticketId}`, JSON.stringify(binding))
       record({ event: 'host.task_created', ticketId: created.ticketId, title, dir: relNorm })
       if (capability) {
-        capability.appendTurn({ turnId: `delegate-${created.ticketId}`, sessionId: 'panel', at: clock.now(), role: 'user', text: `新委托「${title}」：${goal}（结果文件放在 ${relNorm}/result.json）`, taskIds: [created.ticketId] })
+        const bindingText = reportBindings.length
+          ? `；依赖报告：${reportBindings.map((b) => `${b.alias}（任务 ${b.taskId}）`).join('、')}`
+          : ''
+        capability.appendTurn({ turnId: `delegate-${created.ticketId}`, sessionId: 'panel', at: clock.now(), role: 'user', text: `新委托「${title}」：${goal}（结果文件放在 ${relNorm}/result.json）${bindingText}`, taskIds: [created.ticketId, ...reportBindings.map((b) => b.taskId)] })
       }
       syncWatchers()
       send(response, 200, { ok: true, task: taskView(built.runtime.getTask(created.ticketId)) })

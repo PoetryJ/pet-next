@@ -194,6 +194,44 @@ export interface InputRef {
   readonly artifactPath: string | null
 }
 
+/**
+ * R6-live：显式任务依赖（多报告）。
+ * 别名由用户/宿主在创建委托时声明；模型只能从已注册字段中选，不得凭文字猜 taskId。
+ */
+export interface ReportBinding {
+  /** 用户可读别名，例如"主测试报告"/"中文路径报告"。 */
+  readonly alias: string
+  /** 被依赖任务的 ticketId。 */
+  readonly taskId: string
+}
+
+/** 单一来源的执行身份：缺证阶段 ref 为 null，reason 说明缺什么。 */
+export interface InputSetEntry {
+  readonly alias: string
+  readonly taskId: string
+  readonly ref: InputRef | null
+  readonly reasons: readonly string[]
+  /** 已核验来源的结果摘要（供条件求值；未核验时缺省）。 */
+  readonly summary?: {
+    readonly runId: string
+    readonly revision: number
+    readonly status: string
+    readonly metrics: { readonly total: number; readonly passed: number; readonly failed: number; readonly score: number | null }
+    readonly observedAt: string
+  }
+}
+
+/** 一次评估/问题/授权/执行共享的输入集合身份。 */
+export interface InputSet {
+  readonly schema: 'pet-input-set/v1'
+  readonly bindingSha: string
+  readonly primary: InputSetEntry
+  readonly dependencies: readonly InputSetEntry[]
+  /** 全部来源都已核验（primary + dependencies 都有 ref）。 */
+  readonly ok: boolean
+  readonly sha: string
+}
+
 /** 三种受控工具；没有任意 shell、远程任务或模型接口。 */
 export type ToolName = 'inspect_artifact' | 'compare_metrics' | 'write_analysis'
 
@@ -320,7 +358,7 @@ export type AnswerResult =
   | { readonly ok: true; readonly attention: AttentionView; readonly answerEventId: string }
   | {
       readonly ok: false
-      readonly code: 'unknown_attention' | 'stale_answer' | 'already_answered' | 'invalid_option' | 'not_visible' | 'needs_reconciliation'
+      readonly code: 'unknown_attention' | 'stale_answer' | 'already_answered' | 'attention_not_open' | 'invalid_option' | 'not_visible' | 'needs_reconciliation'
       readonly detail: string
     }
 
@@ -534,6 +572,10 @@ export interface TaskSnapshot {
   readonly lastAnswer?: { readonly optionId: string; readonly at: string }
   readonly continuation?: ContinuationState
   readonly attempt: number
+  /** R6-live：显式声明的报告依赖（空/缺省=单来源旧模式）。 */
+  readonly reportBindings?: readonly ReportBinding[]
+  /** R6-live：当前已核验的输入集合；依赖未到齐时 ok=false。 */
+  readonly inputSet?: InputSet
   readonly result?: {
     readonly runId: string
     readonly revision: number
@@ -858,7 +900,7 @@ export function millisBetween(from: string, to: string): number {
 // ---------------------------------------------------------------- R5 持久唤醒
 
 /** 唤醒原因：只影响可读日志与去重键，不改变策略判断。 */
-export type WakeReason = 'defer' | 'quiet' | 'cooldown' | 'continuation' | 'deadline' | 'catch_up'
+export type WakeReason = 'defer' | 'quiet' | 'cooldown' | 'continuation' | 'deadline' | 'catch_up' | 'dependency'
 
 export type WakeStatus = 'scheduled' | 'claimed' | 'done' | 'cancelled'
 

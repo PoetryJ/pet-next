@@ -28,7 +28,7 @@ import { evaluate } from '../capability/conditions/kernel.ts'
 import { SqliteConditionStore, commitmentFingerprint } from '../capability/conditions/store.ts'
 import { WatchIndex } from '../capability/conditions/watch-index.ts'
 import { bindingRegistrySha256, defaultFactDeclarations, COMPILE_INPUT_CHARS } from '../capability/conditions/plan-types.ts'
-import type { CompileTurn, ConditionEvalRecord, ConditionPlan, FactDeclaration, VerifiedInputs } from '../capability/conditions/plan-types.ts'
+import type { CompileTurn, ConditionEvalRecord, ConditionPlan, FactDeclaration, VerifiedInputs, VerifiedResult } from '../capability/conditions/plan-types.ts'
 import { createHash } from 'node:crypto'
 import type { AssessmentDraft, AssessmentResponse, AssessmentSnapshot, AsyncAssessor } from '../runtime/assessment.ts'
 import { CapabilityNotConfigured, createCapabilityHandle, findUserCancel } from './capability-assessor.ts'
@@ -95,12 +95,32 @@ export function createConditionsHandle(
     return { mem, plans }
   }
 
-  const declaredTasksOf = (taskId: string, packet: CapPacket): string[] => {
+  const declaredTasksOf = (task: AssessmentSnapshot['task'], packet: CapPacket): string[] => {
+    // R6-live：优先用宿主显式声明的依赖（reportBindings）；旧模式才从任务作用域承诺推断。
+    const bound = (task.reportBindings ?? []).map((b) => b.taskId)
+    if (bound.length) return [...new Set([task.ticketId, ...bound])].sort()
     const deps = packet.commitments
       .filter((i) => i.authority === 'user' && i.status === 'active' && i.scope.level === 'task' && i.scope.id)
       .map((i) => i.scope.id!)
-      .filter((id) => id !== taskId)
-    return [...new Set([taskId, ...deps])].sort()
+      .filter((id) => id !== task.ticketId)
+    return [...new Set([task.ticketId, ...deps])].sort()
+  }
+
+  /** 每个已声明来源的核验结果；未核验的来源为 null（不是 0/失败）。 */
+  const resultsByTask = (task: AssessmentSnapshot['task']): Record<string, VerifiedResult | null> => {
+    const out: Record<string, VerifiedResult | null> = {}
+    const set = task.inputSet
+    if (!set) {
+      const single = verifiedResult(task)
+      if (single) out[task.ticketId] = single
+      return out
+    }
+    for (const entry of [set.primary, ...set.dependencies]) {
+      out[entry.taskId] = entry.summary && entry.ref
+        ? { ...entry.summary, resultFileSha: entry.ref.resultFileSha, artifactSha: entry.ref.artifactSha }
+        : null
+    }
+    return out
   }
 
   const compileTurns = (memStore: CapabilityMemoryStore, taskId: string, packet: CapPacket): CompileTurn[] => {
@@ -122,14 +142,8 @@ export function createConditionsHandle(
     return kept
   }
 
-  const availability = (packet: CapPacket): VerifiedInputs['userAvailability'] => {
-    const item = [...packet.preferences, ...packet.currentFacts].filter((i) => i.authority === 'user' && i.status === 'active').at(-1)
-    if (!item || !item.evidenceTurnIds.length) return null
-    const text = `${item.evidenceTurnIds.join('|')}|${String(item.value ?? '')}`
-    return { value: String(item.value ?? ''), itemId: item.itemId, turnId: item.evidenceTurnIds[0]!, sha256: sha(text), observedAt: item.validFrom }
-  }
 
-  const verifiedResult = (task: AssessmentSnapshot['task'], now: string): VerifiedInputs['result'] => {
+  const verifiedResult = (task: AssessmentSnapshot['task'], now: string = task.updatedAt): VerifiedInputs['result'] => {
     if (!task.result) return null
     const r = task.result
     return {
@@ -204,7 +218,7 @@ export function createConditionsHandle(
         }
       }
 
-      const declaredTasks = declaredTasksOf(task.ticketId, packet)
+      const declaredTasks = declaredTasksOf(task, packet)
       const declarations: FactDeclaration[] = defaultFactDeclarations(declaredTasks)
       const bindingSha = bindingRegistrySha256(declarations, declaredTasks)
       const modelName = cfg.ok ? cfg.config.model : 'override'
@@ -228,7 +242,15 @@ export function createConditionsHandle(
       let rawCall: unknown = null
       if (!plan || stalePlan) {
         const turns = compileTurns(memStore, task.ticketId, packet)
-        if (turns.length === 0) {
+        const compileIdentity = sha(JSON.stringify({ commitmentRevision, compilerSha, bindingSha, turnIds: turns.map((t) => t.turnId) }))
+        const cachedFailure = planStore.failure(task.ticketId, compileIdentity)
+        if (cachedFailure) {
+          // 同一编译身份已经失败过：不因 recheck 反复打模型；新的承诺版本/来源集合才重编。
+          compileStatus = cachedFailure.status === 'unsupported' ? 'unsupported' : 'error'
+          compileDetail = cachedFailure.detail
+          stats.compileHits += 1
+          plan = null
+        } else if (turns.length === 0) {
           compileStatus = 'unsupported'
           compileDetail = 'no_user_turns_selected'
         } else {
@@ -247,6 +269,10 @@ export function createConditionsHandle(
           } else {
             compileStatus = result.status === 'unsupported' ? 'unsupported' : 'error'
             compileDetail = result.reason
+            planStore.putFailure({
+              taskId: task.ticketId, identity: compileIdentity, status: compileStatus, detail: result.reason,
+              rawJson: JSON.stringify(result.rawCall ?? null), at: now,
+            })
             // 新版本编译未成功：旧指针保留但已不可行动（revision 不匹配），只允许新版本兜底
             stats.compiles += 1
           }
@@ -259,6 +285,7 @@ export function createConditionsHandle(
       const evidenceKey = sha(JSON.stringify({
         plan: active ? plan!.compilationKey : `${compileStatus}:${compileDetail ?? ''}`,
         result: task.result ? `${task.result.revision}:${task.result.resultFileSha}` : 'none',
+        sources: task.inputSet ? task.inputSet.sha : 'single',
         commitmentRevision,
         facts: bindingSha,
       }))
@@ -277,7 +304,9 @@ export function createConditionsHandle(
       const context = makeContext(task, packet, {
         taskId: task.ticketId, declaredTasks,
         result: verifiedResult(task, now),
-        userAvailability: availability(packet),
+        resultsByTask: resultsByTask(task),
+        // 可用性只由 context 按 key/作用域/有效期投影；不再取“最后一条任意事实”
+        userAvailability: null,
       }, now)
       let evaluation
       try {

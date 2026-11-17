@@ -1,0 +1,22 @@
+{
+  "schema": "pet-r6-live-gold/v1",
+  "frozenAt": "2026-11-16",
+  "note": "开发 pilot 的人工判据（evaluator-only）。由用户原话与场景定义得出，不看策略输出、不由编译器生成。",
+  "taskTitles": { "primary": "主测试", "dependency": "中文路径检查" },
+  "scenarios": {
+    "pilot-1": {
+      "question": "两份报告都回来以后再问我是否继续",
+      "primarySource": "主测试",
+      "requiredSources": ["中文路径检查", "主测试"],
+      "window": "最后一份报告被宿主观察之后、任务结束之前",
+      "expect": { "ask": true, "maxReminders": 1 }
+    },
+    "pilot-2": {
+      "question": "先说两份都回来再问；随后更正为只等主报告",
+      "primarySource": "主测试",
+      "requiredSources": ["主测试"],
+      "window": "更正生效且主报告已核验之后",
+      "expect": { "ask": true, "maxReminders": 1, "noAskBeforeCorrection": true }
+    }
+  }
+}
