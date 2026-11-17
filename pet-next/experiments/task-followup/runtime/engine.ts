@@ -2424,6 +2424,12 @@ export class FollowupRuntime {
       memoryCursor: task.memoryCursor,
       eventCursor: task.eventCursor,
     }
+    // 真实长历史（PET_ASSESS_SETTLE=1）：同一任务已有在途判断时只记脏、不中止；
+    // 历史逐条到达不再每次都打断模型（复核指出的中止风暴）。默认关闭，保持既有测试语义。
+    if (process.env.PET_ASSESS_SETTLE === '1' && [...this.assessInFlight.values()].some((entry) => entry.ticketId === task.ticketId)) {
+      this.reassessNext.add(task.ticketId)
+      return false
+    }
     let latest = store.latestForIdentity(base)
     let round = 0
     // Dependency changes do not advance the parent's event cursor. Compare the
@@ -2750,8 +2756,12 @@ export class FollowupRuntime {
     const packet = JSON.parse(row.packet_json) as MemoryPacket
     if (response.dependencyUpdate && drafts.length === 0) {
       // 用户改口导致的依赖更新：证据必须来自本请求快照/记忆包，目标任务必须存在。
-      // 只有记忆包里的 turn refs 是“原话”；快照证据是来源级引用（sourceId），不能当轮次。
-      const allowedTurns = new Set((packet.evidenceRefs as unknown as { turnId?: string }[]).map((ref) => ref.turnId).filter((x): x is string => typeof x === 'string'))
+      // 轮次证据以能力记忆库为权威（同一 SQLite）：legacy 包的 evidenceRefs 只有来源级引用。
+      const allowedTurns = new Set<string>()
+      try {
+        for (const row of this.db.handle.prepare('SELECT turn_id FROM cap_turns').all() as { turn_id: string }[]) allowedTurns.add(row.turn_id)
+      } catch { /* 未启用能力记忆（基线） */ }
+      for (const ref of (packet.evidenceRefs as unknown as { turnId?: string }[])) if (typeof ref.turnId === 'string') allowedTurns.add(ref.turnId)
       const sources = response.dependencyUpdate.sourceTurnIds.filter((id) => allowedTurns.has(id))
       const applied = sources.length > 0
         ? this.updateBindings({

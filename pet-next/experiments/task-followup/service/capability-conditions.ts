@@ -63,6 +63,32 @@ export function referencedTaskIds(expr: unknown): Set<string> {
 
 const CORRECTION_RE = /更正|不用等|别等|只等|只当参考|取消依赖/
 
+/**
+ * 确定性依赖更正：用户明确说“X 不用等了 / 只等 Y”时，直接更新依赖集合。
+ * 只处理这两种明确措辞，不猜模糊表达；映射依据是任务标题与绑定别名（宿主已有的真实命名）。
+ */
+export function detectDependencyCorrection(
+  turns: readonly { turnId: string; text: string }[],
+  bindings: readonly { alias: string; taskId: string }[],
+): { reportBindings: { alias: string; taskId: string }[]; sourceTurnIds: string[]; reason: string } | null {
+  if (!bindings.length) return null
+  const candidates = turns.slice(-3).filter((t) => t.text.length <= 200 && /不用等|别等|只等|不再等/.test(t.text))
+  const turn = candidates.at(-1)
+  if (!turn) return null
+  const token = (value: string) => value.replace(/[\s\-—:：]/g, '').slice(0, 12)
+  const names = (alias: string) => [alias, alias.split(/\s+/)[0] ?? '', alias.slice(0, 2)].filter((x) => x.length > 0)
+  const keepMatch = /只等\s*([^\s，。；,;]{1,10})/.exec(turn.text)
+  let kept: { alias: string; taskId: string }[]
+  if (keepMatch) {
+    const keep = keepMatch[1]!
+    kept = bindings.filter((b) => names(b.alias).some((name) => keep.includes(name.slice(0, 2)) || name.includes(keep.slice(0, 2))))
+  } else {
+    kept = bindings.filter((b) => !names(b.alias).some((name) => new RegExp(`(不用等|别等|不再等)[^。；]{0,8}${name.slice(0, 2)}|${name.slice(0, 2)}[^。；]{0,8}(不用等|别等|不再等)`).test(turn.text)))
+  }
+  if (kept.length === bindings.length) return null
+  return { reportBindings: [...kept], sourceTurnIds: [turn.turnId], reason: 'explicit_dependency_correction' }
+}
+
 export interface ConditionSummary {
   readonly available: boolean
   readonly state: 'true' | 'false' | 'unknown' | null
@@ -233,6 +259,19 @@ export function createConditionsHandle(
 
       const askTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user' && (item.options?.length ?? 0) > 0)
       const packet = loaded.packet
+      // 明确的依赖更正优先于编译：即使模型编译失败，也要把真实依赖改过来（S2 的核心）。
+      const depCorrection = detectDependencyCorrection(
+        loaded.view.turns.filter((t) => t.role === 'user').map((t) => ({ turnId: t.turnId, text: t.text })),
+        task.reportBindings ?? [],
+      )
+      if (depCorrection) {
+        stats.ignored += 1
+        return {
+          drafts: [],
+          dependencyUpdate: depCorrection,
+          raw: { provider: 'conditions', model: 'dependency-correction', rawOutput: '', meta: { dependencyUpdate: depCorrection, memoryView: { kind: loaded.view.kind, viewSha: loaded.view.viewSha, refs: loaded.view.refs } } },
+        }
+      }
       if (!task.result && !askTemplate) {
         stats.ignored += 1
         return {

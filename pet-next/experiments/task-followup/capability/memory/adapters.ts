@@ -268,6 +268,8 @@ export async function loadVersionedMemory(options: {
   const ids = new Set<string>()
   for (const item of [...packet.currentFacts, ...packet.preferences, ...packet.commitments, ...packet.outcomes]) for (const id of item.evidenceTurnIds) ids.add(id)
   for (const ref of packet.context.recentTurns) ids.add(ref.turnId)
+  // 最近 3 条用户原话必须在视图里：改口/取消常常还没被抽取，但消费者必须看到。
+  for (const turn of all.filter((t) => t.role === 'user').slice(-3)) ids.add(turn.turnId)
   const visible = all.filter((t) => ids.has(t.turnId)).sort((a, b) => a.seq - b.seq)
   const refs = refsOf(visible)
   const view: MemoryView = {
