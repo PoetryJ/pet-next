@@ -115,13 +115,20 @@ async function runOne({ story, arm, outDir }) {
     json(join(outDir, 'http.json'), http)
     return { status: res.status, ...(value ?? {}) }
   }
-  const waitSettled = async (timeoutMs = 120000) => {
+  // 可观测就绪：没有 pending，且评估总数连续 3 次不变（说明追赶真的停了）。
+  const waitSettled = async (timeoutMs = 180000) => {
     const end = Date.now() + timeoutMs
+    let stable = 0
+    let last = -1
     while (Date.now() < end) {
       const rows = dbQuery(workspace, "SELECT status, COUNT(*) AS n FROM assessments GROUP BY status")
+      const total = rows.reduce((n, r) => n + Number(r.n), 0)
       const pending = rows.find((r) => r.status === 'pending')?.n ?? 0
-      if (!pending && rows.length > 0) return true
-      await sleep(300)
+      if (pending === 0 && total === last) stable += 1
+      else stable = 0
+      last = total
+      if (stable >= 3) return true
+      await sleep(1000)
     }
     return false
   }
@@ -165,14 +172,14 @@ async function runOne({ story, arm, outDir }) {
     }
     checks.historyTurns = spec.history.length
     mark('history.intake', { turns: spec.history.length })
-    checks.historySettled = await waitSettled(180000)
+    checks.historySettled = await waitSettled(60000)
     mark('history.settled', { ok: checks.historySettled })
 
     for (const step of spec.steps) {
       if (step.op === 'say') {
         const res = await api('POST', '/api/say', { text: step.text, ticketId: tasks[step.target] })
         mark('user.say', { target: step.target, status: res.status, text: step.text })
-        await waitSettled(180000)
+        await waitSettled(90000)
       } else if (step.op === 'produce') {
         produce(step.key)
         await waitSettled(120000)

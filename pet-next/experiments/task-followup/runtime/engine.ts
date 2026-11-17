@@ -2424,8 +2424,7 @@ export class FollowupRuntime {
       memoryCursor: task.memoryCursor,
       eventCursor: task.eventCursor,
     }
-    // 真实长历史（PET_ASSESS_SETTLE=1）：同一任务已有在途判断时只记脏、不中止；
-    // 历史逐条到达不再每次都打断模型（复核指出的中止风暴）。默认关闭，保持既有测试语义。
+    // 长历史模式：在途时只记脏（不中止），由下一次 drain 追赶。
     if (process.env.PET_ASSESS_SETTLE === '1' && [...this.assessInFlight.values()].some((entry) => entry.ticketId === task.ticketId)) {
       this.reassessNext.add(task.ticketId)
       return false
@@ -2434,8 +2433,10 @@ export class FollowupRuntime {
     let round = 0
     // Dependency changes do not advance the parent's event cursor. Compare the
     // persisted snapshot so restart cannot reuse an assessment of an older set.
-    const setChanged = latest && context.task.inputSet &&
-      (JSON.parse(latest.snapshot_json) as AssessmentSnapshot).task.inputSet?.sha !== context.task.inputSet.sha
+    // 只有“先前快照确实带 inputSet 且与现在不同”才算依赖变化。
+    // 旧快照没有 inputSet 时 undefined !== sha 会恒真，导致每秒重判（评估风暴的真正来源）。
+    const prevSetSha = latest ? (JSON.parse(latest.snapshot_json) as AssessmentSnapshot).task.inputSet?.sha ?? null : null
+    const setChanged = Boolean(latest && context.task.inputSet && prevSetSha && prevSetSha !== context.task.inputSet.sha)
     if (latest && (this.reassessNext.has(task.ticketId) || setChanged)) {
       // 宿主收到新原话（记忆在 runtime 之外更新）：同一身份强制新一轮，旧的进行中请求中止。
       this.reassessNext.delete(task.ticketId)
@@ -2446,9 +2447,17 @@ export class FollowupRuntime {
       this.reassessNext.delete(task.ticketId)
     }
     const forced = this.assessForce.delete(task.ticketId)
+    if (process.env.PET_ASSESS_TRACE === '1') {
+      this.db.driverLog(now, task.ticketId, 'assessment.trace', { latest: latest ? { status: latest.status, round: latest.round, wait: latest.wait_until } : null, forced, reassess: this.reassessNext.has(task.ticketId), setChanged })
+    }
+    // 同身份轮次上限（长历史模式）：即使判定/唤醒反复触发，也不无限重判同一证据版本。
+    if (process.env.PET_ASSESS_SETTLE === '1' && latest && latest.round >= 3 && !forced
+      && !this.reassessNext.has(task.ticketId) && !setChanged) return false
     if (latest) {
       if (latest.status === 'pending' && !forced) return false
       if ((latest.status === 'failed' || latest.status === 'stale') && !forced) return false
+      // aborted 也算“这一身份已判过”：否则中止行会绕过守卫，形成 新建→中止→再新建 的死循环。
+      if (latest.status === 'aborted' && !forced && !this.reassessNext.has(task.ticketId) && !setChanged) return false
       // PET_ASSESS_SETTLE=1（真实运行/长历史）：同一身份已判过就不再逐轮重判；
       // 只有新原话/依赖变化/of 到期唤醒才重来。默认关闭，保持既有测试与产品语义。
       const settled = process.env.PET_ASSESS_SETTLE === '1' && latest.status === 'submitted'
