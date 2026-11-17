@@ -133,7 +133,7 @@ export async function refreshSummary(
   const user = JSON.stringify({
     taskId,
     previousSummary: state.summary,
-    newTurns: batch.map((t) => ({ id: t.turnId, at: t.at, role: t.role, text: t.text.slice(0, 800) })),
+    newTurns: batch.map((t) => ({ id: t.turnId, at: t.at, role: t.role, text: t.text.slice(0, 400) })),
   })
   const request = makeRequest('memory-summarize', [
     { role: 'system', content: SUMMARY_SYSTEM },
@@ -163,7 +163,7 @@ export async function loadTextMemory(options: {
   const all = store.turns().filter((t) => turnScope(t, taskId))
   const recent = all.slice(-4)
   const lastUser = [...all].reverse().find((t) => t.role === 'user')
-  const retrieved = bm25(all, lastUser?.text ?? '', options.topK ?? 8)
+  const retrieved = bm25(all, lastUser?.text ?? '', options.topK ?? 6)
   const picked = new Map<string, Turn>()
   for (const turn of [...recent, ...retrieved]) picked.set(turn.turnId, turn)
   const visible = [...picked.values()].sort((a, b) => a.seq - b.seq)
@@ -203,6 +203,8 @@ export async function loadVersionedMemory(options: {
     roles: ['user', 'assistant'],
     maxTokens: options.extract.maxTokens,
     taskId,
+    // “回答：现在处理”这类宿主记录不产生新的用户事实；避免每次作答都再抽取一轮。
+    ignorePrefixes: ['回答：', '用户选择：'],
   })
   if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
   const packet = readForDecision(store, {

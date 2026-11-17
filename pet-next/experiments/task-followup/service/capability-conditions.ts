@@ -38,7 +38,7 @@ import type { CapabilityHandle } from './capability-assessor.ts'
 import { SHARED_READ_SLOTS } from '../capability/baselines/need-rule.ts'
 
 const ASSESS_MAX = 768
-const EXTRACT_MAX = 1536
+const EXTRACT_MAX = 768
 const sha = (text: string) => createHash('sha256').update(text).digest('hex')
 
 export interface ConditionSummary {
@@ -198,7 +198,7 @@ export function createConditionsHandle(
         taskTitle: task.title,
         now: new Date().toISOString(),
         signal: compilationSignal,
-        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 3, maxTokens: EXTRACT_MAX },
+        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 6, maxTokens: EXTRACT_MAX },
         read: { question: `${task.title} 的条件承诺、用户更正与当前结果`, requiredSlots: SHARED_READ_SLOTS, maxItems: 24, maxChars: 4500 },
       }))
       const extraction = loaded.extraction ?? { status: 'applied', requestId: null }

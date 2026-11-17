@@ -193,7 +193,7 @@ export function createConditionCompiler(): ConditionCompiler {
         }
       }
       if (!parsed.ok) return { status: 'error', reason: `parse_error:${parsed.detail}`, rawCall: callRecord(request, model, finalText, usage, startedAt, finishedAt, { code: 'parse_error', detail: parsed.detail }), checks: [...checks, 'parse_error'] }
-      const candidate = parsed.value as RawCandidate
+      let candidate = parsed.value as RawCandidate
       if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return { status: 'error', reason: 'output_not_object', rawCall: callRecord(request, model, finalText, usage, startedAt, finishedAt, { code: 'bad_response', detail: 'not_object' }), checks: [...checks, 'structure_error'] }
 
       const unsupported = Array.isArray(candidate.unsupported) ? candidate.unsupported.filter((x): x is string => typeof x === 'string') : []

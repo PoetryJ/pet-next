@@ -308,14 +308,15 @@ export function applyExtraction(
 export async function extractPending(
   store: CapabilityMemoryStore,
   client: ModelClient,
-  options: { entities: readonly { id: string; type: string; label: string }[]; now: string; signal?: AbortSignal; contextTurns?: number; keyVocabulary?: readonly string[]; maxTurns?: number; roles?: readonly string[]; maxTokens?: number; taskId?: string },
+  options: { entities: readonly { id: string; type: string; label: string }[]; now: string; signal?: AbortSignal; contextTurns?: number; keyVocabulary?: readonly string[]; maxTurns?: number; roles?: readonly string[]; maxTokens?: number; taskId?: string; ignorePrefixes?: readonly string[] },
 ): Promise<{ status: 'nothing' | 'applied' | 'failed' | 'pending'; request?: ModelRequest; response?: ModelResponse; report?: ExtractionApplyReport; detail?: string }> {
   const done = store.extractedTurnIds()
   const retracted = store.retractedTurns()
   const all = store.turns().filter((t) => !retracted.has(t.turnId))
   const triedUncovered = new Set(store.extractions().filter((e) => e.status === 'uncovered').flatMap((e) => e.turnIds))
   const failedBefore = new Set(store.extractions().filter((e) => e.status === 'failed').flatMap((e) => e.turnIds))
-  let fresh = all.filter((t) => !done.has(t.turnId) && !triedUncovered.has(t.turnId) && (!options.roles || options.roles.includes(t.role)) && (!options.taskId || t.taskIds.length === 0 || t.taskIds.includes(options.taskId))).slice(0, options.maxTurns ?? Infinity)
+  const ignored = (t: { text: string }) => Boolean(options.ignorePrefixes?.some((prefix) => t.text.startsWith(prefix)))
+  let fresh = all.filter((t) => !done.has(t.turnId) && !triedUncovered.has(t.turnId) && !ignored(t) && (!options.roles || options.roles.includes(t.role)) && (!options.taskId || t.taskIds.length === 0 || t.taskIds.includes(options.taskId))).slice(0, options.maxTurns ?? Infinity)
   if (fresh.length === 0) return { status: 'nothing' }
   // 上次失败（多为输出截断）的批次缩到单条原话重试，而不是加大输出上限
   if (fresh.length > 1 && failedBefore.has(fresh[0]!.turnId)) fresh = [fresh[0]!]

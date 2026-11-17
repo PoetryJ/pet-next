@@ -34,9 +34,12 @@ export function seedHistory(workspace, story, taskIds, now = new Date().toISOStr
       insertTurn.run(turnIdOf(seq), `hist-${story.id}`, seq, turn.at, 'user', turn.text, JSON.stringify([taskIds[turn.target]]), null, cursor)
     }
     const allIds = story.turns.map((_, i) => turnIdOf(i + 1))
+    // 委托轮由宿主在建任务时写入：它的信息已在预置承诺条目里，标记为已抽取，避免每次运行多打一轮模型。
+    const delegated = db.prepare("SELECT turn_id FROM cap_turns WHERE text LIKE '新委托%'").all().map((r) => r.turn_id)
+    allIds.push(...delegated)
     cursor = Number(insertLog.run('extraction', `seed-${story.id}`, JSON.stringify(Object.values(taskIds)), now).lastInsertRowid)
     db.prepare('INSERT OR REPLACE INTO cap_extractions (request_id, status, detail, turn_ids, cursor) VALUES (?,?,?,?,?)')
-      .run(`seed-${story.id}`, 'applied', 'seeded_history', JSON.stringify(allIds), cursor)
+      .run(`seed-${story.id}`, 'applied', 'seeded_history', JSON.stringify([...new Set(allIds)]), cursor)
 
     const first = story.turns[0]
     const base = {

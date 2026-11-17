@@ -87,7 +87,7 @@ function readModelIo(dir) {
     const status = resp?.status ?? null
     const failed = !resp || (typeof status === 'number' && status !== 200) || Boolean(resp?.error)
     entries.push({
-      purpose: req.body?.messages ? (req.body.metadata?.purpose ?? null) : null,
+      purpose: file.replace(/^\d+-/, '').replace(/-req-.*$/, ''),
       status, failed,
       at: req.sentAt ?? null,
       receivedAt: resp?.receivedAt ?? null,
@@ -159,6 +159,8 @@ async function runOne(planRow, story, outDir, attempt) {
         PET_MEMORY_ADAPTER: adapter,
         PET_MODEL_RECORD_DIR: modelDir,
         PET_FOLLOWUP_RECHECK_MS: '20000',
+        // 本地 Transformers 服务在 A10 上约 17 tok/s，且串行处理；给足超时，避免把慢当成失败。
+        PET_MODEL_TIMEOUT_MS: process.env.PET_MODEL_TIMEOUT_MS ?? '600000',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -195,9 +197,11 @@ async function runOne(planRow, story, outDir, attempt) {
   const stop = async () => {
     if (!child || child.exitCode !== null) return
     try { await api('POST', '/api/shutdown', {}) } catch { /* 强制结束 */ }
-    const result = await Promise.race([exited, sleep(10000).then(() => null)])
-    if (!result) child.kill('SIGTERM')
-    await sleep(300)
+    let result = await Promise.race([exited, sleep(10000).then(() => null)])
+    if (!result) { child.kill('SIGTERM'); result = await Promise.race([exited, sleep(5000).then(() => null)]) }
+    if (!result) { child.kill('SIGKILL'); await Promise.race([exited, sleep(3000).then(() => null)]) }
+    // 必须等旧进程真的退出：两个宿主同时评估会重复调用模型、抢写 SQLite。
+    await sleep(500)
   }
   const produce = (key, cases, tag = '') => {
     const junitDir = join(outDir, `junit-${key}${tag}`)
@@ -252,7 +256,7 @@ async function runOne(planRow, story, outDir, attempt) {
     for (const say of story.live.livesays ?? []) {
       const res = await api('POST', '/api/say', { text: say.text, ticketId: tasks[say.target] })
       mark('user.say', { target: say.target, status: res.status, text: say.text })
-      await sleep(1500)
+      await sleep(Number(process.env.PET_EVENT_SETTLE_MS ?? '20000'))
     }
 
     if (story.live.cancel) {
@@ -285,12 +289,17 @@ async function runOne(planRow, story, outDir, attempt) {
         produce(key, casesByKey[key])
         if (story.live.duplicate && key === 'B') {
           await sleep(1500)
-          produce(key, casesByKey[key], '-dup')
-          mark('produce.duplicate', { key })
+          // 重复保存同一份字节：不重跑测试（否则是新修订），只把原文件再写一次，验证 SHA 去重。
+          const target = join(workspace, 'inbox', key, 'result.json')
+          const bytes = readFileSync(target)
+          writeFileSync(`${target}.tmp`, bytes)
+          cpSync(`${target}.tmp`, target)
+          mark('produce.duplicate', { key, bytes: bytes.length })
         }
       }
       produced += 1
-      await sleep(2500)
+      // 本地模型慢且串行：给前一次评估留完成时间，避免“新证据一到达就中止上一个请求”的空耗。
+      await sleep(Number(process.env.PET_EVENT_SETTLE_MS ?? '20000'))
       mark('source.arrived', { key, ticketId: tasks[key] })
     }
 
