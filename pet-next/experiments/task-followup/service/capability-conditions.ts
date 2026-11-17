@@ -41,6 +41,28 @@ const ASSESS_MAX = 768
 const EXTRACT_MAX = 768
 const sha = (text: string) => createHash('sha256').update(text).digest('hex')
 
+/** 条件里实际引用的任务 id（用于识别“改口后不再依赖 B”）。 */
+export function referencedTaskIds(expr: unknown): Set<string> {
+  const out = new Set<string>()
+  const walk = (node: any): void => {
+    if (!node || typeof node !== 'object') return
+    if (node.op === 'cmp' && typeof node.fact === 'string') {
+      const m = /^task:([^.]+)\./.exec(node.fact)
+      if (m) out.add(m[1]!)
+      return
+    }
+    for (const key of ['args', 'arg']) {
+      const value = node[key]
+      if (Array.isArray(value)) value.forEach(walk)
+      else if (value) walk(value)
+    }
+  }
+  walk(expr)
+  return out
+}
+
+const CORRECTION_RE = /更正|不用等|别等|只等|只当参考|取消依赖/
+
 export interface ConditionSummary {
   readonly available: boolean
   readonly state: 'true' | 'false' | 'unknown' | null
@@ -198,7 +220,7 @@ export function createConditionsHandle(
         taskTitle: task.title,
         now: new Date().toISOString(),
         signal: compilationSignal,
-        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 6, maxTokens: EXTRACT_MAX },
+        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 32, maxTokens: EXTRACT_MAX },
         read: { question: `${task.title} 的条件承诺、用户更正与当前结果`, requiredSlots: SHARED_READ_SLOTS, maxItems: 24, maxChars: 4500 },
       }))
       const extraction = loaded.extraction ?? { status: 'applied', requestId: null }
@@ -242,11 +264,22 @@ export function createConditionsHandle(
       let compileDetail: string | null = null
       let rawCall: unknown = null
       if (!plan || stalePlan) {
-        // T：编译器只看摘要命中的原话；V：沿用既有条目证据+近期窗口。
-        const turns = loaded.turns
-          ? loaded.turns.filter((t) => t.role === 'user').map((t) => ({ turnId: t.turnId, role: 'user' as const, at: t.at, text: t.text, sha256: sha(t.text) }))
-          : compileTurns(memStore, task.ticketId, packet)
-        const compileIdentity = sha(JSON.stringify({ commitmentRevision, compilerSha, bindingSha, turnIds: turns.map((t) => t.turnId) }))
+        // 消费者只拿 MemoryView 里的原话（refs 可追溯）；T 同时给摘要，V 为 null。
+        const view = loaded.view
+        // 编译只给“承诺相关”的原话：承诺/偏好条目的证据 + 摘要引用 + 最后一条用户原话。
+        // 96 条历史里的填充内容不进编译输入，避免模型把它们当成待支持子句。
+        const focus = new Set<string>([...packet.commitments, ...packet.preferences].flatMap((i) => i.evidenceTurnIds))
+        for (const id of view.summaryKeyTurns) focus.add(id)
+        const lastUser = view.turns.filter((t) => t.role === 'user').at(-1)
+        if (lastUser) focus.add(lastUser.turnId)
+        const focused = view.turns.filter((t) => t.role === 'user' && focus.has(t.turnId)).slice(-12)
+        const base = focused.length ? focused : view.turns.filter((t) => t.role === 'user').slice(-6)
+        // 有更正时，更正之前的旧承诺已被替代：只把“更正及其之后”的原话交给编译器，
+        // 避免模型把作废条件与更正条件用 all 合并（S2 的真实失败）。
+        const correctionAt = base.map((t) => CORRECTION_RE.test(t.text)).lastIndexOf(true)
+        const chosen = correctionAt >= 0 ? base.slice(correctionAt) : base
+        const turns = chosen.map((t) => ({ turnId: t.turnId, role: 'user' as const, at: t.at, text: t.text, sha256: sha(t.text) }))
+        const compileIdentity = sha(JSON.stringify({ commitmentRevision, compilerSha, bindingSha, turnIds: turns.map((t) => t.turnId), viewSha: view.viewSha }))
         const cachedFailure = planStore.failure(task.ticketId, compileIdentity)
         if (cachedFailure) {
           // 同一编译身份已经失败过：不因 recheck 反复打模型；新的承诺版本/来源集合才重编。
@@ -261,6 +294,7 @@ export function createConditionsHandle(
           const result = await compiler.compile({
             taskId: task.ticketId, commitmentRevision, userTurns: turns, allowedFacts: declarations,
             bindingRegistrySha256: bindingSha, compilerSha256: compilerSha, now,
+            memorySummary: view.summary, viewSha: view.viewSha,
           }, client, signal)
           rawCall = result.rawCall
           if (result.status === 'compiled') {
@@ -305,6 +339,31 @@ export function createConditionsHandle(
         return await fallbackOrWait(task, snapshot, packet, signal, evidenceKey, now, `新承诺版本未编译成功（${compileStatus}${compileDetail ? `：${compileDetail}` : ''}）`, meta)
       }
 
+      // 改口收窄依赖：编译产物不再引用 B，且引用原话是更正 → 交给宿主更新真实 bindings（事务内撤销旧问题/授权）。
+      const referenced = referencedTaskIds(plan!.when)
+      const currentDeps = (task.reportBindings ?? []).map((b) => b.taskId)
+      const dropped = currentDeps.filter((id) => !referenced.has(id))
+      const correction = plan!.sourceQuotes.some((q) => CORRECTION_RE.test(q.text))
+      if (dropped.length > 0 && correction) {
+        const aliasOf = new Map((task.reportBindings ?? []).map((b) => [b.taskId, b.alias]))
+        const bindings = [...referenced]
+          .filter((id) => id !== task.ticketId)
+          .map((id) => ({ alias: aliasOf.get(id) ?? `依赖${id.slice(-6)}`, taskId: id }))
+        stats.ignored += 1
+        return {
+          drafts: [],
+          dependencyUpdate: {
+            reportBindings: bindings,
+            sourceTurnIds: plan!.sourceQuotes.map((q) => q.turnId),
+            reason: `correction dropped ${dropped.join(',')}`,
+          },
+          raw: {
+            provider: 'conditions', model: 'dependency-update', rawOutput: '',
+            meta: { dependencyUpdate: { bindings, dropped, sourceTurnIds: plan!.sourceQuotes.map((q) => q.turnId) }, plan: plan!.compilationKey, memoryView: { kind: loaded.view.kind, viewSha: loaded.view.viewSha, refs: loaded.view.refs } },
+          },
+        }
+      }
+
       const context = makeContext(task, packet, {
         taskId: task.ticketId, declaredTasks,
         result: verifiedResult(task, now),
@@ -330,6 +389,7 @@ export function createConditionsHandle(
       const meta = {
         plan: { compilationKey: plan!.compilationKey, commitmentRevision, compilerSha256: compilerSha, quotes: plan!.sourceQuotes },
         evaluation, evidenceKey, memoryPacket: packet, compile: { status: compileStatus, rawCall },
+        memoryView: { kind: loaded.view.kind, viewSha: loaded.view.viewSha, refs: loaded.view.refs, coveredSeq: loaded.view.coveredSeq, summarySha: loaded.view.summary ? sha(loaded.view.summary) : null },
       }
       const quoteText = plan!.sourceQuotes.map((q) => `「${q.text}」`).join(' ')
       const readText = evaluation.reads.map((r) => `${r.fact}=${r.state}${r.reason ? `(${r.reason})` : ''}`).join('，')

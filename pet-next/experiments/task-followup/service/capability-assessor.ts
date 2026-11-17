@@ -150,7 +150,7 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         taskTitle: task.title,
         now: new Date().toISOString(),
         signal: compilationSignal,
-        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 6, maxTokens: EXTRACT_MAX },
+        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 32, maxTokens: EXTRACT_MAX },
         read: { question: `${task.title} 当前结果、授权范围、通知偏好与等待条件`, requiredSlots: SHARED_READ_SLOTS, maxItems: 24, maxChars: 4500 },
       }))
       const extraction = loaded.extraction ?? { status: 'applied' as const }
@@ -162,10 +162,13 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         drafts: [], taskControl: control,
         raw: { provider: extraction.response?.model.provider ?? 'persisted-user-memory', model: extraction.response?.model.name ?? 'no-new-model-call', rawOutput: extraction.response?.rawText ?? '', requestPayload: extraction.request ?? null, meta: { taskControl: control, extraction: extraction.report ?? null } },
       }
-      const packet = loaded.packet
+      // 消费者显式拿到 MemoryView：T 的摘要进入模型可见的 memory，V 无摘要。
+      const packet = loaded.view.summary
+        ? { ...loaded.packet, context: { ...loaded.packet.context, summary: loaded.view.summary } }
+        : loaded.packet
       if (!task.result && !snapshot.actionMenu.some((item) => item.kind === 'ask_user' || item.kind === 'continue_local')) return {
         drafts: [{ intent: 'none', reasonCode: 'await_new_evidence', reasonText: '目录监听持续等待结果；当前无可选行动，不重复占用模型判断。' }],
-        raw: { provider: 'event-driven-host', model: 'no-intervention-model-call', rawOutput: '', meta: { extraction: { status: extraction.status, requestId: extraction.request?.requestId ?? null }, memoryPacket: packet, waitsFor: 'new result or user message' } },
+        raw: { provider: 'event-driven-host', model: 'no-intervention-model-call', rawOutput: '', meta: { extraction: { status: extraction.status, requestId: extraction.request?.requestId ?? null }, memoryPacket: packet, memoryView: { kind: loaded.view.kind, viewSha: loaded.view.viewSha, refs: loaded.view.refs, coveredSeq: loaded.view.coveredSeq }, waitsFor: 'new result or user message' } },
       }
       if (handleOptions.intervention === 'need-rule') {
         const ruleSnapshot = { ...snapshot, now }

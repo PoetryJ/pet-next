@@ -10,9 +10,9 @@
  */
 import type { ChatMessage, ModelCallResult, ModelClient, ModelRequest } from './protocol.ts'
 // 可选生成参数（负责人确认后再定）：PET_MODEL_MAX_TOKENS、PET_MODEL_TEMPERATURE（默认 0）
-import { randomUUID } from 'node:crypto'
-import { mkdirSync, writeFileSync } from 'node:fs'
-import { join } from 'node:path'
+import { createHash, randomUUID } from 'node:crypto'
+import { appendFileSync, mkdirSync, writeFileSync } from 'node:fs'
+import { dirname, join } from 'node:path'
 
 export interface OpenAICompatibleConfig {
   readonly baseUrl: string
@@ -26,6 +26,8 @@ export interface OpenAICompatibleConfig {
   readonly disableThinking?: boolean
   /** 每次调用把实际 HTTP 请求体与响应体原样落盘（不含任何鉴权头） */
   readonly recordDir?: string | null
+  /** 物理调用账本（JSONL）：start/end 各一行，带最终 wire body SHA 与 usage/unknown。 */
+  readonly ledgerPath?: string | null
 }
 
 export function configFromEnv(env: NodeJS.ProcessEnv = process.env):
@@ -48,6 +50,7 @@ export function configFromEnv(env: NodeJS.ProcessEnv = process.env):
       temperature: Number.isFinite(Number(env.PET_MODEL_TEMPERATURE)) && env.PET_MODEL_TEMPERATURE !== undefined ? Number(env.PET_MODEL_TEMPERATURE) : 0,
       disableThinking: env.PET_MODEL_DISABLE_THINKING === '1',
       recordDir: env.PET_MODEL_RECORD_DIR ? env.PET_MODEL_RECORD_DIR : null,
+      ledgerPath: env.PET_CALL_LEDGER ? env.PET_CALL_LEDGER : null,
       maxTokens: Number.isInteger(Number(env.PET_MODEL_MAX_TOKENS)) && Number(env.PET_MODEL_MAX_TOKENS) > 0 ? Number(env.PET_MODEL_MAX_TOKENS) : null,
     },
   }
@@ -101,6 +104,16 @@ export class OpenAICompatibleClient implements ModelClient {
       ...(cfg.disableThinking ? { enable_thinking: false, chat_template_kwargs: { enable_thinking: false } } : {}),
       ...(process.env.PET_MODEL_NO_RESPONSE_FORMAT === '1' ? {} : { response_format: { type: 'json_object' } }),
     }
+    const wire = JSON.stringify(httpBody)
+    const wireSha = createHash('sha256').update(wire).digest('hex')
+    const ledger = (row: Record<string, unknown>): void => {
+      if (!cfg.ledgerPath) return
+      try {
+        mkdirSync(dirname(cfg.ledgerPath), { recursive: true })
+        appendFileSync(cfg.ledgerPath, `${JSON.stringify({ schema: 'pet-client-call/v1', ...row })}\n`)
+      } catch { /* 账本写失败不影响调用；由对账脚本报缺失 */ }
+    }
+    ledger({ phase: 'start', id: request.requestId, purpose: request.purpose, wireSha256: wireSha, at: startedAt, model: cfg.model, baseUrl: cfg.baseUrl })
     const callNo = ++this.calls
     const stem = `${String(callNo).padStart(3, '0')}-${request.purpose}-${request.requestId}`
     const record = (suffix: string, value: unknown) => {
@@ -115,16 +128,20 @@ export class OpenAICompatibleClient implements ModelClient {
         method: 'POST',
         headers: {
           'content-type': 'application/json',
+          'x-pet-request-id': request.requestId,
           ...(cfg.apiKey ? { authorization: `Bearer ${cfg.apiKey}` } : {}),
         },
-        body: JSON.stringify(httpBody),
+        body: wire,
         signal: combined,
       })
     } catch (error) {
-      record('response', { receivedAt: new Date().toISOString(), error: error instanceof Error ? error.message : String(error), timeout: timeout.aborted })
+      const detail = error instanceof Error ? error.message : String(error)
+      record('response', { receivedAt: new Date().toISOString(), error: detail, timeout: timeout.aborted })
+      // 客户端中止/超时不代表服务端停止生成：usage 记 unknown，由代理账本给出真实消耗。
+      ledger({ phase: 'end', id: request.requestId, purpose: request.purpose, wireSha256: wireSha, at: new Date().toISOString(), status: null, usage: null, usageKnown: false, error: signal?.aborted ? 'client_aborted' : timeout.aborted ? 'timeout' : detail })
       if (signal?.aborted) return fail('aborted', 'caller aborted')
       if (timeout.aborted) return fail('timeout', `no response within ${cfg.timeoutMs}ms`)
-      return fail('provider_error', error instanceof Error ? error.message : String(error))
+      return fail('provider_error', detail)
     }
     let body: any
     const rawBody = await res.text().catch(() => '')
@@ -135,6 +152,8 @@ export class OpenAICompatibleClient implements ModelClient {
       return fail('http_error', `status ${res.status}; body not JSON`)
     }
     record('response', { receivedAt: new Date().toISOString(), status: res.status, body })
+    const usage = body?.usage ?? null
+    ledger({ phase: 'end', id: request.requestId, purpose: request.purpose, wireSha256: wireSha, at: new Date().toISOString(), status: res.status, usage, usageKnown: usage !== null })
     if (!res.ok) return fail('http_error', `status ${res.status}: ${String(body?.error?.message ?? '').slice(0, 300)}`)
     const choice = body?.choices?.[0]
     const text = choice?.message?.content

@@ -142,5 +142,7 @@ export interface MemoryPacket {
     readonly budgetUsed: { readonly items: number; readonly chars: number }
     readonly truncated: boolean
     readonly diagnostics: readonly string[]
+    /** T 适配器的滚动摘要（带引用轮次 keyTurns 见 MemoryView）；V 为 null。 */
+    readonly summary?: string | null
   }
 }

@@ -98,9 +98,11 @@ export function buildCompileView(input: CompileInput): CompileRequestView {
       commitmentRevision: input.commitmentRevision,
       allowedFacts: facts,
       turns: budgetTurns(input.userTurns).map((t) => ({ turnId: t.turnId, role: t.role, at: t.at, text: t.text })),
+      ...(input.memorySummary ? { memorySummary: input.memorySummary } : {}),
+      ...(input.viewSha ? { viewSha: input.viewSha } : {}),
       // 宿主计算的原话长度：引用整条时 start=0、end=这里的 length，不要自己数。
       turnLengths: budgetTurns(input.userTurns).map((t) => ({ turnId: t.turnId, length: t.text.length })),
-      instruction: '把这个任务“何时需要用户选择/确认”的承诺编译为 when；只引用上面用户原话；无法表达的放进 unsupported。quotes 用整条原话：start=0，end=turnLengths 给出的 length。',
+      instruction: '把这个任务“何时需要用户选择/确认”的承诺编译为 when；只引用 turns 里的用户原话（memorySummary 只用于定位，不能当引用）；无法表达的放进 unsupported。quotes 最多 3 条，用整条原话：start=0，end=turnLengths 给出的 length。',
     }),
   }
 }
@@ -140,6 +142,37 @@ export function validateQuotes(candidate: RawCandidate, turns: readonly Conditio
 
 function factIds(facts: readonly FactDeclaration[]): string[] {
   return facts.map((f) => f.id)
+}
+
+/** 字面量/枚举校验：字段类型不匹配、字符串枚举越界都在编译期拒绝（不让它变成永久 false）。 */
+export function checkLiterals(expr: unknown, facts: readonly FactDeclaration[]): string[] {
+  const byId = new Map(facts.map((f) => [f.id, f]))
+  const problems: string[] = []
+  const walk = (node: any): void => {
+    if (!node || typeof node !== 'object') return
+    if (node.op === 'cmp') {
+      const fact = byId.get(String(node.fact))
+      const value = node.value
+      if (fact) {
+        const rel = String(node.rel)
+        const kind = typeof value
+        const expected = fact.type === 'number' ? 'number' : fact.type === 'boolean' ? 'boolean' : 'string'
+        if (kind !== expected) problems.push(`type_mismatch:${fact.id}(${fact.type})!=${kind}`)
+        if ((rel === 'lt' || rel === 'le' || rel === 'gt' || rel === 'ge') && fact.type !== 'number') problems.push(`ordered_rel_on_${fact.type}:${fact.id}`)
+        if (fact.enum && kind === 'string' && !fact.enum.includes(value) && (rel === 'eq' || rel === 'ne')) {
+          problems.push(`enum_violation:${fact.id}=${String(value)};allowed=${fact.enum.join('|')}`)
+        }
+      }
+      return
+    }
+    for (const key of ['args', 'arg']) {
+      const v = node[key]
+      if (Array.isArray(v)) v.forEach(walk)
+      else if (v) walk(v)
+    }
+  }
+  walk(expr)
+  return problems
 }
 
 function callRecord(request: { requestId: string }, model: { provider: string; name: string }, rawText: string, usage: unknown, startedAt: string, finishedAt: string, failure: { code: string; detail: string } | null): CompileCall {

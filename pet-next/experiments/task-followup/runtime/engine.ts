@@ -2415,6 +2415,7 @@ export class FollowupRuntime {
     const options = this.assessmentOptions
     const store = this.assessments
     if (!options || !store) return false
+
     const now = this.clock.now()
     const base = {
       ticketId: task.ticketId,
@@ -2442,6 +2443,12 @@ export class FollowupRuntime {
     if (latest) {
       if (latest.status === 'pending' && !forced) return false
       if ((latest.status === 'failed' || latest.status === 'stale') && !forced) return false
+      // PET_ASSESS_SETTLE=1（真实运行/长历史）：同一身份已判过就不再逐轮重判；
+      // 只有新原话/依赖变化/of 到期唤醒才重来。默认关闭，保持既有测试与产品语义。
+      const settled = process.env.PET_ASSESS_SETTLE === '1' && latest.status === 'submitted'
+        && !forced && !this.reassessNext.has(task.ticketId) && !setChanged
+        && (!latest.wait_until || Date.parse(now) < Date.parse(latest.wait_until))
+      if (settled) return false
       if (latest.status === 'submitted' && (!latest.wait_until || Date.parse(now) < Date.parse(latest.wait_until))) return false
       round = latest.round + 1
     }
@@ -2601,6 +2608,61 @@ export class FollowupRuntime {
   }
 
   /** 停止前中止所有在途请求（它们的回交会被拒绝；重启后按同身份下一轮重新请求）。 */
+  /**
+   * 更新真实依赖集合（用户改口“只等 A”）：同一事务内推进版本、撤销旧问题/旧授权、
+   * 失效未执行 effect；旧结果因此无法再被执行。返回新版本号。
+   */
+  updateBindings(input: {
+    readonly ticketId: string
+    readonly reportBindings: readonly { readonly alias: string; readonly taskId: string }[]
+    readonly sourceTurnIds: readonly string[]
+    readonly reason: string
+    readonly at?: string
+  }): { ok: boolean; taskRevision: number; detail: string } {
+    const now = input.at ?? this.clock.now()
+    const task = this.requireTask(input.ticketId)
+    if (task.status !== 'active') return { ok: false, taskRevision: task.taskRevision, detail: `task ${task.status}` }
+    const seen = new Set<string>()
+    const bindings: { alias: string; taskId: string }[] = []
+    for (const item of input.reportBindings) {
+      const dep = this.listTasks().find((t) => t.ticketId === item.taskId)
+      if (!dep) return { ok: false, taskRevision: task.taskRevision, detail: `unknown_dependency:${item.taskId}` }
+      if (dep.ticketId === task.ticketId || seen.has(dep.ticketId)) continue
+      seen.add(dep.ticketId)
+      bindings.push({ alias: String(item.alias).slice(0, 40) || dep.title.slice(0, 40), taskId: dep.ticketId })
+    }
+    let revision = task.taskRevision
+    this.db.atomic(() => {
+      const fresh = this.requireTask(task.ticketId)
+      fresh.taskRevision += 1
+      revision = fresh.taskRevision
+      fresh.reportBindings = bindings
+      fresh.updatedAt = now
+      const superseded = this.skipInvalidation ? [] : this.attention.supersede(fresh.ticketId, fresh.taskRevision, 'dependency updated', now)
+      if (!this.skipInvalidation) {
+        this.invalidateOpenProposals(fresh.ticketId, 'dependency updated')
+        this.invalidatePendingEffects(fresh.ticketId, 'dependency updated')
+      }
+      const event = this.makeEvent({
+        kind: 'user.dependency_updated',
+        sourceId: `dep-${randomUUID()}`,
+        sourceRevision: '1',
+        at: now,
+        ticketId: fresh.ticketId,
+        taskRevision: fresh.taskRevision,
+        payload: { reportBindings: bindings, sourceTurnIds: input.sourceTurnIds, reason: input.reason, superseded },
+      })
+      const inserted = this.db.insertEvent(event, now)
+      const memory = this.memory.ingest({ event, eventCursor: inserted.seq, ticketId: fresh.ticketId, taskRevision: fresh.taskRevision, label: '依赖更新' })
+      fresh.eventCursor = inserted.seq
+      fresh.memoryCursor = memory.cursor
+      this.saveTask(fresh)
+      this.db.driverLog(now, fresh.ticketId, 'dependency.updated', { bindings, sourceTurnIds: input.sourceTurnIds, reason: input.reason, taskRevision: fresh.taskRevision })
+    })
+    this.drain()
+    return { ok: true, taskRevision: revision, detail: `${bindings.length} dependencies` }
+  }
+
   /** 记忆在 runtime 之外变化（新用户原话）时，请求对该任务做新一轮评估；下一次 reevaluate 生效。 */
   requestReassessment(ticketId: string): void {
     if (!this.assessmentOptions) return
@@ -2686,6 +2748,35 @@ export class FollowupRuntime {
       return { ok: valid, code: result.code, detail: result.detail, results: [result] }
     }
     const packet = JSON.parse(row.packet_json) as MemoryPacket
+    if (response.dependencyUpdate && drafts.length === 0) {
+      // 用户改口导致的依赖更新：证据必须来自本请求快照/记忆包，目标任务必须存在。
+      // 只有记忆包里的 turn refs 是“原话”；快照证据是来源级引用（sourceId），不能当轮次。
+      const allowedTurns = new Set((packet.evidenceRefs as unknown as { turnId?: string }[]).map((ref) => ref.turnId).filter((x): x is string => typeof x === 'string'))
+      const sources = response.dependencyUpdate.sourceTurnIds.filter((id) => allowedTurns.has(id))
+      const applied = sources.length > 0
+        ? this.updateBindings({
+          ticketId: row.ticket_id,
+          reportBindings: response.dependencyUpdate.reportBindings,
+          sourceTurnIds: sources,
+          reason: response.dependencyUpdate.reason,
+          at: now,
+        })
+        : { ok: false, taskRevision: 0, detail: 'no_source_evidence' }
+      const record: AssessmentGuardResult = {
+        decisionId: stableId('dec', 'deps', requestId), draftIndex: 0, kind: 'record_only', guard: 'host',
+        outcome: applied.ok ? 'recorded' : 'rejected',
+        code: applied.ok ? 'dependency_updated' : `invalid_dependency_update:${applied.detail}`,
+        detail: applied.detail,
+      }
+      store.finish(requestId, { status: 'submitted', raw_json: rawJson, pre_guard_json: preGuard, post_guard_json: canonicalJson([record]), completed_at: now })
+      this.db.driverLog(now, row.ticket_id, 'assessment.dependency_update', { requestId, ok: applied.ok, detail: applied.detail, bindings: response.dependencyUpdate.reportBindings })
+      if (applied.ok) {
+        this.assessForce.add(row.ticket_id)
+        this.requestReassessment(row.ticket_id)
+        queueMicrotask(() => { try { this.reevaluate() } catch { /* 下一轮事件自愈 */ } })
+      }
+      return { ok: applied.ok, code: record.code, detail: applied.detail, results: [record] }
+    }
     const menu = snapshot.actionMenu
     const allowed = new Set<string>([...snapshot.evidence, ...packet.evidenceRefs, ...menu.flatMap((item) => item.evidenceRefs)].map(refKey))
     const supportedOptions = new Set(menu.flatMap((item) => (item.kind === 'ask_user' ? (item.options ?? []).map((option) => option.id) : [])))

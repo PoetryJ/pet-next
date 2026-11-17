@@ -31,6 +31,7 @@ export type FollowupEventKind =
   | 'user.changed'
   | 'user.cancelled'
   | 'user.answered'
+  | 'user.dependency_updated'
   | 'artifact.observed'
   | 'tool.receipt'
   | 'clock.advanced'

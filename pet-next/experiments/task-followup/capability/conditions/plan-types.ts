@@ -31,6 +31,8 @@ export interface FactDeclaration {
   /** 该字段的事实来源（结果文件 / 用户记忆 / 宿主时钟）。 */
   readonly sourceId: string
   readonly note?: string
+  /** 字符串字段的合法取值（如 result.status）；编译期校验，避免非法值变成永久 false。 */
+  readonly enum?: readonly string[]
 }
 
 export interface ConditionQuote {
@@ -75,6 +77,9 @@ export interface CompileInput {
   readonly bindingRegistrySha256: string
   readonly compilerSha256: string
   readonly now: string
+  /** 记忆视图：摘要（T）与视图指纹；编译器必须记录并实际使用。 */
+  readonly memorySummary?: string | null
+  readonly viewSha?: string | null
 }
 
 /** 一次原始模型调用的可核对记录（含失败），供成本台账与复现。 */
@@ -154,9 +159,11 @@ export function taskFact(taskId: string, name: 'result.present' | 'result.total'
 export const USER_AVAILABILITY_FACT = 'user.availability'
 export const CLOCK_NOW_FACT = 'clock.nowMs'
 
+export const RESULT_STATUS_VALUES = ['succeeded', 'failed', 'partial', 'skipped'] as const
+
 export function declareFact(taskId: string, name: 'result.present' | 'result.total' | 'result.passed' | 'result.failed' | 'result.revision' | 'result.status'): FactDeclaration {
   const type: FactType = name === 'result.status' ? 'string' : name === 'result.present' ? 'boolean' : 'number'
-  return { id: taskFact(taskId, name), type, sourceId: `result:${taskId}` }
+  return { id: taskFact(taskId, name), type, sourceId: `result:${taskId}`, ...(name === 'result.status' ? { enum: RESULT_STATUS_VALUES } : {}) }
 }
 
 /** 首批允许字段：已声明任务的 result.* + user.availability + clock.nowMs。 */
