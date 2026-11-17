@@ -1,0 +1,102 @@
+{
+  "schema": "pet-r6-story-index/v1",
+  "at": "2026-11-17T04:23:29.370Z",
+  "stories": [
+    {
+      "id": "two-reports-dev",
+      "split": "dev",
+      "family": "two-reports",
+      "file": "two-reports-dev.json",
+      "sha256": "3ed34facd035dbb1cadaa8662ed7b6be6dd6a5db2afd505e1d0aff7096868184",
+      "turnCount": 96
+    },
+    {
+      "id": "narrow-correction-dev",
+      "split": "dev",
+      "family": "narrow-correction",
+      "file": "narrow-correction-dev.json",
+      "sha256": "9de2558ef470a84211efc13a1e2d3a4c9fe479266836af65915f32ec53fb5a8e",
+      "turnCount": 96
+    },
+    {
+      "id": "out-of-order-dev",
+      "split": "dev",
+      "family": "out-of-order",
+      "file": "out-of-order-dev.json",
+      "sha256": "695be17e316afc1b017e4d6b83957f323036ee0bd9b7aa8db80bdfdfd6bceaa5",
+      "turnCount": 96
+    },
+    {
+      "id": "cross-task-correction-dev",
+      "split": "dev",
+      "family": "cross-task-correction",
+      "file": "cross-task-correction-dev.json",
+      "sha256": "17ccc608fdad6c34d8ec9a4679cdde03eb397264dc6ecf24a7363b0cf298d27f",
+      "turnCount": 96
+    },
+    {
+      "id": "restart-missing-source-dev",
+      "split": "dev",
+      "family": "restart-missing-source",
+      "file": "restart-missing-source-dev.json",
+      "sha256": "84765f9a3e9c051e22d92913fabc94d3e738c71e04749b0e4cca3aebb2b893ec",
+      "turnCount": 96
+    },
+    {
+      "id": "cancel-distractor-dev",
+      "split": "dev",
+      "family": "cancel-distractor",
+      "file": "cancel-distractor-dev.json",
+      "sha256": "9baafd8acc190fddcc72ef076f84fa4b0d6bd253b04848c4a3841fe58e33ce27",
+      "turnCount": 96
+    },
+    {
+      "id": "two-reports-heldout",
+      "split": "heldout",
+      "family": "two-reports",
+      "file": "two-reports-heldout.json",
+      "sha256": "efba203312f90ac391d36a093fa814bf3d22332dfad4a41c80e74207ccb627ac",
+      "turnCount": 96
+    },
+    {
+      "id": "narrow-correction-heldout",
+      "split": "heldout",
+      "family": "narrow-correction",
+      "file": "narrow-correction-heldout.json",
+      "sha256": "ac3adfe2d09b8d9d96e0d5494fd1be4657b567bf3bb5d78e647001ee477129c0",
+      "turnCount": 96
+    },
+    {
+      "id": "out-of-order-heldout",
+      "split": "heldout",
+      "family": "out-of-order",
+      "file": "out-of-order-heldout.json",
+      "sha256": "2662167933d831d8d20ffa09d7741c31ddaf886b021afaef4196cf1e5dea9828",
+      "turnCount": 96
+    },
+    {
+      "id": "cross-task-correction-heldout",
+      "split": "heldout",
+      "family": "cross-task-correction",
+      "file": "cross-task-correction-heldout.json",
+      "sha256": "5e12631e5e1a33c0ae00f5ee3f0f56ec40915393b7cc24dab731d0b643180ac3",
+      "turnCount": 96
+    },
+    {
+      "id": "restart-missing-source-heldout",
+      "split": "heldout",
+      "family": "restart-missing-source",
+      "file": "restart-missing-source-heldout.json",
+      "sha256": "76e59cc98624c683cf0cc90b3b946fea175eb02f071e57fd30b9d9c7d474a652",
+      "turnCount": 96
+    },
+    {
+      "id": "cancel-distractor-heldout",
+      "split": "heldout",
+      "family": "cancel-distractor",
+      "file": "cancel-distractor-heldout.json",
+      "sha256": "e3cfc61a73fa4ae91dfaf236865835f7f018ada4d4ce312e1cd5aca3a40ca42a",
+      "turnCount": 96
+    }
+  ]
+}

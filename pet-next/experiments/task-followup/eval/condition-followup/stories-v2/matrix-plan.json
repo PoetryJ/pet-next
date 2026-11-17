@@ -1,0 +1,501 @@
+{
+  "schema": "pet-r6-matrix-plan/v1",
+  "createdAt": "2026-11-17T04:23:29.450Z",
+  "note": "冻结后不得修改；plan SHA 与 coverage.planSha 必须一致。",
+  "cases": [
+    {
+      "id": "cancel-distractor-dev",
+      "split": "dev",
+      "storySha": "da2c3bf00808e61020b0bc34e4a19807032d1435570eab7f4d96cc9b9fee92c5"
+    },
+    {
+      "id": "cancel-distractor-heldout",
+      "split": "heldout",
+      "storySha": "15c7cbc01fbe201b20f3a740df18f3bd24966a7833bcecff1297bd057c6db778"
+    },
+    {
+      "id": "cross-task-correction-dev",
+      "split": "dev",
+      "storySha": "4466d63da69b66005b5a2a1daa0d5dfb92faeaa56015010a462c1e991b7373fa"
+    },
+    {
+      "id": "cross-task-correction-heldout",
+      "split": "heldout",
+      "storySha": "d91c2433fab62d21aafb60d6ed80a51983beec7e1edf601940bf40ffbcdfff10"
+    },
+    {
+      "id": "narrow-correction-dev",
+      "split": "dev",
+      "storySha": "459258a21f010c1e81ef2a37e772e4945a15a8dc5ccdef2522ace12429b92c08"
+    },
+    {
+      "id": "narrow-correction-heldout",
+      "split": "heldout",
+      "storySha": "da98e20d46015fbedbc414c6bada6f768016ba51adb30c65a711e8584bcc4eb1"
+    },
+    {
+      "id": "out-of-order-dev",
+      "split": "dev",
+      "storySha": "3ec480d318daf2892f4e0454bce80272e36f8ea5c968824ff994fcc94b3a0065"
+    },
+    {
+      "id": "out-of-order-heldout",
+      "split": "heldout",
+      "storySha": "1364a3ac1e13d7908a3c98e7eea2f5ebef3972df942e1dbd1817afcd5af46c71"
+    },
+    {
+      "id": "restart-missing-source-dev",
+      "split": "dev",
+      "storySha": "9dc8d281b7ed81b79e026d47cce0778c3ebcfa533e5c0f6ed6c09c708ccfa0c4"
+    },
+    {
+      "id": "restart-missing-source-heldout",
+      "split": "heldout",
+      "storySha": "e452a2970a58c54fcd26332cbf6d0bb9555f31929e2ddf4e6756ea939c8c9efc"
+    },
+    {
+      "id": "two-reports-dev",
+      "split": "dev",
+      "storySha": "2a61126d6cc843eb608634344a562540e677062c71ca4a1d01ff957e9c0d2d93"
+    },
+    {
+      "id": "two-reports-heldout",
+      "split": "heldout",
+      "storySha": "0fa3b4f771a16c867590a35663cc7d2475eafd3245ee1ae90b41034f439ea72a"
+    }
+  ],
+  "runs": [
+    {
+      "id": "cancel-distractor-dev-V-R-r1",
+      "caseId": "cancel-distractor-dev",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-dev-V-L-r1",
+      "caseId": "cancel-distractor-dev",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-dev-V-C-r1",
+      "caseId": "cancel-distractor-dev",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-dev-T-L-r1",
+      "caseId": "cancel-distractor-dev",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-dev-T-C-r1",
+      "caseId": "cancel-distractor-dev",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-heldout-V-R-r1",
+      "caseId": "cancel-distractor-heldout",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-heldout-V-L-r1",
+      "caseId": "cancel-distractor-heldout",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-heldout-V-C-r1",
+      "caseId": "cancel-distractor-heldout",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-heldout-T-L-r1",
+      "caseId": "cancel-distractor-heldout",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-heldout-T-C-r1",
+      "caseId": "cancel-distractor-heldout",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-dev-V-R-r1",
+      "caseId": "cross-task-correction-dev",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-dev-V-L-r1",
+      "caseId": "cross-task-correction-dev",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-dev-V-C-r1",
+      "caseId": "cross-task-correction-dev",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-dev-T-L-r1",
+      "caseId": "cross-task-correction-dev",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-dev-T-C-r1",
+      "caseId": "cross-task-correction-dev",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-heldout-V-R-r1",
+      "caseId": "cross-task-correction-heldout",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-heldout-V-L-r1",
+      "caseId": "cross-task-correction-heldout",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-heldout-V-C-r1",
+      "caseId": "cross-task-correction-heldout",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-heldout-T-L-r1",
+      "caseId": "cross-task-correction-heldout",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "cross-task-correction-heldout-T-C-r1",
+      "caseId": "cross-task-correction-heldout",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-dev-V-R-r1",
+      "caseId": "narrow-correction-dev",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-dev-V-L-r1",
+      "caseId": "narrow-correction-dev",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-dev-V-C-r1",
+      "caseId": "narrow-correction-dev",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-dev-T-L-r1",
+      "caseId": "narrow-correction-dev",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-dev-T-C-r1",
+      "caseId": "narrow-correction-dev",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-heldout-V-R-r1",
+      "caseId": "narrow-correction-heldout",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-heldout-V-L-r1",
+      "caseId": "narrow-correction-heldout",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-heldout-V-C-r1",
+      "caseId": "narrow-correction-heldout",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-heldout-T-L-r1",
+      "caseId": "narrow-correction-heldout",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "narrow-correction-heldout-T-C-r1",
+      "caseId": "narrow-correction-heldout",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-dev-V-R-r1",
+      "caseId": "out-of-order-dev",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-dev-V-L-r1",
+      "caseId": "out-of-order-dev",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-dev-V-C-r1",
+      "caseId": "out-of-order-dev",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-dev-T-L-r1",
+      "caseId": "out-of-order-dev",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-dev-T-C-r1",
+      "caseId": "out-of-order-dev",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-heldout-V-R-r1",
+      "caseId": "out-of-order-heldout",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-heldout-V-L-r1",
+      "caseId": "out-of-order-heldout",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-heldout-V-C-r1",
+      "caseId": "out-of-order-heldout",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-heldout-T-L-r1",
+      "caseId": "out-of-order-heldout",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "out-of-order-heldout-T-C-r1",
+      "caseId": "out-of-order-heldout",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-dev-V-R-r1",
+      "caseId": "restart-missing-source-dev",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-dev-V-L-r1",
+      "caseId": "restart-missing-source-dev",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-dev-V-C-r1",
+      "caseId": "restart-missing-source-dev",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-dev-T-L-r1",
+      "caseId": "restart-missing-source-dev",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-dev-T-C-r1",
+      "caseId": "restart-missing-source-dev",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-heldout-V-R-r1",
+      "caseId": "restart-missing-source-heldout",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-heldout-V-L-r1",
+      "caseId": "restart-missing-source-heldout",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-heldout-V-C-r1",
+      "caseId": "restart-missing-source-heldout",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-heldout-T-L-r1",
+      "caseId": "restart-missing-source-heldout",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "restart-missing-source-heldout-T-C-r1",
+      "caseId": "restart-missing-source-heldout",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-dev-V-R-r1",
+      "caseId": "two-reports-dev",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-dev-V-L-r1",
+      "caseId": "two-reports-dev",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-dev-V-C-r1",
+      "caseId": "two-reports-dev",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-dev-T-L-r1",
+      "caseId": "two-reports-dev",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-dev-T-C-r1",
+      "caseId": "two-reports-dev",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-heldout-V-R-r1",
+      "caseId": "two-reports-heldout",
+      "arm": "V-R",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-heldout-V-L-r1",
+      "caseId": "two-reports-heldout",
+      "arm": "V-L",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-heldout-V-C-r1",
+      "caseId": "two-reports-heldout",
+      "arm": "V-C",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-heldout-T-L-r1",
+      "caseId": "two-reports-heldout",
+      "arm": "T-L",
+      "repeat": 1
+    },
+    {
+      "id": "two-reports-heldout-T-C-r1",
+      "caseId": "two-reports-heldout",
+      "arm": "T-C",
+      "repeat": 1
+    },
+    {
+      "id": "cancel-distractor-heldout-V-L-r2",
+      "caseId": "cancel-distractor-heldout",
+      "arm": "V-L",
+      "repeat": 2
+    },
+    {
+      "id": "cancel-distractor-heldout-V-C-r2",
+      "caseId": "cancel-distractor-heldout",
+      "arm": "V-C",
+      "repeat": 2
+    },
+    {
+      "id": "cross-task-correction-heldout-V-L-r2",
+      "caseId": "cross-task-correction-heldout",
+      "arm": "V-L",
+      "repeat": 2
+    },
+    {
+      "id": "cross-task-correction-heldout-V-C-r2",
+      "caseId": "cross-task-correction-heldout",
+      "arm": "V-C",
+      "repeat": 2
+    },
+    {
+      "id": "narrow-correction-heldout-V-L-r2",
+      "caseId": "narrow-correction-heldout",
+      "arm": "V-L",
+      "repeat": 2
+    },
+    {
+      "id": "narrow-correction-heldout-V-C-r2",
+      "caseId": "narrow-correction-heldout",
+      "arm": "V-C",
+      "repeat": 2
+    },
+    {
+      "id": "out-of-order-heldout-V-L-r2",
+      "caseId": "out-of-order-heldout",
+      "arm": "V-L",
+      "repeat": 2
+    },
+    {
+      "id": "out-of-order-heldout-V-C-r2",
+      "caseId": "out-of-order-heldout",
+      "arm": "V-C",
+      "repeat": 2
+    },
+    {
+      "id": "restart-missing-source-heldout-V-L-r2",
+      "caseId": "restart-missing-source-heldout",
+      "arm": "V-L",
+      "repeat": 2
+    },
+    {
+      "id": "restart-missing-source-heldout-V-C-r2",
+      "caseId": "restart-missing-source-heldout",
+      "arm": "V-C",
+      "repeat": 2
+    },
+    {
+      "id": "two-reports-heldout-V-L-r2",
+      "caseId": "two-reports-heldout",
+      "arm": "V-L",
+      "repeat": 2
+    },
+    {
+      "id": "two-reports-heldout-V-C-r2",
+      "caseId": "two-reports-heldout",
+      "arm": "V-C",
+      "repeat": 2
+    }
+  ]
+}

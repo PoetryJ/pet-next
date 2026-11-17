@@ -15,6 +15,8 @@
  */
 import type { DatabaseSync } from 'node:sqlite'
 import { CapabilityMemoryStore } from '../capability/memory/store.ts'
+import { adapterKindFromEnv, loadMemory } from '../capability/memory/adapters.ts'
+import type { MemoryLoad } from '../capability/memory/adapters.ts'
 import { extractPending } from '../capability/memory/extract.ts'
 import { readForDecision } from '../capability/memory/read.ts'
 import { ingestVerifiedOutcome, type VerifiedOutcome } from '../capability/memory/verified.ts'
@@ -89,7 +91,7 @@ export function createConditionsHandle(
   let plans: SqliteConditionStore | null = null
   let inner: CapabilityHandle | null = null
   let seq = 0
-  const compilation = new MemoryCompilation<Awaited<ReturnType<typeof extractPending>>>()
+  const compilation = new MemoryCompilation<MemoryLoad>()
   const need = (): { mem: CapabilityMemoryStore; plans: SqliteConditionStore } => {
     if (!mem || !plans) throw new Error('provider_error: conditions store not attached to host database')
     return { mem, plans }
@@ -187,15 +189,19 @@ export function createConditionsHandle(
       const { mem: memStore, plans: planStore } = need()
       stats.assessments += 1
       const task = snapshot.task
-      const extraction = await compilation.run(task.ticketId, (compilationSignal) => extractPending(memStore, client, {
-        entities: [{ id: task.ticketId, type: 'task', label: task.title }],
+      // A：V/T 两种真实不同的记忆实现，由 PET_MEMORY_ADAPTER 选择（默认 versioned）。
+      const memoryKind = adapterKindFromEnv(process.env)
+      const loaded = await compilation.run(task.ticketId, (compilationSignal) => loadMemory(memoryKind, {
+        store: memStore,
+        client,
+        taskId: task.ticketId,
+        taskTitle: task.title,
         now: new Date().toISOString(),
         signal: compilationSignal,
-        maxTurns: 3,
-        roles: ['user', 'assistant'],
-        maxTokens: EXTRACT_MAX,
-        taskId: task.ticketId,
+        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 3, maxTokens: EXTRACT_MAX },
+        read: { question: `${task.title} 的条件承诺、用户更正与当前结果`, requiredSlots: SHARED_READ_SLOTS, maxItems: 24, maxChars: 4500 },
       }))
+      const extraction = loaded.extraction ?? { status: 'applied', requestId: null }
       if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
       if (signal.aborted) throw signal.reason ?? new Error('aborted')
 
@@ -204,12 +210,7 @@ export function createConditionsHandle(
       if (control) return { drafts: [], taskControl: control, raw: { provider: 'conditions', model: 'no-intervention-model-call', rawOutput: '', meta: { taskControl: control } } }
 
       const askTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user' && (item.options?.length ?? 0) > 0)
-      const packet = readForDecision(memStore, {
-        taskId: task.ticketId, asOf: now, intent: 'current',
-        question: `${task.title} 的条件承诺、用户更正与当前结果`,
-        requiredSlots: SHARED_READ_SLOTS,
-        budget: { maxItems: 24, maxChars: 4500 },
-      })
+      const packet = loaded.packet
       if (!task.result && !askTemplate) {
         stats.ignored += 1
         return {
@@ -241,7 +242,10 @@ export function createConditionsHandle(
       let compileDetail: string | null = null
       let rawCall: unknown = null
       if (!plan || stalePlan) {
-        const turns = compileTurns(memStore, task.ticketId, packet)
+        // T：编译器只看摘要命中的原话；V：沿用既有条目证据+近期窗口。
+        const turns = loaded.turns
+          ? loaded.turns.filter((t) => t.role === 'user').map((t) => ({ turnId: t.turnId, role: 'user' as const, at: t.at, text: t.text, sha256: sha(t.text) }))
+          : compileTurns(memStore, task.ticketId, packet)
         const compileIdentity = sha(JSON.stringify({ commitmentRevision, compilerSha, bindingSha, turnIds: turns.map((t) => t.turnId) }))
         const cachedFailure = planStore.failure(task.ticketId, compileIdentity)
         if (cachedFailure) {

@@ -23,6 +23,8 @@ import type { DatabaseSync } from 'node:sqlite'
 import { CapabilityMemoryStore } from '../capability/memory/store.ts'
 import { extractPending } from '../capability/memory/extract.ts'
 import { readForDecision } from '../capability/memory/read.ts'
+import { adapterKindFromEnv, loadMemory } from '../capability/memory/adapters.ts'
+import type { MemoryLoad } from '../capability/memory/adapters.ts'
 import { assess as capAssess, repairQuestion, REPAIRABLE, snapshotFromTask, submitAssessment as capSubmit } from '../capability/intervention/assess.ts'
 import type { AssessmentRecord, SubmitResult } from '../capability/intervention/assess.ts'
 import { ingestVerifiedOutcome, type VerifiedOutcome } from '../capability/memory/verified.ts'
@@ -131,7 +133,7 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
     return { store, plan }
   }
   let seq = 0
-  const compilation = new MemoryCompilation<Awaited<ReturnType<typeof extractPending>>>()
+  const compilation = new MemoryCompilation<MemoryLoad>()
   const taskControl = (taskId: string, now: string): AssessmentResponse['taskControl'] => findUserCancel(need().store, taskId, now)
   const assessor: AsyncAssessor = {
     id: `${handleOptions.intervention === 'need-rule' ? 'strong-need-rule:shared-extraction' : 'capability'}:${cfg.ok ? cfg.config.model : 'override'}`,
@@ -139,15 +141,19 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
     async assess(snapshot: AssessmentSnapshot, _packet, signal): Promise<AssessmentResponse> {
       const { store: s, plan: p } = need()
       const task = snapshot.task
-      const extraction = await compilation.run(task.ticketId, (compilationSignal) => extractPending(s, client, {
-        entities: [{ id: task.ticketId, type: 'task', label: task.title }],
+      // A：V=版本化记忆；T=滚动摘要+BM25（请求形状不同，不能只换标签）。
+      const memoryKind = adapterKindFromEnv(process.env)
+      const loaded = await compilation.run(task.ticketId, (compilationSignal) => loadMemory(memoryKind, {
+        store: s,
+        client,
+        taskId: task.ticketId,
+        taskTitle: task.title,
         now: new Date().toISOString(),
         signal: compilationSignal,
-        maxTurns: 3,
-        roles: ['user', 'assistant'],
-        maxTokens: EXTRACT_MAX,
-        taskId: task.ticketId,
+        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 3, maxTokens: EXTRACT_MAX },
+        read: { question: `${task.title} 当前结果、授权范围、通知偏好与等待条件`, requiredSlots: SHARED_READ_SLOTS, maxItems: 24, maxChars: 4500 },
       }))
+      const extraction = loaded.extraction ?? { status: 'applied' as const }
       if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
       if (signal.aborted) throw signal.reason ?? new Error('aborted')
       const now = new Date().toISOString()
@@ -156,14 +162,7 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         drafts: [], taskControl: control,
         raw: { provider: extraction.response?.model.provider ?? 'persisted-user-memory', model: extraction.response?.model.name ?? 'no-new-model-call', rawOutput: extraction.response?.rawText ?? '', requestPayload: extraction.request ?? null, meta: { taskControl: control, extraction: extraction.report ?? null } },
       }
-      const packet = readForDecision(s, {
-        taskId: task.ticketId,
-        asOf: now,
-        intent: 'current',
-        question: `${task.title} 当前结果、授权范围、通知偏好与等待条件`,
-        requiredSlots: SHARED_READ_SLOTS,
-        budget: { maxItems: 24, maxChars: 4500 },
-      })
+      const packet = loaded.packet
       if (!task.result && !snapshot.actionMenu.some((item) => item.kind === 'ask_user' || item.kind === 'continue_local')) return {
         drafts: [{ intent: 'none', reasonCode: 'await_new_evidence', reasonText: '目录监听持续等待结果；当前无可选行动，不重复占用模型判断。' }],
         raw: { provider: 'event-driven-host', model: 'no-intervention-model-call', rawOutput: '', meta: { extraction: { status: extraction.status, requestId: extraction.request?.requestId ?? null }, memoryPacket: packet, waitsFor: 'new result or user message' } },
