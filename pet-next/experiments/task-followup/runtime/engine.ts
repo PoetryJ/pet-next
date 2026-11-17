@@ -2030,6 +2030,9 @@ export class FollowupRuntime {
             inputRef: receipt.inputRef,
           }
           task.stage = 'analyzing'
+          // 分析已按当前输入交付：这次决定已经完成，不再保留未回答的问题。
+          this.attention.supersede(task.ticketId, task.taskRevision, 'analysis completed', receipt.finishedAt)
+          task.lastAnswer = task.lastAnswer ?? { optionId: 'continue_now', at: receipt.finishedAt }
         } else if (receipt.needsReconciliation) {
           task.stage = 'needs_reconciliation'
           task.diagnostics = [...task.diagnostics.slice(-40), `needs_reconciliation:${receipt.effectId}`]
@@ -2201,6 +2204,15 @@ export class FollowupRuntime {
       })
       this.db.driverLog(now, task.ticketId, 'proposal.notify_blocked', { code: notifyValidation.code, detail: notifyValidation.detail })
       return false
+    }
+    // 分析已交付：不再产生新问题（这次决定已经结束）。
+    if (task.analysis) {
+      this.db.atomic(() => {
+        this.db.saveProposal({ ...row, outcome: 'executed', validation_json: canonicalJson([{ ok: true, code: 'analysis_already_delivered', detail: task.analysis!.receiptId }]) })
+        this.recordLastProposal(task, row, 'executed')
+      })
+      this.db.driverLog(now, task.ticketId, 'proposal.ask_skipped_after_analysis', { decisionId: proposal.decisionId })
+      return true
     }
     // 同一任务已有未回答的问题：不再叠加第二个（重复打扰）；证据版本变化会先 supersede 旧问题。
     const alreadyOpen = this.attention.listOpen(task.ticketId)
