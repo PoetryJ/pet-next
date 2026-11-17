@@ -2202,6 +2202,16 @@ export class FollowupRuntime {
       this.db.driverLog(now, task.ticketId, 'proposal.notify_blocked', { code: notifyValidation.code, detail: notifyValidation.detail })
       return false
     }
+    // 同一任务已有未回答的问题：不再叠加第二个（重复打扰）；证据版本变化会先 supersede 旧问题。
+    const alreadyOpen = this.attention.listOpen(task.ticketId)
+    if (alreadyOpen.length > 0) {
+      this.db.atomic(() => {
+        this.db.saveProposal({ ...row, outcome: 'executed', validation_json: canonicalJson([{ ok: true, code: 'duplicate_open_attention', detail: alreadyOpen[0]!.attentionId }]) })
+        this.recordLastProposal(task, row, 'executed')
+      })
+      this.db.driverLog(now, task.ticketId, 'proposal.ask_deduped', { attentionId: alreadyOpen[0]!.attentionId, decisionId: proposal.decisionId })
+      return true
+    }
     const opened = this.attention.open(proposal, now, this.quiet)
     if (!opened.merged && task.goalCondition.analysisWhen === 'always') {
       this.db.metaSet(`attention.input-set:${opened.attention.attentionId}`, this.readInputSet(task).sha)
@@ -2424,47 +2434,34 @@ export class FollowupRuntime {
       memoryCursor: task.memoryCursor,
       eventCursor: task.eventCursor,
     }
-    // 长历史模式：在途时只记脏（不中止），由下一次 drain 追赶。
-    if (process.env.PET_ASSESS_SETTLE === '1' && [...this.assessInFlight.values()].some((entry) => entry.ticketId === task.ticketId)) {
-      this.reassessNext.add(task.ticketId)
-      return false
-    }
+    const longHistory = process.env.PET_ASSESS_SETTLE === '1'
+    // 队列语义（长历史模式）：同一任务一个在途 + 一个 dirty。
+    // 在途时不中止、不新建；dirty 留给 settle 后的一次追赶。默认关闭，保持既有测试语义。
+    if (longHistory && [...this.assessInFlight.values()].some((entry) => entry.ticketId === task.ticketId)) return false
+    const dirty = longHistory && this.reassessNext.has(task.ticketId)
+    if (dirty) this.reassessNext.delete(task.ticketId)
     let latest = store.latestForIdentity(base)
     let round = 0
-    // Dependency changes do not advance the parent's event cursor. Compare the
-    // persisted snapshot so restart cannot reuse an assessment of an older set.
-    // 只有“先前快照确实带 inputSet 且与现在不同”才算依赖变化。
-    // 旧快照没有 inputSet 时 undefined !== sha 会恒真，导致每秒重判（评估风暴的真正来源）。
-    const prevSetSha = latest ? (JSON.parse(latest.snapshot_json) as AssessmentSnapshot).task.inputSet?.sha ?? null : null
-    const setChanged = Boolean(latest && context.task.inputSet && prevSetSha && prevSetSha !== context.task.inputSet.sha)
-    if (latest && (this.reassessNext.has(task.ticketId) || setChanged)) {
-      // 宿主收到新原话（记忆在 runtime 之外更新）：同一身份强制新一轮，旧的进行中请求中止。
+    // 非长历史模式：保持既有语义——新原话中止在途、强制新一轮。
+    if (!longHistory && this.reassessNext.has(task.ticketId)) {
       this.reassessNext.delete(task.ticketId)
       this.abortAssessments(task.ticketId, 'superseded by new user turn')
-      round = (store.latestForIdentity(base)?.round ?? latest.round) + 1
+      round = (latest?.round ?? 0) + 1
       latest = undefined
-    } else if (this.reassessNext.has(task.ticketId)) {
-      this.reassessNext.delete(task.ticketId)
     }
-    const forced = this.assessForce.delete(task.ticketId)
+    // 旧快照没有 inputSet 时 undefined !== sha 会恒真：只有两边都有且不同才算依赖变化。
+    const prevSetSha = latest ? (JSON.parse(latest.snapshot_json) as AssessmentSnapshot).task.inputSet?.sha ?? null : null
+    const setChanged = Boolean(latest && context.task.inputSet && prevSetSha && prevSetSha !== context.task.inputSet.sha)
+    const forced = this.assessForce.delete(task.ticketId) || dirty || setChanged
     if (process.env.PET_ASSESS_TRACE === '1') {
-      this.db.driverLog(now, task.ticketId, 'assessment.trace', { latest: latest ? { status: latest.status, round: latest.round, wait: latest.wait_until } : null, forced, reassess: this.reassessNext.has(task.ticketId), setChanged })
+      this.db.driverLog(now, task.ticketId, 'assessment.trace', { latest: latest ? { status: latest.status, round: latest.round, wait: latest.wait_until } : null, forced, dirty, setChanged })
     }
-    // 同身份轮次上限（长历史模式）：即使判定/唤醒反复触发，也不无限重判同一证据版本。
-    if (process.env.PET_ASSESS_SETTLE === '1' && latest && latest.round >= 3 && !forced
-      && !this.reassessNext.has(task.ticketId) && !setChanged) return false
     if (latest) {
       if (latest.status === 'pending' && !forced) return false
-      if ((latest.status === 'failed' || latest.status === 'stale') && !forced) return false
-      // aborted 也算“这一身份已判过”：否则中止行会绕过守卫，形成 新建→中止→再新建 的死循环。
-      if (latest.status === 'aborted' && !forced && !this.reassessNext.has(task.ticketId) && !setChanged) return false
-      // PET_ASSESS_SETTLE=1（真实运行/长历史）：同一身份已判过就不再逐轮重判；
-      // 只有新原话/依赖变化/of 到期唤醒才重来。默认关闭，保持既有测试与产品语义。
-      const settled = process.env.PET_ASSESS_SETTLE === '1' && latest.status === 'submitted'
-        && !forced && !this.reassessNext.has(task.ticketId) && !setChanged
-        && (!latest.wait_until || Date.parse(now) < Date.parse(latest.wait_until))
-      if (settled) return false
-      if (latest.status === 'submitted' && (!latest.wait_until || Date.parse(now) < Date.parse(latest.wait_until))) return false
+      if ((latest.status === 'failed' || latest.status === 'stale' || latest.status === 'aborted') && !forced) return false
+      if (latest.status === 'submitted' && !forced && (!latest.wait_until || Date.parse(now) < Date.parse(latest.wait_until))) return false
+      // 同身份轮次上限：即使判据/唤醒反复触发也不会无限重判（dirty 追赶仍可用，最多 5 轮）。
+      if (longHistory && latest.round >= 5 && !forced) return false
       round = latest.round + 1
     }
     // 同一任务的旧身份请求已过时：中止（其回交也会被身份校验拒绝），避免无效等待占用。
@@ -2485,7 +2482,8 @@ export class FollowupRuntime {
     }))
     // 多来源任务：菜单里没有提问模板时，补一个“来源齐备后确认”的合法动作，
     // 让条件命中时能真正形成问题；选项仍受 submitAssessment 的菜单校验约束。
-    if (task.reportBindings?.length && !actionMenu.some((item) => item.kind === 'ask_user')) {
+    // 条件模式（含改口把依赖清空的情况）也必须能形成合法提问。
+    if ((task.reportBindings?.length || process.env.PET_CONDITION_MENU === '1') && !actionMenu.some((item) => item.kind === 'ask_user')) {
       actionMenu.push({
         actionId: 'a-conditions-ready',
         source: 'baseline-rule-menu',
@@ -2556,6 +2554,11 @@ export class FollowupRuntime {
       .finally(() => {
         clearTimeout(timer)
         this.assessInFlight.delete(requestId)
+        // dirty 追赶：settle 后若期间有新原话，只补跑一次（不丢事件、不重复排队）。
+        if (process.env.PET_ASSESS_SETTLE === '1' && this.reassessNext.has(task.ticketId)
+          && ![...this.assessInFlight.values()].some((entry) => entry.ticketId === task.ticketId)) {
+          queueMicrotask(() => { try { this.reevaluate() } catch { /* 下一轮事件自愈 */ } })
+        }
         let status = 'unknown'
         try {
           status = this.assessments?.get(requestId)?.status ?? 'unknown'
@@ -2706,7 +2709,10 @@ export class FollowupRuntime {
     const rawJson = canonicalJson(response?.raw ?? null)
     let drafts
     try {
-      drafts = response?.taskControl && Array.isArray(response.drafts) && response.drafts.length === 0 ? [] : parseDrafts(response?.drafts)
+      // 依赖更新是“无草案”的合法回交（不是空数组错误）：先放行，再由下面的事务处理。
+      drafts = response?.dependencyUpdate && Array.isArray(response.drafts) && response.drafts.length === 0
+        ? []
+        : response?.taskControl && Array.isArray(response.drafts) && response.drafts.length === 0 ? [] : parseDrafts(response?.drafts)
     } catch (error) {
       store.finish(requestId, { status: 'failed', raw_json: rawJson, error_code: 'parse_error', error_detail: (error as Error).message, completed_at: now })
       this.db.driverLog(now, row.ticket_id, 'assessment.failed', { requestId, code: 'parse_error' })

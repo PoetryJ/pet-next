@@ -254,7 +254,8 @@ export async function loadVersionedMemory(options: {
     taskId,
     ignorePrefixes: ['回答：', '用户选择：'],
   })
-  if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
+  // 抽取失败不拖垮整次判断：沿用已持久化的记忆，并把错误显式记录（缺的部分仍然缺失）。
+  const extractionError = extraction.status === 'failed' ? (extraction.detail ?? 'extraction_failed') : null
   const packet = readForDecision(store, {
     taskId, asOf: now, intent: 'current',
     question: options.read.question || `${taskTitle} 当前结果、授权范围、通知偏好与等待条件`,
@@ -286,6 +287,7 @@ export async function loadVersionedMemory(options: {
     detail: {
       adapter: 'versioned',
       extraction: extraction.status,
+      extractionError,
       items: packet.currentFacts.length + packet.preferences.length + packet.commitments.length,
       consumedTurns: visible.map((t) => t.turnId),
       coveredSeq: covered,

@@ -92,7 +92,7 @@ export interface CapabilityHandleOptions {
 }
 
 const ASSESS_MAX = 768
-const EXTRACT_MAX = 768
+const EXTRACT_MAX = 1536
 
 /** 等待契约：引用的 ETA（记忆条目值/有效期或 guard 的锚点修复）原样采用；否则用宿主有界复查。 */
 export function applyWaitContract(record: AssessmentRecord, submit: SubmitResult, packet: CapPacket, now: string, hostRecheckMs: number): { submit: SubmitResult; contract: Record<string, unknown> | null } {
@@ -150,11 +150,11 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         taskTitle: task.title,
         now: new Date().toISOString(),
         signal: compilationSignal,
-        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 32, maxTokens: EXTRACT_MAX },
+        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 12, maxTokens: EXTRACT_MAX },
         read: { question: `${task.title} 当前结果、授权范围、通知偏好与等待条件`, requiredSlots: SHARED_READ_SLOTS, maxItems: 24, maxChars: 4500 },
       }))
       const extraction = loaded.extraction ?? { status: 'applied' as const }
-      if (extraction.status === 'failed') throw new Error(`provider_error: memory extraction failed: ${extraction.detail ?? ''}`)
+      // 抽取失败不拖垮整次判断：沿用已持久化记忆，错误记录在 memoryView/extractionError。
       if (signal.aborted) throw signal.reason ?? new Error('aborted')
       const now = new Date().toISOString()
       const control = taskControl(task.ticketId, new Date().toISOString())

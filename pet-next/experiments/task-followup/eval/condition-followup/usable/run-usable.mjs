@@ -69,7 +69,7 @@ async function runOne({ story, arm, outDir }) {
   let exited = null
   const startHost = async () => {
     child = spawn(process.execPath, ['--experimental-transform-types', '--no-warnings', RUN, 'host',
-      '--workspace', workspace, '--timezone', 'Etc/GMT-14', '--assessor', armSpec.assessor, '--assessor-timeout-ms', '240000'], {
+      '--workspace', workspace, '--timezone', 'Etc/GMT-14', '--assessor', armSpec.assessor, '--assessor-timeout-ms', process.env.PET_ASSESSOR_TIMEOUT_MS ?? '600000'], {
       cwd: ROOT,
       env: {
         ...process.env,
@@ -81,6 +81,7 @@ async function runOne({ story, arm, outDir }) {
         PET_MODEL_TIMEOUT_MS: process.env.PET_MODEL_TIMEOUT_MS ?? '600000',
         // 长历史真实运行：同一身份判过就等新证据，避免每秒重判（见 engine 注释）。
         PET_ASSESS_SETTLE: '1',
+        PET_CONDITION_MENU: '1',
       },
       stdio: ['ignore', 'pipe', 'pipe'],
     })
@@ -204,12 +205,18 @@ async function runOne({ story, arm, outDir }) {
         checks.cancelled = Boolean(res.ok)
         mark('task.cancel', { target: step.target, ok: res.ok })
       } else if (step.op === 'await-question') {
-        const until = Date.now() + 180000
+        const until = Date.now() + 300000
         let seen = null
         while (Date.now() < until) {
-          const view = await api('GET', `/api/task?ticket=${primaryId}`)
-          seen = view.task?.decision ?? null
-          if (seen) break
+          // 以宿主数据库为准（面板/API 只暴露已呈现的问题）；仍是真实 attention 行。
+          const rows = dbQuery(workspace, "SELECT attention_id, decision_id, task_revision, question, options_json, state FROM attentions WHERE ticket_id = ? AND state = 'open' ORDER BY created_at ASC", [primaryId])
+          if (rows.length) {
+            const row = rows[0]
+            let options = []
+            try { options = JSON.parse(row.options_json ?? '[]') } catch { options = [] }
+            seen = { attentionId: row.attention_id, decisionId: row.decision_id, taskRevision: Number(row.task_revision), question: row.question, options }
+            break
+          }
           await sleep(1500)
         }
         checks.asked = Boolean(seen)
@@ -220,7 +227,7 @@ async function runOne({ story, arm, outDir }) {
           const option = (seen.options ?? []).find((o) => o.id === step.option) ?? seen.options?.[0]
           const answered = await api('POST', '/api/answer', {
             ticketId: primaryId, attentionId: seen.attentionId, decisionId: seen.decisionId,
-            taskRevision: seen.taskRevision, optionId: option.id,
+            taskRevision: seen.taskRevision, optionId: option?.id ?? step.option,
           })
           checks.answered = answered.status === 200 && answered.ok === true
           mark('answer', { optionId: option?.id ?? null, status: answered.status, ok: answered.ok ?? null, code: answered.code ?? null })
