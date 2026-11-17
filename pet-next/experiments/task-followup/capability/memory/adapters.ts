@@ -129,7 +129,15 @@ export async function refreshSummary(
   const state = readTextState(store, taskId)
   const turns = store.turns().filter((t) => turnScope(t, taskId) && t.seq > state.seq)
   if (!turns.length) return { summary: state.summary, seq: state.seq, requestId: null, called: false }
-  const batch = turns.slice(-30)
+  // 宿主生成的作答记录不是用户事实：不触发摘要调用，但推进 seq，避免下次重复考虑。
+  const HOST_TURN = /^(回答：|用户选择：)/
+  const facts = turns.filter((t) => !HOST_TURN.test(t.text))
+  if (!facts.length) {
+    const seq = turns.at(-1)!.seq
+    writeTextState(store, taskId, seq, state.summary, now)
+    return { summary: state.summary, seq, requestId: null, called: false }
+  }
+  const batch = facts.slice(-30)
   const user = JSON.stringify({
     taskId,
     previousSummary: state.summary,
