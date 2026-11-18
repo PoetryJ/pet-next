@@ -48,6 +48,7 @@ export const STORIES = {
       { op: 'answer', option: 'continue_now' },
       { op: 'await-completion' },
     ],
+    bindings: ['B'],
     expectation: { primary: 'A', requiredKeys: ['A', 'B'], askedAfterAll: true, maxReminders: 1, mustVerify: true },
   },
   S2: {
@@ -63,6 +64,7 @@ export const STORIES = {
       { op: 'await-completion' },
       { op: 'assert', what: 'no-question-before-a' },
     ],
+    bindings: ['B'],
     expectation: { primary: 'A', requiredKeys: ['A'], askedAfterAll: true, maxReminders: 1, mustVerify: true, correctionDropsB: true },
   },
   S3: {
@@ -80,6 +82,8 @@ export const STORIES = {
       { op: 'await-completion' },
       { op: 'assert', what: 'cancelled-silent' },
     ],
+    // S3 的承诺只说主报告：B 不是依赖（干扰任务是 C，且被取消）。
+    bindings: [],
     expectation: { primary: 'A', requiredKeys: ['A'], askedAfterAll: true, maxReminders: 1, mustVerify: true, cancelled: 'C' },
   },
 }

@@ -37,6 +37,14 @@ export class AttentionQueue implements AttentionPort {
     if (same && same.taskRevision === proposal.taskRevision) {
       return { attention: same, merged: true }
     }
+    // 同一个问题不因新一轮判断而“消失”：问题文本与选项完全一致时并入已有问题，
+    // 让用户有机会看到它（旧实现会被下一轮 assess 立刻 supersede，形成不可见问题）。
+    const text = (proposal.question ?? proposal.reasonText ?? '').trim()
+    const optionIds = (proposal.options ?? []).map((option) => option.id).join(',')
+    const twin = existing.find((attention) =>
+      attention.question.trim() === text
+      && attention.options.map((option) => option.id).join(',') === optionIds)
+    if (twin) return { attention: twin, merged: true }
     for (const attention of existing) {
       // 同一时刻只保留一个问题：旧 key 或旧 revision 一律撤销，但保留记录。
       this.store.updateAttention(attention.attentionId, { state: 'superseded' })

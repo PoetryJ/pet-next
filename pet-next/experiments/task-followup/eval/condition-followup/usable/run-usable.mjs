@@ -157,9 +157,10 @@ async function runOne({ story, arm, outDir }) {
       tasks[key] = created.task.ticketId
     }
     mkdirSync(join(workspace, 'inbox', 'A'), { recursive: true })
+    const bindings = (spec.bindings ?? []).map((key) => ({ alias: `${key} 报告`, taskId: tasks[key] }))
     const created = await api('POST', '/api/tasks', {
       title: '主测试', dir: 'inbox/A', goal: '跟进主测试；按用户承诺决定何时需要确认', analysisWhen: 'always',
-      reportBindings: [{ alias: 'B 报告', taskId: tasks.B }],
+      ...(bindings.length ? { reportBindings: bindings } : {}),
     })
     if (!created.ok) throw new Error(`create_A_failed:${created.error ?? created.code}`)
     tasks.A = created.task.ticketId

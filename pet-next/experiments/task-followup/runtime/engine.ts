@@ -1577,7 +1577,7 @@ export class FollowupRuntime {
       .listEvents(task.ticketId)
       .filter(
         (event) =>
-          (event.kind === 'user.delegated' || event.kind === 'user.changed') &&
+          (event.kind === 'user.delegated' || event.kind === 'user.changed' || event.kind === 'user.dependency_updated') &&
           event.taskRevision === task.taskRevision,
       )
       .at(-1)

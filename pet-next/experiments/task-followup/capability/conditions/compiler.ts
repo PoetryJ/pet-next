@@ -236,10 +236,49 @@ export function createConditionCompiler(): ConditionCompiler {
 
       if (unsupported.length > 0) return { status: 'unsupported', reason: `unsupported_clauses:${unsupported.length}`, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, null), checks: [...checks, 'unsupported_declared'] }
 
+      // 结构归一：模型常把 when 写成表达式数组（[cmp] 或 [cmp,cmp]），语义等价于 all(args)；
+      // 单元素等价于该元素。只做结构归一，不改变任何条件语义与引用。
+      const normalizeExpr = (node: any): any => {
+        if (Array.isArray(node)) {
+          const items = node.map(normalizeExpr)
+          return items.length === 1 ? items[0] : { op: 'all', args: items }
+        }
+        if (node && typeof node === 'object') {
+          if (Array.isArray(node.args)) return { ...node, args: node.args.map(normalizeExpr) }
+          if (node.arg !== undefined) return { ...node, arg: normalizeExpr(node.arg) }
+        }
+        return node
+      }
+      if (Array.isArray((candidate as any).when)) checks.push('structure_normalized:array')
+      ;(candidate as any).when = normalizeExpr((candidate as any).when)
+      // 枚举词汇归一：模型常把 succeeded 写成 completed/success/passed；只归一这些同义
+      // 词汇并记录（checks + 计划仍用统一枚举），不改条件结构、不新增/删除条件。
+      const STATUS_ALIASES: Record<string, string> = { completed: 'succeeded', success: 'succeeded', passed: 'succeeded', ok: 'succeeded', succeed: 'succeeded', failure: 'failed', error: 'failed', broken: 'failed' }
+      const normalizeLiterals = (node: any): void => {
+        if (!node || typeof node !== 'object') return
+        if (node.op === 'cmp' && typeof node.value === 'string') {
+          const fact = input.allowedFacts.find((f) => f.id === node.fact)
+          const canonical = STATUS_ALIASES[node.value]
+          if (fact?.enum && canonical && fact.enum.includes(canonical)) {
+            checks.push(`literal_normalized:${node.value}->${canonical}`)
+            node.value = canonical
+          }
+        }
+        for (const key of ['args', 'arg']) {
+          const v = node[key]
+          if (Array.isArray(v)) v.forEach(normalizeLiterals)
+          else if (v) normalizeLiterals(v)
+        }
+      }
+      normalizeLiterals(candidate.when)
       try {
         validateExpr(candidate.when, factIds(input.allowedFacts))
       } catch (error) {
         return { status: 'error', reason: `invalid_expression:${error instanceof Error ? error.message : String(error)}`, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'invalid_expression', detail: error instanceof Error ? error.message : String(error) }), checks: [...checks, 'structure_rejected'] }
+      }
+      const literalProblems = checkLiterals(candidate.when, input.allowedFacts)
+      if (literalProblems.length > 0) {
+        return { status: 'error', reason: `invalid_literals:${literalProblems.join('|')}`, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'invalid_literals', detail: literalProblems.join('|') }), checks: [...checks, 'literals_rejected'] }
       }
       checks.push('structure_ok', 'facts_registered')
 
