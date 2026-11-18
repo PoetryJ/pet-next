@@ -128,8 +128,8 @@ function writeTextState(store: CapabilityMemoryStore, taskId: string, seq: numbe
     .run(taskId, seq, summary, JSON.stringify([...new Set(keyTurns)].slice(-12)), at)
 }
 
-const BATCH_TURNS = 24
-const BATCH_CHARS = 1200
+const BATCH_TURNS = 48
+const BATCH_CHARS = 2400
 const MAX_BATCHES_PER_REFRESH = 3
 const HOST_TURN = /^(回答：|用户选择：)/
 

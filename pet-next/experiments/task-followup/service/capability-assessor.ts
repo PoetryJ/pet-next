@@ -92,7 +92,7 @@ export interface CapabilityHandleOptions {
 }
 
 const ASSESS_MAX = 768
-const EXTRACT_MAX = 1536
+const EXTRACT_MAX = 2048
 
 /** 等待契约：引用的 ETA（记忆条目值/有效期或 guard 的锚点修复）原样采用；否则用宿主有界复查。 */
 export function applyWaitContract(record: AssessmentRecord, submit: SubmitResult, packet: CapPacket, now: string, hostRecheckMs: number): { submit: SubmitResult; contract: Record<string, unknown> | null } {
@@ -150,7 +150,7 @@ export function createCapabilityHandle(env: NodeJS.ProcessEnv = process.env, fet
         taskTitle: task.title,
         now: new Date().toISOString(),
         signal: compilationSignal,
-        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 12, maxTokens: EXTRACT_MAX },
+        extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 48, maxTokens: EXTRACT_MAX },
         read: { question: `${task.title} 当前结果、授权范围、通知偏好与等待条件`, requiredSlots: SHARED_READ_SLOTS, maxItems: 24, maxChars: 4500 },
       }))
       const extraction = loaded.extraction ?? { status: 'applied' as const }

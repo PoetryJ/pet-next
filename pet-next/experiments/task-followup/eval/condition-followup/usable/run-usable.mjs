@@ -246,12 +246,15 @@ async function runOne({ story, arm, outDir }) {
       } else if (step.op === 'assert') {
         if (step.what === 'no-question-before-a') checks.noQuestionBeforeA = !checks.askedBeforeA
         if (step.what === 'cancelled-silent') {
-          const attentions = dbQuery(workspace, 'SELECT attention_id, ticket_id FROM attentions WHERE ticket_id = ?', [tasks.C])
+          // 只统计取消之后新建的问题：取消前已有的提醒不算“取消后还提醒”。
+          const cancelledAt = timeline.find((t) => t.kind === 'task.cancel')?.at ?? null
+          const attentions = dbQuery(workspace, 'SELECT attention_id, ticket_id, created_at FROM attentions WHERE ticket_id = ?', [tasks.C])
+          const after = cancelledAt ? attentions.filter((a) => String(a.created_at) >= cancelledAt) : attentions
           const st = dbQuery(workspace, 'SELECT status FROM tasks WHERE ticket_id = ?', [tasks.C])[0]?.status ?? null
           checks.cancelledStatus = st
-          checks.cancelledAttentions = attentions.length
-          checks.cancelSilent = st === 'cancelled' && attentions.length === 0
-          mark('assert.cancel', { status: st, attentions: attentions.length })
+          checks.cancelledAttentions = after.length
+          checks.cancelSilent = st === 'cancelled' && after.length === 0
+          mark('assert.cancel', { status: st, attentions: after.length, cancelledAt })
         }
       }
     }
@@ -320,6 +323,7 @@ async function runOne({ story, arm, outDir }) {
   const raw = {
     schema: 'pet-r6-usable-run/v1', mode: 'live', story, arm, armLabel: armSpec.label, adapter: armSpec.adapter,
     startedAt, finishedAt: new Date().toISOString(), ok, checks,
+    timeline: timeline.map((t) => ({ at: t.at, kind: t.kind, key: t.key ?? null, status: t.status ?? null, asked: t.asked ?? null, question: t.question ?? null })),
     history: { turns: spec.history.length, settled: checks.historySettled },
     verification: verification ? { ok: verification.ok, failures: verification.failures } : null,
     cost,
