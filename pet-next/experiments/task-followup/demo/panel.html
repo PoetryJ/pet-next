@@ -120,7 +120,9 @@
 </main>
 <div id="toast"></div>
 <script type="module">
-import { conditionCardHtml } from './condition-view.mjs';
+const viewUrl = new URL('./condition-view.mjs', location.href);
+viewUrl.searchParams.set('token', new URLSearchParams(location.search).get('token') || '');
+const { conditionCardHtml } = await import(viewUrl.href);
 window.petConditionView = conditionCardHtml;
 </script>
 <script>
