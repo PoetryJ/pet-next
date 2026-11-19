@@ -2065,7 +2065,10 @@ export class FollowupRuntime {
 
   private proposeAll(): boolean {
     let progressed = false
-    for (const snapshot of this.listTasks()) {
+    // 刚收到用户原话的任务优先判断：改口/取消必须即时生效，不能排在旁支任务后面。
+    const snapshots = this.listTasks().slice().sort((a, b) =>
+      Number(this.reassessNext.has(b.ticketId)) - Number(this.reassessNext.has(a.ticketId)))
+    for (const snapshot of snapshots) {
       if (snapshot.status !== 'active') continue
       if (snapshot.stage === 'memory_behind' || snapshot.stage === 'needs_reconciliation') continue
       if (snapshot.openAttention) {
@@ -2176,6 +2179,9 @@ export class FollowupRuntime {
       this.db.driverLog(now, task.ticketId, 'proposal.rejected', { proposal: proposal.decisionId, code: validation.code, detail: validation.detail })
       this.recordLastProposal(task, row, 'invalidated')
       return false
+    }
+    if (proposal.kind === 'archive') {
+      return this.archiveTask(task, proposal, row)
     }
     if (proposal.kind === 'record_only' || proposal.kind === 'defer') {
       this.db.atomic(() => {
@@ -2359,6 +2365,110 @@ export class FollowupRuntime {
       })
       this.db.saveProposal({ ...row, outcome: 'executed', validation_json: canonicalJson([validation]) })
       this.recordLastProposal(task, row, 'executed')
+    })
+    return true
+  }
+
+  /**
+   * 静默归档：承诺明确“此时不该问”，且计划实际读取的来源都已核验。
+   * 不创建 attention、不发通知、不执行工具；只把任务置为 archived，并留下可核对
+   * 的计划身份、原话、输入集合 SHA 与实际使用的来源任务。任何身份不符都 fail closed。
+   */
+  private archiveTask(task: TaskRecord, proposal: ProposedDecision, row: ProposalRow): boolean {
+    const now = this.clock.now()
+    const reject = (code: string, detail: string): false => {
+      this.db.atomic(() => {
+        this.db.saveProposal({
+          ...row,
+          outcome: 'invalidated',
+          validation_json: canonicalJson([{ at: now, stage: 'execute', ok: false, code, detail }]),
+        })
+        this.recordLastProposal(task, row, 'invalidated')
+      })
+      this.db.driverLog(now, task.ticketId, 'proposal.archive_rejected', { code, detail })
+      return false
+    }
+    const proof = proposal.archive
+    if (!proof) return reject('archive_provenance_missing', 'archive requires compilationKey/quotes/taskIds')
+    const edited = this.db.listEvents(task.ticketId).some((event) => event.kind === 'user.dependency_updated')
+    if (!task.reportBindings?.length && !edited) return reject('archive_not_multi_source', 'quiet archive only applies to declared multi-report delegations')
+    if (this.attention.listOpen(task.ticketId).length) return reject('archive_with_open_attention', 'a question is already open')
+    const used = [...new Set(proof.taskIds)]
+    if (!used.includes(task.ticketId)) return reject('archive_primary_not_used', task.ticketId)
+    const declared = new Set([task.ticketId, ...(task.reportBindings ?? []).map((binding) => binding.taskId)])
+    const checkedPaths: string[] = []
+    for (const id of used) {
+      if (!declared.has(id)) return reject('archive_source_not_declared', id)
+      const rowFor = this.db.getTaskRow(id)
+      if (!rowFor) return reject('archive_source_missing', id)
+      const dep = this.toTask(rowFor)
+      const ref = this.inputRefFromTask(dep)
+      // 未到达的来源不参与 false 判定：三值逻辑的 false 不会因补齐未知事实而变 true。
+      if (!ref.ref) continue
+      if (!ref.ref.resultPath) return reject('archive_source_file_missing', id)
+      const abs = this.absoluteToRoot(ref.ref.resultPath)
+      if (!this.verifyArtifactFile(abs, ref.ref.resultFileSha).ok) return reject('archive_source_file_changed', id)
+      checkedPaths.push(abs)
+    }
+    if (!checkedPaths.length) return reject('archive_no_verified_source', 'no verified source anchors the false condition')
+    const set = this.readInputSet(task.ticketId)
+    this.db.atomic(() => {
+      const fresh = this.requireTask(task.ticketId)
+      fresh.status = 'archived'
+      fresh.stage = 'archived'
+      fresh.updatedAt = now
+      fresh.completion = {
+        at: now,
+        receiptId: null,
+        artifactSha: null,
+        checkedPaths,
+        mode: 'quiet_archive',
+        inputSetSha: set.sha,
+        planCompilationKey: proof.compilationKey,
+        condition: proof.condition,
+        sourceQuotes: proof.quotes,
+        reason: proposal.reasonText,
+      }
+      const event = this.makeEvent({
+        kind: 'tool.receipt',
+        sourceId: `archive:${task.ticketId}:${task.taskRevision}`,
+        sourceRevision: '1',
+        at: now,
+        ticketId: task.ticketId,
+        taskRevision: fresh.taskRevision,
+        payload: {
+          archive: true,
+          mode: 'quiet_archive',
+          taskIds: used,
+          planCompilationKey: proof.compilationKey,
+          inputSetSha: set.sha,
+        },
+      })
+      if (!this.db.getEvent(event.eventId)) {
+        const inserted = this.db.insertEvent(event, now)
+        const memory = this.memory.ingest({
+          event,
+          eventCursor: inserted.seq,
+          ticketId: task.ticketId,
+          taskRevision: fresh.taskRevision,
+          label: '静默归档',
+        })
+        fresh.eventCursor = inserted.seq
+        fresh.memoryCursor = memory.cursor
+      }
+      this.saveTask(fresh)
+      this.db.saveProposal({
+        ...row,
+        outcome: 'executed',
+        validation_json: canonicalJson([{ at: now, stage: 'execute', ok: true, code: 'archived', detail: proof.compilationKey }]),
+      })
+      this.recordLastProposal(fresh, row, 'executed')
+      this.db.driverLog(now, task.ticketId, 'task.archived', {
+        plan: proof.compilationKey,
+        taskIds: used,
+        inputSetSha: set.sha,
+        quotes: proof.quotes,
+      })
     })
     return true
   }
@@ -2871,6 +2981,7 @@ export class FollowupRuntime {
         ...(notBefore ? { notBefore } : {}),
         ...((draft.deadline ?? template?.deadline) ? { deadline: draft.deadline ?? template?.deadline } : {}),
         ...(template?.toolRequest ? { toolRequest: template.toolRequest } : {}),
+        ...(draft.archive ? { archive: draft.archive } : {}),
         implementation: 'async-assessment',
       }
       const executed = this.executeProposal(task, proposal)
@@ -3271,7 +3382,7 @@ export class FollowupRuntime {
       completion_json: task.completion ? canonicalJson(task.completion) : null,
       close_reason: task.closeReason ?? null,
       diagnostics_json: canonicalJson(task.diagnostics),
-      bindings_json: task.reportBindings?.length ? canonicalJson(task.reportBindings) : null,
+      bindings_json: task.reportBindings === undefined ? null : canonicalJson(task.reportBindings),
     })
   }
 

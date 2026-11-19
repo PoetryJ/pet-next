@@ -313,8 +313,8 @@ export interface ToolContext {
   readonly analysisSnapshots?: readonly AnalysisSnapshot[]
 }
 
-/** 决策种类。 */
-export type DecisionKind = 'record_only' | 'continue_local' | 'defer' | 'ask_user' | 'notify_result'
+/** 决策种类。archive = 承诺明确不该问且来源齐备时静默归档（无通知、无工具执行）。 */
+export type DecisionKind = 'record_only' | 'continue_local' | 'defer' | 'ask_user' | 'notify_result' | 'archive'
 
 export const DECISION_KINDS: readonly DecisionKind[] = [
   'record_only',
@@ -322,6 +322,7 @@ export const DECISION_KINDS: readonly DecisionKind[] = [
   'defer',
   'ask_user',
   'notify_result',
+  'archive',
 ]
 
 export interface AttentionOption {
@@ -348,6 +349,14 @@ export interface ProposedDecision {
   readonly notBefore?: string
   readonly deadline?: string
   readonly toolRequest?: ToolRequest
+  /** archive：被承诺条件命中的计划身份与原话；宿主只照抄进归档记录，不重新解释语义。 */
+  readonly archive?: {
+    readonly compilationKey: string
+    readonly condition: string
+    readonly quotes: readonly { readonly turnId: string; readonly text: string }[]
+    /** 条件实际读取且已核验结果的来源；宿主只复核这些来源，不替承诺扩大或缩小范围。 */
+    readonly taskIds: readonly string[]
+  }
   /** 实现标识：scripted-rule（P3/N1 基线）或 async-assessment（事务外 assessment 回交，经同一套校验执行）。 */
   readonly implementation: 'scripted-rule' | 'async-assessment'
 }
@@ -544,12 +553,13 @@ export type TaskStage =
   | 'continuation_pending'
   | 'analyzing'
   | 'completed'
+  | 'archived'
   | 'cancelled'
   | 'memory_behind'
   | 'needs_reconciliation'
   | 'failed'
 
-export type TaskStatus = 'active' | 'completed' | 'cancelled' | 'failed'
+export type TaskStatus = 'active' | 'completed' | 'archived' | 'cancelled' | 'failed'
 
 /** 目标条件：完成必须同时满足“成功回执”和“当前目标条件”。 */
 export interface GoalCondition {
@@ -626,6 +636,13 @@ export interface TaskSnapshot {
     readonly artifactSha: string | null
     readonly checkedPaths: readonly string[]
     readonly inputRef?: InputRef | null
+    /** verified = 经回执与产物核验；quiet_archive = 承诺明确不该问且来源齐备，只归档不分析。 */
+    readonly mode?: 'verified' | 'quiet_archive'
+    readonly inputSetSha?: string
+    readonly planCompilationKey?: string
+    readonly condition?: string
+    readonly sourceQuotes?: readonly { readonly turnId: string; readonly text: string }[]
+    readonly reason?: string
   }
   readonly closeReason?: string
   readonly diagnostics: readonly string[]

@@ -217,6 +217,10 @@ export async function loadTextMemory(options: {
   const retrieved = bm25(all, lastUser?.text ?? '', options.topK ?? 10)
   const picked = new Map<string, Turn>()
   for (const turn of [...cited, ...retrieved, ...recent]) picked.set(turn.turnId, turn)
+  // 第一段真实用户原话（通常是最早的任务承诺）必须进入视图：摘要批次可能已推进到
+  // 很久以后，只给最近窗口会让“早期约定”永久不可见。
+  const firstUser = all.find((t) => t.role === 'user' && !t.turnId.startsWith('delegate-'))
+  if (firstUser) picked.set(firstUser.turnId, firstUser)
   const visible = [...picked.values()].sort((a, b) => a.seq - b.seq)
   const refs = refsOf(visible)
   const summary = refreshed.state.summary || null
@@ -284,6 +288,10 @@ export async function loadVersionedMemory(options: {
   for (const ref of packet.context.recentTurns) ids.add(ref.turnId)
   // 最近 3 条用户原话必须在视图里：改口/取消常常还没被抽取，但消费者必须看到。
   for (const turn of all.filter((t) => t.role === 'user').slice(-3)) ids.add(turn.turnId)
+  // 第一段真实用户原话（通常是最早的任务承诺）也必须在视图里：抽取窗口只覆盖最近
+  // 48 轮时，早期承诺会从记忆视图里消失，编译器只能看到委托模板或无关尾部聊天。
+  const firstUser = all.find((t) => t.role === 'user' && !t.turnId.startsWith('delegate-'))
+  if (firstUser) ids.add(firstUser.turnId)
   const visible = all.filter((t) => ids.has(t.turnId)).sort((a, b) => a.seq - b.seq)
   const refs = refsOf(visible)
   const view: MemoryView = {

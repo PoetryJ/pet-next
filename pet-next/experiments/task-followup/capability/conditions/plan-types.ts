@@ -139,7 +139,7 @@ export interface ConditionEvalRecord {
   readonly state: Tri
   readonly watch: readonly string[]
   readonly reads: readonly { fact: string; state: Tri; reason?: string }[]
-  readonly action: 'ask' | 'wait' | 'fallback' | 'skip' | 'none'
+  readonly action: 'ask' | 'wait' | 'archive' | 'fallback' | 'skip' | 'none'
   readonly at: string
 }
 

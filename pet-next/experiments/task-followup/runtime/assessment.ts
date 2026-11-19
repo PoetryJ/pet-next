@@ -91,8 +91,8 @@ export interface AssessmentSnapshot {
   readonly actionMenu: readonly ActionTemplate[]
 }
 
-/** 介入意图：ask-now / wait / act / digest / none，映射到既有 DecisionKind。 */
-export type AssessmentIntent = 'ask_now' | 'wait' | 'act' | 'digest' | 'none'
+/** 介入意图：ask-now / wait / act / digest / none / archive，映射到既有 DecisionKind。 */
+export type AssessmentIntent = 'ask_now' | 'wait' | 'act' | 'digest' | 'none' | 'archive'
 
 export interface AssessmentCitation {
   readonly sourceId: string
@@ -114,6 +114,13 @@ export interface AssessmentDraft {
   readonly deadline?: string
   readonly evidenceRefs?: readonly EvidenceRef[]
   readonly citations?: readonly AssessmentCitation[]
+  /** archive：命中的编译计划与原话（宿主照抄进归档记录，不重新解释）。 */
+  readonly archive?: {
+    readonly compilationKey: string
+    readonly condition: string
+    readonly quotes: readonly { readonly turnId: string; readonly text: string }[]
+    readonly taskIds: readonly string[]
+  }
 }
 
 export interface AssessmentRaw {
@@ -292,6 +299,8 @@ export function intentKind(draft: AssessmentDraft, menu: readonly ActionTemplate
     case 'digest':
     case 'none':
       return 'record_only'
+    case 'archive':
+      return 'archive'
     case 'act': {
       const template = menu.find((item) => item.actionId === draft.actionId)
       return template ? template.kind : null
@@ -309,7 +318,7 @@ export function refKey(ref: EvidenceRef): string {
 export function parseDrafts(value: unknown): AssessmentDraft[] {
   const list = Array.isArray(value) ? value : (value as { drafts?: unknown })?.drafts
   if (!Array.isArray(list) || list.length === 0) throw new Error('parse_error: drafts must be a non-empty array')
-  const intents: readonly AssessmentIntent[] = ['ask_now', 'wait', 'act', 'digest', 'none']
+  const intents: readonly AssessmentIntent[] = ['ask_now', 'wait', 'act', 'digest', 'none', 'archive']
   return list.map((item, index) => {
     const draft = item as AssessmentDraft
     if (!draft || typeof draft !== 'object') throw new Error(`parse_error: draft ${index} is not an object`)

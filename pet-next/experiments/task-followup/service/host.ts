@@ -398,7 +398,7 @@ export async function runHost(options: HostOptions): Promise<number> {
     const visible = Boolean(open && (open.deliveredAt || open.presentedAt))
     let bucket = 'waiting'
     if (task.status === 'cancelled') bucket = 'cancelled'
-    else if (task.status === 'completed') bucket = 'done'
+    else if (task.status === 'completed' || task.status === 'archived') bucket = 'done'
     else if (task.status === 'failed' || task.stage === 'needs_reconciliation') bucket = 'blocked'
     else if (open && visible) bucket = 'needs_decision'
     const scheduled = jobsFor(task.ticketId)

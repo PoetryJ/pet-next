@@ -29,9 +29,16 @@ export function resolveDependencyEdit(
     const keep = /^只等\s*(.+?)(?:\s*的?报告)?(?:\s*(?:就|再)问我)?$/u.exec(clause)
     const drop = /^(.+?)\s*(?:那份|的报告|报告)?\s*(?:不用等|不再等)了?$/u.exec(clause)
       ?? /^(?:不用等|别等|不再等)\s*(.+?)(?:\s*的?报告)?了?$/u.exec(clause)
-    const target = (keep ?? drop)?.[1]?.trim().replace(/\s+/gu, '').toLowerCase()
+      // “B 失败/成功也不用问我/管/提醒”同样是显式改口：B 不再影响是否打扰我。
+      ?? /^(.+?)\s*(?:那份|的报告|报告)?\s*(?:失败|成功)?\s*(?:也)?\s*(?:不用|无需|不需要)(?:再)?(?:问|管|提醒)(?:我)?$/u.exec(clause)
+    const target = (keep ?? drop)?.[1]?.trim().replace(/\s+/gu, '').toLowerCase().replace(/(?:那份|的报告|报告)$/u, '')
     const ids = target && names.get(target)
-    if (!ids || ids.size !== 1) return null
+    if (!ids || ids.size !== 1) {
+      // 已经明确删除某个来源后，后面的描述性条件（“只有 A 失败才需要来问我”）
+      // 不是第二条依赖命令；跳过它，不要因此丢掉前面的删除。
+      if (removed.size > 0 && keepOnly === undefined && !/仍然需要|还要|也需要/u.test(clause)) continue
+      return null
+    }
     const id = [...ids][0]!
     if (keep) {
       if (keepOnly !== undefined && keepOnly !== id) return null

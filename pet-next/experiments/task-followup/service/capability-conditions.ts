@@ -75,6 +75,26 @@ export interface ConditionsHandleOptions {
 
 const reason = (state: string): string => state === 'true' ? '条件已满足' : state === 'false' ? '条件未满足' : '缺证据'
 
+/**
+ * 静默归档的适用范围：条件只读“已声明报告的结果字段”。时间/可用性条件的 false
+ * 只是“此刻不成立”，不能当作最终结论去关闭任务。
+ * 返回条件实际读取且需要核验的任务；含非结果字段时返回 null。
+ */
+function resultTasksOf(expr: import('../capability/conditions/kernel.ts').Expr): string[] | null {
+  const tasks = new Set<string>()
+  const walk = (node: import('../capability/conditions/kernel.ts').Expr): boolean => {
+    if (node.op === 'cmp') {
+      const match = /^task:([^.]+)\.result\./.exec(node.fact)
+      if (!match) return false
+      tasks.add(match[1]!)
+      return true
+    }
+    if (node.op === 'not') return walk(node.arg)
+    return node.args.every(walk)
+  }
+  return walk(expr) ? [...tasks].sort() : null
+}
+
 export function createConditionsHandle(
   env: NodeJS.ProcessEnv = process.env,
   fetchImpl: typeof fetch = fetch,
@@ -87,7 +107,7 @@ export function createConditionsHandle(
   const client: ModelClient = clientOverride ?? new OpenAICompatibleClient(cfg.ok ? cfg.config : undefined, fetchImpl)
   const compiler = createConditionCompiler()
   const watched = new WatchIndex()
-  const stats = { assessments: 0, evaluated: 0, compiles: 0, compileHits: 0, asks: 0, waits: 0, fallbacks: 0, ignored: 0 }
+  const stats = { assessments: 0, evaluated: 0, compiles: 0, compileHits: 0, asks: 0, waits: 0, archives: 0, fallbacks: 0, ignored: 0 }
 
   let mem: CapabilityMemoryStore | null = null
   let plans: SqliteConditionStore | null = null
@@ -101,8 +121,12 @@ export function createConditionsHandle(
 
   const declaredTasksOf = (task: AssessmentSnapshot['task'], packet: CapPacket): string[] => {
     // R6-live：优先用宿主显式声明的依赖（reportBindings）；旧模式才从任务作用域承诺推断。
-    const bound = (task.reportBindings ?? []).map((b) => b.taskId)
-    if (bound.length) return [...new Set([task.ticketId, ...bound])].sort()
+    // 显式绑定注册表（包括改口后为空的 []）优先：空数组表示用户已撤掉全部依赖，
+    // 不能再从旧记忆条目里把被撤掉的来源捡回来。
+    if (task.reportBindings !== undefined) {
+      const bound = task.reportBindings.map((b) => b.taskId)
+      return [...new Set([task.ticketId, ...bound])].sort()
+    }
     const deps = packet.commitments
       .filter((i) => i.authority === 'user' && i.status === 'active' && i.scope.level === 'task' && i.scope.id)
       .map((i) => i.scope.id!)
@@ -234,6 +258,11 @@ export function createConditionsHandle(
       for (const id of view.summaryKeyTurns) focus.add(id)
       const lastUser = view.turns.filter((t) => t.role === 'user').at(-1)
       if (lastUser) focus.add(lastUser.turnId)
+      // 最早承诺与最近更正一样重要：抽取/摘要推进后仍要把第一段真实用户原话交给编译器。
+      const firstUser = view.turns
+        .filter((t) => t.role === 'user' && !t.turnId.startsWith('delegate-'))
+        .sort((a, b) => a.seq - b.seq)[0]
+      if (firstUser) focus.add(firstUser.turnId)
       const focused = view.turns.filter((t) => t.role === 'user' && focus.has(t.turnId)).slice(-12)
       const base = focused.length ? focused : view.turns.filter((t) => t.role === 'user').slice(-6)
       // 有更正时，更正之前的旧承诺已被替代：只把“更正及其之后”的原话交给编译器，
@@ -317,10 +346,11 @@ export function createConditionsHandle(
         return await fallbackOrWait(task, snapshot, packet, signal, evidenceKey, now, `新承诺版本未编译成功（${compileStatus}${compileDetail ? `：${compileDetail}` : ''}）`, meta)
       }
 
+      const byTask = resultsByTask(task)
       const context = makeContext(task, packet, {
         taskId: task.ticketId, declaredTasks,
         result: verifiedResult(task, now),
-        resultsByTask: resultsByTask(task),
+        resultsByTask: byTask,
         // 可用性只由 context 按 key/作用域/有效期投影；不再取“最后一条任意事实”
         userAvailability: null,
       }, now)
@@ -373,6 +403,32 @@ export function createConditionsHandle(
       }
 
       if (evaluation.state === 'false') {
+        // 条件明确“此刻不该问”，且条件实际读取的来源都已核验 → 这是承诺的终局：
+        // 安静归档，不发通知、不建 attention、不执行工具。
+        const used = resultTasksOf(plan!.when)
+        // 显式绑定注册表存在（含改口后为空 []) 才可归档；单来源旧任务 reportBindings 未定义。
+        // false 在三值逻辑里已经确定（补上未知事实也不会变 true）；只要至少一个
+        // 已核验来源锚定判断即可归档，不要求所有被引用的来源都到齐。
+        const canArchive = Boolean(used && used.length > 0 && task.reportBindings !== undefined
+          && used.includes(task.ticketId) && used.some((id) => Boolean(byTask[id])))
+        if (canArchive && used) {
+          stats.archives += 1
+          planStore.recordEval({ ...record, action: 'archive' })
+          return {
+            drafts: [{
+              intent: 'archive',
+              reasonCode: 'commitment_no_ask',
+              reasonText: `条件未成立（${readText}）；按你的原话 ${quoteText} 静默归档，不打扰。`,
+              archive: {
+                compilationKey: plan!.compilationKey,
+                condition: JSON.stringify(plan!.when),
+                quotes: plan!.sourceQuotes.map((q) => ({ turnId: q.turnId, text: q.text })),
+                taskIds: used,
+              },
+            }],
+            raw: { provider: 'conditions', model: 'event-evaluation', rawOutput: '', requestPayload: rawCall, meta },
+          }
+        }
         stats.waits += 1
         planStore.recordEval({ ...record, action: 'wait' })
         const notBefore = new Date(Date.parse(now) + hostRecheckMs).toISOString()
@@ -386,17 +442,28 @@ export function createConditionsHandle(
         }
       }
 
-      // unknown：缺证据/冲突/过期，不直接变成提问
-      return await fallbackOrWait(task, snapshot, packet, signal, evidenceKey, now, `条件缺证据（${readText}）`, meta, record)
+      // unknown：缺证据/冲突/过期，不直接变成提问。若只是“报告还没到齐”，
+      // 承诺已经说明该等；不要为此占用一次慢速模型兜底（会把后续原生判断堵在队后）。
+      const sourcesComplete = declaredTasks.every((id) => Boolean(byTask[id]))
+      return await fallbackOrWait(task, snapshot, packet, signal, evidenceKey, now, `条件缺证据（${readText}）`, meta, record, sourcesComplete)
     },
   }
 
   async function fallbackOrWait(
     task: AssessmentSnapshot['task'], snapshot: AssessmentSnapshot, packet: CapPacket, signal: AbortSignal,
     evidenceKey: string, now: string, why: string, meta: Record<string, unknown>, record?: ConditionEvalRecord,
+    allowFallback = true,
   ): Promise<AssessmentResponse> {
     const { plans: planStore } = need()
     const notBefore = new Date(Date.parse(now) + hostRecheckMs).toISOString()
+    if (!allowFallback) {
+      stats.waits += 1
+      if (record) planStore.recordEval({ ...record, action: 'wait' })
+      return {
+        drafts: [{ intent: 'wait', reasonCode: 'condition_waiting_sources', reasonText: `${why}；声明的报告尚未齐备，按承诺等待，不调用模型兜底；${Math.round(hostRecheckMs / 60000)} 分钟后按当前证据复查。`, notBefore }],
+        raw: { provider: 'conditions', model: 'event-evaluation', rawOutput: '', meta: { ...meta, fallback: 'skipped_sources_incomplete' } },
+      }
+    }
     const key = `fallback:${evidenceKey}`
     const first = planStore.markOnce(task.ticketId, key, now)
     if (!first || handleOptions.fallbackToModel === false || !inner) {

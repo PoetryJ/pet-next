@@ -53,7 +53,16 @@ export const COMPILER_SYSTEM = `你是“承诺编译器”，只做一件事：
    报告显示成功/失败是另一个事实。
 9. when 只保留当前仍有效的依赖；单条件直接用 cmp，多条件才用 all/any。
 10. quotes 必须覆盖支持当前条件的完整原话：start=0，end=该用户消息的 UTF-16 长度（宿主给出）。
-11. 输出必须是一个完整 JSON 对象，顶层键恰为 when、quotes、unsupported；不要省略引号或注释。`
+11. 输出必须是一个完整 JSON 对象，顶层键恰为 when、quotes、unsupported；不要省略引号或注释。
+12. “都成功就归档 / 不用问 / 不要打扰”不是 unsupported：它说明 when 只描述“必须来问我”的触发条件
+    （例如任一报告失败）。当来源齐备且 when 为 false 时，宿主会静默归档；不要把归档写成 when 的一部分，
+    也不要用 not 包装“还没到的报告”。
+13. unsupported 只列“直接限制何时需要问我/何时归档、且确实无法用上述语法表达”的子句；
+    与任务无关的聊天、日志安排、偏好、重复条目一律不要放进 unsupported。
+14. “报告回来/到齐”用 result.present；“报告成功/失败”用 result.status（succeeded/failed）。
+    不要把“任何一份失败就问我”编译成“任一份报告到达就问我”。
+15. “只有 A 失败才需要来问我”= when: A.result.status == "failed"（正面条件）；
+    不要写成 not(A.failed)，也不要用 A.present 代替 A.failed。`
 
 export function quoteSha(text: string): string {
   return createHash('sha256').update(text).digest('hex')
@@ -202,6 +211,15 @@ export function createConditionCompiler(): ConditionCompiler {
       let parsed = parseModelJson(rawText)
       let finalText = rawText
       let usage: unknown = result.response.usage ?? null
+      if (!parsed.ok) {
+        // 先做确定性的本地语法修复（仅去尾逗号/统一弯引号），不改任何字段与语义；
+        // 失败才发起下一次模型调用。
+        const relaxed = parseModelJson(rawText.replace(/,\s*([}\]])/g, '$1').replace(/[“”]/g, '"'))
+        if (relaxed.ok) {
+          parsed = relaxed
+          checks.push('local_syntax_repair')
+        }
+      }
       if (!parsed.ok) {
         // 有界重试（仅语法修复）：原输入+原输出+错误都留在 rawCall/checks；
         // 成功也标 parse_retry_used，绝不把“补了 JSON”当成语义修复。
