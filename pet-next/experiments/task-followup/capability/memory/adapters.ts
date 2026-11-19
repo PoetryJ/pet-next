@@ -37,12 +37,12 @@ export interface MemoryLoad {
 }
 
 const SUMMARY_SYSTEM = `你是“任务记忆摘要器”。把新到的对话压成给决策者看的事实摘要，只输出 JSON：
-{"summary":"...","keyTurns":["轮次ID",...]}
+{"summary":"…","keyTurns":[1]}
 规则：
 - 保留：用户明确的要求/更正/取消/授权范围、截止与忙碌时段、已完成报告与其版本、仍未满足的依赖。
 - 更正就替换旧说法，不要并列保留互相冲突的两种说法；不确定的标注“不确定”。
-- keyTurns 列出支撑摘要里每条关键事实的原话 id（最多 8 个，必须来自给出的轮次）。
-- 只写事实，不写建议；summary 不超过 600 个汉字；不要编造原话里没有的内容。`
+- newTurns 中的 n 是本批次的短编号。keyTurns 只列最关键的 1 至 4 个数字。优先引用承诺、更正和取消，避免罗列重复内容。
+- 只写事实，不写建议；summary 限 160 个汉字，保留 previousSummary 中仍然有效的承诺。`
 
 const CJK = /[\u3400-\u4dbf\u4e00-\u9fff]/u
 
@@ -109,33 +109,35 @@ function emptyPacket(taskId: string, now: string, recent: readonly Turn[], summa
   }
 }
 
-interface TextState { seq: number; summary: string; keyTurns: string[] }
+interface TextState { seq: number; summary: string; keyTurns: string[]; batchLimit: number }
 
 function readTextState(store: CapabilityMemoryStore, taskId: string): TextState {
   const db = store.db
   db.exec('CREATE TABLE IF NOT EXISTS cap_text_state (task_id TEXT PRIMARY KEY, seq INTEGER NOT NULL, summary TEXT NOT NULL, updated_at TEXT NOT NULL);')
   const cols = db.prepare('PRAGMA table_info(cap_text_state)').all() as { name: string }[]
   if (!cols.some((c) => c.name === 'key_turns')) db.exec('ALTER TABLE cap_text_state ADD COLUMN key_turns TEXT')
-  const row = db.prepare('SELECT seq, summary, key_turns FROM cap_text_state WHERE task_id = ?').get(taskId) as { seq: number; summary: string; key_turns: string | null } | undefined
-  if (!row) return { seq: 0, summary: '', keyTurns: [] }
+  if (!cols.some((c) => c.name === 'batch_limit')) db.exec('ALTER TABLE cap_text_state ADD COLUMN batch_limit INTEGER')
+  const row = db.prepare('SELECT seq, summary, key_turns, batch_limit FROM cap_text_state WHERE task_id = ?').get(taskId) as { seq: number; summary: string; key_turns: string | null; batch_limit: number | null } | undefined
+  if (!row) return { seq: 0, summary: '', keyTurns: [], batchLimit: BATCH_TURNS }
   let keyTurns: string[] = []
   try { keyTurns = row.key_turns ? JSON.parse(row.key_turns) as string[] : [] } catch { keyTurns = [] }
-  return { seq: Number(row.seq), summary: row.summary, keyTurns }
+  return { seq: Number(row.seq), summary: row.summary, keyTurns, batchLimit: row.batch_limit ?? BATCH_TURNS }
 }
 
-function writeTextState(store: CapabilityMemoryStore, taskId: string, seq: number, summary: string, keyTurns: readonly string[], at: string): void {
-  store.db.prepare('INSERT INTO cap_text_state (task_id, seq, summary, key_turns, updated_at) VALUES (?,?,?,?,?) ON CONFLICT(task_id) DO UPDATE SET seq = excluded.seq, summary = excluded.summary, key_turns = excluded.key_turns, updated_at = excluded.updated_at')
-    .run(taskId, seq, summary, JSON.stringify([...new Set(keyTurns)].slice(-12)), at)
+function writeTextState(store: CapabilityMemoryStore, taskId: string, previousSeq: number, seq: number, summary: string, keyTurns: readonly string[], at: string): void {
+  store.db.prepare('INSERT INTO cap_text_state (task_id, seq, summary, key_turns, updated_at) VALUES (?,?,?,?,?) ON CONFLICT(task_id) DO UPDATE SET seq = excluded.seq, summary = excluded.summary, key_turns = excluded.key_turns, updated_at = excluded.updated_at WHERE cap_text_state.seq = ?')
+    .run(taskId, seq, summary, JSON.stringify([...new Set(keyTurns)].slice(-12)), at, previousSeq)
 }
 
 const BATCH_TURNS = 48
 const BATCH_CHARS = 2400
-const MAX_BATCHES_PER_REFRESH = 3
+const MAX_CALLS_PER_REFRESH = 3
+const SUMMARY_MAX_TOKENS = 384
 const HOST_TURN = /^(回答：|用户选择：)/
 
 /**
  * 逐段推进摘要。每一批都从最老未覆盖项开始，成功持久化后才提交连续前缀；
- * 失败立即停止，游标停在最后一个**已提交**批次末尾（不跨过未覆盖项）。
+ * 截断或无效输出缩小批次重试。游标只越过已经持久化的连续前缀。
  */
 export async function refreshSummary(
   store: CapabilityMemoryStore,
@@ -148,13 +150,14 @@ export async function refreshSummary(
   let calls = 0
   let error: string | null = null
   let lastRequestId: string | null = null
-  for (let round = 0; round < MAX_BATCHES_PER_REFRESH; round += 1) {
+  let batchLimit = state.batchLimit
+  while (calls < MAX_CALLS_PER_REFRESH) {
     const all = store.turns().filter((t) => turnScope(t, taskId) && t.seq > state.seq && !HOST_TURN.test(t.text))
     if (!all.length) break
     const batch: Turn[] = []
     let chars = 0
     for (const turn of all) {
-      if (batch.length >= BATCH_TURNS) break
+      if (batch.length >= batchLimit) break
       if (batch.length > 0 && chars + turn.text.length > BATCH_CHARS) break
       batch.push(turn)
       chars += turn.text.length
@@ -165,25 +168,35 @@ export async function refreshSummary(
       { role: 'user', content: JSON.stringify({
         taskId,
         previousSummary: state.summary,
-        newTurns: batch.map((t) => ({ id: t.turnId, at: t.at, role: t.role, text: t.text.slice(0, 600) })),
+        newTurns: batch.map((t, i) => ({ n: i + 1, at: t.at, role: t.role, text: t.text.slice(0, 600) })),
       }) },
     ], now)
     lastRequestId = request.requestId
     calls += 1
-    const result = await client.complete(request, signal)
+    const result = await client.complete({ ...request, maxTokens: SUMMARY_MAX_TOKENS }, signal)
     if (!result.ok) { error = `${result.code}:${result.detail}`; break }
     const parsed = parseModelJson(result.response.rawText)
     const raw = parsed.ok ? (parsed.value as { summary?: unknown; keyTurns?: unknown }) : null
-    const summary = raw && typeof raw.summary === 'string' ? raw.summary.slice(0, 2000) : null
-    if (!summary) { error = 'summary_parse_failed'; break }
-    const batchIds = new Set(batch.map((t) => t.turnId))
-    const cited = Array.isArray(raw?.keyTurns)
-      ? (raw!.keyTurns as unknown[]).filter((x): x is string => typeof x === 'string' && batchIds.has(x))
-      : []
-    writeTextState(store, taskId, batch.at(-1)!.seq, summary, [...state.keyTurns, ...cited], now)
+    const summary = typeof raw?.summary === 'string' ? raw.summary.trim() : ''
+    const refs = raw?.keyTurns
+    const validRefs = Array.isArray(refs) && refs.length > 0 && refs.length <= 4
+      && refs.every((n) => typeof n === 'number' && Number.isInteger(n) && n >= 1 && n <= batch.length)
+    if (result.response.finishReason === 'length' || !summary || !validRefs) {
+      error = result.response.finishReason === 'length' ? 'summary_truncated' : 'summary_invalid'
+      if (batch.length === 1) break
+      batchLimit = Math.ceil(batch.length / 2)
+      // Retain the smaller batch across refreshes and process restarts without advancing the cursor.
+      store.db.prepare(`INSERT INTO cap_text_state (task_id, seq, summary, updated_at, batch_limit)
+        VALUES (?, 0, '', ?, ?) ON CONFLICT(task_id) DO UPDATE SET batch_limit = min(coalesce(batch_limit, ?), excluded.batch_limit)
+        WHERE cap_text_state.seq = ?`).run(taskId, now, batchLimit, BATCH_TURNS, state.seq)
+      continue
+    }
+    const cited = refs.map((n: number) => batch[n - 1]!.turnId)
+    writeTextState(store, taskId, state.seq, batch.at(-1)!.seq, summary, [...state.keyTurns, ...cited], now)
     state = readTextState(store, taskId)
+    error = null
   }
-  return { state, calls, error, lastRequestId }
+  return { state: readTextState(store, taskId), calls, error, lastRequestId }
 }
 
 export async function loadTextMemory(options: {
