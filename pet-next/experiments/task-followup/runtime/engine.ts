@@ -274,6 +274,10 @@ interface ValidationRecord {
   readonly detail: string
 }
 
+function authorizesAnalysis(goal: GoalCondition, optionId: string): boolean {
+  return goal.analysisWhen === 'always' && ['continue_now', 'analyze_failing', 'retry_analysis'].includes(optionId)
+}
+
 /** 构造输入身份只需要这四项；TaskRecord 与 TaskSnapshot 都满足。 */
 interface InputIdentityTask {
   readonly ticketId: string
@@ -611,7 +615,7 @@ export class FollowupRuntime {
       }
     }
     let analysisEvidence: AnalysisEvidence | undefined
-    if (task.goalCondition.analysisWhen === 'always' && ['continue_now', 'analyze_failing', 'retry_analysis'].includes(option.id)) {
+    if (authorizesAnalysis(task.goalCondition, option.id)) {
       const expected = this.db.metaGet(`attention.input-set:${attention.attentionId}`)
       const gate = this.verifyInputSet(task.ticketId, expected)
       if (!gate.ok) return { ok: false, code: 'stale_answer', detail: `${gate.code}:${gate.detail}` }
@@ -2122,6 +2126,11 @@ export class FollowupRuntime {
     const attention = task.openAttention
     if (!attention) return false
     if (this.db.hasNotificationForAttention(attention.attentionId)) return false
+    if (isQuietAt(this.clock.now(), this.quiet)) return false
+    if (attention.options.some(option => authorizesAnalysis(task.goalCondition, option.id))) {
+      const expected = this.db.metaGet(`attention.input-set:${attention.attentionId}`)
+      if (!this.verifyInputSet(task.ticketId, expected).ok) return false
+    }
     const notified = this.attention.notify(attention.attentionId, this.clock.now(), this.quiet, false)
     if (!notified.notified) return false
     this.db.driverLog(this.clock.now(), task.ticketId, 'attention.notified_late', {
@@ -2648,6 +2657,8 @@ export class FollowupRuntime {
     readonly sourceTurnIds: readonly string[]
     readonly reason: string
     readonly at?: string
+    /** Persist the originating user turn on this database connection in the same transaction. */
+    readonly beforeWrite?: () => void
   }): { ok: boolean; taskRevision: number; detail: string } {
     const now = input.at ?? this.clock.now()
     const task = this.requireTask(input.ticketId)
@@ -2664,9 +2675,16 @@ export class FollowupRuntime {
     let revision = task.taskRevision
     this.db.atomic(() => {
       const fresh = this.requireTask(task.ticketId)
+      input.beforeWrite?.()
       fresh.taskRevision += 1
       revision = fresh.taskRevision
       fresh.reportBindings = bindings
+      fresh.attempt += 1
+      fresh.lastAnswer = undefined
+      fresh.continuation = undefined
+      fresh.analysis = undefined
+      fresh.completion = undefined
+      fresh.stage = this.isTicketBlocked(fresh.ticketId) ? 'needs_reconciliation' : fresh.result ? 'result_received' : 'awaiting_result'
       fresh.updatedAt = now
       const superseded = this.skipInvalidation ? [] : this.attention.supersede(fresh.ticketId, fresh.taskRevision, 'dependency updated', now)
       if (!this.skipInvalidation) {
@@ -2721,10 +2739,8 @@ export class FollowupRuntime {
     const rawJson = canonicalJson(response?.raw ?? null)
     let drafts
     try {
-      // 依赖更新是“无草案”的合法回交（不是空数组错误）：先放行，再由下面的事务处理。
-      drafts = response?.dependencyUpdate && Array.isArray(response.drafts) && response.drafts.length === 0
-        ? []
-        : response?.taskControl && Array.isArray(response.drafts) && response.drafts.length === 0 ? [] : parseDrafts(response?.drafts)
+      if (response && 'dependencyUpdate' in response) throw new Error('only user intake may change report bindings')
+      drafts = response?.taskControl && Array.isArray(response.drafts) && response.drafts.length === 0 ? [] : parseDrafts(response?.drafts)
     } catch (error) {
       store.finish(requestId, { status: 'failed', raw_json: rawJson, error_code: 'parse_error', error_detail: (error as Error).message, completed_at: now })
       this.db.driverLog(now, row.ticket_id, 'assessment.failed', { requestId, code: 'parse_error' })
@@ -2781,39 +2797,6 @@ export class FollowupRuntime {
       return { ok: valid, code: result.code, detail: result.detail, results: [result] }
     }
     const packet = JSON.parse(row.packet_json) as MemoryPacket
-    if (response.dependencyUpdate && drafts.length === 0) {
-      // 用户改口导致的依赖更新：证据必须来自本请求快照/记忆包，目标任务必须存在。
-      // 轮次证据以能力记忆库为权威（同一 SQLite）：legacy 包的 evidenceRefs 只有来源级引用。
-      const allowedTurns = new Set<string>()
-      try {
-        for (const row of this.db.handle.prepare('SELECT turn_id FROM cap_turns').all() as { turn_id: string }[]) allowedTurns.add(row.turn_id)
-      } catch { /* 未启用能力记忆（基线） */ }
-      for (const ref of (packet.evidenceRefs as unknown as { turnId?: string }[])) if (typeof ref.turnId === 'string') allowedTurns.add(ref.turnId)
-      const sources = response.dependencyUpdate.sourceTurnIds.filter((id) => allowedTurns.has(id))
-      const applied = sources.length > 0
-        ? this.updateBindings({
-          ticketId: row.ticket_id,
-          reportBindings: response.dependencyUpdate.reportBindings,
-          sourceTurnIds: sources,
-          reason: response.dependencyUpdate.reason,
-          at: now,
-        })
-        : { ok: false, taskRevision: 0, detail: 'no_source_evidence' }
-      const record: AssessmentGuardResult = {
-        decisionId: stableId('dec', 'deps', requestId), draftIndex: 0, kind: 'record_only', guard: 'host',
-        outcome: applied.ok ? 'recorded' : 'rejected',
-        code: applied.ok ? 'dependency_updated' : `invalid_dependency_update:${applied.detail}`,
-        detail: applied.detail,
-      }
-      store.finish(requestId, { status: 'submitted', raw_json: rawJson, pre_guard_json: preGuard, post_guard_json: canonicalJson([record]), completed_at: now })
-      this.db.driverLog(now, row.ticket_id, 'assessment.dependency_update', { requestId, ok: applied.ok, detail: applied.detail, bindings: response.dependencyUpdate.reportBindings })
-      if (applied.ok) {
-        this.assessForce.add(row.ticket_id)
-        this.requestReassessment(row.ticket_id)
-        queueMicrotask(() => { try { this.reevaluate() } catch { /* 下一轮事件自愈 */ } })
-      }
-      return { ok: applied.ok, code: record.code, detail: applied.detail, results: [record] }
-    }
     const menu = snapshot.actionMenu
     const allowed = new Set<string>([...snapshot.evidence, ...packet.evidenceRefs, ...menu.flatMap((item) => item.evidenceRefs)].map(refKey))
     const supportedOptions = new Set(menu.flatMap((item) => (item.kind === 'ask_user' ? (item.options ?? []).map((option) => option.id) : [])))
@@ -2858,9 +2841,9 @@ export class FollowupRuntime {
       const question = draft.question ?? template?.question
       const options = draft.options ?? template?.options
       if (kind === 'ask_user') {
-        // 声明了多个来源时，只有全部来源都核验过才允许发问（缺证不伪造 InputRef）。
-        // 只要求主来源已核验；依赖是否必须到齐由条件本身决定（“只等A”时 B 可以缺）。
-        if (snapshotTask.inputSet && !snapshotTask.inputSet.primary.ref) {
+        // Analysis approvals are checked against their current full input set by validateAt.
+        // Questions about waiting or resolving missing information need no authorization proof.
+        if (snapshotTask.goalCondition.analysisWhen !== 'always' && snapshotTask.inputSet && !snapshotTask.inputSet.primary.ref) {
           reject('input_set_incomplete', 'primary source not verified', kind)
           continue
         }
@@ -2976,6 +2959,10 @@ export class FollowupRuntime {
     if (!expectedSha) return { ok: false, code: 'input_set_missing', detail: 'no input set recorded' }
     const set = this.readInputSet(ticketId)
     if (set.sha !== expectedSha) return { ok: false, code: 'stale_input_set', detail: `expected ${expectedSha.slice(0, 12)} current ${set.sha.slice(0, 12)}` }
+    return this.verifyInputSetFiles(set)
+  }
+
+  private verifyInputSetFiles(set: InputSet): { ok: boolean; code: string; detail: string } {
     for (const entry of [set.primary, ...set.dependencies]) {
       const ref = entry.ref
       if (!ref) return { ok: false, code: 'input_missing', detail: `${entry.alias}:${entry.taskId} ${entry.reasons.join(',')}` }
@@ -3077,6 +3064,10 @@ export class FollowupRuntime {
     }
     const verdict = this.memory.validate(proposal.evidenceRefs)
     if (!verdict.ok) return { at: now, stage, ok: false, code: verdict.code, detail: verdict.detail }
+    if (proposal.kind === 'ask_user' && proposal.options?.some(option => authorizesAnalysis(current.goalCondition, option.id))) {
+      const readiness = this.verifyInputSetFiles(this.readInputSet(current))
+      if (!readiness.ok) return { at: now, stage, ...readiness }
+    }
     return { at: now, stage, ok: true, code: 'ok', detail: 'version and evidence match current task' }
   }
 

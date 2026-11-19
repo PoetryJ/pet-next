@@ -130,15 +130,6 @@ export interface AssessmentRaw {
 export interface AssessmentResponse {
   readonly drafts: readonly AssessmentDraft[]
   readonly raw: AssessmentRaw
-  /**
-   * 用户改口导致依赖集合变化（R6-usable）：宿主在事务内更新 reportBindings、推进 taskRevision、
-   * 撤销旧问题与旧授权，再强制重判；assessor 不能直接改任务字段。
-   */
-  readonly dependencyUpdate?: {
-    readonly reportBindings: readonly { readonly alias: string; readonly taskId: string }[]
-    readonly sourceTurnIds: readonly string[]
-    readonly reason: string
-  }
   /** User-origin task control compiled from persisted memory, revalidated by the host at submission. */
   readonly taskControl?: { readonly kind: 'cancel'; readonly itemId: string; readonly reason: string }
 }

@@ -93,6 +93,103 @@ function setup(start = '2026-11-11T08:00:00.000Z') {
 const rowFor = (h: ReturnType<typeof setup>, call: Call) => h.built.runtime.listAssessments().find((row) => row.request_id === call.snapshot.identity.requestId)!
 const tick = () => new Promise((done) => setTimeout(done, 10))
 
+test('report bindings can only change through the user intake path', async () => {
+  const h = setup()
+  try {
+    const { runtime } = h.built
+    const dep = h.delegate().ticketId
+    const owner = runtime.delegate({ title: 'wait for input', goal: 'joint report', reportBindings: [{ alias: 'upstream', taskId: dep }] }).ticketId
+    await tick()
+    const call = h.assessor.calls.filter(c => c.snapshot.identity.ticketId === owner).at(-1)!
+    const legacyResponse = { drafts: [], dependencyUpdate: { reportBindings: [], sourceTurnIds: [call.snapshot.identity.requestId], reason: 'change sources' }, raw: raw([]) }
+    call.resolve(legacyResponse)
+    await tick()
+    assert.match(rowFor(h, call).error_detail!, /only user intake/)
+    assert.deepEqual(runtime.getTask(owner).reportBindings, [{ alias: 'upstream', taskId: dep }])
+    assert.equal(runtime.getTask(owner).taskRevision, call.snapshot.identity.taskRevision)
+  } finally {
+    await h.close()
+    h.dispose()
+  }
+})
+
+test('a question offering only to wait can be answered before analysis inputs arrive', async () => {
+  const h = setup()
+  try {
+    const { runtime, attention, db } = h.built
+    const dependency = runtime.delegate({ title: 'upstream', goal: 'receive result' }).ticketId
+    const owner = runtime.delegate({
+      title: 'aggregate', goal: 'analyze after permission',
+      goalCondition: { ...ANALYSIS_GOAL, analysisWhen: 'always' },
+      reportBindings: [{ alias: 'upstream', taskId: dependency }],
+    }).ticketId
+    await tick()
+    const call = h.assessor.calls.filter(c => c.snapshot.identity.ticketId === owner).at(-1)!
+    const menu = call.snapshot.actionMenu.find(item => item.options?.some(option => option.id === 'later'))
+    assert.ok(menu)
+    call.resolve({ drafts: [{
+      intent: 'ask_now', actionId: menu.actionId, reasonText: 'user requested a reminder when the report is missing',
+      question: '还未收到报告，是否稍后再看？', options: [{ id: 'later', label: '稍后再看' }],
+    }], raw: raw([]) })
+    await tick()
+    const [open] = attention.listOpen(owner)
+    assert.ok(open)
+    runtime.present(owner)
+    assert.equal(runtime.answer({ attentionId: open.attentionId, taskRevision: open.taskRevision, optionId: 'later' }).ok, true)
+    assert.equal(db.listReceipts(owner).length, 0)
+    assert.equal(runtime.getTask(owner).status, 'active')
+  } finally {
+    await h.close()
+    h.dispose()
+  }
+})
+
+test('execution approval waits for every bound report and becomes actionable when the missing one arrives', async () => {
+  const h = setup()
+  try {
+    const { runtime, attention, db } = h.built
+    const dependency = runtime.delegate({ title: 'independent upstream report', goal: 'receive its result' }).ticketId
+    const owner = runtime.delegate({
+      title: 'joint analysis', goal: 'ask before analysis',
+      goalCondition: { ...ANALYSIS_GOAL, analysisWhen: 'always' },
+      reportBindings: [{ alias: 'upstream', taskId: dependency }],
+    }).ticketId
+    const observeReport = (ticketId: string, experimentId: string) => {
+      const file = seedResult({ workspace: h.root, experimentId, runId: experimentId, revision: 1, status: 'succeeded', total: 3, passed: 3, failed: 0 })
+      const { observed } = readResultFile({ root: h.root, path: file.resultPath, observedAt: h.clock.now() })
+      assert.ok(observed)
+      runtime.observe({ ticketId, observed })
+    }
+    const offerAnalysis = async () => {
+      await tick()
+      const call = h.assessor.calls.filter(c => c.snapshot.identity.ticketId === owner).at(-1)!
+      const menu = call.snapshot.actionMenu.find(item => item.options?.some(option => option.id === 'continue_now'))
+      assert.ok(menu)
+      call.resolve({ drafts: [{ intent: 'ask_now', actionId: menu.actionId, reasonText: 'request permission for analysis' }], raw: raw([]) })
+      await tick()
+      return rowFor(h, call)
+    }
+    observeReport(owner, 'self')
+    const blocked = await offerAnalysis()
+    assert.equal(attention.listOpen(owner).length, 0)
+    assert.equal(db.listNotifications(owner).length, 0)
+    assert.equal(JSON.parse(blocked.post_guard_json!)[0].code, 'input_missing')
+    assert.equal(db.listReceipts(owner).length, 0)
+
+    observeReport(dependency, 'upstream')
+    await offerAnalysis()
+    const [open] = attention.listOpen(owner)
+    assert.ok(open)
+    runtime.present(owner)
+    assert.equal(runtime.answer({ attentionId: open.attentionId, optionId: 'continue_now', taskRevision: open.taskRevision }).ok, true)
+    assert.equal(db.listReceipts(owner).length, 1)
+    assert.equal(runtime.completionCheck(runtime.getTask(owner)).ok, true)
+  } finally {
+    await h.close()
+    h.dispose()
+  }
+})
+
 test('需要判断时只登记请求、事务外调用 assessor；回交前不出现问题', async () => {
   const h = setup()
   try {
