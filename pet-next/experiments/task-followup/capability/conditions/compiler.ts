@@ -62,7 +62,9 @@ export const COMPILER_SYSTEM = `你是“承诺编译器”，只做一件事：
 14. “报告回来/到齐”用 result.present；“报告成功/失败”用 result.status（succeeded/failed）。
     不要把“任何一份失败就问我”编译成“任一份报告到达就问我”。
 15. “只有 A 失败才需要来问我”= when: A.result.status == "failed"（正面条件）；
-    不要写成 not(A.failed)，也不要用 A.present 代替 A.failed。`
+    不要写成 not(A.failed)，也不要用 A.present 代替 A.failed。
+16. “只有两份都成功时才来问我”= when: all(A.status=="succeeded", B.status=="succeeded")；
+    不是 any(status=="failed")——后者是“失败就归档”的触发条件，方向相反。`
 
 export function quoteSha(text: string): string {
   return createHash('sha256').update(text).digest('hex')
@@ -299,6 +301,37 @@ export function createConditionCompiler(): ConditionCompiler {
         return { status: 'error', reason: `invalid_literals:${literalProblems.join('|')}`, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'invalid_literals', detail: literalProblems.join('|') }), checks: [...checks, 'literals_rejected'] }
       }
       checks.push('structure_ok', 'facts_registered')
+
+      // 方向负控：冻结措辞里“都成功才问”不能被编译成“失败才问”，反之亦然。
+      // 只检查引用原话的第一段（提问从句），不推断任意文本；方向相反就拒绝，
+      // 交给宿主的有界模型兜底，而不是把反向计划当成原生结果。
+      const promiseText = quoteCheck.quotes.map((q) => q.text).join('\n')
+      const askPart = promiseText.split(/[；;]/)[0] ?? promiseText
+      const wantsSuccess = /(?:都|全部|两份都)成功/u.test(askPart) && /问我|确认|继续/u.test(askPart)
+      const wantsFailure = /失败/u.test(askPart) && /问我|确认|继续/u.test(askPart)
+      const literals: string[] = []
+      let numericFailed = false
+      const collect = (node: any): void => {
+        if (!node || typeof node !== 'object') return
+        if (node.op === 'cmp') {
+          if (typeof node.value === 'string') literals.push(node.value)
+          if (String(node.fact).endsWith('.failed') && ['gt', 'ge'].includes(String(node.rel))) numericFailed = true
+          return
+        }
+        for (const key of ['args', 'arg']) {
+          const v = node[key]
+          if (Array.isArray(v)) v.forEach(collect)
+          else if (v) collect(v)
+        }
+      }
+      collect(candidate.when)
+      const hasFailed = literals.includes('failed') || numericFailed
+      const hasSucceeded = literals.includes('succeeded')
+      if ((wantsSuccess && !wantsFailure && hasFailed && !hasSucceeded)
+        || (wantsFailure && !wantsSuccess && hasSucceeded && !hasFailed)) {
+        const detail = `polarity_mismatch:${wantsSuccess ? 'success' : 'failure'}=>${literals.join('|')}`
+        return { status: 'error', reason: detail, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'polarity_mismatch', detail }), checks: [...checks, 'polarity_rejected'] }
+      }
 
       const when = candidate.when as Expr
       const key = compilationKey({

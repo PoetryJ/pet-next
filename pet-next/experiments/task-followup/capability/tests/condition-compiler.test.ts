@@ -241,3 +241,25 @@ test('4500 字符预算保留最近的更正', async () => {
   const view = buildCompileView(input([...long, recent]))
   assert.ok(view.user.length > 0)
 })
+
+test('方向负控：把“都成功才问”编译成“失败才问”必须拒绝', async () => {
+  const o = turn('u1', '这两份 CI 报告，只有两份都成功时才来问我是否继续；只要有任意一份失败，就直接安静归档，不要打扰我。', 'user')
+  const inverted = JSON.stringify({
+    when: { op: 'cmp', fact: taskFact('T1', 'result.status'), rel: 'eq', value: 'failed' },
+    quotes: [span(o, o.text)],
+    unsupported: [],
+  })
+  const wrong = await createConditionCompiler().compile(input([o]), fixtureClient([inverted]))
+  assert.equal(wrong.status, 'error')
+  if (wrong.status === 'error') assert.ok(wrong.reason.startsWith('polarity_mismatch'), wrong.reason)
+
+  const p = turn('u1', '这两份 CI 报告，只要有任何一份失败，就马上来问我是否分析失败原因；如果两份都成功，就直接安静归档。', 'user')
+  const invertedP = JSON.stringify({
+    when: { op: 'cmp', fact: taskFact('T1', 'result.status'), rel: 'eq', value: 'succeeded' },
+    quotes: [span(p, p.text)],
+    unsupported: [],
+  })
+  const wrongP = await createConditionCompiler().compile(input([p]), fixtureClient([invertedP]))
+  assert.equal(wrongP.status, 'error')
+  if (wrongP.status === 'error') assert.ok(wrongP.reason.startsWith('polarity_mismatch'), wrongP.reason)
+})
