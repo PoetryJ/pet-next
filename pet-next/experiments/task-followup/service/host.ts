@@ -17,7 +17,8 @@ import { randomBytes } from 'node:crypto'
 import { appendFileSync, closeSync, existsSync, mkdirSync, openSync, readFileSync, renameSync, statSync, unlinkSync, writeFileSync, writeSync } from 'node:fs'
 import { createServer } from 'node:http'
 import type { IncomingMessage, Server, ServerResponse } from 'node:http'
-import { isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { basename, isAbsolute, join, relative, resolve, sep } from 'node:path'
+import { resolveDependencyEdit } from './dependency-correction.ts'
 import { sha256Bytes } from '../contracts.ts'
 import type { PolicyId, QuietConfig, TaskSnapshot } from '../contracts.ts'
 import { DEFAULT_QUIET, normalizeTimeZone } from '../contracts.ts'
@@ -537,6 +538,11 @@ export async function runHost(options: HostOptions): Promise<number> {
       response.end(html)
       return
     }
+    if (request.method === 'GET' && url.pathname === '/condition-view.mjs') {
+      response.writeHead(200, { 'content-type': 'text/javascript; charset=utf-8', 'cache-control': 'no-store' })
+      response.end(readFileSync(join(EXPERIMENT_ROOT, 'demo', 'condition-view.mjs')))
+      return
+    }
     if (request.method === 'GET' && url.pathname === '/api/health') {
       send(response, 200, { ok: true, pid: process.pid, workspace: root, startedAt, clock: clock.kind, timezone, demoConfig, judgment, quiet, wakeAfterMs: options.wakeAfterMs ?? null, configSha: built.configSha })
       return
@@ -619,11 +625,28 @@ export async function runHost(options: HostOptions): Promise<number> {
       }
       const targets = sayTicket ? [sayTicket] : built.runtime.listTasks().filter((t) => t.status === 'active').map((t) => t.ticketId)
       const turnId = `say-${Date.now()}-${randomBytes(3).toString('hex')}`
-      capability.appendTurn({ turnId, sessionId: 'panel', at: clock.now(), role: 'user', text, taskIds: targets })
+      const memory = capability
+      const at = clock.now()
+      const append = () => memory.appendTurn({ turnId, sessionId: 'panel', at, role: 'user', text, taskIds: targets })
+      const selected = sayTicket ? findTask(sayTicket) : null
+      const primaryDir = selected && bindingOf(selected.ticketId)?.dir
+      const edit = selected?.status === 'active'
+        ? resolveDependencyEdit(text, { taskId: selected.ticketId, names: [selected.title, basename(primaryDir || '')] }, selected.reportBindings ?? [])
+        : null
+      if (edit && selected) {
+        const changed = built.runtime.updateBindings({ ticketId: selected.ticketId, reportBindings: edit.bindings,
+          sourceTurnIds: [turnId], reason: 'explicit_named_dependency_edit', at, beforeWrite: append })
+        if (!changed.ok) {
+          send(response, 409, { ok: false, code: 'dependency_update_rejected', detail: changed.detail })
+          return
+        }
+      } else {
+        append()
+      }
       for (const id of targets) built.runtime.requestReassessment(id)
       record({ event: 'host.say', turnId, ticketIds: targets, chars: text.length })
       wakeLoop?.()
-      send(response, 200, { ok: true, turnId, ticketIds: targets })
+      send(response, 200, { ok: true, turnId, ticketIds: targets, ...(edit ? { updatedBindings: edit.bindings } : {}) })
       return
     }
     if (action === 'tasks') {

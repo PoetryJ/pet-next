@@ -41,53 +41,7 @@ const ASSESS_MAX = 768
 const EXTRACT_MAX = 2048
 const sha = (text: string) => createHash('sha256').update(text).digest('hex')
 
-/** 条件里实际引用的任务 id（用于识别“改口后不再依赖 B”）。 */
-export function referencedTaskIds(expr: unknown): Set<string> {
-  const out = new Set<string>()
-  const walk = (node: any): void => {
-    if (!node || typeof node !== 'object') return
-    if (node.op === 'cmp' && typeof node.fact === 'string') {
-      const m = /^task:([^.]+)\./.exec(node.fact)
-      if (m) out.add(m[1]!)
-      return
-    }
-    for (const key of ['args', 'arg']) {
-      const value = node[key]
-      if (Array.isArray(value)) value.forEach(walk)
-      else if (value) walk(value)
-    }
-  }
-  walk(expr)
-  return out
-}
-
 const CORRECTION_RE = /更正|不用等|别等|只等|只当参考|取消依赖/
-
-/**
- * 确定性依赖更正：用户明确说“X 不用等了 / 只等 Y”时，直接更新依赖集合。
- * 只处理这两种明确措辞，不猜模糊表达；映射依据是任务标题与绑定别名（宿主已有的真实命名）。
- */
-export function detectDependencyCorrection(
-  turns: readonly { turnId: string; text: string }[],
-  bindings: readonly { alias: string; taskId: string }[],
-): { reportBindings: { alias: string; taskId: string }[]; sourceTurnIds: string[]; reason: string } | null {
-  if (!bindings.length) return null
-  const candidates = turns.slice(-3).filter((t) => t.text.length <= 200 && /不用等|别等|只等|不再等/.test(t.text))
-  const turn = candidates.at(-1)
-  if (!turn) return null
-  const token = (value: string) => value.replace(/[\s\-—:：]/g, '').slice(0, 12)
-  const names = (alias: string) => [alias, alias.split(/\s+/)[0] ?? '', alias.slice(0, 2)].filter((x) => x.length > 0)
-  const keepMatch = /只等\s*([^\s，。；,;]{1,10})/.exec(turn.text)
-  let kept: { alias: string; taskId: string }[]
-  if (keepMatch) {
-    const keep = keepMatch[1]!
-    kept = bindings.filter((b) => names(b.alias).some((name) => keep.includes(name.slice(0, 2)) || name.includes(keep.slice(0, 2))))
-  } else {
-    kept = bindings.filter((b) => !names(b.alias).some((name) => new RegExp(`(不用等|别等|不再等)[^。；]{0,8}${name.slice(0, 2)}|${name.slice(0, 2)}[^。；]{0,8}(不用等|别等|不再等)`).test(turn.text)))
-  }
-  if (kept.length === bindings.length) return null
-  return { reportBindings: [...kept], sourceTurnIds: [turn.turnId], reason: 'explicit_dependency_correction' }
-}
 
 export interface ConditionSummary {
   readonly available: boolean
@@ -259,19 +213,6 @@ export function createConditionsHandle(
 
       const askTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user' && (item.options?.length ?? 0) > 0)
       const packet = loaded.packet
-      // 明确的依赖更正优先于编译：即使模型编译失败，也要把真实依赖改过来（S2 的核心）。
-      const depCorrection = detectDependencyCorrection(
-        loaded.view.turns.filter((t) => t.role === 'user').map((t) => ({ turnId: t.turnId, text: t.text })),
-        task.reportBindings ?? [],
-      )
-      if (depCorrection) {
-        stats.ignored += 1
-        return {
-          drafts: [],
-          dependencyUpdate: depCorrection,
-          raw: { provider: 'conditions', model: 'dependency-correction', rawOutput: '', meta: { dependencyUpdate: depCorrection, memoryView: { kind: loaded.view.kind, viewSha: loaded.view.viewSha, refs: loaded.view.refs } } },
-        }
-      }
       if (!task.result && !askTemplate) {
         stats.ignored += 1
         return {
@@ -285,14 +226,27 @@ export function createConditionsHandle(
       const bindingSha = bindingRegistrySha256(declarations, declaredTasks)
       const modelName = cfg.ok ? cfg.config.model : 'override'
       const compilerSha = compilerSha256({ name: modelName, provider: cfg.ok ? cfg.config.provider : 'override' })
+      // 消费者只拿 MemoryView 里的原话（refs 可追溯）；T 同时给摘要，V 为 null。
+      const view = loaded.view
+      // 编译只给“承诺相关”的原话：承诺/偏好条目的证据 + 摘要引用 + 最后一条用户原话。
+      // 96 条历史里的填充内容不进编译输入，避免模型把它们当成待支持子句。
+      const focus = new Set<string>([...packet.commitments, ...packet.preferences].flatMap((i) => i.evidenceTurnIds))
+      for (const id of view.summaryKeyTurns) focus.add(id)
+      const lastUser = view.turns.filter((t) => t.role === 'user').at(-1)
+      if (lastUser) focus.add(lastUser.turnId)
+      const focused = view.turns.filter((t) => t.role === 'user' && focus.has(t.turnId)).slice(-12)
+      const base = focused.length ? focused : view.turns.filter((t) => t.role === 'user').slice(-6)
+      // 有更正时，更正之前的旧承诺已被替代：只把“更正及其之后”的原话交给编译器，
+      // 避免模型把作废条件与更正条件用 all 合并（S2 的真实失败）。
+      const correctionAt = base.map((t) => CORRECTION_RE.test(t.text)).lastIndexOf(true)
+      const chosen = correctionAt >= 0 ? base.slice(correctionAt) : base
+      const turns = chosen.map((t) => ({ turnId: t.turnId, role: 'user' as const, at: t.at, text: t.text, sha256: sha(t.text) }))
       const fingerprint = commitmentFingerprint({
         revision: task.taskRevision,
         commitmentItemIds: packet.commitments.filter((i) => i.authority === 'user').map((i) => i.itemId),
         commitmentValues: packet.commitments.filter((i) => i.authority === 'user').map((i) => String(i.value ?? '')),
-        latestUserTurnSha: (() => {
-          const last = memStore.turns().filter((t) => t.role === 'user').at(-1)
-          return last ? sha(last.text) : null
-        })(),
+        // The cache must track the scoped language the compiler actually received.
+        latestUserTurnSha: sha(JSON.stringify({ quotes: turns.map(t => [t.turnId, t.sha256]), summary: view.summary })),
       })
       const commitmentRevision = planStore.revision(task.ticketId, fingerprint, now)
 
@@ -303,21 +257,6 @@ export function createConditionsHandle(
       let compileDetail: string | null = null
       let rawCall: unknown = null
       if (!plan || stalePlan) {
-        // 消费者只拿 MemoryView 里的原话（refs 可追溯）；T 同时给摘要，V 为 null。
-        const view = loaded.view
-        // 编译只给“承诺相关”的原话：承诺/偏好条目的证据 + 摘要引用 + 最后一条用户原话。
-        // 96 条历史里的填充内容不进编译输入，避免模型把它们当成待支持子句。
-        const focus = new Set<string>([...packet.commitments, ...packet.preferences].flatMap((i) => i.evidenceTurnIds))
-        for (const id of view.summaryKeyTurns) focus.add(id)
-        const lastUser = view.turns.filter((t) => t.role === 'user').at(-1)
-        if (lastUser) focus.add(lastUser.turnId)
-        const focused = view.turns.filter((t) => t.role === 'user' && focus.has(t.turnId)).slice(-12)
-        const base = focused.length ? focused : view.turns.filter((t) => t.role === 'user').slice(-6)
-        // 有更正时，更正之前的旧承诺已被替代：只把“更正及其之后”的原话交给编译器，
-        // 避免模型把作废条件与更正条件用 all 合并（S2 的真实失败）。
-        const correctionAt = base.map((t) => CORRECTION_RE.test(t.text)).lastIndexOf(true)
-        const chosen = correctionAt >= 0 ? base.slice(correctionAt) : base
-        const turns = chosen.map((t) => ({ turnId: t.turnId, role: 'user' as const, at: t.at, text: t.text, sha256: sha(t.text) }))
         const compileIdentity = sha(JSON.stringify({ commitmentRevision, compilerSha, bindingSha, turnIds: turns.map((t) => t.turnId), viewSha: view.viewSha }))
         const cachedFailure = planStore.failure(task.ticketId, compileIdentity)
         if (cachedFailure) {
@@ -376,31 +315,6 @@ export function createConditionsHandle(
         // 新版本 pending/error/unsupported：同证据版本最多一次模型兜底，之后有界等待
         const meta = { compile: { status: compileStatus, detail: compileDetail }, plan: plan ? { revision: plan.commitmentRevision, key: plan.compilationKey } : null, commitmentRevision, evidenceKey, memoryPacket: packet }
         return await fallbackOrWait(task, snapshot, packet, signal, evidenceKey, now, `新承诺版本未编译成功（${compileStatus}${compileDetail ? `：${compileDetail}` : ''}）`, meta)
-      }
-
-      // 改口收窄依赖：编译产物不再引用 B，且引用原话是更正 → 交给宿主更新真实 bindings（事务内撤销旧问题/授权）。
-      const referenced = referencedTaskIds(plan!.when)
-      const currentDeps = (task.reportBindings ?? []).map((b) => b.taskId)
-      const dropped = currentDeps.filter((id) => !referenced.has(id))
-      const correction = plan!.sourceQuotes.some((q) => CORRECTION_RE.test(q.text))
-      if (dropped.length > 0 && correction) {
-        const aliasOf = new Map((task.reportBindings ?? []).map((b) => [b.taskId, b.alias]))
-        const bindings = [...referenced]
-          .filter((id) => id !== task.ticketId)
-          .map((id) => ({ alias: aliasOf.get(id) ?? `依赖${id.slice(-6)}`, taskId: id }))
-        stats.ignored += 1
-        return {
-          drafts: [],
-          dependencyUpdate: {
-            reportBindings: bindings,
-            sourceTurnIds: plan!.sourceQuotes.map((q) => q.turnId),
-            reason: `correction dropped ${dropped.join(',')}`,
-          },
-          raw: {
-            provider: 'conditions', model: 'dependency-update', rawOutput: '',
-            meta: { dependencyUpdate: { bindings, dropped, sourceTurnIds: plan!.sourceQuotes.map((q) => q.turnId) }, plan: plan!.compilationKey, memoryView: { kind: loaded.view.kind, viewSha: loaded.view.viewSha, refs: loaded.view.refs } },
-          },
-        }
       }
 
       const context = makeContext(task, packet, {
