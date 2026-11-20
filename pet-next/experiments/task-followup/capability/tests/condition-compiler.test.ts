@@ -6,7 +6,7 @@ import test from 'node:test'
 import assert from 'node:assert/strict'
 import { createHash } from 'node:crypto'
 import { DatabaseSync } from 'node:sqlite'
-import { createConditionCompiler, buildCompileView, budgetTurns } from '../conditions/compiler.ts'
+import { createConditionCompiler, buildCompileView, budgetTurns, validateDirection, inferFollowMode } from '../conditions/compiler.ts'
 import { SqliteConditionStore, commitmentFingerprint } from '../conditions/store.ts'
 import { evaluate } from '../conditions/kernel.ts'
 import type { EvalContext, Fact } from '../conditions/kernel.ts'
@@ -251,7 +251,7 @@ test('方向负控：把“都成功才问”编译成“失败才问”必须�
   })
   const wrong = await createConditionCompiler().compile(input([o]), fixtureClient([inverted]))
   assert.equal(wrong.status, 'error')
-  if (wrong.status === 'error') assert.ok(wrong.reason.startsWith('polarity_mismatch'), wrong.reason)
+  if (wrong.status === 'error') assert.ok(wrong.reason.startsWith('polarity_mismatch') || wrong.reason.startsWith('direction_rejected'), wrong.reason)
 
   const p = turn('u1', '这两份 CI 报告，只要有任何一份失败，就马上来问我是否分析失败原因；如果两份都成功，就直接安静归档。', 'user')
   const invertedP = JSON.stringify({
@@ -261,5 +261,73 @@ test('方向负控：把“都成功才问”编译成“失败才问”必须�
   })
   const wrongP = await createConditionCompiler().compile(input([p]), fixtureClient([invertedP]))
   assert.equal(wrongP.status, 'error')
-  if (wrongP.status === 'error') assert.ok(wrongP.reason.startsWith('polarity_mismatch'), wrongP.reason)
+  if (wrongP.status === 'error') assert.ok(wrongP.reason.startsWith('polarity_mismatch') || wrongP.reason.startsWith('direction_rejected'), wrongP.reason)
+})
+
+test('历史两份反向计划被结构负控检出', () => {
+  const correction = '更正：B 那份报告失败也不用问我，只有 A 失败才需要来问我。'
+  const invertedNot = {
+    op: 'not', arg: { op: 'all', args: [
+      { op: 'cmp', fact: taskFact('T1', 'result.status'), rel: 'eq', value: 'failed' },
+      { op: 'cmp', fact: taskFact('T1', 'result.present'), rel: 'eq', value: true },
+    ] },
+  }
+  const presentOrFailed = { op: 'any', args: [
+    { op: 'cmp', fact: taskFact('T1', 'result.present'), rel: 'eq', value: true },
+    { op: 'cmp', fact: taskFact('T1', 'result.status'), rel: 'eq', value: 'failed' },
+  ] }
+  assert.ok(validateDirection(invertedNot, correction).includes('inverted_not'))
+  assert.ok(validateDirection(presentOrFailed, correction).includes('present_in_failure_ask'))
+
+  const p = '这两份 CI 报告，只要有任何一份失败，就马上来问我是否分析失败原因；如果两份都成功，就直接安静归档。'
+  const o = '这两份 CI 报告，只有两份都成功时才来问我是否继续；只要有任意一份失败，就直接安静归档。'
+  assert.deepEqual(validateDirection({ op: 'any', args: [
+    { op: 'cmp', fact: taskFact('T1', 'result.status'), rel: 'eq', value: 'failed' },
+    { op: 'cmp', fact: taskFact('T2', 'result.status'), rel: 'eq', value: 'failed' },
+  ] }, p), [])
+  assert.deepEqual(validateDirection({ op: 'all', args: [
+    { op: 'cmp', fact: taskFact('T1', 'result.status'), rel: 'eq', value: 'succeeded' },
+    { op: 'cmp', fact: taskFact('T2', 'result.status'), rel: 'eq', value: 'succeeded' },
+  ] }, o), [])
+})
+
+test('follow：成功轮继续跟下一轮，不把本轮成功当结束', async () => {
+  const t = turn('u1', '任何一份 CI 失败就问我是否分析；本轮成功先安静，继续跟下一轮。', 'user')
+  const payload = JSON.stringify({
+    when: { op: 'cmp', fact: taskFact('T1', 'result.status'), rel: 'eq', value: 'failed' },
+    follow: { mode: 'next_round', quotes: [span(t, t.text)] },
+    quotes: [span(t, t.text)],
+    unsupported: [],
+  })
+  const result = await createConditionCompiler().compile(input([t]), fixtureClient([payload]))
+  assert.equal(result.status, 'compiled')
+  if (result.status === 'compiled') {
+    assert.equal(result.plan.follow?.mode, 'next_round')
+    assert.equal(result.plan.follow?.defaulted, false)
+    assert.equal(result.plan.follow?.quotes.length, 1)
+  }
+  assert.equal(inferFollowMode('本轮全部成功就归档。'), 'end')
+  assert.equal(inferFollowMode('本轮成功先安静，继续跟进下一次重跑。'), 'next_round')
+  assert.equal(inferFollowMode('失败就问我是否分析。'), 'next_round')
+})
+
+test('历史反向计划送进真实编译入口必须被拒绝（0b38ccf 反例）', async () => {
+  const t = turn('u1', '更正：B 那份报告失败也不用问我，只有 A 失败才需要来问我。', 'user')
+  const follow = { mode: 'end', quotes: [span(t, t.text)] }
+  const plans = [
+    { op: 'not', arg: { op: 'all', args: [
+      { op: 'cmp', fact: taskFact('T1', 'result.status'), rel: 'eq', value: 'failed' },
+      { op: 'cmp', fact: taskFact('T1', 'result.present'), rel: 'eq', value: true },
+    ] } },
+    { op: 'any', args: [
+      { op: 'cmp', fact: taskFact('T1', 'result.present'), rel: 'eq', value: true },
+      { op: 'cmp', fact: taskFact('T1', 'result.status'), rel: 'eq', value: 'failed' },
+    ] },
+  ]
+  for (const when of plans) {
+    const payload = JSON.stringify({ when, follow, quotes: [span(t, t.text)], unsupported: [] })
+    const result = await createConditionCompiler().compile(input([t]), fixtureClient([payload]))
+    assert.equal(result.status, 'error')
+    if (result.status === 'error') assert.ok(result.reason.startsWith('direction_rejected'), result.reason)
+  }
 })

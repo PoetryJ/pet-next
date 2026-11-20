@@ -71,7 +71,8 @@ CREATE TABLE IF NOT EXISTS tasks (
   completion_json TEXT,
   close_reason TEXT,
   diagnostics_json TEXT NOT NULL DEFAULT '[]',
-  bindings_json TEXT
+  bindings_json TEXT,
+  partial_json TEXT
 );
 
 CREATE TABLE IF NOT EXISTS proposals (
@@ -285,6 +286,7 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
     add('notifications', 'presented_at', 'presented_at TEXT')
     add('tasks', 'continuation_json', 'continuation_json TEXT')
     add('tasks', 'bindings_json', 'bindings_json TEXT')
+    add('tasks', 'partial_json', 'partial_json TEXT')
   }
 
   get file(): string {
@@ -447,8 +449,8 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
       .prepare(
         `INSERT INTO tasks(ticket_id, task_revision, assignment_id, title, goal, goal_json, stage, status, created_at, updated_at,
            event_cursor, memory_cursor, evidence_json, last_proposal_json, last_answer_json, continuation_json, attempt,
-           result_json, analysis_json, completion_json, close_reason, diagnostics_json, bindings_json)
-         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+           result_json, analysis_json, completion_json, close_reason, diagnostics_json, bindings_json, partial_json)
+         VALUES(?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
          ON CONFLICT(ticket_id) DO UPDATE SET
            task_revision = excluded.task_revision, assignment_id = excluded.assignment_id, title = excluded.title,
            goal = excluded.goal, goal_json = excluded.goal_json, stage = excluded.stage, status = excluded.status,
@@ -458,7 +460,7 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
            attempt = excluded.attempt, result_json = excluded.result_json,
            analysis_json = excluded.analysis_json, completion_json = excluded.completion_json,
            close_reason = excluded.close_reason, diagnostics_json = excluded.diagnostics_json,
-           bindings_json = excluded.bindings_json`,
+           bindings_json = excluded.bindings_json, partial_json = excluded.partial_json`,
       )
       .run(
         row.ticket_id,
@@ -484,6 +486,7 @@ export class FollowupDb implements MemoryStorePort, AttentionStore {
         row.close_reason,
         row.diagnostics_json,
         row.bindings_json ?? null,
+        row.partial_json ?? null,
       )
   }
 
@@ -1034,6 +1037,7 @@ export interface TaskRow {
   close_reason: string | null
   diagnostics_json: string
   bindings_json?: string | null
+  partial_json?: string | null
 }
 
 export interface ProposalRow {

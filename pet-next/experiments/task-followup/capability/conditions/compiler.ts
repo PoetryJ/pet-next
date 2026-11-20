@@ -17,7 +17,7 @@ import type { ModelClient } from '../model/protocol.ts'
 import {
   COMPILE_INPUT_CHARS, CONDITION_SCHEMA, MAX_SOURCE_QUOTES,
 } from './plan-types.ts'
-import type { CompileCall, CompileInput, CompileResult, ConditionCompiler, ConditionPlan, ConditionQuote, FactDeclaration } from './plan-types.ts'
+import type { CompileCall, CompileInput, CompileResult, ConditionCompiler, ConditionPlan, ConditionQuote, FactDeclaration, FollowPlan } from './plan-types.ts'
 
 /** 编译输入里的原话形状（plan-types 已冻结）。 */
 type ConditioningTurn = CompileInput['userTurns'][number]
@@ -28,7 +28,7 @@ export const COMPILER_SYSTEM = `你是“承诺编译器”，只做一件事：
 只输出一个 JSON 对象，不要解释、不要 Markdown。
 
 输出形状：
-{"when": <条件>, "quotes": [{"turnId": "...", "start": 0, "end": 12}], "unsupported": ["..."]}
+{"when": <条件>, "quotes": [{"turnId": "...", "start": 0, "end": 12}], "followMode": "end"|"next_round", "followQuotes": [{"turnId": "...", "start": 0, "end": 12}], "unsupported": ["..."]}
 
 条件语法（只能用这些）：
 - {"op":"cmp","fact":"字段ID","rel":"eq|ne|lt|le|gt|ge","value":<字符串/布尔/数字>}
@@ -53,7 +53,7 @@ export const COMPILER_SYSTEM = `你是“承诺编译器”，只做一件事：
    报告显示成功/失败是另一个事实。
 9. when 只保留当前仍有效的依赖；单条件直接用 cmp，多条件才用 all/any。
 10. quotes 必须覆盖支持当前条件的完整原话：start=0，end=该用户消息的 UTF-16 长度（宿主给出）。
-11. 输出必须是一个完整 JSON 对象，顶层键恰为 when、quotes、unsupported；不要省略引号或注释。
+11. 输出必须是一个完整 JSON 对象，顶层键恰为 when、follow、quotes、unsupported；不要省略引号或注释。
 12. “都成功就归档 / 不用问 / 不要打扰”不是 unsupported：它说明 when 只描述“必须来问我”的触发条件
     （例如任一报告失败）。当来源齐备且 when 为 false 时，宿主会静默归档；不要把归档写成 when 的一部分，
     也不要用 not 包装“还没到的报告”。
@@ -64,7 +64,11 @@ export const COMPILER_SYSTEM = `你是“承诺编译器”，只做一件事：
 15. “只有 A 失败才需要来问我”= when: A.result.status == "failed"（正面条件）；
     不要写成 not(A.failed)，也不要用 A.present 代替 A.failed。
 16. “只有两份都成功时才来问我”= when: all(A.status=="succeeded", B.status=="succeeded")；
-    不是 any(status=="failed")——后者是“失败就归档”的触发条件，方向相反。`
+    不是 any(status=="failed")——后者是“失败就归档”的触发条件，方向相反。
+17. followMode 说明 when 不成立时是结束还是继续：用户说“本轮/这次成功就归档/结束/不用再跟”=end；
+    “成功先安静，继续跟下一轮/下一次重跑/持续观察”=next_round。followQuotes 必须逐字指向支持该选择的用户原话。
+18. 用户没有明确说结束时，默认 followMode=next_round（持续观察），不要因为“这一轮成功”就替用户结束委托；
+    只有原话明确说归档/结束/不用再跟时才用 end。`
 
 export function quoteSha(text: string): string {
   return createHash('sha256').update(text).digest('hex')
@@ -120,8 +124,71 @@ export function buildCompileView(input: CompileInput): CompileRequestView {
 
 interface RawCandidate {
   when?: unknown
+  follow?: unknown
+  followMode?: unknown
+  followQuotes?: unknown
   quotes?: unknown
   unsupported?: unknown
+}
+
+/** 首段提问从句的方向；只用于结构负控，不替代语义判断。 */
+export function askIntentOf(text: string): 'failure' | 'success' | 'arrival' | 'mixed' | 'unknown' {
+  const askPart = text.split(/[；;]/)[0] ?? text
+  const asks = /问我|确认|继续|提醒|通知/.test(askPart)
+  if (!asks) return 'unknown'
+  const arrival = /到齐|都回来|都到|报告都|收齐/.test(askPart)
+  const success = /(?:都|全部|两份都|两个都).{0,6}成功|成功.{0,6}(?:才|再).{0,6}(?:问|确认)/u.test(askPart)
+  const failure = /失败.{0,10}(?:问|确认|提醒)|(?:任何|任意|只要).{0,8}失败/u.test(askPart)
+  if (success && failure) return 'mixed'
+  if (arrival && !success && !failure) return 'arrival'
+  if (success) return 'success'
+  if (failure) return 'failure'
+  return 'unknown'
+}
+
+/** 结构方向负控：拒绝 not 包装正向条件、把 present 混进失败/成功提问、或缺少对应状态字面量。 */
+export function validateDirection(expr: unknown, askPart: string): string[] {
+  const intent = askIntentOf(askPart)
+  const facts: { fact: string; value?: unknown }[] = []
+  const root = expr as { op?: string } | null
+  const walk = (node: any): void => {
+    if (!node || typeof node !== 'object') return
+    if (node.op === 'cmp') facts.push({ fact: String(node.fact), value: node.value })
+    for (const key of ['args', 'arg']) {
+      const value = node[key]
+      if (Array.isArray(value)) value.forEach(walk)
+      else if (value) walk(value)
+    }
+  }
+  walk(expr)
+  const hasPresent = facts.some((item) => item.fact.endsWith('.result.present'))
+  const hasFailed = facts.some((item) => item.value === 'failed' || (item.fact.endsWith('.failed') && typeof item.value === 'number' && item.value > 0))
+  const hasSucceeded = facts.some((item) => item.value === 'succeeded')
+  const problems: string[] = []
+  if (intent === 'failure' || intent === 'success') {
+    if (root?.op === 'not') problems.push('inverted_not')
+    if (intent === 'failure') {
+      if (hasPresent) problems.push('present_in_failure_ask')
+      if (!hasFailed) problems.push('missing_failure_condition')
+    } else {
+      const arrivalAllowed = /到齐|都回来|都到|报告都|收齐/.test(askPart)
+      if (hasPresent && !arrivalAllowed) problems.push('present_in_success_ask')
+      if (hasFailed) problems.push('failed_in_success_ask')
+      if (!hasSucceeded) problems.push('missing_success_condition')
+    }
+  }
+  if (intent === 'arrival') {
+    if (!hasPresent) problems.push('missing_present_condition')
+    if (hasFailed || hasSucceeded) problems.push('status_in_arrival_ask')
+  }
+  return problems
+}
+
+/** when 不成立时的默认分支：原话明确结束才 end，否则持续观察。 */
+export function inferFollowMode(text: string): 'end' | 'next_round' {
+  if (/归档|结束|不用再跟|就这轮|到此为止|本轮.{0,6}(?:结束|完)/u.test(text)) return 'end'
+  if (/继续跟|下一次重跑|下一轮|持续观察|一直跟|接着跟/u.test(text)) return 'next_round'
+  return 'next_round'
 }
 
 /** 逐字来源校验：span 必须落在该 turn 文本内且内容完全一致，且只能来自 user 角色。 */
@@ -210,13 +277,26 @@ export function createConditionCompiler(): ConditionCompiler {
         return { status: 'error', reason: `model_${result.code}:${result.detail}`, rawCall: callRecord(request, model, '', null, startedAt, finishedAt, { code: result.code, detail: result.detail }), checks: [...checks, `model_failure:${result.code}`] }
       }
       const rawText = result.response.rawText
-      let parsed = parseModelJson(rawText)
+      // 已知的模型排版错误：follow 对象后多一个根闭合，再写 {"quotes"。先做只删多余闭合的
+      // 结构化修复，再解析；不改变任何字段值或条件语义。
+      const parseText = rawText
+        .replace(/\}\s*,\s*\{\s*"quotes"/g, '},"quotes"')
+        .replace(/\}\}\s*,?\s*\{?\s*"quotes"/g, '},"quotes"')
+      let parsed = parseModelJson(parseText)
+      if (parseText !== rawText) checks.push('local_structure_repair')
       let finalText = rawText
       let usage: unknown = result.response.usage ?? null
       if (!parsed.ok) {
         // 先做确定性的本地语法修复（仅去尾逗号/统一弯引号），不改任何字段与语义；
         // 失败才发起下一次模型调用。
-        const relaxed = parseModelJson(rawText.replace(/,\s*([}\]])/g, '$1').replace(/[“”]/g, '"'))
+        const relaxed = parseModelJson(
+          parseText
+            // 模型常把 follow 对象后再补一个根闭合，然后继续写 quotes/unsupported；
+            // 只去掉这个多余闭合，不改任何字段或语义。
+            .replace(/\}\}\s*,\s*"quotes"/g, '},"quotes"')
+            .replace(/,\s*([}\]])/g, '$1')
+            .replace(/[“”]/g, '"'),
+        )
         if (relaxed.ok) {
           parsed = relaxed
           checks.push('local_syntax_repair')
@@ -250,11 +330,16 @@ export function createConditionCompiler(): ConditionCompiler {
       if (!candidate || typeof candidate !== 'object' || Array.isArray(candidate)) return { status: 'error', reason: 'output_not_object', rawCall: callRecord(request, model, finalText, usage, startedAt, finishedAt, { code: 'bad_response', detail: 'not_object' }), checks: [...checks, 'structure_error'] }
 
       const unsupported = Array.isArray(candidate.unsupported) ? candidate.unsupported.filter((x): x is string => typeof x === 'string') : []
-      const quoteCheck = validateQuotes(candidate, budgetTurns(input.userTurns))
+      let quoteCheck = validateQuotes(candidate, budgetTurns(input.userTurns))
       if (!quoteCheck.ok) return { status: 'error', reason: quoteCheck.reason, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'bad_source', detail: quoteCheck.reason }), checks: [...checks, `source_rejected:${quoteCheck.reason}`] }
       checks.push('quotes_verbatim')
 
-      if (unsupported.length > 0) return { status: 'unsupported', reason: `unsupported_clauses:${unsupported.length}`, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, null), checks: [...checks, 'unsupported_declared'] }
+      // 相关性过滤：模型常把清单/缓存/日志路径等无关聊天塞进 unsupported。
+      // 只保留直接限制“何时问/何时结束”的子句；这不解释语义，只做关键词相关性判断。
+      const RELEVANT_UNSUPPORTED = /失败|成功|报告|等|问|归档|继续|重跑|提醒|确认|完成|到齐|回来|CI/u
+      const relevantUnsupported = unsupported.filter((item) => RELEVANT_UNSUPPORTED.test(item))
+      if (relevantUnsupported.length > 0) return { status: 'unsupported', reason: `unsupported_clauses:${relevantUnsupported.length}`, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, null), checks: [...checks, 'unsupported_declared'] }
+      if (unsupported.length > 0) checks.push(`unsupported_filtered:${unsupported.length}`)
 
       // 结构归一：模型常把 when 写成表达式数组（[cmp] 或 [cmp,cmp]），语义等价于 all(args)；
       // 单元素等价于该元素。只做结构归一，不改变任何条件语义与引用。
@@ -302,6 +387,77 @@ export function createConditionCompiler(): ConditionCompiler {
       }
       checks.push('structure_ok', 'facts_registered')
 
+
+      // 有界方向修复：模型把“成功才问”写成失败条件（或反之）时，只再问一次方向；
+      // 不改用户原话、不新增字段。修不好就交回宿主兜底，绝不把反向计划当原生结果。
+      let directionProblems = validateDirection(candidate.when, quoteCheck.quotes.map((q) => q.text).join('\n'))
+      if (directionProblems.length) {
+        checks.push(`direction_first:${directionProblems.join('|')}`)
+        const repair = makeRequest('condition-repair', [
+          { role: 'system', content: view.system },
+          { role: 'user', content: `${view.user}\n\n---\n你上一次的输出是：\n${finalText}\n\n它的 when 方向与该用户承诺相反（${directionProblems.join('|')}）。只修正 when 的方向：用户说“都成功才问”就用 succeeded；说“任何一份失败就问我”就用 failed；不要用 not，也不要把 present 混进来。保持 quotes 与 follow 不新增字段，输出完整 JSON。` },
+        ], input.now)
+        const retry = await client.complete(repair, signal)
+        let repaired = false
+        if (retry.ok) {
+          const retryParsed = parseModelJson(retry.response.rawText)
+          if (retryParsed.ok && retryParsed.value && typeof retryParsed.value === 'object' && !Array.isArray(retryParsed.value)) {
+            const retryCandidate = retryParsed.value as RawCandidate
+            const retryQuotes = validateQuotes(retryCandidate, budgetTurns(input.userTurns))
+            const retryUnsupported = Array.isArray(retryCandidate.unsupported) ? retryCandidate.unsupported : []
+            if (retryQuotes.ok && retryUnsupported.length === 0) {
+              ;(retryCandidate as any).when = normalizeExpr((retryCandidate as any).when)
+              normalizeLiterals(retryCandidate.when)
+              const literalRetry = checkLiterals(retryCandidate.when, input.allowedFacts)
+              let structural = true
+              try { validateExpr(retryCandidate.when, factIds(input.allowedFacts)) } catch { structural = false }
+              const retryProblems = validateDirection(retryCandidate.when, retryQuotes.quotes.map((q) => q.text).join('\n'))
+              if (structural && literalRetry.length === 0 && retryProblems.length === 0) {
+                candidate = retryCandidate
+                quoteCheck = retryQuotes
+                finalText = retry.response.rawText
+                usage = [usage, retry.response.usage ?? null]
+                checks.push('direction_repair_used')
+                repaired = true
+                directionProblems = []
+              } else {
+                directionProblems = retryProblems.length ? retryProblems : ['invalid_after_repair']
+              }
+            }
+          }
+        } else {
+          checks.push(`direction_repair_model_${retry.code}`)
+        }
+        if (!repaired) {
+          const detail = `direction_rejected:${directionProblems.join('|')}`
+          return { status: 'error', reason: detail, rawCall: callRecord(request, model, finalText, usage, startedAt, finishedAt, { code: 'direction_rejected', detail }), checks: [...checks, 'direction_rejected'] }
+        }
+      }
+
+      const promiseTextForFollow = quoteCheck.quotes.map((q) => q.text).join('\n')
+      const nestedFollow = candidate.follow as { mode?: unknown; quotes?: unknown } | undefined
+      const rawFollow = candidate.followMode !== undefined || candidate.followQuotes !== undefined
+        ? { mode: candidate.followMode, quotes: candidate.followQuotes }
+        : nestedFollow
+      let follow: FollowPlan
+      if (rawFollow && typeof rawFollow === 'object') {
+        if (rawFollow.mode !== 'end' && rawFollow.mode !== 'next_round') {
+          return { status: 'error', reason: 'follow_mode_invalid', rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'follow_mode_invalid', detail: String(rawFollow.mode) }), checks: [...checks, 'follow_rejected'] }
+        }
+        const followQuotes = Array.isArray(rawFollow.quotes) && rawFollow.quotes.length
+          ? validateQuotes({ quotes: rawFollow.quotes }, budgetTurns(input.userTurns))
+          : null
+        if (followQuotes && !followQuotes.ok) {
+          return { status: 'error', reason: `follow_${followQuotes.reason}`, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'follow_source_invalid', detail: followQuotes.reason }), checks: [...checks, 'follow_rejected'] }
+        }
+        if (!followQuotes && rawFollow.mode !== inferFollowMode(promiseTextForFollow)) {
+          return { status: 'error', reason: 'follow_quote_missing', rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'follow_quote_missing', detail: rawFollow.mode }), checks: [...checks, 'follow_rejected'] }
+        }
+        follow = { mode: rawFollow.mode, quotes: followQuotes?.quotes ?? [], defaulted: !followQuotes }
+      } else {
+        follow = { mode: inferFollowMode(promiseTextForFollow), quotes: [], defaulted: true }
+      }
+
       // 方向负控：冻结措辞里“都成功才问”不能被编译成“失败才问”，反之亦然。
       // 只检查引用原话的第一段（提问从句），不推断任意文本；方向相反就拒绝，
       // 交给宿主的有界模型兜底，而不是把反向计划当成原生结果。
@@ -332,6 +488,11 @@ export function createConditionCompiler(): ConditionCompiler {
         const detail = `polarity_mismatch:${wantsSuccess ? 'success' : 'failure'}=>${literals.join('|')}`
         return { status: 'error', reason: detail, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'polarity_mismatch', detail }), checks: [...checks, 'polarity_rejected'] }
       }
+      const finalDirectionProblems = validateDirection(candidate.when, promiseTextForFollow)
+      if (finalDirectionProblems.length) {
+        const detail = `direction_rejected:${finalDirectionProblems.join('|')}`
+        return { status: 'error', reason: detail, rawCall: callRecord(request, model, rawText, result.response.usage ?? null, startedAt, finishedAt, { code: 'direction_rejected', detail }), checks: [...checks, 'direction_rejected'] }
+      }
 
       const when = candidate.when as Expr
       const key = compilationKey({
@@ -350,6 +511,7 @@ export function createConditionCompiler(): ConditionCompiler {
         bindingRegistrySha256: input.bindingRegistrySha256,
         sourceQuotes: quoteCheck.quotes,
         when,
+        follow,
         unsupported: [],
         compiledAt: input.now,
         compilerSha256: input.compilerSha256,

@@ -46,6 +46,14 @@ export interface ConditionQuote {
   readonly sha256: string
 }
 
+/** when 不成立时的分支：结束委托归档，还是安静继续跟下一轮。两者都要有原话依据。 */
+export interface FollowPlan {
+  readonly mode: 'end' | 'next_round'
+  readonly quotes: readonly ConditionQuote[]
+  /** 用户没有明确说结束时按持续观察默认，并显式记录，避免把“本轮成功”当结束。 */
+  readonly defaulted: boolean
+}
+
 export interface ConditionPlan {
   readonly schema: ConditionSchema
   readonly taskId: string
@@ -54,6 +62,8 @@ export interface ConditionPlan {
   readonly bindingRegistrySha256: string
   readonly sourceQuotes: readonly ConditionQuote[]
   readonly when: Expr
+  /** 缺省按旧数据/旧测试的 end 处理；新编译必须显式给出。 */
+  readonly follow?: FollowPlan
   /** 模型明确表示无法编译成有限条件的子句；非空时该 plan 不可行动。 */
   readonly unsupported: readonly string[]
   readonly compiledAt: string

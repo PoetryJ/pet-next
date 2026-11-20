@@ -256,6 +256,7 @@ interface TaskRecord {
   lastProposal?: ProposalSummary
   lastAnswer?: TaskSnapshot['lastAnswer']
   continuation?: ContinuationState
+  partial?: TaskSnapshot['partial']
   attempt: number
   reportBindings?: ReportBinding[]
   inputSet?: InputSet
@@ -274,8 +275,15 @@ interface ValidationRecord {
   readonly detail: string
 }
 
+function analysisScopeFor(goal: GoalCondition, optionId: string): 'full' | 'partial' | null {
+  if (goal.analysisWhen !== 'always') return null
+  if (optionId === 'analyze_this') return 'partial'
+  if (['continue_now', 'analyze_failing', 'retry_analysis'].includes(optionId)) return 'full'
+  return null
+}
+
 function authorizesAnalysis(goal: GoalCondition, optionId: string): boolean {
-  return goal.analysisWhen === 'always' && ['continue_now', 'analyze_failing', 'retry_analysis'].includes(optionId)
+  return analysisScopeFor(goal, optionId) !== null
 }
 
 /** 构造输入身份只需要这四项；TaskRecord 与 TaskSnapshot 都满足。 */
@@ -516,10 +524,15 @@ export class FollowupRuntime {
       if (disposition === 'appended' || conflict) {
         const hadAuthorization = Boolean(fresh.lastAnswer) || Boolean(fresh.analysis)
         if (fresh.analysis) {
-          // 新来源修订让旧分析的“当前有效性”失效；历史证据留在事件/回执里。
-          fresh.diagnostics = [...fresh.diagnostics.slice(-40), `analysis_invalidated:new_source:${sourceRevision}`]
-          fresh.analysis = undefined
-          fresh.completion = undefined
+          const analyzedSource = fresh.analysis.sourceTaskId ?? fresh.ticketId
+          if (fresh.analysis.scope === 'partial' && analyzedSource !== fresh.ticketId) {
+            // 局部分析只绑定另一个来源；本任务（主来源）的新版本不使它失效。
+          } else {
+            // 新来源修订让旧分析的“当前有效性”失效；历史证据留在事件/回执里。
+            fresh.diagnostics = [...fresh.diagnostics.slice(-40), `analysis_invalidated:new_source:${sourceRevision}`]
+            fresh.analysis = undefined
+            fresh.completion = undefined
+          }
         }
         if (hadAuthorization || fresh.continuation) {
           // 旧授权只对旧来源有效：新来源必须重新授权，旧 attempt 不复用。
@@ -553,6 +566,7 @@ export class FollowupRuntime {
       } else {
         fresh.diagnostics = [...fresh.diagnostics.slice(-40), `artifact_${disposition}:${detail}`]
       }
+      this.refreshPartialAfterSource(fresh)
       this.saveTask(fresh)
       if (disposition === 'appended' || conflict) {
         const superseded = this.attention.supersede(fresh.ticketId, fresh.taskRevision, 'new evidence revision', now)
@@ -615,11 +629,23 @@ export class FollowupRuntime {
       }
     }
     let analysisEvidence: AnalysisEvidence | undefined
-    if (authorizesAnalysis(task.goalCondition, option.id)) {
+    const scope = analysisScopeFor(task.goalCondition, option.id)
+    if (scope === 'partial') {
+      // 首败局部授权：只认提问时冻结的失败来源版本/SHA；之后到达的文件不在这份集合里。
+      const frozen = this.db.metaGet(`attention.partial-json:${attention.attentionId}`)
+      const set = frozen ? JSON.parse(frozen) as InputSet : this.readPartialInputSet(task)
+      if (!set) return { ok: false, code: 'stale_answer', detail: 'partial_input_missing' }
+      const gate = this.verifyPartialInputSet(set)
+      if (!gate.ok) return { ok: false, code: 'stale_answer', detail: `${gate.code}:${gate.detail}` }
+      analysisEvidence = { inputSet: set, scope: 'partial', authorization: {
+        attentionId: attention.attentionId, decisionId: attention.decisionId, optionId: option.id,
+        at: now, taskRevision: task.taskRevision, assignmentId: task.assignmentId ?? '',
+      } }
+    } else if (scope === 'full') {
       const expected = this.db.metaGet(`attention.input-set:${attention.attentionId}`)
       const gate = this.verifyInputSet(task.ticketId, expected)
       if (!gate.ok) return { ok: false, code: 'stale_answer', detail: `${gate.code}:${gate.detail}` }
-      analysisEvidence = { inputSet: this.readInputSet(task), authorization: {
+      analysisEvidence = { inputSet: this.readInputSet(task), scope: 'full', authorization: {
         attentionId: attention.attentionId, decisionId: attention.decisionId, optionId: option.id,
         at: now, taskRevision: task.taskRevision, assignmentId: task.assignmentId ?? '',
       } }
@@ -655,6 +681,16 @@ export class FollowupRuntime {
       fresh.eventCursor = inserted.seq
       fresh.memoryCursor = memory.cursor
       fresh.lastAnswer = { optionId: option.id, at: now, ...(analysisEvidence ? { analysisEvidence } : {}) }
+      if (option.id === 'wait_other' || option.id === 'skip_once') {
+        const set = this.readInputSet(fresh)
+        const failed = [set.primary, ...set.dependencies].filter((entry) => entry.ref && entry.summary?.status === 'failed')
+        fresh.partial = {
+          failedTaskIds: failed.map((entry) => entry.taskId),
+          failedShas: failed.map((entry) => entry.ref!.resultFileSha),
+          optionId: option.id,
+          at: now,
+        }
+      }
       fresh.updatedAt = now
       if (option.id === 'keep_current' || option.id === 'use_latest') {
         fresh.diagnostics = fresh.diagnostics.filter((item) => !item.startsWith('evidence_conflict'))
@@ -1345,9 +1381,17 @@ export class FollowupRuntime {
     if (!receipt.inputsVerified) return fail('receipt_inputs_unverified', receipt.detail)
     if (receipt.needsReconciliation) return fail('receipt_unresolved', receipt.detail)
     if (!receipt.inputRef) return fail('receipt_identity_missing', receipt.receiptId)
-    if (!current.ref) return fail('receipt_identity_mismatch', `current_identity:${current.reasons.join('+')}`)
-    if (canonicalJson(receipt.inputRef) !== canonicalJson(current.ref)) {
-      return fail('receipt_identity_mismatch', 'receipt inputRef differs from current input')
+    if (receipt.analysisEvidence?.scope === 'partial') {
+      // 局部分析只对照 effect 冻结的失败来源身份，不对照任务当前的完整 primary。
+      const effectRef = effect.input_ref_json ? JSON.parse(effect.input_ref_json) as InputRef : null
+      if (!effectRef || canonicalJson(receipt.inputRef) !== canonicalJson(effectRef)) {
+        return fail('receipt_identity_mismatch', 'partial receipt inputRef differs from effect input')
+      }
+    } else {
+      if (!current.ref) return fail('receipt_identity_mismatch', `current_identity:${current.reasons.join('+')}`)
+      if (canonicalJson(receipt.inputRef) !== canonicalJson(current.ref)) {
+        return fail('receipt_identity_mismatch', 'receipt inputRef differs from current input')
+      }
     }
     if (effect.tool === 'write_analysis') {
       if (!receipt.outputPath || !receipt.outputSha256) return fail('receipt_output_missing', receipt.receiptId)
@@ -1471,6 +1515,22 @@ export class FollowupRuntime {
       const proof = (effect.args_json ? JSON.parse(effect.args_json).__analysisEvidence : null) as AnalysisEvidence | null
       if (!proof || canonicalJson(proof) !== canonicalJson(task.lastAnswer?.analysisEvidence ?? null)) {
         return { ok: false, detail: 'analysis_authorization_missing_or_stale', inputRef: expected, snapshotPath: null }
+      }
+      if (proof.scope === 'partial') {
+        const partialGate = this.verifyPartialInputSet(proof.inputSet)
+        if (!partialGate.ok) return { ok: false, detail: partialGate.code, inputRef: expected, snapshotPath: null }
+        const authorized = proof.inputSet.primary.ref
+        if (!authorized || canonicalJson(expected) !== canonicalJson(authorized)) {
+          return { ok: false, detail: 'partial_authorization_identity_mismatch', inputRef: expected, snapshotPath: null }
+        }
+        for (const entry of [proof.inputSet.primary, ...proof.inputSet.dependencies]) {
+          const ref = entry.ref!
+          const result = this.writeInputSnapshot(this.absoluteToRoot(ref.resultPath!), ref.resultFileSha)
+          const artifact = this.writeInputSnapshot(this.absoluteToRoot(ref.artifactPath!), ref.artifactSha)
+          if (!result.ok || !artifact.ok) return { ok: false, detail: 'analysis_snapshot_failed', inputRef: expected, snapshotPath: null }
+          analysisSnapshots.push({ alias: entry.alias, ref, resultPath: result.path!, artifactPath: artifact.path! })
+        }
+        return { ok: true, detail: 'partial inputs verified', inputRef: authorized, snapshotPath: this.writeInputSnapshot(this.absoluteToRoot(authorized.resultPath!), authorized.resultFileSha).path, analysisSnapshots }
       }
       const setGate = this.verifyInputSet(task.ticketId, proof.inputSet.sha)
       if (!setGate.ok) return { ok: false, detail: setGate.code, inputRef: expected, snapshotPath: null }
@@ -1626,11 +1686,13 @@ export class FollowupRuntime {
       const gate = this.verifyInputSet(task.ticketId, set.sha)
       if (!gate.ok) identityReasons.push(`input_set:${gate.code}:${gate.detail}`)
     }
+    let partialAnalysis: CompletionCheck['partialAnalysis']
     if (task.goalCondition.requireAnalysisArtifact && (insufficient || task.goalCondition.analysisWhen === 'always')) {
       const analysis = task.analysis
       if (!analysis) {
         reasons.push('analysis_missing')
       } else {
+        const partialScope = analysis.scope === 'partial'
         receiptId = analysis.receiptId
         const receipt = this.db.getReceipt(analysis.receiptId)
         if (!receipt) reasons.push('receipt_missing')
@@ -1644,15 +1706,24 @@ export class FollowupRuntime {
           const proof = receipt.analysisEvidence
           if (!proof || !bound || canonicalJson(proof) !== canonicalJson(bound)) reasons.push('analysis_evidence_missing_or_mismatched')
           else {
-            const gate = this.verifyInputSet(task.ticketId, proof.inputSet.sha)
+            const gate = partialScope ? this.verifyPartialInputSet(proof.inputSet) : this.verifyInputSet(task.ticketId, proof.inputSet.sha)
             if (!gate.ok) identityReasons.push(`analysis_input_set:${gate.code}`)
             const auth = proof.authorization
             const answered = this.attention.get(auth.attentionId)
+            const allowedOptions = partialScope ? ['analyze_this'] : ['continue_now', 'analyze_failing', 'retry_analysis']
             if (!answered || answered.state !== 'answered' || answered.decisionId !== auth.decisionId ||
                 answered.taskRevision !== task.taskRevision || answered.ticketId !== task.ticketId ||
                 answered.answer?.optionId !== auth.optionId || auth.taskRevision !== task.taskRevision ||
-                auth.assignmentId !== task.assignmentId || !['continue_now', 'analyze_failing', 'retry_analysis'].includes(auth.optionId)) {
+                auth.assignmentId !== task.assignmentId || !allowedOptions.includes(auth.optionId)) {
               reasons.push('analysis_authorization_invalid')
+            }
+            if (partialScope) {
+              partialAnalysis = {
+                ok: gate.ok && Boolean(answered?.answer?.optionId === 'analyze_this'),
+                sourceTaskId: analysis.sourceTaskId ?? proof.inputSet.primary.taskId,
+                inputSetSha: proof.inputSet.sha,
+                reasons: gate.ok ? [] : [gate.code],
+              }
             }
           }
           if (!effect || effect.state !== 'succeeded' || effect.attempt_id !== receipt.attemptId ||
@@ -1666,11 +1737,18 @@ export class FollowupRuntime {
         if (!verify.ok) reasons.push(`analysis_artifact:${verify.detail}`)
         if (receipt?.outputSha256 && receipt.outputSha256 !== analysis.artifactSha) reasons.push('receipt_sha_mismatch')
 
-        // 当前输入 → 执行输入 → 回执 → 分析，逐项相等；缺身份即拒绝。
         if (!receipt?.inputRef) identityReasons.push('receipt_input_identity_missing')
         if (!receipt?.inputsVerified) identityReasons.push('receipt_inputs_unverified')
         if (!analysis.inputRef) identityReasons.push('analysis_input_identity_missing')
-        if (!current.ref) {
+        if (partialScope) {
+          // 局部产物只对授权来源负责：回执/分析输入相等即可；不要求等于任务当前完整 primary。
+          if (receipt?.inputRef && analysis.inputRef && canonicalJson(receipt.inputRef) !== canonicalJson(analysis.inputRef)) {
+            identityReasons.push('receipt_analysis_input_mismatch')
+          }
+          if (analysis.inputRef && analysis.inputRef.taskId !== (analysis.sourceTaskId ?? analysis.inputRef.taskId)) {
+            identityReasons.push('analysis_partial_source_mismatch')
+          }
+        } else if (!current.ref) {
           identityReasons.push('current_input_identity_unavailable')
         } else {
           if (receipt?.inputRef && canonicalJson(receipt.inputRef) !== canonicalJson(current.ref)) {
@@ -1696,6 +1774,7 @@ export class FollowupRuntime {
       inputRef: current.ref,
       inputConsistent: identityReasons.length === 0 && Boolean(current.ref),
       unresolvedEffects: unresolved.map((effect) => effect.effect_id),
+      ...(partialAnalysis ? { partialAnalysis } : {}),
     }
   }
 
@@ -2032,6 +2111,8 @@ export class FollowupRuntime {
             artifactSha: receipt.outputSha256,
             receiptId: receipt.receiptId,
             inputRef: receipt.inputRef,
+            scope: receipt.analysisEvidence?.scope ?? 'full',
+            ...(receipt.analysisEvidence?.scope === 'partial' && receipt.inputRef ? { sourceTaskId: receipt.inputRef.taskId } : {}),
           }
           task.stage = 'analyzing'
           // 分析已按当前输入交付：这次决定已经完成，不再保留未回答的问题。
@@ -2220,8 +2301,8 @@ export class FollowupRuntime {
       this.db.driverLog(now, task.ticketId, 'proposal.notify_blocked', { code: notifyValidation.code, detail: notifyValidation.detail })
       return false
     }
-    // 分析已交付：不再产生新问题（这次决定已经结束）。
-    if (task.analysis) {
+    // 全量分析已交付：不再产生新问题；局部分析只覆盖某个失败来源，仍可对后续轮次发问。
+    if (task.analysis && task.analysis.scope !== 'partial') {
       this.db.atomic(() => {
         this.db.saveProposal({ ...row, outcome: 'executed', validation_json: canonicalJson([{ ok: true, code: 'analysis_already_delivered', detail: task.analysis!.receiptId }]) })
         this.recordLastProposal(task, row, 'executed')
@@ -2242,6 +2323,13 @@ export class FollowupRuntime {
     const opened = this.attention.open(proposal, now, this.quiet)
     if (!opened.merged && task.goalCondition.analysisWhen === 'always') {
       this.db.metaSet(`attention.input-set:${opened.attention.attentionId}`, this.readInputSet(task).sha)
+      if (proposal.options?.some((option) => analysisScopeFor(task.goalCondition, option.id) === 'partial')) {
+        const partial = this.readPartialInputSet(task)
+        if (partial) {
+          this.db.metaSet(`attention.partial-set:${opened.attention.attentionId}`, partial.sha)
+          this.db.metaSet(`attention.partial-json:${opened.attention.attentionId}`, canonicalJson(partial))
+        }
+      }
     }
     const urgent = this.isUrgent(proposal)
     const notified = this.attention.notify(opened.attention.attentionId, now, this.quiet, urgent)
@@ -2294,7 +2382,11 @@ export class FollowupRuntime {
       this.db.driverLog(now, task.ticketId, 'proposal.rejected_before_execute', { code: executeValidation.code, detail: executeValidation.detail })
       return false
     }
-    const input = this.inputRefFromTask(task)
+    const evidence = task.lastAnswer?.analysisEvidence
+    const scope = evidence?.scope ?? 'full'
+    const input = scope === 'partial'
+      ? { ref: evidence?.inputSet.primary.ref ?? null, reasons: evidence?.inputSet.primary.ref ? [] : ['partial_source_missing'] }
+      : this.inputRefFromTask(task)
     if (!input.ref) {
       // 没有可核验的当前输入身份：不创建“盲执行”的工具 attempt。
       this.db.atomic(() => {
@@ -2311,7 +2403,7 @@ export class FollowupRuntime {
       return false
     }
     // 与 queueEffect 使用同一个 dedupeKey，否则“同一次尝试不重试”的判断永远不成立。
-    const dedupeKey = `${request.tool}:${task.attempt}`
+    const dedupeKey = scope === 'partial' ? `${request.tool}:${task.attempt}:partial:${input.ref.taskId}` : `${request.tool}:${task.attempt}`
     const effectId = stableId('fx', task.ticketId, task.taskRevision, 'tool', dedupeKey)
     const existing = this.db.getEffect(effectId)
     if (existing) {
@@ -2623,6 +2715,32 @@ export class FollowupRuntime {
         reasonText: '声明的报告来源已按承诺齐备',
         question: '报告都到齐了，现在开始处理吗？',
         options: [{ id: 'continue_now', label: '生成分析报告' }, { id: 'later', label: '稍后再说' }],
+        evidenceRefs: [...context.evidence],
+      })
+    }
+    // 首败局部菜单：任何一个已声明来源失败、且另有来源未到时，所有策略共用同一组选项；
+    // 不把“完整输入未齐”变成静默，也不让全量分析的授权门把问题挡掉。
+    const currentSet = context.task.inputSet
+    const entries = currentSet ? [currentSet.primary, ...currentSet.dependencies] : []
+    const failedEntries = entries.filter((entry) => entry.ref && entry.summary?.status === 'failed')
+    const waitingEntries = entries.filter((entry) => !entry.ref)
+    if (currentSet && !currentSet.ok && failedEntries.length && waitingEntries.length) {
+      const nameOf = (entry: (typeof entries)[number]): string => entry.taskId === task.ticketId ? task.title : entry.alias
+      for (let i = actionMenu.length - 1; i >= 0; i -= 1) {
+        if (actionMenu[i]!.kind === 'ask_user' && !actionMenu[i]!.options?.some((option) => option.id === 'analyze_this')) actionMenu.splice(i, 1)
+      }
+      actionMenu.unshift({
+        actionId: 'a-first-failure-partial',
+        source: 'baseline-rule-menu',
+        kind: 'ask_user',
+        reasonCode: 'first_failure_partial',
+        reasonText: '第一份失败已核验，其他来源尚未到达',
+        question: `${failedEntries.map(nameOf).join('、')} 失败了，${waitingEntries.map(nameOf).join('、')} 还没到。要现在先分析已失败这份，还是等另一份到了再问？`,
+        options: [
+          { id: 'analyze_this', label: '先分析这份' },
+          { id: 'wait_other', label: '等另一份再问' },
+          { id: 'skip_once', label: '跳过这次' },
+        ],
         evidenceRefs: [...context.evidence],
       })
     }
@@ -3065,6 +3183,69 @@ export class FollowupRuntime {
     }
   }
 
+  /** 新来源到达后刷新首败选择：wait_other 在来源齐备时解除；skip_once 只对新失败解除。 */
+  private refreshPartialAfterSource(task: TaskRecord): void {
+    if (!task.partial) return
+    const set = this.readInputSet(task)
+    const failed = [set.primary, ...set.dependencies].filter((entry) => entry.ref && entry.summary?.status === 'failed')
+    const newFailure = failed.some((entry) => !task.partial!.failedShas.includes(entry.ref!.resultFileSha))
+    if (task.partial.optionId === 'wait_other') {
+      if (set.ok) task.partial = undefined
+    } else if (newFailure) {
+      task.partial = undefined
+    }
+  }
+
+  /** 首败局部集合：只含已核验且状态为 failed 的来源；其余来源不进入授权。 */
+  private readPartialInputSet(task: TaskRecord): InputSet | null {
+    const set = this.readInputSet(task)
+    const failed = [set.primary, ...set.dependencies].filter((entry) => entry.ref && entry.summary?.status === 'failed')
+    if (!failed.length) return null
+    const [primary, ...dependencies] = failed
+    const bindingSha = sha256Hex(canonicalJson({ full: set.bindingSha, authorized: failed.map((entry) => entry.taskId) }))
+    const shape = {
+      bindingSha,
+      primary: { alias: primary!.alias, taskId: primary!.taskId, ref: primary!.ref },
+      dependencies: dependencies.map((entry) => ({ alias: entry.alias, taskId: entry.taskId, ref: entry.ref })),
+    }
+    return {
+      schema: 'pet-input-set/v1',
+      bindingSha,
+      primary: primary!,
+      dependencies,
+      ok: true,
+      sha: sha256Hex(canonicalJson(shape)),
+      mode: 'partial',
+      authorizedTaskIds: failed.map((entry) => entry.taskId),
+    }
+  }
+
+  /**
+   * 局部集合重验：每个授权来源仍必须是其任务当前采用的版本/SHA，且文件字节未变。
+   * 不重算完整集合，因为用户只授权了眼前这份失败报告；后来到达的文件不得进入本次读取。
+   */
+  private verifyPartialInputSet(set: InputSet): { ok: boolean; code: string; detail: string } {
+    if (set.mode !== 'partial' || !set.ok) return { ok: false, code: 'partial_set_invalid', detail: 'not a partial set' }
+    if (!set.authorizedTaskIds?.length) return { ok: false, code: 'partial_set_empty', detail: 'no authorized source' }
+    for (const entry of [set.primary, ...set.dependencies]) {
+      const ref = entry.ref
+      if (!ref) return { ok: false, code: 'partial_input_missing', detail: `${entry.alias}:${entry.taskId}` }
+      const row = this.db.getTaskRow(entry.taskId)
+      if (!row) return { ok: false, code: 'partial_source_missing', detail: entry.taskId }
+      const current = this.inputRefFromTask(this.toTask(row))
+      if (!current.ref || canonicalJson(current.ref) !== canonicalJson(ref)) {
+        return { ok: false, code: 'partial_source_stale', detail: `${entry.alias}:${entry.taskId}` }
+      }
+      if (!ref.resultPath || !this.verifyArtifactFile(this.absoluteToRoot(ref.resultPath), ref.resultFileSha).ok) {
+        return { ok: false, code: 'partial_result_changed', detail: `${entry.alias}:${entry.taskId}` }
+      }
+      if (ref.artifactPath && !this.verifyArtifactFile(this.absoluteToRoot(ref.artifactPath), ref.artifactSha).ok) {
+        return { ok: false, code: 'partial_artifact_changed', detail: `${entry.alias}:${entry.taskId}` }
+      }
+    }
+    return { ok: true, code: 'ok', detail: `${set.authorizedTaskIds.length} authorized source(s) verified` }
+  }
+
   /** 执行/回交前逐项重验：集合身份 + 每个来源的文件字节。 */
   verifyInputSet(ticketId: string, expectedSha: string | null | undefined): { ok: boolean; code: string; detail: string } {
     if (!expectedSha) return { ok: false, code: 'input_set_missing', detail: 'no input set recorded' }
@@ -3106,15 +3287,18 @@ export class FollowupRuntime {
       if (row.status !== 'active') continue
       const parent = this.toTask(row)
       const superseded = this.attention.supersede(parent.ticketId, parent.taskRevision, 'dependency result changed', now)
-      if (superseded.length || parent.lastAnswer || parent.analysis) {
+      const analyzedSource = parent.analysis?.sourceTaskId ?? parent.ticketId
+      const staleAnalysis = !parent.analysis || parent.analysis.scope !== 'partial' || analyzedSource === changedTicketId
+      if (superseded.length || parent.lastAnswer || (parent.analysis && staleAnalysis)) {
         parent.attempt += 1
         parent.lastAnswer = undefined
-        parent.analysis = undefined
+        if (staleAnalysis) parent.analysis = undefined
         this.invalidatePendingEffects(parent.ticketId, 'dependency result changed')
         this.invalidateOpenProposals(parent.ticketId, 'dependency result changed')
         this.db.driverLog(now, parent.ticketId, 'dependency.invalidate', { changedTicketId, attentionIds: superseded.map((a) => a.attentionId) })
       }
       parent.diagnostics = [...parent.diagnostics.slice(-40), `dependency_changed:${changedTicketId}`]
+      this.refreshPartialAfterSource(parent)
       this.saveTask(parent)
       this.scheduler.schedule({
         ticketId: parent.ticketId,
@@ -3175,9 +3359,18 @@ export class FollowupRuntime {
     }
     const verdict = this.memory.validate(proposal.evidenceRefs)
     if (!verdict.ok) return { at: now, stage, ok: false, code: verdict.code, detail: verdict.detail }
-    if (proposal.kind === 'ask_user' && proposal.options?.some(option => authorizesAnalysis(current.goalCondition, option.id))) {
-      const readiness = this.verifyInputSetFiles(this.readInputSet(current))
-      if (!readiness.ok) return { at: now, stage, ...readiness }
+    if (proposal.kind === 'ask_user' && proposal.options?.length) {
+      const scopes = new Set(proposal.options.map((option) => analysisScopeFor(current.goalCondition, option.id)).filter(Boolean))
+      if (scopes.size) {
+        // 有任一可兑现的分析范围即可提问；用户实际选中的范围在 answer/execute 再逐项校验。
+        const fullOk = this.verifyInputSetFiles(this.readInputSet(current)).ok
+        const partial = this.readPartialInputSet(current)
+        const partialOk = Boolean(partial && this.verifyPartialInputSet(partial).ok)
+        const feasible = (scopes.has('full') && fullOk) || (scopes.has('partial') && partialOk)
+        if (!feasible) {
+          return { at: now, stage, ok: false, code: scopes.has('partial') && !fullOk ? 'partial_input_missing' : 'input_missing', detail: 'no offered analysis scope is currently verifiable' }
+        }
+      }
     }
     return { at: now, stage, ok: true, code: 'ok', detail: 'version and evidence match current task' }
   }
@@ -3347,6 +3540,7 @@ export class FollowupRuntime {
       ...(row.last_proposal_json ? { lastProposal: JSON.parse(row.last_proposal_json) as ProposalSummary } : {}),
       ...(row.last_answer_json ? { lastAnswer: JSON.parse(row.last_answer_json) as { optionId: string; at: string } } : {}),
       ...(row.continuation_json ? { continuation: JSON.parse(row.continuation_json) as ContinuationState } : {}),
+      ...(row.partial_json ? { partial: JSON.parse(row.partial_json) as NonNullable<TaskSnapshot['partial']> } : {}),
       attempt: row.attempt,
       ...(row.bindings_json ? { reportBindings: JSON.parse(row.bindings_json) as ReportBinding[] } : {}),
       ...(row.result_json ? { result: JSON.parse(row.result_json) as NonNullable<TaskRecord['result']> } : {}),
@@ -3376,6 +3570,7 @@ export class FollowupRuntime {
       last_proposal_json: task.lastProposal ? canonicalJson(task.lastProposal) : null,
       last_answer_json: task.lastAnswer ? canonicalJson(task.lastAnswer) : null,
       continuation_json: task.continuation ? canonicalJson(task.continuation) : null,
+      partial_json: task.partial ? canonicalJson(task.partial) : null,
       attempt: task.attempt,
       result_json: task.result ? canonicalJson(task.result) : null,
       analysis_json: task.analysis ? canonicalJson(task.analysis) : null,

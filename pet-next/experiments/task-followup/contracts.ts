@@ -222,6 +222,9 @@ export interface InputSetEntry {
   }
 }
 
+/** full = 全部声明来源；partial = 只授权已被核验的失败来源（首败局部授权）。 */
+export type AnalysisScope = 'full' | 'partial'
+
 /** 一次评估/问题/授权/执行共享的输入集合身份。 */
 export interface InputSet {
   readonly schema: 'pet-input-set/v1'
@@ -231,6 +234,10 @@ export interface InputSet {
   /** 全部来源都已核验（primary + dependencies 都有 ref）。 */
   readonly ok: boolean
   readonly sha: string
+  /** 缺省=full；partial 的 primary/dependencies 只含本次授权来源。 */
+  readonly mode?: AnalysisScope
+  /** partial 时实际授权的任务；用户选择不能顺带读取后来到达的文件。 */
+  readonly authorizedTaskIds?: readonly string[]
 }
 
 /** 三种受控工具；没有任意 shell、远程任务或模型接口。 */
@@ -271,6 +278,8 @@ export interface ToolReceipt {
 
 export interface AnalysisEvidence {
   readonly inputSet: InputSet
+  /** 缺省=full（兼容旧数据）；partial 只覆盖授权来源。 */
+  readonly scope?: AnalysisScope
   readonly authorization: {
     readonly attentionId: string
     readonly decisionId: string
@@ -607,6 +616,13 @@ export interface TaskSnapshot {
   readonly lastProposal?: ProposalSummary
   readonly lastAnswer?: { readonly optionId: string; readonly at: string; readonly analysisEvidence?: AnalysisEvidence }
   readonly continuation?: ContinuationState
+  /** 首败局部选择：同一失败版本不重复追问；新失败版本/另一份到达时按承诺再判。 */
+  readonly partial?: {
+    readonly failedTaskIds: readonly string[]
+    readonly failedShas: readonly string[]
+    readonly optionId: 'wait_other' | 'skip_once'
+    readonly at: string
+  }
   readonly attempt: number
   /** R6-live：显式声明的报告依赖（空/缺省=单来源旧模式）。 */
   readonly reportBindings?: readonly ReportBinding[]
@@ -629,6 +645,9 @@ export interface TaskSnapshot {
     readonly receiptId: string
     /** 生成该分析时的输入身份；老数据缺失时必须 fail closed。 */
     readonly inputRef?: InputRef | null
+    /** full=全部声明来源；partial=只覆盖被授权的失败来源。 */
+    readonly scope?: AnalysisScope
+    readonly sourceTaskId?: string
   }
   readonly completion?: {
     readonly at: string
@@ -709,6 +728,13 @@ export interface CompletionCheck {
   /** 输入一致性的独立结论，供评分区分“状态完成”和“有效完成”。 */
   readonly inputConsistent: boolean
   readonly unresolvedEffects: readonly string[]
+  /** 首败局部授权产物：只核验被授权来源，不代表整个任务已完成。 */
+  readonly partialAnalysis?: {
+    readonly ok: boolean
+    readonly sourceTaskId: string
+    readonly inputSetSha: string
+    readonly reasons: readonly string[]
+  }
 }
 
 /**

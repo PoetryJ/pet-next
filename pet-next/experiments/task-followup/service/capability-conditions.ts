@@ -31,6 +31,7 @@ import { SqliteConditionStore, commitmentFingerprint } from '../capability/condi
 import { WatchIndex } from '../capability/conditions/watch-index.ts'
 import { bindingRegistrySha256, defaultFactDeclarations, COMPILE_INPUT_CHARS } from '../capability/conditions/plan-types.ts'
 import type { CompileTurn, ConditionEvalRecord, ConditionPlan, FactDeclaration, VerifiedInputs, VerifiedResult } from '../capability/conditions/plan-types.ts'
+import type { MemoryView } from '../capability/memory/view.ts'
 import { createHash } from 'node:crypto'
 import type { AssessmentDraft, AssessmentResponse, AssessmentSnapshot, AsyncAssessor } from '../runtime/assessment.ts'
 import { CapabilityNotConfigured, createCapabilityHandle, findUserCancel } from './capability-assessor.ts'
@@ -75,6 +76,11 @@ export interface ConditionsHandleOptions {
 
 const reason = (state: string): string => state === 'true' ? '条件已满足' : state === 'false' ? '条件未满足' : '缺证据'
 
+/** when=false 的分支：显式 end 才归档；持续观察（含旧计划缺省）继续等待下一轮。 */
+export function falseBranchAction(plan: import('../capability/conditions/plan-types.ts').ConditionPlan | null): 'wait' | 'archive' {
+  return (plan?.follow?.mode ?? 'end') === 'next_round' ? 'wait' : 'archive'
+}
+
 /**
  * 静默归档的适用范围：条件只读“已声明报告的结果字段”。时间/可用性条件的 false
  * 只是“此刻不成立”，不能当作最终结论去关闭任务。
@@ -107,7 +113,7 @@ export function createConditionsHandle(
   const client: ModelClient = clientOverride ?? new OpenAICompatibleClient(cfg.ok ? cfg.config : undefined, fetchImpl)
   const compiler = createConditionCompiler()
   const watched = new WatchIndex()
-  const stats = { assessments: 0, evaluated: 0, compiles: 0, compileHits: 0, asks: 0, waits: 0, archives: 0, fallbacks: 0, ignored: 0 }
+  const stats = { assessments: 0, evaluated: 0, compiles: 0, compileHits: 0, asks: 0, partialAsks: 0, waits: 0, follows: 0, archives: 0, fallbacks: 0, ignored: 0 }
 
   let mem: CapabilityMemoryStore | null = null
   let plans: SqliteConditionStore | null = null
@@ -208,6 +214,23 @@ export function createConditionsHandle(
     }
   }
 
+  /** 结果变化不需要重抽记忆：用已持久化的当前计划 + 最小记忆包直接求值。 */
+  const fastLoad = (task: AssessmentSnapshot['task'], now: string): MemoryLoad => {
+    const packet: CapPacket = {
+      schema: 'pet-capability-memory-packet/v1', taskId: task.ticketId, asOf: now, evaluatedAt: now,
+      intent: 'current', memoryCursor: task.memoryCursor,
+      currentFacts: [], preferences: [], commitments: [], outcomes: [],
+      evidenceRefs: [], missing: [], conflicts: [],
+      context: { nonActionable: [], recentTurns: [], slotResolution: [], budgetUsed: { items: 0, chars: 0 }, truncated: false, diagnostics: ['fast_path_result_only'], summary: null },
+    }
+    const view: MemoryView = {
+      kind: 'versioned', taskId: task.ticketId, turns: [], refs: [], coveredSeq: 0,
+      coverage: { coveredSeq: 0, visitedSeq: 0, pending: 0 }, summary: null, summaryKeyTurns: [],
+      packet, viewSha: sha(`fast:${task.ticketId}:${task.result?.resultFileSha ?? 'none'}`), detail: { fast: true },
+    }
+    return { kind: 'versioned', packet, view, detail: { fast: true } }
+  }
+
   const assessor: AsyncAssessor = {
     id: `conditions/v1:${cfg.ok ? cfg.config.model : 'override'}`,
     capability: true,
@@ -215,37 +238,74 @@ export function createConditionsHandle(
       const { mem: memStore, plans: planStore } = need()
       stats.assessments += 1
       const task = snapshot.task
-      // A：V/T 两种真实不同的记忆实现，由 PET_MEMORY_ADAPTER 选择（默认 versioned）。
+      const now = new Date().toISOString()
+      // 结果事件不需要重抽记忆：当前计划仍匹配声明/编译器，且编译后没有新的用户原话时，
+      // 直接本地求值。首败提醒因此不再排在几分钟的记忆抽取之后。
+      const fastPlanCandidate = planStore.current(task.ticketId)
+      const fastDeclared = task.reportBindings !== undefined
+        ? [...new Set([task.ticketId, ...task.reportBindings.map((b) => b.taskId)])].sort()
+        : null
+      const modelNameForFast = cfg.ok ? cfg.config.model : 'override'
+      const compilerShaForFast = compilerSha256({ name: modelNameForFast, provider: cfg.ok ? cfg.config.provider : 'override' })
+      const COMMITMENT_RE = /更正|不用等|别等|只等|只当参考|取消依赖|才来问我|再问我|就问我|问我是否|失败就|成功就/u
+      const latestUserTurn = memStore.turns()
+        .filter((t) => t.role === 'user' && (t.taskIds.length === 0 || t.taskIds.includes(task.ticketId)))
+        .sort((a, b) => a.seq - b.seq).at(-1)
+      const latestCommitmentTurn = memStore.turns()
+        .filter((t) => t.role === 'user' && (t.taskIds.length === 0 || t.taskIds.includes(task.ticketId)) && COMMITMENT_RE.test(t.text))
+        .sort((a, b) => a.seq - b.seq).at(-1)
+      const fastQuoted = new Set((fastPlanCandidate?.sourceQuotes ?? []).map((q) => q.turnId))
+      const fastNewCommitment = Boolean(latestCommitmentTurn && !fastQuoted.has(latestCommitmentTurn.turnId))
+      const fastPath = Boolean(fastPlanCandidate && fastDeclared && latestUserTurn && !fastNewCommitment
+        && fastPlanCandidate.bindingRegistrySha256 === bindingRegistrySha256(defaultFactDeclarations(fastDeclared), fastDeclared)
+        && fastPlanCandidate.compilerSha256 === compilerShaForFast
+        && fastPlanCandidate.unsupported.length === 0)
       const memoryKind = adapterKindFromEnv(process.env)
-      const loaded = await compilation.run(task.ticketId, (compilationSignal) => loadMemory(memoryKind, {
+      const loaded = fastPath ? fastLoad(task, now) : await compilation.run(task.ticketId, (compilationSignal) => loadMemory(memoryKind, {
         store: memStore,
         client,
         taskId: task.ticketId,
         taskTitle: task.title,
-        now: new Date().toISOString(),
+        now,
         signal: compilationSignal,
         extract: { entities: [{ id: task.ticketId, type: 'task', label: task.title }], maxTurns: 48, maxTokens: EXTRACT_MAX },
         read: { question: `${task.title} 的条件承诺、用户更正与当前结果`, requiredSlots: SHARED_READ_SLOTS, maxItems: 24, maxChars: 4500 },
       }))
-      const extraction = loaded.extraction ?? { status: 'applied', requestId: null }
+      const extraction = loaded.extraction ?? { status: fastPath ? 'skipped_fast_path' : 'applied', requestId: null }
       // 抽取失败不拖垮整次判断：沿用已持久化记忆，错误记录在 memoryView/extractionError。
       if (signal.aborted) throw signal.reason ?? new Error('aborted')
 
-      const now = new Date().toISOString()
       const control = findUserCancel(memStore, task.ticketId, now)
       if (control) return { drafts: [], taskControl: control, raw: { provider: 'conditions', model: 'no-intervention-model-call', rawOutput: '', meta: { taskControl: control } } }
 
-      const askTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user' && (item.options?.length ?? 0) > 0)
       const packet = loaded.packet
-      if (!task.result && !askTemplate) {
+      if (!task.result && !snapshot.actionMenu.some((item) => item.kind === 'ask_user' && (item.options?.length ?? 0) > 0)) {
         stats.ignored += 1
         return {
           drafts: [{ intent: 'none', reasonCode: 'await_new_evidence', reasonText: '目录监听持续等待结果；当前无可选行动，不重复占用模型判断。' }],
           raw: { provider: 'event-driven-host', model: 'no-intervention-model-call', rawOutput: '', meta: { conditions: { skipped: 'no_result_no_menu' } } },
         }
       }
+      // 无结果时，已编译计划且没有新的更正原话 → 后续填充聊天不重抽记忆/重编译。
+      // 首条承诺仍会在计划为空时编译一次；结果到达时走 fastPath 本地求值。
+      if (!task.result) {
+        const existing = planStore.current(task.ticketId)
+        const COMMITMENT_RE_SKIP = /更正|不用等|别等|只等|只当参考|取消依赖|才来问我|再问我|就问我|问我是否|失败就|成功就/u
+        const latestCommitment = memStore.turns()
+          .filter((t) => t.role === 'user' && (t.taskIds.length === 0 || t.taskIds.includes(task.ticketId)) && COMMITMENT_RE_SKIP.test(t.text))
+          .sort((a, b) => a.seq - b.seq).at(-1)
+        const quoted = new Set((existing?.sourceQuotes ?? []).map((q) => q.turnId))
+        const newCommitment = Boolean(latestCommitment && !quoted.has(latestCommitment.turnId))
+        if (existing && !newCommitment) {
+          stats.ignored += 1
+          return {
+            drafts: [{ intent: 'none', reasonCode: 'await_result', reasonText: '计划已编译且没有新的更正原话；等结果到达再本地求值。' }],
+            raw: { provider: 'event-driven-host', model: 'no-intervention-model-call', rawOutput: '', meta: { conditions: { skipped: 'await_result', plan: existing.compilationKey } } },
+          }
+        }
+      }
 
-      const declaredTasks = declaredTasksOf(task, packet)
+      const declaredTasks = fastPath ? fastDeclared! : declaredTasksOf(task, packet)
       const declarations: FactDeclaration[] = defaultFactDeclarations(declaredTasks)
       const bindingSha = bindingRegistrySha256(declarations, declaredTasks)
       const modelName = cfg.ok ? cfg.config.model : 'override'
@@ -254,22 +314,29 @@ export function createConditionsHandle(
       const view = loaded.view
       // 编译只给“承诺相关”的原话：承诺/偏好条目的证据 + 摘要引用 + 最后一条用户原话。
       // 96 条历史里的填充内容不进编译输入，避免模型把它们当成待支持子句。
+      const turns: CompileTurn[] = []
       const focus = new Set<string>([...packet.commitments, ...packet.preferences].flatMap((i) => i.evidenceTurnIds))
       for (const id of view.summaryKeyTurns) focus.add(id)
       const lastUser = view.turns.filter((t) => t.role === 'user').at(-1)
       if (lastUser) focus.add(lastUser.turnId)
       // 最早承诺与最近更正一样重要：抽取/摘要推进后仍要把第一段真实用户原话交给编译器。
-      const firstUser = view.turns
-        .filter((t) => t.role === 'user' && !t.turnId.startsWith('delegate-'))
+      // 从持久 turn 表取，而不是只从当前摘要窗口取；否则 96 条 intake 后首条承诺会被摘要裁掉。
+      const firstUser = memStore.turns()
+        .filter((t) => t.role === 'user' && !t.turnId.startsWith('delegate-')
+          && (t.taskIds.length === 0 || t.taskIds.includes(task.ticketId)))
         .sort((a, b) => a.seq - b.seq)[0]
+      const anchor = firstUser
+        ? { turnId: firstUser.turnId, role: 'user' as const, at: firstUser.at, text: firstUser.text, seq: firstUser.seq, sha256: sha(firstUser.text) }
+        : null
       if (firstUser) focus.add(firstUser.turnId)
       const focused = view.turns.filter((t) => t.role === 'user' && focus.has(t.turnId)).slice(-12)
-      const base = focused.length ? focused : view.turns.filter((t) => t.role === 'user').slice(-6)
+      const withAnchor = anchor && !focused.some((t) => t.turnId === anchor.turnId) ? [anchor, ...focused] : focused
+      const base = withAnchor.length ? withAnchor : view.turns.filter((t) => t.role === 'user').slice(-6)
       // 有更正时，更正之前的旧承诺已被替代：只把“更正及其之后”的原话交给编译器，
       // 避免模型把作废条件与更正条件用 all 合并（S2 的真实失败）。
       const correctionAt = base.map((t) => CORRECTION_RE.test(t.text)).lastIndexOf(true)
       const chosen = correctionAt >= 0 ? base.slice(correctionAt) : base
-      const turns = chosen.map((t) => ({ turnId: t.turnId, role: 'user' as const, at: t.at, text: t.text, sha256: sha(t.text) }))
+      if (!fastPath) turns.push(...chosen.map((t) => ({ turnId: t.turnId, role: 'user' as const, at: t.at, text: t.text, sha256: sha(t.text) })))
       const fingerprint = commitmentFingerprint({
         revision: task.taskRevision,
         commitmentItemIds: packet.commitments.filter((i) => i.authority === 'user').map((i) => i.itemId),
@@ -277,15 +344,16 @@ export function createConditionsHandle(
         // The cache must track the scoped language the compiler actually received.
         latestUserTurnSha: sha(JSON.stringify({ quotes: turns.map(t => [t.turnId, t.sha256]), summary: view.summary })),
       })
-      const commitmentRevision = planStore.revision(task.ticketId, fingerprint, now)
+      const commitmentRevision = fastPath ? fastPlanCandidate!.commitmentRevision : planStore.revision(task.ticketId, fingerprint, now)
 
       const replay = (): ConditionSummary => buildSummary(task.ticketId)
-      let plan = planStore.current(task.ticketId)
-      const stalePlan = !!plan && (plan.commitmentRevision !== commitmentRevision || plan.compilerSha256 !== compilerSha || plan.bindingRegistrySha256 !== bindingSha || plan.unsupported.length > 0)
+      let plan = fastPath ? fastPlanCandidate : planStore.current(task.ticketId)
+      const stalePlan = !fastPath && !!plan && (plan.commitmentRevision !== commitmentRevision || plan.compilerSha256 !== compilerSha || plan.bindingRegistrySha256 !== bindingSha || plan.unsupported.length > 0)
       let compileStatus: 'hit' | 'compiled' | 'unsupported' | 'error' = 'hit'
       let compileDetail: string | null = null
       let rawCall: unknown = null
-      if (!plan || stalePlan) {
+      if (fastPath) stats.compileHits += 1
+      else if (!plan || stalePlan) {
         const compileIdentity = sha(JSON.stringify({ commitmentRevision, compilerSha, bindingSha, turnIds: turns.map((t) => t.turnId), viewSha: view.viewSha }))
         const cachedFailure = planStore.failure(task.ticketId, compileIdentity)
         if (cachedFailure) {
@@ -377,6 +445,40 @@ export function createConditionsHandle(
       const quoteText = plan!.sourceQuotes.map((q) => `「${q.text}」`).join(' ')
       const readText = evaluation.reads.map((r) => `${r.fact}=${r.state}${r.reason ? `(${r.reason})` : ''}`).join('，')
 
+      // 首败：已核验失败来源 + 仍缺来源，所有策略共用宿主注入的同一组选项。
+      const set = task.inputSet
+      const entries = set ? [set.primary, ...set.dependencies] : []
+      const failed = entries.filter((entry) => entry.ref && entry.summary?.status === 'failed')
+      const waiting = entries.filter((entry) => !entry.ref)
+      const partialTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user' && (item.options?.some((option) => option.id === 'analyze_this') ?? false))
+      const normalTemplate = snapshot.actionMenu.find((item) => item.kind === 'ask_user' && (item.options?.length ?? 0) > 0)
+      const partialEligible = Boolean(set && !set.ok && failed.length && waiting.length && partialTemplate)
+      const partialShas = failed.map((entry) => entry.ref!.resultFileSha)
+      const samePartialFailure = Boolean(task.partial && partialShas.length === task.partial.failedShas.length
+        && partialShas.every((value) => task.partial!.failedShas.includes(value)))
+      const askTemplate = partialEligible ? partialTemplate : normalTemplate
+
+      const analyzedFailedSha = task.analysis?.scope === 'partial' ? task.analysis.inputRef?.resultFileSha : null
+      const alreadyAnalyzedFailure = Boolean(analyzedFailedSha && failed.some((entry) => entry.ref?.resultFileSha === analyzedFailedSha))
+      if (evaluation.state === 'true' && alreadyAnalyzedFailure) {
+        planStore.recordEval({ ...record, action: 'skip' })
+        stats.ignored += 1
+        return draftNone('partial_already_analyzed', '这份失败报告已经按你的选择分析过；同一失败版本不重复追问，等新一轮或新失败再判。', meta)
+      }
+
+      if (evaluation.state === 'true' && samePartialFailure) {
+        if (task.partial?.optionId === 'skip_once') {
+          planStore.recordEval({ ...record, action: 'skip' })
+          stats.ignored += 1
+          return draftNone('skip_once_active', '这次失败已选择跳过，同一失败版本不重复追问。', meta)
+        }
+        if (task.partial?.optionId === 'wait_other' && set && !set.ok) {
+          planStore.recordEval({ ...record, action: 'wait' })
+          stats.waits += 1
+          return draftNone('wait_other_active', '已选择等另一份报告；同一失败版本不重复追问，另一份到达后再判。', meta)
+        }
+      }
+
       if (evaluation.state === 'true') {
         if (!askTemplate) {
           planStore.recordEval({ ...record, action: 'wait' })
@@ -388,14 +490,17 @@ export function createConditionsHandle(
           stats.ignored += 1
           return draftNone('asked_same_evidence', `同一证据版本已提问，等待回答，不重复打扰。`, meta)
         }
+        if (partialEligible) stats.partialAsks += 1
         stats.asks += 1
         planStore.recordEval({ ...record, action: 'ask' })
         const options = askTemplate.options ?? []
         const draft: AssessmentDraft = {
           intent: 'ask_now',
           actionId: askTemplate.actionId,
-          reasonCode: 'condition_satisfied',
-          reasonText: `条件已满足：${readText}。依据你的原话 ${quoteText}`,
+          reasonCode: partialEligible ? 'first_failure_partial' : 'condition_satisfied',
+          reasonText: partialEligible
+            ? `已有失败来源核验（${failed.map((entry) => entry.alias).join('、')}），仍有来源未到（${waiting.map((entry) => entry.alias).join('、')}）；先问是否只分析这份。依据你的原话 ${quoteText}`
+            : `条件已满足：${readText}。依据你的原话 ${quoteText}`,
           question: askTemplate.question ?? `${task.title} 的条件已经满足，现在处理吗？`,
           options,
         }
@@ -403,6 +508,21 @@ export function createConditionsHandle(
       }
 
       if (evaluation.state === 'false') {
+        const follow = plan!.follow
+        if (falseBranchAction(plan) === 'wait') {
+          stats.follows += 1
+          planStore.recordEval({ ...record, action: 'wait' })
+          const followQuote = follow?.quotes.map((q) => `「${q.text}」`).join(' ') ?? ''
+          const notBefore = new Date(Date.parse(now) + hostRecheckMs).toISOString()
+          return {
+            drafts: [{
+              intent: 'wait', reasonCode: 'follow_next_round',
+              reasonText: `本轮条件未成立（${readText}），按你的原话 ${followQuote || quoteText} 先安静，继续跟下一轮；${Math.round(hostRecheckMs / 60000)} 分钟后按当前证据复查。`,
+              notBefore,
+            }],
+            raw: { provider: 'conditions', model: 'event-evaluation', rawOutput: '', requestPayload: rawCall, meta },
+          }
+        }
         // 条件明确“此刻不该问”，且条件实际读取的来源都已核验 → 这是承诺的终局：
         // 安静归档，不发通知、不建 attention、不执行工具。
         const used = resultTasksOf(plan!.when)

@@ -165,7 +165,7 @@ function necessaryDecision(context: DecisionContext): NecessaryDecision | null {
 function answerRequestsAnalysis(context: DecisionContext): boolean {
   const answer = context.task.lastAnswer
   if (!answer) return false
-  if (!['analyze_failing', 'retry_analysis', 'continue_now'].includes(answer.optionId)) return false
+  if (!['analyze_failing', 'retry_analysis', 'continue_now', 'analyze_this'].includes(answer.optionId)) return false
   if (context.task.analysis) return false
   // 已经尝试并失败的同一次分析请求不再自动重做；失败要留给明确的选择。
   const last = context.task.diagnostics.at(-1) ?? ''
