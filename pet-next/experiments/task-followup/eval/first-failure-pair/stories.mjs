@@ -116,7 +116,7 @@ export const EXPECTATIONS = {
   'G2-W': { action: 'ask', option: 'continue_now', waitOption: 'wait_other', waitThenAsk: true, restartNoAsk: true, analysis: 'full' },
   'G2-S': { action: 'archive', analysis: false, restartNoAsk: true },
   'G3-E': { action: 'archive', analysis: false, round2NoAsk: true },
-  'G3-C': { action: 'ask', option: 'continue_now', analysis: 'full', round1Quiet: true },
+  'G3-C': { action: 'ask', option: 'analyze_failing', analysis: 'full', round1Quiet: true },
   'G4-AF': { action: 'ask', option: 'continue_now', analysis: 'full', correction: 'success' },
   'G4-AS': { action: 'archive', analysis: false, correction: 'failure' },
   'X-F': { action: 'cancelled' },

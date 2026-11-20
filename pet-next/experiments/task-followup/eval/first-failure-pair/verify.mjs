@@ -22,8 +22,8 @@ add('runs.unique', new Set(rows.map((r) => `${r.group}-${r.promise}-${r.arm}`)).
 let partial = 0
 let full = 0
 for (const row of rows) {
-  const dir = join(roots.find((root) => existsSync(join(root, `${row.group}-${row.promise}-${row.arm}`))) ?? roots[0], `${row.group}-${row.promise}-${row.arm}`)
   const id = `${row.group}-${row.promise}-${row.arm}`
+  const dir = roots.map((root) => join(root, id)).find((p) => existsSync(join(p, 'raw.json'))) ?? join(roots[0], id)
   add(`run.${id}.raw`, existsSync(join(dir, 'raw.json')), dir)
   add(`run.${id}.db`, existsSync(join(dir, 'ws/state/followup.sqlite')), 'sqlite')
   add(`run.${id}.client`, existsSync(join(dir, 'client-ledger.jsonl')), 'client ledger')

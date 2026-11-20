@@ -149,7 +149,7 @@ function planPath(evals, proposals, arm, asked) {
   if (arm === 'V-R') return 'rule'
   const last = evals.at(-1)
   if (last?.action === 'ask' && evals.some((e) => e.action === 'ask')) return 'native'
-  if (proposals.some((p) => p.kind === 'ask_user' && p.reason_code === 'analysis_requested')) return 'native'
+  if (proposals.some((p) => p.kind === 'ask_user' && ['analysis_requested', 'first_failure_partial', 'condition_satisfied'].includes(p.reason_code))) return 'native'
   if (asked) return 'fallback-or-native'
   return last ? `native:${last.action}` : 'none'
 }
@@ -178,7 +178,7 @@ const by = (key) => {
     cur.missedArchive += r.expectation?.action === 'archive' && !r.archive ? 1 : 0
     cur.spurious += r.expectation?.action !== 'ask' && r.asked ? 1 : 0
     cur.followTerminated += r.shouldContinueButTerminated ? 1 : 0
-    cur.tokens += r.usage?.client?.tokens ?? 0
+    cur.tokens += r.usage?.tokens ?? r.usage?.client?.tokens ?? 0
     map.set(k, cur)
   }
   return [...map.values()]
@@ -196,7 +196,7 @@ const summary = {
   fullArtifacts: rows.filter((r) => r.fullEvidenceOk).length,
   sideDelivered: rows.reduce((n, r) => n + (r.sideDelivered ?? 0), 0),
   followTerminated: rows.filter((r) => r.shouldContinueButTerminated).length,
-  tokens: rows.reduce((n, r) => n + (r.usage?.client?.tokens ?? 0), 0),
+  tokens: rows.reduce((n, r) => n + (r.usage?.tokens ?? r.usage?.client?.tokens ?? 0), 0),
   byArm: by('arm'),
   byGroup: by('group'),
   byPromise: by('promise'),

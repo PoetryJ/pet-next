@@ -141,10 +141,10 @@ export async function runOne({ group, promise, arm, outDir, port }) {
       ? [status === 'failed' ? FAIL_CASE : PASS_A]
       : [status === 'failed' ? FAIL_CASE : PASS_B]
     const dir = join(outDir, `junit-${key}-${status}-${tag}-${randomUUID().slice(0, 4)}`)
-    const invocation = runJunit({ out: dir, source: `r8-${group}-${promise}-${key}-${tag}-${randomUUID().slice(0, 6)}`, cases })
+    const invocation = runJunit({ out: dir, source: `r8-${key}-${tag}-${randomUUID().slice(0, 6)}`, cases })
     const out = importTestReport({
       report: join(dir, 'junit.xml'), out: join(workspace, 'inbox', key), workspace,
-      source: `r8-${group}-${promise}-${key}-${tag}`, experiment: `r8-${group}-${promise}-${key}`,
+      source: `r8-${key}-${tag}`, experiment: `r8-${key}`,
       command: invocation.command,
       exitCode: invocation.exitCode, startedAt: invocation.startedAt, finishedAt: invocation.finishedAt,
     })
