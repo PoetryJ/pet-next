@@ -289,7 +289,8 @@ export function createConditionsHandle(
       // 无结果时，已编译计划且没有新的更正原话 → 后续填充聊天不重抽记忆/重编译。
       // 首条承诺仍会在计划为空时编译一次；结果到达时走 fastPath 本地求值。
       if (!task.result) {
-        const existing = planStore.current(task.ticketId)
+        const anySourcePresent = Boolean(task.inputSet && [task.inputSet.primary, ...task.inputSet.dependencies].some((entry) => entry.ref))
+        const existing = anySourcePresent ? null : planStore.current(task.ticketId)
         const COMMITMENT_RE_SKIP = /更正|不用等|别等|只等|只当参考|取消依赖|才来问我|再问我|就问我|问我是否|失败就|成功就/u
         const latestCommitment = memStore.turns()
           .filter((t) => t.role === 'user' && (t.taskIds.length === 0 || t.taskIds.includes(task.ticketId)) && COMMITMENT_RE_SKIP.test(t.text))

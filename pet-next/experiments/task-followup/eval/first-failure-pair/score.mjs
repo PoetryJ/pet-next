@@ -61,7 +61,8 @@ function scoreRun(row) {
   const produces = timeline.filter((t) => t.kind === 'produce')
   const lastProduce = produces.at(-1)?.at ?? null
   const firstVisibleAt = visible.map((a) => a.delivered_at ?? a.presented_at).filter(Boolean).sort()[0] ?? null
-  const reportToVisibleMs = lastProduce && firstVisibleAt ? Date.parse(firstVisibleAt) - Date.parse(lastProduce) : null
+  const triggerProduce = firstVisibleAt ? produces.filter((p) => Date.parse(p.at) <= Date.parse(firstVisibleAt)).at(-1) : null
+  const reportToVisibleMs = triggerProduce && firstVisibleAt ? Date.parse(firstVisibleAt) - Date.parse(triggerProduce.at) : null
 
   const round1 = produces.find((p) => p.tag === 'r1' && p.key === 'A')?.at ?? produces.find((p) => p.tag === 'r1')?.at ?? null
   const round2 = produces.filter((p) => p.tag === 'r2').at(-1)?.at ?? null
