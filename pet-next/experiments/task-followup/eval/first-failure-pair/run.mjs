@@ -119,7 +119,7 @@ export async function runOne({ group, promise, arm, outDir, port }) {
     return { status: res.status, ...(value ?? {}) }
   }
   const waitSettled = async (timeoutMs = 180000, ticketId = null) => {
-    const end = Date.now() + timeoutMs
+    const end = Date.now() + Math.max(timeoutMs, Number(process.env.PET_AWAIT_MS ?? 0))
     let stable = 0
     let last = -1
     while (Date.now() < end) {
@@ -160,7 +160,7 @@ export async function runOne({ group, promise, arm, outDir, port }) {
     return row && row.analysis_json ? { ...row, analysis: JSON.parse(row.analysis_json) } : row
   }
   const waitAction = async (timeoutMs) => {
-    const end = Date.now() + timeoutMs
+    const end = Date.now() + Math.max(timeoutMs, Number(process.env.PET_AWAIT_MS ?? 0))
     while (Date.now() < end) {
       const row = taskRow(tasks.A)
       const open = mainAttention().filter((a) => a.state === 'open')
