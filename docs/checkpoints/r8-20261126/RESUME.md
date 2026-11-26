@@ -72,6 +72,8 @@ PET_MODEL_UPSTREAM_B=http://127.0.0.1:18882 \
   bash eval/first-failure-pair/reproduce.sh /path/to/new/r8-repro
 ```
 
+全仓单测的状态和环境差异见 [归档时验收记录](VERIFICATION.md)。实验继续开发时可先用上面的独立入口。
+
 离线机制或历史回放可用于排故。现场运行应读取新产生的事件、真实报告和真实模型响应。若当前要验证的仅是重启恢复，先跑 G2-W 的单格并保留停机前后的 DB，再跑配对，避免把完整矩阵当作寻找首个根因的工具。
 
 ## 接手后的第一组验证
