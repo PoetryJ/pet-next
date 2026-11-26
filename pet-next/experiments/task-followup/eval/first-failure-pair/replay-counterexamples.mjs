@@ -1,15 +1,15 @@
 #!/usr/bin/env node
-/** 先复现包里的三个反例，再让 live 跑。只读评审包；不修改原树。 */
+/** 重放仓库中的三个 R7 反例。可传入同结构的原始复核目录覆盖默认样本。 */
 import { readFileSync } from 'node:fs'
 import { join } from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { evaluate } from '../../capability/conditions/kernel.ts'
 import { defaultFactDeclarations } from '../../capability/conditions/plan-types.ts'
 import { validateDirection } from '../../capability/conditions/compiler.ts'
 import { falseBranchAction } from '../../service/capability-conditions.ts'
 
-const root = process.argv[2] ?? '/data/home/user_00/pet-r7-codex-review-20261120/next'
+const root = process.argv[2] ?? fileURLToPath(new URL('./fixtures/r7/', import.meta.url))
 const read = (name) => JSON.parse(readFileSync(join(root, name), 'utf8'))
-const sha = (text) => text
 const out = {}
 
 const first = read('design/first-failure.json')

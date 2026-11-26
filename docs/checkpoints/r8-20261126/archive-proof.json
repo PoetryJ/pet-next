@@ -1,0 +1,1507 @@
+{
+  "summary": {
+    "runs": 24,
+    "nArtifacts": 13,
+    "nHistoryTurns": 2310,
+    "modelPosts": 207,
+    "endpoints": [
+      "127.0.0.1"
+    ],
+    "fixtureFiles": [
+      "ci-failure.check.mjs",
+      "cn-path.check.mjs",
+      "runtime.test.ts"
+    ]
+  },
+  "fail": [],
+  "rows": [
+    {
+      "id": "G1-F-T-C",
+      "status": "active",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:13:46.966Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:15:14.277Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:12:08.215Z",
+          "kind": "host.ready",
+          "pid": 1298905
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "analyze_this",
+          "created_at": "2026-11-20T07:15:11.684Z",
+          "delivered_at": "2026-11-20T07:15:11.783Z",
+          "presented_at": "2026-11-20T07:15:13.136Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": [
+        {
+          "scope": "partial",
+          "files": [
+            {
+              "key": "A",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true,
+          "partial": true
+        }
+      ]
+    },
+    {
+      "id": "G1-F-V-C",
+      "status": "active",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:08:23.907Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:11:37.615Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:06:44.807Z",
+          "kind": "host.ready",
+          "pid": 1295933
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "analyze_this",
+          "created_at": "2026-11-20T07:11:35.756Z",
+          "delivered_at": "2026-11-20T07:11:35.874Z",
+          "presented_at": "2026-11-20T07:11:36.177Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 0,
+      "artifacts": [
+        {
+          "scope": "partial",
+          "files": [
+            {
+              "key": "A",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true,
+          "partial": true
+        }
+      ]
+    },
+    {
+      "id": "G1-F-V-R",
+      "status": "active",
+      "rawAction": "timeout",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T06:57:01.677Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:05:50.032Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T06:55:24.841Z",
+          "kind": "host.ready",
+          "pid": 1289938
+        }
+      ],
+      "attention": [
+        {
+          "state": "superseded",
+          "answer_option_id": null,
+          "created_at": "2026-11-20T07:02:17.244Z",
+          "delivered_at": "2026-11-20T07:02:17.323Z",
+          "presented_at": null
+        },
+        {
+          "state": "open",
+          "answer_option_id": null,
+          "created_at": "2026-11-20T07:06:21.387Z",
+          "delivered_at": null,
+          "presented_at": null
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": []
+    },
+    {
+      "id": "G1-S-T-C",
+      "status": "archived",
+      "rawAction": "archive",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:28:28.966Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:34:43.772Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:26:51.093Z",
+          "kind": "host.ready",
+          "pid": 1306279
+        }
+      ],
+      "attention": [],
+      "deliveredMain": 0,
+      "deliveredSide": 0,
+      "artifacts": []
+    },
+    {
+      "id": "G1-S-V-C",
+      "status": "archived",
+      "rawAction": "archive",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:22:14.686Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:26:24.242Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:20:37.431Z",
+          "kind": "host.ready",
+          "pid": 1303295
+        }
+      ],
+      "attention": [],
+      "deliveredMain": 0,
+      "deliveredSide": 0,
+      "artifacts": []
+    },
+    {
+      "id": "G1-S-V-R",
+      "status": "active",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:17:20.282Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:19:43.523Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:15:41.415Z",
+          "kind": "host.ready",
+          "pid": 1300763
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "analyze_this",
+          "created_at": "2026-11-20T07:19:42.262Z",
+          "delivered_at": "2026-11-20T07:19:42.347Z",
+          "presented_at": "2026-11-20T07:19:42.560Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": [
+        {
+          "scope": "partial",
+          "files": [
+            {
+              "key": "A",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true,
+          "partial": true
+        }
+      ]
+    },
+    {
+      "id": "G3-C-T-C",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T08:00:55.188Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T08:01:40.710Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T08:03:56.916Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r2",
+          "observed": "failed",
+          "revision": 2
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:59:17.441Z",
+          "kind": "host.ready",
+          "pid": 1323884
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "analyze_failing",
+          "created_at": "2026-11-20T08:06:10.735Z",
+          "delivered_at": "2026-11-20T08:06:10.814Z",
+          "presented_at": "2026-11-20T08:06:11.367Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 0,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 2,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G3-C-V-C",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:57:28.345Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:57:34.637Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:59:08.662Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r2",
+          "observed": "failed",
+          "revision": 2
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:55:50.199Z",
+          "kind": "host.ready",
+          "pid": 1322193
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "analyze_failing",
+          "created_at": "2026-11-20T07:59:11.847Z",
+          "delivered_at": "2026-11-20T07:59:11.931Z",
+          "presented_at": "2026-11-20T07:59:13.225Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 0,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 2,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G3-C-V-R",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:53:49.610Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:54:35.122Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:55:35.814Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r2",
+          "observed": "failed",
+          "revision": 2
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:52:12.723Z",
+          "kind": "host.ready",
+          "pid": 1319934
+        }
+      ],
+      "attention": [
+        {
+          "state": "superseded",
+          "answer_option_id": null,
+          "created_at": "2026-11-20T07:55:35.208Z",
+          "delivered_at": "2026-11-20T07:55:35.270Z",
+          "presented_at": null
+        },
+        {
+          "state": "answered",
+          "answer_option_id": "analyze_failing",
+          "created_at": "2026-11-20T07:55:42.914Z",
+          "delivered_at": "2026-11-20T07:55:45.894Z",
+          "presented_at": "2026-11-20T07:55:45.894Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 2,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G3-E-T-C",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:46:18.145Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:47:03.679Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:49:20.181Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r2",
+          "observed": "failed",
+          "revision": 2
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:44:40.437Z",
+          "kind": "host.ready",
+          "pid": 1315466
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "analyze_failing",
+          "created_at": "2026-11-20T07:52:06.755Z",
+          "delivered_at": "2026-11-20T07:52:06.847Z",
+          "presented_at": "2026-11-20T07:52:07.687Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 0,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 2,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G3-E-V-C",
+      "status": "archived",
+      "rawAction": "archive",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:40:23.511Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:40:27.846Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:40:32.615Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r2",
+          "observed": "failed",
+          "revision": 2
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:39:05.142Z",
+          "kind": "host.ready",
+          "pid": 1312382
+        }
+      ],
+      "attention": [],
+      "deliveredMain": 0,
+      "deliveredSide": 0,
+      "artifacts": []
+    },
+    {
+      "id": "G3-E-V-R",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:36:50.357Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:37:35.989Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:38:32.246Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "failed",
+          "tag": "r2",
+          "observed": "failed",
+          "revision": 2
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:35:11.233Z",
+          "kind": "host.ready",
+          "pid": 1310418
+        }
+      ],
+      "attention": [
+        {
+          "state": "superseded",
+          "answer_option_id": null,
+          "created_at": "2026-11-20T07:38:31.633Z",
+          "delivered_at": "2026-11-20T07:38:31.721Z",
+          "presented_at": null
+        },
+        {
+          "state": "answered",
+          "answer_option_id": "analyze_failing",
+          "created_at": "2026-11-20T07:38:58.319Z",
+          "delivered_at": "2026-11-20T07:39:00.471Z",
+          "presented_at": "2026-11-20T07:39:00.471Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 2,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G2-S-T-C",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:37:21.269Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:40:54.856Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:35:44.519Z",
+          "kind": "host.ready",
+          "pid": 1310687
+        },
+        {
+          "at": "2026-11-20T07:40:32.903Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T07:40:33.912Z",
+          "kind": "host.restarted",
+          "pid": 1313128
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "wait_other",
+          "created_at": "2026-11-20T07:40:28.740Z",
+          "delivered_at": "2026-11-20T07:40:28.810Z",
+          "presented_at": "2026-11-20T07:40:30.234Z"
+        },
+        {
+          "state": "answered",
+          "answer_option_id": "continue_now",
+          "created_at": "2026-11-20T07:42:52.605Z",
+          "delivered_at": "2026-11-20T07:42:52.741Z",
+          "presented_at": "2026-11-20T07:42:52.741Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G2-S-V-C",
+      "status": "archived",
+      "rawAction": "archive",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:31:05.396Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:31:36.187Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:29:39.943Z",
+          "kind": "host.ready",
+          "pid": 1307749
+        },
+        {
+          "at": "2026-11-20T07:31:13.270Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T07:31:14.889Z",
+          "kind": "host.restarted",
+          "pid": 1308574
+        }
+      ],
+      "attention": [],
+      "deliveredMain": 0,
+      "deliveredSide": 0,
+      "artifacts": []
+    },
+    {
+      "id": "G2-S-V-R",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:22:22.353Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:27:34.051Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:20:44.611Z",
+          "kind": "host.ready",
+          "pid": 1303382
+        },
+        {
+          "at": "2026-11-20T07:27:10.657Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T07:27:12.274Z",
+          "kind": "host.restarted",
+          "pid": 1306585
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "continue_now",
+          "created_at": "2026-11-20T07:29:34.711Z",
+          "delivered_at": "2026-11-20T07:29:34.795Z",
+          "presented_at": "2026-11-20T07:29:35.124Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G2-W-T-C",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:15:56.532Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:19:53.631Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:14:18.666Z",
+          "kind": "host.ready",
+          "pid": 1299931
+        },
+        {
+          "at": "2026-11-20T07:19:29.931Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T07:19:31.782Z",
+          "kind": "host.restarted",
+          "pid": 1302680
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "wait_other",
+          "created_at": "2026-11-20T07:19:25.748Z",
+          "delivered_at": "2026-11-20T07:19:25.884Z",
+          "presented_at": "2026-11-20T07:19:26.999Z"
+        },
+        {
+          "state": "superseded",
+          "answer_option_id": null,
+          "created_at": "2026-11-20T07:19:51.764Z",
+          "delivered_at": null,
+          "presented_at": null
+        },
+        {
+          "state": "answered",
+          "answer_option_id": "continue_now",
+          "created_at": "2026-11-20T07:20:37.600Z",
+          "delivered_at": "2026-11-20T07:20:39.075Z",
+          "presented_at": "2026-11-20T07:20:39.075Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 0,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G2-W-V-C",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T07:06:51.117Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:12:02.778Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:05:12.216Z",
+          "kind": "host.ready",
+          "pid": 1295195
+        },
+        {
+          "at": "2026-11-20T07:11:39.934Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T07:11:41.348Z",
+          "kind": "host.restarted",
+          "pid": 1298631
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "continue_now",
+          "created_at": "2026-11-20T07:14:13.148Z",
+          "delivered_at": "2026-11-20T07:14:13.241Z",
+          "presented_at": "2026-11-20T07:14:14.437Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G2-W-V-R",
+      "status": "completed",
+      "rawAction": "ask",
+      "correction": null,
+      "rounds": [
+        {
+          "at": "2026-11-20T06:57:02.058Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "r1",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:02:13.521Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T06:55:25.277Z",
+          "kind": "host.ready",
+          "pid": 1289974
+        },
+        {
+          "at": "2026-11-20T07:01:51.237Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T07:01:52.246Z",
+          "kind": "host.restarted",
+          "pid": 1293315
+        }
+      ],
+      "attention": [
+        {
+          "state": "answered",
+          "answer_option_id": "continue_now",
+          "created_at": "2026-11-20T07:05:07.176Z",
+          "delivered_at": "2026-11-20T07:05:07.258Z",
+          "presented_at": "2026-11-20T07:05:07.441Z"
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": [
+        {
+          "scope": "full",
+          "files": [
+            {
+              "key": "A",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            },
+            {
+              "key": "B",
+              "revision": 1,
+              "resultHashOk": true,
+              "artifactHashOk": true,
+              "included": true
+            }
+          ],
+          "output": true,
+          "authorization": true
+        }
+      ]
+    },
+    {
+      "id": "G4-AF-T-C",
+      "status": "archived",
+      "rawAction": "archive",
+      "correction": "更正：A 的询问条件反过来；A 成功再来问我，A 失败就归档。B 仍然只做参考。",
+      "rounds": [
+        {
+          "at": "2026-11-20T08:09:38.255Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "late",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T08:09:47.320Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T08:08:26.431Z",
+          "kind": "host.ready",
+          "pid": 1328662
+        },
+        {
+          "at": "2026-11-20T08:09:44.729Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T08:09:46.020Z",
+          "kind": "host.restarted",
+          "pid": 1329282
+        }
+      ],
+      "attention": [],
+      "deliveredMain": 0,
+      "deliveredSide": 1,
+      "artifacts": []
+    },
+    {
+      "id": "G4-AF-V-C",
+      "status": "active",
+      "rawAction": "timeout",
+      "correction": "更正：A 的询问条件反过来；A 成功再来问我，A 失败就归档。B 仍然只做参考。",
+      "rounds": [
+        {
+          "at": "2026-11-20T07:58:45.876Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "late",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:59:35.721Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:55:43.948Z",
+          "kind": "host.ready",
+          "pid": 1322116
+        },
+        {
+          "at": "2026-11-20T07:59:33.661Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T07:59:34.672Z",
+          "kind": "host.restarted",
+          "pid": 1324016
+        }
+      ],
+      "attention": [
+        {
+          "state": "open",
+          "answer_option_id": null,
+          "created_at": "2026-11-20T08:04:29.850Z",
+          "delivered_at": "2026-11-20T08:04:29.950Z",
+          "presented_at": null
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 0,
+      "artifacts": []
+    },
+    {
+      "id": "G4-AF-V-R",
+      "status": "active",
+      "rawAction": "timeout",
+      "correction": "更正：A 的询问条件反过来；A 成功再来问我，A 失败就归档。B 仍然只做参考。",
+      "rounds": [
+        {
+          "at": "2026-11-20T07:46:03.081Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "late",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T07:46:52.823Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T07:42:57.570Z",
+          "kind": "host.ready",
+          "pid": 1314271
+        },
+        {
+          "at": "2026-11-20T07:46:50.851Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T07:46:51.859Z",
+          "kind": "host.restarted",
+          "pid": 1316911
+        }
+      ],
+      "attention": [
+        {
+          "state": "open",
+          "answer_option_id": null,
+          "created_at": "2026-11-20T07:52:15.955Z",
+          "delivered_at": "2026-11-20T07:52:16.027Z",
+          "presented_at": null
+        }
+      ],
+      "deliveredMain": 1,
+      "deliveredSide": 1,
+      "artifacts": []
+    },
+    {
+      "id": "G4-AS-T-C",
+      "status": "active",
+      "rawAction": "timeout",
+      "correction": "更正：A 的询问条件反过来；A 成功再来问我，A 失败就归档。B 仍然只做参考。",
+      "rounds": [
+        {
+          "at": "2026-11-20T08:39:59.067Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "late",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T08:40:10.234Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T08:38:54.426Z",
+          "kind": "host.ready",
+          "pid": 1361615
+        },
+        {
+          "at": "2026-11-20T08:40:07.600Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T08:40:09.207Z",
+          "kind": "host.restarted",
+          "pid": 1364397
+        }
+      ],
+      "attention": [],
+      "deliveredMain": 0,
+      "deliveredSide": 0,
+      "artifacts": []
+    },
+    {
+      "id": "G4-AS-V-C",
+      "status": "archived",
+      "rawAction": "timeout",
+      "correction": "更正：A 的询问条件反过来；A 成功再来问我，A 失败就归档。B 仍然只做参考。",
+      "rounds": [
+        {
+          "at": "2026-11-20T08:29:13.508Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "late",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T08:30:03.910Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T08:26:43.685Z",
+          "kind": "host.ready",
+          "pid": 1347620
+        },
+        {
+          "at": "2026-11-20T08:30:02.100Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T08:30:03.108Z",
+          "kind": "host.restarted",
+          "pid": 1349364
+        }
+      ],
+      "attention": [],
+      "deliveredMain": 0,
+      "deliveredSide": 0,
+      "artifacts": []
+    },
+    {
+      "id": "G4-AS-V-R",
+      "status": "active",
+      "rawAction": "timeout",
+      "correction": "更正：A 的询问条件反过来；A 成功再来问我，A 失败就归档。B 仍然只做参考。",
+      "rounds": [
+        {
+          "at": "2026-11-20T08:17:02.686Z",
+          "kind": "produce",
+          "key": "B",
+          "status": "failed",
+          "tag": "late",
+          "observed": "failed",
+          "revision": 1
+        },
+        {
+          "at": "2026-11-20T08:17:52.480Z",
+          "kind": "produce",
+          "key": "A",
+          "status": "succeeded",
+          "tag": "r1",
+          "observed": "succeeded",
+          "revision": 1
+        }
+      ],
+      "phases": [
+        {
+          "at": "2026-11-20T08:13:55.322Z",
+          "kind": "host.ready",
+          "pid": 1332958
+        },
+        {
+          "at": "2026-11-20T08:17:50.887Z",
+          "kind": "host.restarting"
+        },
+        {
+          "at": "2026-11-20T08:17:51.708Z",
+          "kind": "host.restarted",
+          "pid": 1342113
+        }
+      ],
+      "attention": [],
+      "deliveredMain": 0,
+      "deliveredSide": 1,
+      "artifacts": []
+    }
+  ]
+}

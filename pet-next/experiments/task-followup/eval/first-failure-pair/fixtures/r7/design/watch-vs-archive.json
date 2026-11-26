@@ -1,0 +1,39 @@
+{
+  "scope": "Production condition assessor on identical verified-result fixtures. Explicit, scripted correct ask predicate, no network. Tests product expressiveness after successful predicate compilation only.",
+  "cases": [
+    {
+      "id": "close",
+      "quoted": "任何一份 CI 失败时问我是否分析。本轮全部成功就归档。",
+      "want": "archive",
+      "actual": "archive",
+      "purposes": [
+        "memory-extract",
+        "condition-compile"
+      ],
+      "sourceQuotes": [
+        {
+          "turnId": "promise",
+          "text": "任何一份 CI 失败时问我是否分析。本轮全部成功就归档。"
+        }
+      ],
+      "reason": "commitment_no_ask"
+    },
+    {
+      "id": "watch",
+      "quoted": "任何一份 CI 失败时问我是否分析。本轮全部成功就先安静，继续跟进下一次重跑。",
+      "want": "wait",
+      "actual": "archive",
+      "purposes": [
+        "memory-extract",
+        "condition-compile"
+      ],
+      "sourceQuotes": [
+        {
+          "turnId": "promise",
+          "text": "任何一份 CI 失败时问我是否分析。本轮全部成功就先安静，继续跟进下一次重跑。"
+        }
+      ],
+      "reason": "commitment_no_ask"
+    }
+  ]
+}

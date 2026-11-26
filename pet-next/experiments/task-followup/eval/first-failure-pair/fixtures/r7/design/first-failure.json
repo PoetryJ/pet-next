@@ -1,0 +1,76 @@
+{
+  "scope": "Mechanism probe: persisted original LLM plan, real engine and file inputs, fake wall clock, zero new model calls.",
+  "planKey": "7a884da1605ce2ea0428dacf2122d33bd3cfe4ab9ad935cb6112a52a31050701",
+  "when": {
+    "op": "any",
+    "args": [
+      {
+        "op": "cmp",
+        "fact": "task:4bd5a234c420ebba469aaed95a07fd21.result.status",
+        "rel": "eq",
+        "value": "failed"
+      },
+      {
+        "op": "cmp",
+        "fact": "task:f41b88d17cb4a9789a11c574df80a5b5.result.status",
+        "rel": "eq",
+        "value": "failed"
+      }
+    ]
+  },
+  "afterFirstFailure": {
+    "task": "active",
+    "open": 0,
+    "notifications": 0,
+    "seen": [
+      {
+        "tri": "true",
+        "inputReady": false,
+        "askTemplate": true,
+        "intent": "ask_now",
+        "sourceStatus": "failed",
+        "templateOptions": [
+          "continue_now",
+          "later"
+        ]
+      },
+      {
+        "tri": "true",
+        "inputReady": false,
+        "askTemplate": true,
+        "intent": "ask_now",
+        "sourceStatus": "failed",
+        "templateOptions": [
+          "continue_now",
+          "later"
+        ]
+      }
+    ],
+    "guards": [
+      "input_missing"
+    ]
+  },
+  "afterOtherReport": {
+    "task": "active",
+    "open": 1,
+    "notifications": 1,
+    "seen": [
+      {
+        "tri": "true",
+        "inputReady": true,
+        "askTemplate": true,
+        "intent": "ask_now",
+        "sourceStatus": "failed",
+        "templateOptions": [
+          "analyze_failing",
+          "accept_current",
+          "wait_more"
+        ]
+      }
+    ],
+    "guards": [
+      "input_missing",
+      "ok"
+    ]
+  }
+}

@@ -1,0 +1,67 @@
+[
+  {
+    "source": "evidence/matrix2-b/T2-O-V-C",
+    "archivedPlan": "fb7049eaf6a52262d2daacc3a7e5eb19ba6bc786d7f088b18d36277422ac6a79",
+    "guardVersion": "0b38ccf",
+    "inputKind": "historical erroneous AST and verified quote spans",
+    "modelCalls": 0,
+    "status": "compiled",
+    "detail": null,
+    "checks": [
+      "quotes_verbatim",
+      "structure_ok",
+      "facts_registered"
+    ],
+    "when": {
+      "op": "not",
+      "arg": {
+        "op": "all",
+        "args": [
+          {
+            "op": "cmp",
+            "fact": "task:31635efd8c3ff46929aeb33a095653bf.result.status",
+            "rel": "eq",
+            "value": "failed"
+          },
+          {
+            "op": "cmp",
+            "fact": "task:31635efd8c3ff46929aeb33a095653bf.result.present",
+            "rel": "eq",
+            "value": true
+          }
+        ]
+      }
+    }
+  },
+  {
+    "source": "evidence/matrix2-b/T2-O-T-C",
+    "archivedPlan": "6dd8d017f4f74cef8a3149e971651fa13f01a8dca3a90d209050fdae432142ba",
+    "guardVersion": "0b38ccf",
+    "inputKind": "historical erroneous AST and verified quote spans",
+    "modelCalls": 0,
+    "status": "compiled",
+    "detail": null,
+    "checks": [
+      "quotes_verbatim",
+      "structure_ok",
+      "facts_registered"
+    ],
+    "when": {
+      "op": "any",
+      "args": [
+        {
+          "op": "cmp",
+          "fact": "task:2dd4a391b92c297e1210b521ab846260.result.present",
+          "rel": "eq",
+          "value": true
+        },
+        {
+          "op": "cmp",
+          "fact": "task:2dd4a391b92c297e1210b521ab846260.result.status",
+          "rel": "eq",
+          "value": "failed"
+        }
+      ]
+    }
+  }
+]
